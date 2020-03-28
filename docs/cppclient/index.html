@@ -8,7 +8,7 @@
 
 <title data-react-helmet="true">C++ Client | Watchman</title>
 
-<meta data-react-helmet="true" http-equiv="x-ua-compatible" content="ie=edge"><meta data-react-helmet="true" property="og:title" content="Watchman"><meta data-react-helmet="true" name="twitter:card" content="summary"><meta data-react-helmet="true" name="description" content="*Since 4.8.*"><meta data-react-helmet="true" property="og:description" content="*Since 4.8.*"><meta data-react-helmet="true" property="og:url" content="https://facebook.github.io/watchman/docs/cppclient">
+<meta data-react-helmet="true" http-equiv="x-ua-compatible" content="ie=edge"><meta data-react-helmet="true" property="og:title" content="Watchman"><meta data-react-helmet="true" name="twitter:card" content="summary"><meta data-react-helmet="true" name="description" content="_Since 4.8._"><meta data-react-helmet="true" property="og:description" content="_Since 4.8._"><meta data-react-helmet="true" property="og:url" content="https://facebook.github.io/watchman/docs/cppclient">
 
 <link data-react-helmet="true" rel="shortcut icon" href="/watchman/img/favicon.png">
 
@@ -16,23 +16,21 @@
 <link rel="stylesheet" href="/watchman/styles.c3aaf29d.css">
 
 
-<link rel="preload" href="/watchman/styles.6a5eae2e.js" as="script">
+<link rel="preload" href="/watchman/styles.97c84ccd.js" as="script">
 
-<link rel="preload" href="/watchman/runtime~main.b1053eb6.js" as="script">
+<link rel="preload" href="/watchman/runtime~main.3c31e0d3.js" as="script">
 
-<link rel="preload" href="/watchman/main.d6916676.js" as="script">
+<link rel="preload" href="/watchman/main.d06ec8f8.js" as="script">
 
-<link rel="preload" href="/watchman/1.78d7982e.js" as="script">
+<link rel="preload" href="/watchman/1.7ee19611.js" as="script">
 
-<link rel="preload" href="/watchman/2.e542786b.js" as="script">
+<link rel="preload" href="/watchman/68.bb6e8a82.js" as="script">
 
-<link rel="preload" href="/watchman/69.2c9e3a05.js" as="script">
+<link rel="preload" href="/watchman/d6764f29.cb344075.js" as="script">
 
-<link rel="preload" href="/watchman/d6764f29.0730361c.js" as="script">
+<link rel="preload" href="/watchman/17896441.7cf0bc6a.js" as="script">
 
-<link rel="preload" href="/watchman/17896441.8df6c864.js" as="script">
-
-<link rel="preload" href="/watchman/de9d70f3.689d7d83.js" as="script">
+<link rel="preload" href="/watchman/de9d70f3.f45f88b0.js" as="script">
 
 </head>
 <body>
@@ -43,38 +41,41 @@ data from C++ applications. This library provides APIs for:</p><ul><li>Opening a
 library is automatically built and installed. For details on building Watchman
 see <a href="install">Installation</a>.</p><h2><a aria-hidden="true" tabindex="-1" class="anchor enhancedAnchor_ZqCz" id="api"></a><a aria-hidden="true" tabindex="-1" class="hash-link" href="#api" title="Direct link to heading">#</a>API</h2><p>The public Watchman C++ client API is entirely covered in the installed
 <code>watchman/WatchmanClient.h</code> header file. This header contains a usage synopsis
-and notes on the public API features.</p><p>For a simple example of API usage, sending simple request-response commands
-to Watchman, see <code>cppclient/CLI.cpp</code> in the Watchman source tree. For a more
-extensive example of the API including use of subscriptions, see the integration
-test <code>tests/integration/cppclient.cpp</code> also in the Watchman source.</p><p>The C++ client library and its API make heavy use of the Folly library and as
+and notes on the public API features.</p><p>For a simple example of API usage, sending simple request-response commands to
+Watchman, see <code>cppclient/CLI.cpp</code> in the Watchman source tree. For a more
+extensive example of the API including use of subscriptions, see the
+integration test <code>tests/integration/cppclient.cpp</code> also in the Watchman
+source.</p><p>The C++ client library and its API make heavy use of the Folly library and as
 such familiarity with this is highly recommended. Specifically, the client
-library makes extensive use of <a href="https://github.com/facebook/folly/blob/master/folly/io/async/README.md">Folly&#x27;s async features</a>
-to provide high-performance asynchronous I/O, and <a href="https://github.com/facebook/folly/blob/master/folly/docs/Dynamic.md">Folly&#x27;s dynamics</a>
-to avoid needing to construct/process raw JSON in C++.</p><h2><a aria-hidden="true" tabindex="-1" class="anchor enhancedAnchor_ZqCz" id="using-the-c-client-in-your-applications-build"></a><a aria-hidden="true" tabindex="-1" class="hash-link" href="#using-the-c-client-in-your-applications-build" title="Direct link to heading">#</a>Using the C++ client in your application&#x27;s build</h2><p>To facilitate integration into your application&#x27;s build, the Watchman C++ client
-library provides support for <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a>.</p><p>For example, if your application was contained entirely in one C++ file called
-<code>app.cpp</code> the following would be sufficient for build on a system with GNU Make:</p><div class="mdxCodeBlock_iHAB"><pre class="prism-code language-bash codeBlock_19pQ"><button type="button" aria-label="Copy code to clipboard" class="copyButton_1BYj">Copy</button><code class="codeBlockLines_2n9r" style="color:#bfc7d5;background-color:#292d3e"><div class="token-line" style="color:#bfc7d5"><span class="token function" style="color:rgb(130, 170, 255)">make</span><span class="token plain"> </span><span class="token assign-left variable" style="color:rgb(191, 199, 213)">LDFLAGS</span><span class="token operator" style="color:rgb(137, 221, 255)">=</span><span class="token variable" style="color:rgb(191, 199, 213)">$(</span><span class="token variable" style="color:rgb(191, 199, 213)">pkg-config watchmanclient --libs</span><span class="token variable" style="color:rgb(191, 199, 213)">)</span><span class="token plain"> </span><span class="token assign-left variable" style="color:rgb(191, 199, 213)">CPPFLAGS</span><span class="token operator" style="color:rgb(137, 221, 255)">=</span><span class="token variable" style="color:rgb(191, 199, 213)">$(</span><span class="token variable" style="color:rgb(191, 199, 213)">pkg-config watchmanclient --cflags</span><span class="token variable" style="color:rgb(191, 199, 213)">)</span><span class="token plain"> app</span></div><div class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block">
-</span></div></code></pre></div><p>If Watchman is installed in a location <code>pkg-config</code> does not search for packages
-by default, you may need to modify the <code>PKG_CONFIG_PATH</code> environment
+library makes extensive use of
+<a href="https://github.com/facebook/folly/blob/master/folly/io/async/README.md">Folly&#x27;s async features</a>
+to provide high-performance asynchronous I/O, and
+<a href="https://github.com/facebook/folly/blob/master/folly/docs/Dynamic.md">Folly&#x27;s dynamics</a>
+to avoid needing to construct/process raw JSON in C++.</p><h2><a aria-hidden="true" tabindex="-1" class="anchor enhancedAnchor_ZqCz" id="using-the-c-client-in-your-applications-build"></a><a aria-hidden="true" tabindex="-1" class="hash-link" href="#using-the-c-client-in-your-applications-build" title="Direct link to heading">#</a>Using the C++ client in your application&#x27;s build</h2><p>To facilitate integration into your application&#x27;s build, the Watchman C++
+client library provides support for
+<a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a>.</p><p>For example, if your application was contained entirely in one C++ file called
+<code>app.cpp</code> the following would be sufficient for build on a system with GNU
+Make:</p><div class="mdxCodeBlock_iHAB"><pre class="prism-code language-bash codeBlock_19pQ"><button type="button" aria-label="Copy code to clipboard" class="copyButton_1BYj">Copy</button><code class="codeBlockLines_2n9r" style="color:#bfc7d5;background-color:#292d3e"><div class="token-line" style="color:#bfc7d5"><span class="token function" style="color:rgb(130, 170, 255)">make</span><span class="token plain"> </span><span class="token assign-left variable" style="color:rgb(191, 199, 213)">LDFLAGS</span><span class="token operator" style="color:rgb(137, 221, 255)">=</span><span class="token variable" style="color:rgb(191, 199, 213)">$(</span><span class="token variable" style="color:rgb(191, 199, 213)">pkg-config watchmanclient --libs</span><span class="token variable" style="color:rgb(191, 199, 213)">)</span><span class="token plain"> </span><span class="token assign-left variable" style="color:rgb(191, 199, 213)">CPPFLAGS</span><span class="token operator" style="color:rgb(137, 221, 255)">=</span><span class="token variable" style="color:rgb(191, 199, 213)">$(</span><span class="token variable" style="color:rgb(191, 199, 213)">pkg-config watchmanclient --cflags</span><span class="token variable" style="color:rgb(191, 199, 213)">)</span><span class="token plain"> app</span></div><div class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block">
+</span></div></code></pre></div><p>If Watchman is installed in a location <code>pkg-config</code> does not search for
+packages by default, you may need to modify the <code>PKG_CONFIG_PATH</code> environment
 variable. For example:</p><div class="mdxCodeBlock_iHAB"><pre class="prism-code language-bash codeBlock_19pQ"><button type="button" aria-label="Copy code to clipboard" class="copyButton_1BYj">Copy</button><code class="codeBlockLines_2n9r" style="color:#bfc7d5;background-color:#292d3e"><div class="token-line" style="color:#bfc7d5"><span class="token builtin class-name" style="color:rgb(255, 203, 107)">export</span><span class="token plain"> </span><span class="token assign-left variable" style="color:rgb(191, 199, 213)">PKG_CONFIG_PATH</span><span class="token operator" style="color:rgb(137, 221, 255)">=</span><span class="token operator" style="color:rgb(137, 221, 255)">&lt;</span><span class="token plain">watchman path</span><span class="token operator" style="color:rgb(137, 221, 255)">&gt;</span><span class="token plain">/lib/pkgconfig:</span><span class="token variable" style="color:rgb(191, 199, 213)">$PKG_CONFIG_PATH</span></div></code></pre></div></div></article><div class="margin-vert--xl"><div class="row"><div class="col"><a href="https://github.com/facebook/watchman/edit/master/website/docs/cppclient.md" target="_blank" rel="noreferrer noopener"><svg fill="currentColor" height="1.2em" width="1.2em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 40 40" style="margin-right:0.3em;vertical-align:sub"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div></div></div><div class="margin-vert--lg"><nav class="pagination-nav"><div class="pagination-nav__item"><a class="pagination-nav__link" href="/watchman/docs/watchman-replicate-subscription"><h5 class="pagination-nav__link--sublabel">Previous</h5><h4 class="pagination-nav__link--label">« watchman-replicate-subscription</h4></a></div><div class="pagination-nav__item pagination-nav__item--next"><a class="pagination-nav__link" href="/watchman/docs/nodejs"><h5 class="pagination-nav__link--sublabel">Next</h5><h4 class="pagination-nav__link--label">NodeJS »</h4></a></div></nav></div></div></div><div class="col col--3"><div class="tableOfContents_TbNY"><ul class="contents contents__left-border"><li><a href="#installation" class="contents__link">Installation</a></li><li><a href="#api" class="contents__link">API</a></li><li><a href="#using-the-c-client-in-your-applications-build" class="contents__link">Using the C++ client in your application&#39;s build</a></li></ul></div></div></div></div></div></main></div></div><footer class="footer footer--dark"><div class="container"><div class="text--center"><div class="margin-bottom--sm"><a href="https://opensource.facebook.com/" target="_blank" rel="noopener noreferrer" class="footerLogoLink_1Wg7"><img class="footer__logo" alt="Facebook Open Source Logo" src="/watchman/img/oss_logo.png"></a></div><div>Copyright © 2020 Facebook, Inc. Built with Docusaurus.</div></div></div></footer>
 </div>
 
-<script src="/watchman/styles.6a5eae2e.js"></script>
+<script src="/watchman/styles.97c84ccd.js"></script>
 
-<script src="/watchman/runtime~main.b1053eb6.js"></script>
+<script src="/watchman/runtime~main.3c31e0d3.js"></script>
 
-<script src="/watchman/main.d6916676.js"></script>
+<script src="/watchman/main.d06ec8f8.js"></script>
 
-<script src="/watchman/1.78d7982e.js"></script>
+<script src="/watchman/1.7ee19611.js"></script>
 
-<script src="/watchman/2.e542786b.js"></script>
+<script src="/watchman/68.bb6e8a82.js"></script>
 
-<script src="/watchman/69.2c9e3a05.js"></script>
+<script src="/watchman/d6764f29.cb344075.js"></script>
 
-<script src="/watchman/d6764f29.0730361c.js"></script>
+<script src="/watchman/17896441.7cf0bc6a.js"></script>
 
-<script src="/watchman/17896441.8df6c864.js"></script>
-
-<script src="/watchman/de9d70f3.689d7d83.js"></script>
+<script src="/watchman/de9d70f3.f45f88b0.js"></script>
 
 
 </body>
