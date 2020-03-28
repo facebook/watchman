@@ -27,6 +27,7 @@ from .fetcher import (
     GitFetcher,
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
+    SystemPackageFetcher,
 )
 from .py_wheel_builder import PythonWheelBuilder
 
@@ -74,6 +75,8 @@ SCHEMA = {
     },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
+    "rpms": {"optional_section": True},
+    "debs": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
@@ -318,6 +321,13 @@ class ManifestParser(object):
         """ returns true if this is an FB first-party project """
         return self.shipit_project is not None
 
+    def get_required_system_packages(self, ctx):
+        """ Returns dictionary of packager system -> list of packages """
+        return {
+            "rpm": self.get_section_as_args("rpms", ctx),
+            "deb": self.get_section_as_args("debs", ctx),
+        }
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit
@@ -338,6 +348,13 @@ class ManifestParser(object):
         ):
             # We can use the code from fbsource
             return ShipitTransformerFetcher(build_options, self.shipit_project)
+
+        # Can we satisfy this dep with system packages?
+        if build_options.allow_system_packages:
+            packages = self.get_required_system_packages(ctx)
+            package_fetcher = SystemPackageFetcher(build_options, packages)
+            if package_fetcher.packages_are_installed():
+                return package_fetcher
 
         repo_url = self.get("git", "repo_url", ctx=ctx)
         if repo_url:
