@@ -10,7 +10,7 @@ url = https://versaweb.dl.sourceforge.net/project/boost/boost/1.69.0/boost_1_69_
 sha256 = d074bcbcc0501c4917b965fc890e303ee70d8b01ff5712bae4a6c54f2b6b4e52
 
 [preinstalled.env]
-BOOST_ROOT
+BOOST_ROOT_1_69_0
 
 [debs]
 libboost-all-dev
