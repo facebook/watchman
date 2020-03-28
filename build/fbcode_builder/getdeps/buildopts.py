@@ -393,6 +393,13 @@ def setup_build_options(args, host_type=None):
                     temp = tempfile.gettempdir()
 
                 scratch_dir = os.path.join(temp, "fbcode_builder_getdeps-%s" % munged)
+                if not is_windows() and os.geteuid() == 0:
+                    # Running as root; in the case where someone runs
+                    # sudo getdeps.py install-system-deps
+                    # and then runs as build without privs, we want to avoid creating
+                    # a scratch dir that the second stage cannot write to.
+                    # So we generate a different path if we are root.
+                    scratch_dir += "-root"
 
         if not os.path.exists(scratch_dir):
             os.makedirs(scratch_dir)
