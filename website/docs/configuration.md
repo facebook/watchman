@@ -5,19 +5,19 @@ title: Configuration Files
 
 Watchman looks for configuration files in two places:
 
- * The global configuration file `/etc/watchman.json`
- * The root specific configuration file `.watchmanconfig`
+- The global configuration file `/etc/watchman.json`
+- The root specific configuration file `.watchmanconfig`
 
 When watching a root, if a valid JSON file named `.watchmanconfig` is present
 in the root directory, watchman will load it and use it as a source of
 configuration information specific to that root.
 
 The global configuration path can be changed by passing the
-`--enable-conffile` option to configure when you build watchman.  This
+`--enable-conffile` option to configure when you build watchman. This
 documentation refers to it as `/etc/watchman.json` throughout, just be aware
-that your particular installation may locate it elsewhere.   In addition,
-the environmental variable `$WATCHMAN_CONFIG_FILE` will override the
-default location.
+that your particular installation may locate it elsewhere. In addition, the
+environmental variable `$WATCHMAN_CONFIG_FILE` will override the default
+location.
 
 Changes to the `.watchmanconfig` or `/etc/watchman.json` files are not picked
 up automatically; you will need to remove and re-add the watch (for
@@ -28,44 +28,44 @@ changes to take effect.
 
 There are three configuration scopes:
 
- * **local** - the option value is read from the `.watchmanconfig` file in the
-   associated root.
- * **global** - the option value is read from the `/etc/watchman.json` file
- * **fallback** - the option value is read from the `.watchmanconfig` file.
-   If the option was not present in the `.watchmanconfig` file, then read
-   it from the `/etc/watchman.json` file.
+- **local** - the option value is read from the `.watchmanconfig` file in the
+  associated root.
+- **global** - the option value is read from the `/etc/watchman.json` file
+- **fallback** - the option value is read from the `.watchmanconfig` file. If
+  the option was not present in the `.watchmanconfig` file, then read it from
+  the `/etc/watchman.json` file.
 
 This table shows the scoping and availability of the various options:
 
-Option | Scope | Since version
--------|-------|--------------
-`settle` | local |
-`root_restrict_files` | global | deprecated in 3.1
-`root_files` | global | 3.1
-`enforce_root_files` | global | 3.1
-`illegal_fstypes` | global | 2.9.8
-`illegal_fstypes_advice` | global | 2.9.8
-`ignore_vcs` | local | 2.9.3
-`ignore_dirs` | local | 2.9.3
-`gc_age_seconds` | local | 2.9.4
-`gc_interval_seconds` | local | 2.9.4
-`fsevents_latency` | fallback | 3.2
-`idle_reap_age_seconds` | local | 3.7
-`hint_num_files_per_dir` | fallback | 3.9
-`hint_num_dirs` | fallback | 4.6
-`suppress_recrawl_warnings` | fallback | 4.7
+| Option                      | Scope    | Since version     |
+| --------------------------- | -------- | ----------------- |
+| `settle`                    | local    |
+| `root_restrict_files`       | global   | deprecated in 3.1 |
+| `root_files`                | global   | 3.1               |
+| `enforce_root_files`        | global   | 3.1               |
+| `illegal_fstypes`           | global   | 2.9.8             |
+| `illegal_fstypes_advice`    | global   | 2.9.8             |
+| `ignore_vcs`                | local    | 2.9.3             |
+| `ignore_dirs`               | local    | 2.9.3             |
+| `gc_age_seconds`            | local    | 2.9.4             |
+| `gc_interval_seconds`       | local    | 2.9.4             |
+| `fsevents_latency`          | fallback | 3.2               |
+| `idle_reap_age_seconds`     | local    | 3.7               |
+| `hint_num_files_per_dir`    | fallback | 3.9               |
+| `hint_num_dirs`             | fallback | 4.6               |
+| `suppress_recrawl_warnings` | fallback | 4.7               |
 
 ### Configuration Options
 
 ### settle
 
-Specifies the settle period in *milliseconds*.  This controls how long the
-filesystem should be idle before dispatching triggers.  The default value is 20
+Specifies the settle period in _milliseconds_. This controls how long the
+filesystem should be idle before dispatching triggers. The default value is 20
 milliseconds.
 
 ### root_files
 
-*Since 3.1.*
+_Since 3.1._
 
 Specifies a list of files that, if present in a directory, identify that
 directory as the root of a project.
@@ -77,16 +77,16 @@ use the value of the now deprecated
 If neither `root_files` nor `root_restrict_files` is specified in the
 configuration, watchman will use a default value consisting of:
 
-* `.git`
-* `.hg`
-* `.svn`
-* `.watchmanconfig`
+- `.git`
+- `.hg`
+- `.svn`
+- `.watchmanconfig`
 
-Watchman will add `.watchmanconfig` to whatever value is specified for
-this configuration value if it is not present.
+Watchman will add `.watchmanconfig` to whatever value is specified for this
+configuration value if it is not present.
 
-This example causes only `.watchmanconfig` to be considered as a project
-root file:
+This example causes only `.watchmanconfig` to be considered as a project root
+file:
 
 ```json
 {
@@ -98,23 +98,23 @@ See the [watch-project](watch-project) command for more information.
 
 ### enforce_root_files
 
-*Since 3.1.*
+_Since 3.1._
 
-This is a boolean option that defaults to `false`.  If it is set to `true`
-then the [watch](watch) command will only succeed if the requested
-directory contains one of the files listed by the [root_files](#root_files)
-configuration option, and the [watch-project](watch-project) command
-will only succeed if a valid project root is found.
+This is a boolean option that defaults to `false`. If it is set to `true` then
+the [watch](watch) command will only succeed if the requested directory
+contains one of the files listed by the [root_files](#root_files)
+configuration option, and the [watch-project](watch-project) command will only
+succeed if a valid project root is found.
 
 If left unspecified, to aid in transitioning between versions, watchman will
 check to see if the now deprecated [root_restrict_files](#root_restrict_files)
-configuration setting is present.  If it is found then the effective value of
+configuration setting is present. If it is found then the effective value of
 `enforce_root_files` is set to `true`.
 
 ### root_restrict_files
 
-*Deprecated starting in version 3.1; use [root_files](#root_files) and
-[enforce_root_files](#enforce_root_files) to effect the same behavior.*
+_Deprecated starting in version 3.1; use [root_files](#root_files) and
+[enforce_root_files](#enforce_root_files) to effect the same behavior._
 
 Specifies a list of files, at least one of which should be present in a
 directory for watchman to add it as a root. By default there are no
@@ -133,13 +133,13 @@ will allow watches only in the top level of Git or Mercurial repositories.
 ### illegal_fstypes
 
 Specifies a list of filesystem types that watchman is prohibited to attempt to
-watch.  Watchman will determine the filesystem type of the root of a watch; if
+watch. Watchman will determine the filesystem type of the root of a watch; if
 the typename is present in the `illegal_fstypes` list, the watch will be
-prohibited.  You may also specify `illegal_fstypes_advice` as a string with
-additional advice to your user.  The purpose of this configuration option is
-largely to prevent the use of Watchman on network mounted filesystems.  On
-Linux systems, Watchman may not be able to determine the precise type name of a
-mounted filesystem.  If the filesystem type is not known to watchman, it will
+prohibited. You may also specify `illegal_fstypes_advice` as a string with
+additional advice to your user. The purpose of this configuration option is
+largely to prevent the use of Watchman on network mounted filesystems. On
+Linux systems, Watchman may not be able to determine the precise type name of
+a mounted filesystem. If the filesystem type is not known to watchman, it will
 be reported as `unknown`.
 
 For example,
@@ -152,23 +152,23 @@ For example,
 ```
 
 will prevent watching dirs mounted on network filesystems and provide the
-advice to use a local directory.  You may omit the `illegal_fstypes_advice`
+advice to use a local directory. You may omit the `illegal_fstypes_advice`
 setting to use a default suggestion to relocate the directory to local disk.
 
 ### ignore_vcs
 
-Apply special VCS ignore logic to the set of named dirs.  This option has a
-default value of `[".git", ".hg", ".svn"]`.  Dirs that match this option are
-observed and watched using special shallow logic.  The shallow watch allows
+Apply special VCS ignore logic to the set of named dirs. This option has a
+default value of `[".git", ".hg", ".svn"]`. Dirs that match this option are
+observed and watched using special shallow logic. The shallow watch allows
 watchman to mildly abuse the version control directories to store its query
 cookie files and to observe VCS locking activity without having to watch the
 entire set of VCS data for large trees.
 
 ### ignore_dirs
 
-Dirs that match are completely ignored by watchman.  This is useful to ignore a
-directory that contains only build products and where file change notifications
-are unwanted because of the sheer volume of files.
+Dirs that match are completely ignored by watchman. This is useful to ignore a
+directory that contains only build products and where file change
+notifications are unwanted because of the sheer volume of files.
 
 For example,
 
@@ -179,57 +179,56 @@ For example,
 ```
 
 would ignore the `build` directory at the top level of the watched tree, and
-everything below it.  It will never appear in the watchman query results for
+everything below it. It will never appear in the watchman query results for
 the tree.
 
 On Linux systems, `ignore_dirs` is respected at the OS level; the kernel
-simply will not tell watchman about changes to ignored dirs.  macOS and Windows
+simply will not tell watchman about changes to ignored dirs. macOS and Windows
 have limited or no support for this, so watchman needs to process and ignore
 this class of change.
 
 For large trees or especially busy build dirs, it is recommended that you move
 the busy build dirs out of the tree for more optimal performance.
 
-
 Since version 2.9.9, if you list a dir in `ignore_dirs` that is also listed in
-`ignore_vcs`, the `ignore_dirs` placement will take precedence.  This may not
+`ignore_vcs`, the `ignore_dirs` placement will take precedence. This may not
 sound like a big deal, but since `ignore_vcs` is used as a hint to for the
-placement of [cookie files](cookies), having these two
-options overlap in earlier versions would break watchman queries.
+placement of [cookie files](cookies), having these two options overlap in
+earlier versions would break watchman queries.
 
-*Since 4.6.*
+_Since 4.6._
 
 On macOS the first 8 items listed in `ignore_dirs` can be accelerated at the
-OS level.  This means that changes to those paths are not even communicated
-to the watchman service.  Entries beyond the first 8 are processed and
-ignored by watchman.  If your workload is prone to recrawl events you will
-want to prioritize your `ignore_dirs` list so that the most busy ignored
-locations occupy the first 8 positions in this list.
+OS level. This means that changes to those paths are not even communicated to
+the watchman service. Entries beyond the first 8 are processed and ignored by
+watchman. If your workload is prone to recrawl events you will want to
+prioritize your `ignore_dirs` list so that the most busy ignored locations
+occupy the first 8 positions in this list.
 
 ### gc_age_seconds
 
 Deleted files (and dirs) older than this are periodically pruned from the
-internal view of the filesystem.  Until they are pruned, they will be visible
-to queries but will have their `exists` field set to `false`.   Once they are
-pruned, watchman will remember the most recent clock value of the pruned nodes.
-Any since queries based on a clock prior to the last prune clock will be
-treated as a fresh instance query.  This allows a client to detect and choose
-how to handle the case where they have missed changes.  See `is_fresh_instance`
-elsewhere in this document for more information.  The default for this is
-`43200` (12 hours).
+internal view of the filesystem. Until they are pruned, they will be visible
+to queries but will have their `exists` field set to `false`. Once they are
+pruned, watchman will remember the most recent clock value of the pruned
+nodes. Any since queries based on a clock prior to the last prune clock will
+be treated as a fresh instance query. This allows a client to detect and
+choose how to handle the case where they have missed changes. See
+`is_fresh_instance` elsewhere in this document for more information. The
+default for this is `43200` (12 hours).
 
 ### gc_interval_seconds
 
 How often to check for, and prune out, deleted nodes per the `gc_age_seconds`
-option description above.  The default for this is `86400` (24 hours).  Set
-this to `0` to disable the periodic pruning operation.
+option description above. The default for this is `86400` (24 hours). Set this
+to `0` to disable the periodic pruning operation.
 
 ### fsevents_latency
 
-Controls the latency parameter that is passed to `FSEventStreamCreate` on macOS.
-The value is measured in seconds.  The fixed value of this parameter prior to
-version 3.2 of watchman was `0.0001` seconds.  Starting in version 3.2 of
-watchman, the default is now `0.01` seconds and can be controlled on a
+Controls the latency parameter that is passed to `FSEventStreamCreate` on
+macOS. The value is measured in seconds. The fixed value of this parameter
+prior to version 3.2 of watchman was `0.0001` seconds. Starting in version 3.2
+of watchman, the default is now `0.01` seconds and can be controlled on a
 per-root basis.
 
 If you observe problems with `kFSEventStreamEventFlagUserDropped` increasing
@@ -240,11 +239,11 @@ together and operate more efficiently.
 
 This is macOS specific.
 
-*Since 4.6.*
+_Since 4.6._
 
-Defaults to `false`.  If set to `true`, if a watch receives a
+Defaults to `false`. If set to `true`, if a watch receives a
 `kFSEventStreamEventFlagUserDropped` event, attempt to resync from the
-`fsevents` journal if it is available.  The journal may not be available if one
+`fsevents` journal if it is available. The journal may not be available if one
 or more volumes are mounted read-only, if the administrator has purged the
 journal, or if the `fsevents` id numbers have rolled over.
 
@@ -255,74 +254,74 @@ to recrawl the entire watch.
 If this option is set to `false`, or if the journal is not available, the
 original strategy of recrawling the watched directory tree is used instead.
 
-*Since 4.7.*
+_Since 4.7._
 
-The default changed to `true`.  In addition, this resync strategy is now
-also applied to `kFSEventStreamEventFlagKernelDropped` events.
+The default changed to `true`. In addition, this resync strategy is now also
+applied to `kFSEventStreamEventFlagKernelDropped` events.
 
 ### idle_reap_age_seconds
 
-*Since 3.7.*
+_Since 3.7._
 
 How many seconds a watch can remain idle before becoming a candidate for
-reaping, measured in seconds.  The default for this is `432000` (5 days).  Set
+reaping, measured in seconds. The default for this is `432000` (5 days). Set
 this to `0` to prevent reaping.
 
-A watch is considered to be idle when it has had no commands that operate on it
-for `idle_reap_age_seconds`.   If an idle watch has no triggers and no
+A watch is considered to be idle when it has had no commands that operate on
+it for `idle_reap_age_seconds`. If an idle watch has no triggers and no
 subscriptions then it will be cancelled, releasing the associated operating
 system resources, and removed from the state file.
 
 ### hint_num_files_per_dir
 
-*Since 3.9.*
+_Since 3.9._
 
-Used to pre-size hash tables used to track files per directory.  This
-is most impactful during the initial crawl of the filesystem.  Setting
-this too small will increase the chance of a hash insert having a collision
-and drive up the cost of the insert and subsequent gets.
+Used to pre-size hash tables used to track files per directory. This is most
+impactful during the initial crawl of the filesystem. Setting this too small
+will increase the chance of a hash insert having a collision and drive up the
+cost of the insert and subsequent gets.
 
-Prior to version 3.9 of watchman this value was fixed at `2`.  Starting
-in version 3.9 the default value is `64` and can be configured via this
-setting in the `.watchmanconfig` or the global `/etc/watchman.json`
-configuration file.
+Prior to version 3.9 of watchman this value was fixed at `2`. Starting in
+version 3.9 the default value is `64` and can be configured via this setting
+in the `.watchmanconfig` or the global `/etc/watchman.json` configuration
+file.
 
 Setting this value very large increases the memory overhead per directory in
 the tree; the value is rounded up to the next power of two and pre-allocated
-in an array of pointers.  On a 64-bit system multiply that number by 8 to
-arrive at the number of bytes of overhead (halve this on a 32-bit system).
-The overhead is doubled when using a case insensitive filesystem.
+in an array of pointers. On a 64-bit system multiply that number by 8 to
+arrive at the number of bytes of overhead (halve this on a 32-bit system). The
+overhead is doubled when using a case insensitive filesystem.
 
 The ideal size from a time complexity perspective is the number of files in
-your largest directory.  From a space complexity perspective, the ideal size
-is 1; you would pay the cost of the collisions during the initial crawl and
-have a more optimal memory usage.  Since watchman is primarily employed as an
+your largest directory. From a space complexity perspective, the ideal size is
+1; you would pay the cost of the collisions during the initial crawl and have
+a more optimal memory usage. Since watchman is primarily employed as an
 accelerator, we'd recommend biasing towards using more memory and taking less
 time to run.
 
 ### hint_num_dirs
 
-*Since 4.6*
+_Since 4.6_
 
-Used to pre-size hash tables that are used to track the total set of files
-in the entire watched tree.  The default value for this is 131072.
+Used to pre-size hash tables that are used to track the total set of files in
+the entire watched tree. The default value for this is 131072.
 
-The optimal size is a power-of-two larger than the number of directories
-in your tree; running `find . -type d | wc -l` will tell you the number
-that you have.
+The optimal size is a power-of-two larger than the number of directories in
+your tree; running `find . -type d | wc -l` will tell you the number that you
+have.
 
-Making this number too large is potentially wasteful of memory.  Making this
-number too small results in increased latency during crawling while the
-hash tables are rebuilt.
+Making this number too large is potentially wasteful of memory. Making this
+number too small results in increased latency during crawling while the hash
+tables are rebuilt.
 
 ### suppress_recrawl_warnings
 
-*Since 4.7*
+_Since 4.7_
 
-When set to `true`, watchman will not produce recrawl related warning fields in
-the response PDUs of various requests.  The default is `false`; the intent is
-that someone in your organization should be aware of recrawls and be able to
-manage the configuration and workload.  Some sites employ an alternative
+When set to `true`, watchman will not produce recrawl related warning fields
+in the response PDUs of various requests. The default is `false`; the intent
+is that someone in your organization should be aware of recrawls and be able
+to manage the configuration and workload. Some sites employ an alternative
 mechanism for sampling and reporting this to the right set of people and wish
 to disable the warning so that it doesn't appear in front of users that are
 unable to make the appropriate configuration changes for themselves.

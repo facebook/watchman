@@ -1,6 +1,6 @@
 ---
-id: "true"
-title: "true"
+id: 'true'
+title: 'true'
 layout: docs
 section: Expression Terms
 permalink: docs/expr/true.html

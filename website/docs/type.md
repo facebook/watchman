@@ -10,11 +10,11 @@ argument; this matches regular files:
 
 Possible types are:
 
- * **b**: block special file
- * **c**: character special file
- * **d**: directory
- * **f**: regular file
- * **p**: named pipe (fifo)
- * **l**: symbolic link
- * **s**: socket
- * **D**: Solaris Door
+- **b**: block special file
+- **c**: character special file
+- **d**: directory
+- **f**: regular file
+- **p**: named pipe (fifo)
+- **l**: symbolic link
+- **s**: socket
+- **D**: Solaris Door

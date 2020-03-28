@@ -69,16 +69,16 @@ function Home() {
               <h2>Concepts</h2>
               <ul>
                 <li>
-                  Watchman can recursively watch one or more directory trees (we
-                  call them roots).
+                  Watchman can recursively watch one or more directory trees
+                  (we call them roots).
                 </li>
                 <li>
                   Watchman does not follow symlinks. It knows they exist, but
                   they show up the same as any other file in its reporting.
                 </li>
                 <li>
-                  Watchman waits for a root to settle down before it will start
-                  to trigger notifications or command execution.
+                  Watchman waits for a root to settle down before it will
+                  start to trigger notifications or command execution.
                 </li>
                 <li>
                   Watchman is conservative, preferring to err on the side of
@@ -86,17 +86,19 @@ function Home() {
                   start to watch them or when it is unsure.
                 </li>
                 <li>
-                  You can query a root for file changes since you last checked,
-                  or the current state of the tree
+                  You can query a root for file changes since you last
+                  checked, or the current state of the tree
                 </li>
-                <li>You can subscribe to file changes that occur in a root</li>
+                <li>
+                  You can subscribe to file changes that occur in a root
+                </li>
               </ul>
             </section>
             <section className="margin-vert--lg">
               <h2>Quick Starter</h2>
               <p>
-                These two lines establish a watch on a source directory and then
-                set up a trigger named buildme that will run a tool named
+                These two lines establish a watch on a source directory and
+                then set up a trigger named buildme that will run a tool named
                 minify-css whenever a CSS file is changed. The tool will be
                 passed a list of the changed filenames.
               </p>
@@ -109,8 +111,8 @@ function Home() {
                 <br />
               </pre>
               <p>
-                The output for buildme will land in the Watchman log file unless
-                you send it somewhere else.
+                The output for buildme will land in the Watchman log file
+                unless you send it somewhere else.
               </p>
             </section>
           </div>
