@@ -693,9 +693,9 @@ jobs:
             # that we want it to use them!
             out.write("    - name: Fix Git config\n")
             out.write("      run: git config --system core.longpaths true\n")
-
-        out.write("    - name: Install system deps\n")
-        out.write(f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n")
+        else:
+            out.write("    - name: Install system deps\n")
+            out.write(f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n")
 
         projects = loader.manifests_in_dependency_order()
 

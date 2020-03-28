@@ -253,8 +253,6 @@ jobs:
     - uses: actions/checkout@v1
     - name: Fix Git config
       run: git config --system core.longpaths true
-    - name: Install system deps
-      run: sudo python build/fbcode_builder/getdeps.py --allow-system-packages install-system-deps --recursive watchman
     - name: Fetch boost
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
     - name: Fetch bison
