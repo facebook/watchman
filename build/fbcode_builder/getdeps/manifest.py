@@ -28,6 +28,7 @@ from .fetcher import (
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
     SystemPackageFetcher,
+    PreinstalledNopFetcher,
 )
 from .py_wheel_builder import PythonWheelBuilder
 
@@ -77,6 +78,7 @@ SCHEMA = {
     "autoconf.args": {"optional_section": True},
     "rpms": {"optional_section": True},
     "debs": {"optional_section": True},
+    "preinstalled.env": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
@@ -328,6 +330,19 @@ class ManifestParser(object):
             "deb": self.get_section_as_args("debs", ctx),
         }
 
+    def _is_satisfied_by_preinstalled_environment(self, ctx):
+        envs = self.get_section_as_args("preinstalled.env", ctx)
+        if not envs:
+            return False
+        for key in envs:
+            val = os.environ.get(key, None)
+            if val is None:
+                return False
+            if len(val) == 0:
+                return False
+
+        return True
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit
@@ -351,6 +366,9 @@ class ManifestParser(object):
 
         # Can we satisfy this dep with system packages?
         if build_options.allow_system_packages:
+            if self._is_satisfied_by_preinstalled_environment(ctx):
+                return PreinstalledNopFetcher()
+
             packages = self.get_required_system_packages(ctx)
             package_fetcher = SystemPackageFetcher(build_options, packages)
             if package_fetcher.packages_are_installed():

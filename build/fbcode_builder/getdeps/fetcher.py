@@ -183,6 +183,21 @@ class SystemPackageFetcher(object):
         return None
 
 
+class PreinstalledNopFetcher(SystemPackageFetcher):
+    def __init__(self):
+        pass
+
+    def update(self):
+        assert self.installed
+        return ChangeStatus(all_changed=False)
+
+    def hash(self):
+        return "0" * 40
+
+    def get_src_dir(self):
+        return None
+
+
 class GitFetcher(Fetcher):
     DEFAULT_DEPTH = 100
 
