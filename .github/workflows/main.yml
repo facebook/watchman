@@ -251,6 +251,8 @@ jobs:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v1
+    - name: Show environment
+      run: gci env:* | sort-object name
     - name: Fix Git config
       run: git config --system core.longpaths true
     - name: Fetch boost

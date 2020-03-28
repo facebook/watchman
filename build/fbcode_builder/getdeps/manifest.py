@@ -336,6 +336,7 @@ class ManifestParser(object):
             return False
         for key in envs:
             val = os.environ.get(key, None)
+            print(f"Testing ENV[{key}]: {repr(val)}")
             if val is None:
                 return False
             if len(val) == 0:
