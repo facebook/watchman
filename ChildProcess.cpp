@@ -101,7 +101,7 @@ void ChildProcess::Environment::set(const w_string& key, const w_string& val) {
   map_[key] = val;
 }
 
-void ChildProcess::Environment::set(const w_string& key, bool bval) {
+void ChildProcess::Environment::setBool(const w_string& key, bool bval) {
   if (bval) {
     map_[key] = "true";
   } else {

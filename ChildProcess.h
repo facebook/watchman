@@ -39,7 +39,7 @@ class ChildProcess {
     void set(const w_string& key, const w_string& value);
     void set(
         std::initializer_list<std::pair<w_string_piece, w_string_piece>> pairs);
-    void set(const w_string& key, bool bval);
+    void setBool(const w_string& key, bool bval);
 
     // Remove a value from the environment
     void unset(const w_string& key);

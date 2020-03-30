@@ -178,7 +178,7 @@ static void spawn_command(
     }
   }
 
-  cmd->env.set("WATCHMAN_FILES_OVERFLOW", file_overflow);
+  cmd->env.setBool("WATCHMAN_FILES_OVERFLOW", file_overflow);
 
   Options opts;
   opts.environment() = cmd->env;
