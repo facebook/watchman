@@ -21,9 +21,7 @@ Result:
 
 ```json
 {
-    "version": "1.9",
-    "roots": [
-        "/home/wez/watchman"
-    ]
+  "version": "1.9",
+  "roots": ["/home/wez/watchman"]
 }
 ```

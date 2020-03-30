@@ -3,14 +3,14 @@ id: list-capabilities
 title: list-capabilities
 ---
 
-*Since 3.8.*
+_Since 3.8._
 
-This command returns the full list of supported [capabilities](capabilities) offered by the watchman server.  The
-intention is that client applications will use the
-[expanded version command](version) to check
-compatibility rather than interrogating the full list.
+This command returns the full list of supported [capabilities](capabilities)
+offered by the watchman server. The intention is that client applications will
+use the [expanded version command](version) to check compatibility rather than
+interrogating the full list.
 
-Here's some example output.  The actual capabilities list is in unspecified
+Here's some example output. The actual capabilities list is in unspecified
 order and is much longer than is reproduced here:
 
 ```bash

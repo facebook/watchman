@@ -3,8 +3,8 @@ id: version
 title: version
 ---
 
-The version command will tell you the version and build information
-for the currently running watchman service:
+The version command will tell you the version and build information for the
+currently running watchman service:
 
 ```bash
 $ watchman version
@@ -21,18 +21,17 @@ $ watchman -v
 2.9.8
 ```
 
-If the server and client versions don't match up, you should probably
-restart your server: `watchman shutdown-server ; watchman`.
+If the server and client versions don't match up, you should probably restart
+your server: `watchman shutdown-server ; watchman`.
 
 ### Capabilities
 
-*Since 3.8.*
+_Since 3.8._
 
-The version command can be used to check for named capabilities.
-Capabilities make it easier to check whether the server implements
-functionality based on the name of that function rather than by
-having the client build up knowledge about when those functions
-were introduced.
+The version command can be used to check for named capabilities. Capabilities
+make it easier to check whether the server implements functionality based on
+the name of that function rather than by having the client build up knowledge
+about when those functions were introduced.
 
 You can read more about the [available capability names](capabilities).
 
@@ -93,10 +92,10 @@ $ watchman -j <<< '["version", {"required":["term-match"],"optional":["a","b"]}]
 The **node** and **python** clients provide a `capabilityCheck` method that
 will perform the version check above, and that also provide limited support
 for testing capability support against older versions of the watchman server.
-This facilitates a smoother transition from version number based checks
-to capability named based checks.
+This facilitates a smoother transition from version number based checks to
+capability named based checks.
 
-In *python*:
+In _python_:
 
 ```python
 import pywatchman
@@ -107,19 +106,21 @@ print res
 # {'version': '3.8.0', 'capabilities': {'term-match': True, 'a': False}}
 ```
 
-In *node*:
+In _node_:
 
 ```js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
-client.capabilityCheck({optional:['a'], required:['term-match']},
-    function (error, resp) {
-        if (error) {
-          // error will be an Error object if any of the required named
-          // are not supported
-        }
-        console.log(resp);
-        // {'version': '3.8.0', 'capabilities': {'term-match': false, 'a': false}}
-        client.end();
-    });
+client.capabilityCheck({optional: ['a'], required: ['term-match']}, function(
+  error,
+  resp,
+) {
+  if (error) {
+    // error will be an Error object if any of the required named
+    // are not supported
+  }
+  console.log(resp);
+  // {'version': '3.8.0', 'capabilities': {'term-match': false, 'a': false}}
+  client.end();
+});
 ```

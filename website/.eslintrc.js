@@ -55,5 +55,6 @@ module.exports = {
     'react/jsx-filename-extension': OFF,
     'react-hooks/rules-of-hooks': ERROR,
     'react/prop-types': OFF, // PropTypes aren't used much these days.
+    'react/no-unescaped-entities': OFF, // let me use single quotes in my docs!
   },
 };

@@ -3,9 +3,8 @@ id: cookies
 title: Query Synchronization
 ---
 
-A file system monitor needs to make sure that queries see up-to-date
-views. Watchman ensures that by creating a unique *cookie* for each query made
-to it.
+A file system monitor needs to make sure that queries see up-to-date views.
+Watchman ensures that by creating a unique _cookie_ for each query made to it.
 
 ## Background
 
@@ -15,55 +14,55 @@ operations happening concurrently, and this is impossible to fix. However, we
 do get some weaker guarantees:
 
 1. Every file operation that happens before the traversal is started will be
-observed.
-2. File operations that happen after the traversal is started may or may not be
-observed.
+   observed.
+2. File operations that happen after the traversal is started may or may not
+   be observed.
 
 For watchman, cookies enable us to provide similar guarantees. For a given
 watchman query:
 
 1. Every file operation that happens before the query is started will be
-observed.
+   observed.
 2. File operations that happen after the query is started may or may not be
-observed.
+   observed.
 
 ## How cookies work
 
-A *cookie* is a temporary file that is created inside a directory observed by
+A _cookie_ is a temporary file that is created inside a directory observed by
 watchman. The cookie is created in a directory that is expected not to go
-away. The obvious location is the root itself, but we'd like cookies not to show
-up in VCS operations. So if a VCS directory (`.git`, `.hg` or `.svn`) is found,
-that's where cookies are created instead.
+away. The obvious location is the root itself, but we'd like cookies not to
+show up in VCS operations. So if a VCS directory (`.git`, `.hg` or `.svn`) is
+found, that's where cookies are created instead.
 
 The cookie is created while the root is locked, so watchman won't find the
 cookie by accident while processing events from a prior run.
 
 Once the cookie is created, the calling thread waits on a condition variable
-guarded by the root's lock. This causes the lock to be released, and the root's
-notify thread can now read events as usual.
+guarded by the root's lock. This causes the lock to be released, and the
+root's notify thread can now read events as usual.
 
-When the notify thread finds that it is processing a cookie, it will signal its
-respective condition variable. Importantly, this does not wake the calling
+When the notify thread finds that it is processing a cookie, it will signal
+its respective condition variable. Importantly, this does not wake the calling
 thread up immediately: since the notify thread still holds the root lock, the
-calling thread will only be able to proceed once the notify thread releases the
-lock.
+calling thread will only be able to proceed once the notify thread releases
+the lock.
 
-*What do cookies get us?*
+_What do cookies get us?_
 
-File monitoring systems like `inotify` typically provide an ordering guarantee:
-notifications arrive in the order they happen. Any events happening before the
-cookie is created will appear before the event for the cookie does, which means
-they will be processed by the time the query is answered.
+File monitoring systems like `inotify` typically provide an ordering
+guarantee: notifications arrive in the order they happen. Any events happening
+before the cookie is created will appear before the event for the cookie does,
+which means they will be processed by the time the query is answered.
 
-*How well do cookies work?*
+_How well do cookies work?_
 
-The Mercurial test suite has proved to be a good stress test for
-watchman. Before cookies were implemented, if 16 or more tests from the suite
-were run in parallel, watchman would start falling behind and often produce
-outdated answers. Cookies have successfully eradicated that.
+The Mercurial test suite has proved to be a good stress test for watchman.
+Before cookies were implemented, if 16 or more tests from the suite were run
+in parallel, watchman would start falling behind and often produce outdated
+answers. Cookies have successfully eradicated that.
 
-*Can watchman find a cookie even if not all events leading to its appearance
- have been processed?*
+_Can watchman find a cookie even if not all events leading to its appearance
+have been processed?_
 
 Consider this situation when cookies are created inside `.hg`:
 
@@ -74,9 +73,9 @@ Consider this situation when cookies are created inside `.hg`:
 5. The cookie is found but `subdir/foo` is never read.
 
 On Linux, to prevent this from happening, watchman will only consider a cookie
-to be found if it is directly returned via OS notifications. The only exception
-to this is during the initial crawl or a recrawl, when the cookie directory
-isn't being watched yet.
+to be found if it is directly returned via OS notifications. The only
+exception to this is during the initial crawl or a recrawl, when the cookie
+directory isn't being watched yet.
 
 On other platforms, this becomes more complicated because the respective
 monitoring system only tells us that something inside a directory was created,
