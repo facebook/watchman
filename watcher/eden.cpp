@@ -1172,17 +1172,26 @@ class EdenView : public QueryableView {
                 [&settleCallback, this, root, settleTimeout](
                     folly::Try<JournalPosition>&& t) {
                   if (t.hasValue()) {
-                    watchman::log(DBG, "Got subscription push from eden\n");
-                    if (settleCallback.isScheduled()) {
-                      watchman::log(DBG, "reschedule settle timeout\n");
-                      settleCallback.cancelTimeout();
-                    }
-                    subscriberEventBase_.timer().scheduleTimeout(
-                        &settleCallback, settleTimeout);
+                    try {
+                      watchman::log(DBG, "Got subscription push from eden\n");
+                      if (settleCallback.isScheduled()) {
+                        watchman::log(DBG, "reschedule settle timeout\n");
+                        settleCallback.cancelTimeout();
+                      }
+                      subscriberEventBase_.timer().scheduleTimeout(
+                          &settleCallback, settleTimeout);
 
-                    // We need to process cookie files with the lowest
-                    // possible latency, so we consume that information now
-                    checkCookies(root);
+                      // We need to process cookie files with the lowest
+                      // possible latency, so we consume that information now
+                      checkCookies(root);
+                    } catch (const std::exception& exc) {
+                      watchman::log(
+                          ERR,
+                          "Exception while processing eden subscription: ",
+                          exc.what(),
+                          ": cancel watch\n");
+                      subscriberEventBase_.terminateLoopSoon();
+                    }
                   } else {
                     auto reason = t.hasException()
                         ? folly::exceptionStr(std::move(t.exception()))
