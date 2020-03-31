@@ -314,6 +314,7 @@ if (ENABLE_EDEN_SUPPORT)
   find_package(yarpl CONFIG REQUIRED)
   find_package(rsocket CONFIG REQUIRED)
   find_package(fb303 CONFIG REQUIRED)
+  find_package(cpptoml CONFIG REQUIRED)
   include_directories(${FB303_INCLUDE_DIR})
 endif()
 if(DEFINED ENV{NODE_BIN})
@@ -411,6 +412,7 @@ if (ENABLE_EDEN_SUPPORT)
     ${YARPL_LIBRARIES}
     rsocket::ReactiveSocket
     FBThrift::thriftcpp2
+    cpptoml
   )
 endif()
 if(PCRE_FOUND)

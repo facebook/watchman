@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <cpptoml.h> // @manual=fbsource//third-party/cpptoml:cpptoml
 #include <folly/String.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
@@ -146,16 +147,29 @@ auto retryEStale(FUNC&& func) {
       "unreachable line reached; should have thrown an ESTALE");
 }
 
-folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
-  // Resolve the eden socket; we use the .eden dir that is present in
-  // every dir of an eden mount.
-  folly::SocketAddress addr;
-  auto path = to<std::string>(rootPath, "/.eden/socket");
+// Resolve the eden socket; On POSIX systems we use the .eden dir that is
+// present in every dir of an eden mount to locate the symlink to the socket.
+// On Windows systems, .eden is only present in the repo root and contains
+// the toml config file with the path to the socket.
+std::string resolveSocketPath(w_string_piece rootPath) {
+#ifdef _WIN32
+  auto configPath = to<std::string>(rootPath, "/.eden/config");
+  auto config = cpptoml::parse_file(configPath);
 
+  return *config->get_qualified_as<std::string>("Config.socket");
+#else
+  auto path = to<std::string>(rootPath, "/.eden/socket");
   // It is important to resolve the link because the path in the eden mount
   // may exceed the maximum permitted unix domain socket path length.
   // This is actually how things our in our integration test environment.
-  auto socketPath = readSymbolicLink(path.c_str());
+  return to<std::string>(readSymbolicLink(path.c_str()));
+#endif
+}
+
+folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
+  folly::SocketAddress addr;
+
+  auto socketPath = resolveSocketPath(rootPath);
   addr.setFromPath(to<std::string>(socketPath));
   return addr;
 }
@@ -1251,16 +1265,14 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
           edenRoot,
           ")"));
     }
-
-    throw TerminalWatcherError(to<std::string>(
-        "This is an Eden clone - Watchman integration with Eden Windows"
-        " isn't complete yet. Watchman will not watch this repo. (found ",
-        edenRoot,
-        " above ",
-        root->root_path,
-        ", homeDotEden is ",
-        homeDotEden,
-        ")"));
+    try {
+      return std::make_shared<EdenView>(root);
+    } catch (const std::exception& exc) {
+      throw TerminalWatcherError(to<std::string>(
+          "Failed to initialize eden watcher, and since this is an Eden "
+          "repo, will not allow falling back to another watcher.  Error was: ",
+          exc.what()));
+    }
   }
 
   throw std::runtime_error(
