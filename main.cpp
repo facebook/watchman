@@ -47,10 +47,10 @@ static int json_input_arg = 0;
 #include <mach-o/dyld.h>
 #endif
 
-static const char* compute_user_name(void);
+static std::string compute_user_name(void);
 static void compute_file_name(
     std::string& str,
-    const char* user,
+    const std::string& user,
     const char* suffix,
     const char* what);
 
@@ -638,7 +638,7 @@ static const char* get_env_with_fallback(
 
 static void compute_file_name(
     std::string& str,
-    const char* user,
+    const std::string& user,
     const char* suffix,
     const char* what) {
   if (str.empty()) {
@@ -773,24 +773,22 @@ static void compute_file_name(
 #endif
 }
 
-static const char* compute_user_name(void) {
+static std::string compute_user_name(void) {
   const char* user = get_env_with_fallback("USER", "LOGNAME", NULL);
-#ifdef _WIN32
-  static char user_buf[256];
-#endif
 
   if (!user) {
 #ifdef _WIN32
+    char user_buf[256];
     DWORD size = sizeof(user_buf);
-    if (GetUserName(user_buf, &size)) {
-      user_buf[size] = 0;
-      user = user_buf;
-    } else {
-      log(FATAL,
-          "GetUserName failed: ",
-          win32_strerror(GetLastError()),
-          ". I don't know who you are\n");
+    if (GetUserName(user_buf, &size) && size > 0) {
+      // size is updated to the new length, including the
+      // NUL terminator which we don't need to include here.
+      return std::string(user_buf, size - 1);
     }
+    log(FATAL,
+        "GetUserName failed: ",
+        win32_strerror(GetLastError()),
+        ". I don't know who you are\n");
 #else
     uid_t uid = getuid();
     struct passwd* pw;
@@ -817,7 +815,7 @@ static const char* compute_user_name(void) {
 }
 
 static void setup_sock_name(void) {
-  const char* user = compute_user_name();
+  auto user = compute_user_name();
 
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 

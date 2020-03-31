@@ -357,7 +357,12 @@ static int posix_spawn_common(
           act->u.open_info.name, act->u.open_info.flags & ~O_CLOEXEC);
       if (!h) {
         ret = errno;
-        logf(ERR, "posix_spawn: failed to open {}:\n", act->u.open_info.name);
+        logf(
+            ERR,
+            "posix_spawn: failed to open {} into target fd {}: {}\n",
+            act->u.open_info.name,
+            act->target_fd,
+            strerror(ret));
         goto done;
       }
 
