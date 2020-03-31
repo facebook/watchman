@@ -215,4 +215,4 @@ and the `state-leave` commands.
 
 _Since 4.9_
 
-[Read more about these here](scm-query)
+[Read more about these here](/watchman/docs/scm-query)
