@@ -352,7 +352,7 @@ if(PYTHON3)
       ${CMAKE_COMMAND} -E env
         CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
         ${PYTHON3} ${SETUP_PY} install
-      --root ${CMAKE_INSTALL_PREFIX}
+        --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
       RESULT_VARIABLE STATUS)
     if (NOT STATUS STREQUAL 0)
       message(FATAL_ERROR \"pywatchman install failed\")

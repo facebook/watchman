@@ -116,15 +116,15 @@ jobs:
     - name: Build fb303
       run: python3 build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman
+      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/linux
+      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/linux --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman
+      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
   mac:
     runs-on: macOS-latest
     steps:
@@ -234,15 +234,15 @@ jobs:
     - name: Build fb303
       run: python3 build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman
+      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/mac
+      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/mac --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman
+      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
   windows:
     runs-on: windows-2016
     steps:
@@ -350,12 +350,12 @@ jobs:
     - name: Build fb303
       run: python build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
-      run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
+      run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman 
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/windows
+      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/windows --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python build/fbcode_builder/getdeps.py test --src-dir=. watchman
+      run: python build/fbcode_builder/getdeps.py test --src-dir=. watchman 
