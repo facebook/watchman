@@ -15,6 +15,7 @@
  */
 package com.facebook.watchman;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
@@ -149,7 +150,7 @@ public class WatchmanClientImpl implements WatchmanClient {
         }
         return wasDeleted;
       }
-    });
+    }, MoreExecutors.directExecutor());
   }
 
   @Override
@@ -181,7 +182,7 @@ public class WatchmanClientImpl implements WatchmanClient {
             // TODO remove subscription descriptor from `subscriptions` if we got an error from wman
             return result;
           }
-        });
+        }, MoreExecutors.directExecutor());
   }
 
   @Override
@@ -228,7 +229,7 @@ public class WatchmanClientImpl implements WatchmanClient {
           public Boolean apply(@Nullable List<Boolean> input) {
             return !Collections2.filter(input, Predicates.equalTo(false)).isEmpty();
           }
-        });
+        }, MoreExecutors.directExecutor());
   }
 
   /**
