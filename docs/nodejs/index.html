@@ -16,21 +16,23 @@
 <link rel="stylesheet" href="/watchman/styles.c3aaf29d.css">
 
 
-<link rel="preload" href="/watchman/styles.97c84ccd.js" as="script">
+<link rel="preload" href="/watchman/styles.6a5eae2e.js" as="script">
 
-<link rel="preload" href="/watchman/runtime~main.3c31e0d3.js" as="script">
+<link rel="preload" href="/watchman/runtime~main.7b21341a.js" as="script">
 
-<link rel="preload" href="/watchman/main.d06ec8f8.js" as="script">
+<link rel="preload" href="/watchman/main.d6916676.js" as="script">
 
-<link rel="preload" href="/watchman/1.7ee19611.js" as="script">
+<link rel="preload" href="/watchman/1.78d7982e.js" as="script">
 
-<link rel="preload" href="/watchman/68.bb6e8a82.js" as="script">
+<link rel="preload" href="/watchman/2.e542786b.js" as="script">
 
-<link rel="preload" href="/watchman/d6764f29.cb344075.js" as="script">
+<link rel="preload" href="/watchman/69.2c9e3a05.js" as="script">
 
-<link rel="preload" href="/watchman/17896441.7cf0bc6a.js" as="script">
+<link rel="preload" href="/watchman/d6764f29.0730361c.js" as="script">
 
-<link rel="preload" href="/watchman/61085613.5dd0ca70.js" as="script">
+<link rel="preload" href="/watchman/17896441.8df6c864.js" as="script">
+
+<link rel="preload" href="/watchman/61085613.de0e603d.js" as="script">
 
 </head>
 <body>
@@ -100,21 +102,23 @@ service; multiple different clients can use the same subscription name without
 fear of colliding.</p></div></article><div class="margin-vert--xl"><div class="row"><div class="col"><a href="https://github.com/facebook/watchman/edit/master/website/docs/nodejs.md" target="_blank" rel="noreferrer noopener"><svg fill="currentColor" height="1.2em" width="1.2em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 40 40" style="margin-right:0.3em;vertical-align:sub"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div></div></div><div class="margin-vert--lg"><nav class="pagination-nav"><div class="pagination-nav__item"><a class="pagination-nav__link" href="/watchman/docs/cppclient"><h5 class="pagination-nav__link--sublabel">Previous</h5><h4 class="pagination-nav__link--label">« C++ Client</h4></a></div><div class="pagination-nav__item pagination-nav__item--next"><a class="pagination-nav__link" href="/watchman/docs/config"><h5 class="pagination-nav__link--sublabel">Next</h5><h4 class="pagination-nav__link--label">Configuration Files »</h4></a></div></nav></div></div></div><div class="col col--3"><div class="tableOfContents_TbNY"><ul class="contents contents__left-border"><li><a href="#checking-for-watchman-availability" class="contents__link">Checking for watchman availability</a></li><li><a href="#initiating-a-watch" class="contents__link">Initiating a watch</a></li><li><a href="#subscribing-to-changes" class="contents__link">Subscribing to changes</a><ul><li><a href="#subscribing-only-to-changed-files" class="contents__link">Subscribing only to changed files</a></li></ul></li><li><a href="#nodejs-api-reference" class="contents__link">NodeJS API Reference</a></li><li><a href="#methods" class="contents__link">Methods</a><ul><li><a href="#clientcapabilitycheckoptions-done" class="contents__link">client.capabilityCheck(options, done)</a></li><li><a href="#clientcommandargs--done" class="contents__link">client.command(args , done)</a></li><li><a href="#clientend" class="contents__link">client.end()</a></li></ul></li><li><a href="#events" class="contents__link">Events</a><ul><li><a href="#event-connect" class="contents__link">Event: &#39;connect&#39;</a></li><li><a href="#event-error" class="contents__link">Event: &#39;error&#39;</a></li><li><a href="#event-end" class="contents__link">Event: &#39;end&#39;</a></li><li><a href="#event-log" class="contents__link">Event: &#39;log&#39;</a></li><li><a href="#event-subscription" class="contents__link">Event: &#39;subscription&#39;</a></li></ul></li></ul></div></div></div></div></div></main></div></div><footer class="footer footer--dark"><div class="container"><div class="text--center"><div class="margin-bottom--sm"><a href="https://opensource.facebook.com/" target="_blank" rel="noopener noreferrer" class="footerLogoLink_1Wg7"><img class="footer__logo" alt="Facebook Open Source Logo" src="/watchman/img/oss_logo.png"></a></div><div>Copyright © 2020 Facebook, Inc. Built with Docusaurus.</div></div></div></footer>
 </div>
 
-<script src="/watchman/styles.97c84ccd.js"></script>
+<script src="/watchman/styles.6a5eae2e.js"></script>
 
-<script src="/watchman/runtime~main.3c31e0d3.js"></script>
+<script src="/watchman/runtime~main.7b21341a.js"></script>
 
-<script src="/watchman/main.d06ec8f8.js"></script>
+<script src="/watchman/main.d6916676.js"></script>
 
-<script src="/watchman/1.7ee19611.js"></script>
+<script src="/watchman/1.78d7982e.js"></script>
 
-<script src="/watchman/68.bb6e8a82.js"></script>
+<script src="/watchman/2.e542786b.js"></script>
 
-<script src="/watchman/d6764f29.cb344075.js"></script>
+<script src="/watchman/69.2c9e3a05.js"></script>
 
-<script src="/watchman/17896441.7cf0bc6a.js"></script>
+<script src="/watchman/d6764f29.0730361c.js"></script>
 
-<script src="/watchman/61085613.5dd0ca70.js"></script>
+<script src="/watchman/17896441.8df6c864.js"></script>
+
+<script src="/watchman/61085613.de0e603d.js"></script>
 
 
 </body>
