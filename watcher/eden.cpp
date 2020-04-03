@@ -5,9 +5,9 @@
 #include <cpptoml.h> // @manual=fbsource//third-party/cpptoml:cpptoml
 #include <folly/String.h>
 #include <folly/futures/Future.h>
+#include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
-#include <thrift/lib/cpp/async/TAsyncSocket.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
 #include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <algorithm>
@@ -23,7 +23,6 @@
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
-using apache::thrift::async::TAsyncSocket;
 using facebook::eden::EdenError;
 using facebook::eden::FileDelta;
 using facebook::eden::FileInformation;
@@ -33,6 +32,7 @@ using facebook::eden::GlobParams;
 using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
+using folly::AsyncSocket;
 using folly::Optional;
 using folly::to;
 using std::make_unique;
@@ -184,7 +184,7 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
 
     return make_unique<StreamingEdenServiceAsyncClient>(
         apache::thrift::HeaderClientChannel::newChannel(
-            TAsyncSocket::newSocket(eb, addr)));
+            AsyncSocket::newSocket(eb, addr)));
   });
 }
 
@@ -200,7 +200,7 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getRocketEdenClient(
 
     return make_unique<StreamingEdenServiceAsyncClient>(
         apache::thrift::RocketClientChannel::newChannel(
-            TAsyncSocket::UniquePtr(new TAsyncSocket(eb, addr))));
+            AsyncSocket::UniquePtr(new AsyncSocket(eb, addr))));
   });
 }
 
