@@ -110,7 +110,7 @@ TEST(CacheTest, future) {
   EXPECT_EQ(cache.size(), 5)
       << "cache should be full, but has " << cache.size();
 
-  folly::collectAllSemiFuture(futures.begin(), futures.end())
+  folly::collectAll(futures.begin(), futures.end())
       .defer(
           [](folly::Try<std::vector<folly::Try<std::shared_ptr<const Node>>>>&&
                  result) {
