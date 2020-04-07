@@ -1040,14 +1040,6 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex)
 
   /**
-   * Sets the log level for a given category at runtime.
-   */
-  SetLogLevelResult debugSetLogLevel(
-    1: string category,
-    2: string level,
-  ) throws (1: EdenError ex)
-
-  /**
    * Queries all of the live Eden mounts for the processes that accessed FUSE
    * over the last `duration` seconds.
    *
