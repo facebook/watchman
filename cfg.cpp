@@ -318,7 +318,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
 const char* cfg_get_trouble_url(void) {
   return cfg_get_string(
       "troubleshooting_url",
-      "https://facebook.github.io/watchman/docs/troubleshooting.html");
+      "https://facebook.github.io/watchman/docs/troubleshooting");
 }
 
 Configuration::Configuration(const json_ref& local) : local_(local) {}
