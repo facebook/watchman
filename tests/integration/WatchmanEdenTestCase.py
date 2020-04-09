@@ -64,6 +64,8 @@ class WatchmanEdenTestCase(TestParent):
         os.environ["HOME"] = str(self.eden.home_dir)
         self.addCleanup(lambda: self._restoreHome())
 
+        self.system_hgrc = None
+
         self.eden_watchman = WatchmanInstance.Instance()
         self.eden_watchman.start()
         self.addCleanup(self.cleanUpWatchman)
@@ -121,7 +123,13 @@ class WatchmanEdenTestCase(TestParent):
         return mount_path
 
     def repoForPath(self, path):
-        return hgrepo.HgRepository(path)
+        if self.system_hgrc is None:
+            system_hgrc_path = self.mktemp("hgrc")
+            with open(system_hgrc_path, "w") as f:
+                f.write(hgrepo.HgRepository.get_system_hgrc_contents())
+            self.system_hgrc = system_hgrc_path
+
+        return hgrepo.HgRepository(path, system_hgrc=self.system_hgrc)
 
     def setDefaultConfiguration(self):
         self.setConfiguration("local", "bser")
