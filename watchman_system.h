@@ -95,6 +95,7 @@ size_t backtrace_from_exception(
 #ifdef WATCHMAN_FACEBOOK_INTERNAL
 #include "common/base/BuildInfo.h"
 #undef PACKAGE_VERSION
+#undef WATCHMAN_BUILD_INFO
 #define PACKAGE_VERSION BuildInfo_kTimeISO8601
 #define WATCHMAN_BUILD_INFO BuildInfo_kUpstreamRevision
 #endif

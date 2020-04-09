@@ -73,14 +73,40 @@ if (ENABLE_EDEN_SUPPORT)
   maybe_shipit_dir("../eden")
 endif()
 
-set(PACKAGE_VERSION "4.9.4")
+# A nonsensical version that doesn't correspond to any manually
+# released version.
+set(PACKAGE_VERSION "0.0.0")
 set(WATCHMAN_VERSION_OVERRIDE "" CACHE STRING "Use this version code for \
-Watchman instead of the default (${PACKAGE_VERSION})")
+    Watchman version instead of the default computed from the repo")
+set(WATCHMAN_BUILDINFO_OVERRIDE "" CACHE STRING "Use this version code for \
+    Watchman build info instead of the default (nothing)")
+
 if (WATCHMAN_VERSION_OVERRIDE)
   set(PACKAGE_VERSION "${WATCHMAN_VERSION_OVERRIDE}")
 elseif(DEFINED ENV{WATCHMAN_VERSION_OVERRIDE})
   set(PACKAGE_VERSION "$ENV{WATCHMAN_VERSION_OVERRIDE}")
-endif ()
+elseif(DEFINED ENV{FBSOURCE_DATE})
+  # If set, we expect FBSOURCE_DATE to have the form "20200324.113140"
+  set(PACKAGE_VERSION "$ENV{FBSOURCE_DATE}.0")
+  set(BUILD_INFO "$ENV{FBSOURCE_HASH}")
+else()
+  find_program(GIT git)
+  if(GIT)
+    execute_process(
+      COMMAND "${GIT}" "show" "-s" "--format=%H;%cd" "--date=format:%Y%m%d.%H%M%S.0"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      RESULT_VARIABLE git_result
+      OUTPUT_VARIABLE git_data
+      ERROR_VARIABLE git_err
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(git_result EQUAL 0)
+      list(GET git_data 0 BUILD_INFO)
+      list(GET git_data 1 PACKAGE_VERSION)
+    endif()
+  endif()
+endif()
+message(STATUS "PACKAGE_VERSION=${PACKAGE_VERSION}, BUILD_INFO=${BUILD_INFO}")
 
 set(PACKAGE_NAME      "watchman")
 set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
@@ -141,6 +167,11 @@ if(WATCHMAN_STATE_DIR)
   config_h("#define WATCHMAN_STATE_DIR \"${WATCHMAN_STATE_DIR}\"")
 endif()
 config_h("#define PACKAGE_VERSION \"${PACKAGE_VERSION}\"")
+
+if(BUILD_INFO)
+  config_h("#define WATCHMAN_BUILD_INFO \"${BUILD_INFO}\"")
+endif ()
+
 
 # While most of these tests are not strictly needed on windows, it is vital
 # that we probe for and find strtoll in order for the jansson build to use
