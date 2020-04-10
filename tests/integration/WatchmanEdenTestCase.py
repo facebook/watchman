@@ -115,11 +115,9 @@ class WatchmanEdenTestCase(TestParent):
         if populate_fn:
             populate_fn(repo)
 
-        self.eden.add_repository(repo_name, repo_path)
-
         mount_path = os.path.join(self.mounts_dir, repo_name)
 
-        self.eden.clone(repo_name, mount_path)
+        self.eden.clone(repo_path, mount_path)
         return mount_path
 
     def repoForPath(self, path):
