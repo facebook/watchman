@@ -6,6 +6,9 @@
 #define COMMON_TIME_TIME_H
 
 #include <ctime>
+#include <chrono>
+
+using namespace std::chrono;
 
 namespace facebook {
 
@@ -13,7 +16,7 @@ class WallClockUtil {
  public:
   // ----------------  time in seconds  ---------------
   static time_t NowInSecFast() {
-    return 0;
+    return std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   }
 };
 
