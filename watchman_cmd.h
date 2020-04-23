@@ -1,17 +1,35 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#ifndef WATCHMAN_CMD_H
-#define WATCHMAN_CMD_H
+#pragma once
+
 #include <stdexcept>
 
-typedef void (*watchman_command_func)(
-    struct watchman_client* client,
-    const json_ref& args);
+namespace watchman {
+using command_func = void (*)(watchman_client* client, const json_ref& args);
 
 // Should throw an exception (ideally CommandValidationError) if validation
 // fails
-typedef void (*watchman_cli_cmd_validate_func)(json_ref& args);
+using cli_cmd_validate_func = void (*)(json_ref& args);
+
+using command_flags = int;
+constexpr int CMD_DAEMON = 1;
+constexpr int CMD_CLIENT = 2;
+constexpr int CMD_POISON_IMMUNE = 4;
+constexpr int CMD_ALLOW_ANY_USER = 8;
+
+struct command_handler_def {
+  const char* name;
+  command_func func;
+  command_flags flags;
+  cli_cmd_validate_func cli_validate;
+};
+} // namespace watchman
+
+using watchman::CMD_ALLOW_ANY_USER;
+using watchman::CMD_CLIENT;
+using watchman::CMD_DAEMON;
+using watchman::CMD_POISON_IMMUNE;
 
 class CommandValidationError : public std::runtime_error {
  public:
@@ -20,17 +38,6 @@ class CommandValidationError : public std::runtime_error {
       : std::runtime_error(folly::to<std::string>(
             "failed to validate command: ",
             std::forward<Args>(args)...)) {}
-};
-
-#define CMD_DAEMON 1
-#define CMD_CLIENT 2
-#define CMD_POISON_IMMUNE 4
-#define CMD_ALLOW_ANY_USER 8
-struct watchman_command_handler_def {
-  const char* name;
-  watchman_command_func func;
-  int flags;
-  watchman_cli_cmd_validate_func cli_validate;
 };
 
 // For commands that take the root dir as the second parameter,
@@ -59,13 +66,20 @@ bool dispatch_command(
     const json_ref& args,
     int mode);
 bool try_client_mode_command(const json_ref& cmd, bool pretty);
-void w_register_command(struct watchman_command_handler_def* defs);
+void w_register_command(watchman::command_handler_def& defs);
+
+/**
+ * Provide a way to query (and eventually modify) command line arguments
+ *
+ * This is not thread-safe and should only be invoked from main()
+ */
+watchman::command_handler_def* lookup(const w_string& cmd_name, int mode);
 
 #define W_CMD_REG_1(symbol, name, func, flags, clivalidate) \
   static w_ctor_fn_type(symbol) {                           \
-    static struct watchman_command_handler_def d = {        \
+    static ::watchman::command_handler_def d = {            \
         name, func, flags, clivalidate};                    \
-    w_register_command(&d);                                 \
+    w_register_command(d);                                  \
   }                                                         \
   w_ctor_fn_reg(symbol)
 
@@ -118,8 +132,6 @@ bool clock_id_string(
     uint32_t ticks,
     char* buf,
     size_t bufsize);
-
-#endif
 
 /* vim:ts=2:sw=2:et:
  */

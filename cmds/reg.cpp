@@ -8,7 +8,7 @@ using namespace watchman;
 
 namespace {
 struct reg {
-  std::unordered_map<w_string, watchman_command_handler_def*> commands;
+  std::unordered_map<w_string, command_handler_def*> commands;
   std::unordered_set<w_string> capabilities;
 
   reg() {
@@ -19,8 +19,8 @@ struct reg {
 
 // Meyers singleton to avoid SIOF problems
 reg& get_reg() {
-  static struct reg reg;
-  return reg;
+  static auto* s = new reg;
+  return *s;
 }
 } // namespace
 
@@ -31,7 +31,7 @@ reg& get_reg() {
 folly::Synchronized<std::string> poisoned_reason;
 
 void print_command_list_for_help(FILE* where) {
-  std::vector<watchman_command_handler_def*> defs;
+  std::vector<command_handler_def*> defs;
 
   for (auto& it : get_reg().commands) {
     defs.emplace_back(it.second);
@@ -40,7 +40,7 @@ void print_command_list_for_help(FILE* where) {
   std::sort(
       defs.begin(),
       defs.end(),
-      [](watchman_command_handler_def* A, watchman_command_handler_def* B) {
+      [](command_handler_def* A, command_handler_def* B) {
         return strcmp(A->name, B->name) < 0;
       });
 
@@ -50,18 +50,15 @@ void print_command_list_for_help(FILE* where) {
   }
 }
 
-void w_register_command(struct watchman_command_handler_def* defs) {
+void w_register_command(command_handler_def& def) {
+  get_reg().commands[w_string(def.name, W_STRING_UNICODE)] = &def;
+
   char capname[128];
-
-  get_reg().commands[w_string(defs->name, W_STRING_UNICODE)] = defs;
-
-  snprintf(capname, sizeof(capname), "cmd-%s", defs->name);
+  snprintf(capname, sizeof(capname), "cmd-%s", def.name);
   w_capability_register(capname);
 }
 
-struct watchman_command_handler_def* lookup(
-    const w_string& cmd_name,
-    int mode) {
+command_handler_def* lookup(const w_string& cmd_name, int mode) {
   auto it = get_reg().commands.find(cmd_name.c_str());
   auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
@@ -80,9 +77,7 @@ struct watchman_command_handler_def* lookup(
   return nullptr;
 }
 
-static struct watchman_command_handler_def* lookup(
-    const json_ref& args,
-    int mode) {
+command_handler_def* lookup(const json_ref& args, int mode) {
   const char* cmd_name;
 
   if (!json_array_size(args)) {
@@ -104,7 +99,7 @@ void preprocess_command(
     json_ref& args,
     enum w_pdu_type output_pdu,
     uint32_t output_capabilities) {
-  struct watchman_command_handler_def* def;
+  command_handler_def* def;
 
   try {
     def = lookup(args, 0);
@@ -135,7 +130,7 @@ bool dispatch_command(
     struct watchman_client* client,
     const json_ref& args,
     int mode) {
-  struct watchman_command_handler_def* def;
+  command_handler_def* def;
   char sample_name[128];
 
   // Stash a reference to the current command to make it easier to log

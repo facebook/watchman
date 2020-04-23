@@ -212,7 +212,7 @@ static void check_nice_value() {
 }
 #endif
 
-static void run_service(void) {
+static void run_service() {
   int fd;
   bool res;
 
@@ -1086,6 +1086,8 @@ static void parse_cmdline(int* argcp, char*** argvp) {
     // hg requires the state-enter/state-leave commands, which are disabled over
     // TCP by default since at present it is unauthenticated. This should be
     // removed once TLS authentication is added to the TCP listener.
+    // TODO: When this code is removed, lookup() can be changed to return a
+    // const pointer.
     lookup(w_string("state-enter"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
     lookup(w_string("state-leave"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
   }
@@ -1183,8 +1185,6 @@ static void spawn_watchman(void) {
 }
 
 int main(int argc, char** argv) {
-  bool ran;
-
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
@@ -1206,7 +1206,7 @@ int main(int argc, char** argv) {
   auto cmd = build_command(argc, argv);
   preprocess_command(cmd, output_pdu, output_capabilities);
 
-  ran = try_command(cmd, 0);
+  bool ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {
     if (no_spawn) {
       if (!no_local) {
