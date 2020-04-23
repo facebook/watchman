@@ -238,6 +238,14 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
 
   // Terminate the process.
   // msvcrt abort() ultimately calls exit(3), so we shortcut that.
+  // Ideally we'd just exit() or ExitProcess() and be done, but it
+  // is documented as possible (or even likely!) that deadlock
+  // is possible, so we use TerminateProcess() to force ourselves
+  // to terminate.
+  TerminateProcess(GetCurrentProcess(), 3);
+  // However, TerminateProcess() is asynchronous and we will continue
+  // running here.  Let's also try exiting normally and see which
+  // approach wins!
   exit(3);
   return EXCEPTION_CONTINUE_SEARCH;
 }
