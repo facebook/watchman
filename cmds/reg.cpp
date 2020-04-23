@@ -6,24 +6,6 @@
 
 using namespace watchman;
 
-namespace {
-struct reg {
-  std::unordered_map<w_string, command_handler_def*> commands;
-  std::unordered_set<w_string> capabilities;
-
-  reg() {
-    commands.reserve(16);
-    capabilities.reserve(128);
-  }
-};
-
-// Meyers singleton to avoid SIOF problems
-reg& get_reg() {
-  static auto* s = new reg;
-  return *s;
-}
-} // namespace
-
 /* Some error conditions will put us into a non-recoverable state where we
  * can't guarantee that we will be operating correctly.  Rather than suffering
  * in silence and misleading our clients, we'll poison ourselves and advertise
@@ -31,12 +13,7 @@ reg& get_reg() {
 folly::Synchronized<std::string> poisoned_reason;
 
 void print_command_list_for_help(FILE* where) {
-  std::vector<command_handler_def*> defs;
-
-  for (auto& it : get_reg().commands) {
-    defs.emplace_back(it.second);
-  }
-
+  auto defs = get_all_commands();
   std::sort(
       defs.begin(),
       defs.end(),
@@ -48,33 +25,6 @@ void print_command_list_for_help(FILE* where) {
   for (auto& def : defs) {
     fprintf(where, "      %s\n", def->name);
   }
-}
-
-void w_register_command(command_handler_def& def) {
-  get_reg().commands[w_string(def.name, W_STRING_UNICODE)] = &def;
-
-  char capname[128];
-  snprintf(capname, sizeof(capname), "cmd-%s", def.name);
-  w_capability_register(capname);
-}
-
-command_handler_def* lookup(const w_string& cmd_name, int mode) {
-  auto it = get_reg().commands.find(cmd_name.c_str());
-  auto def = it == get_reg().commands.end() ? nullptr : it->second;
-
-  if (def) {
-    if (mode && ((def->flags & mode) == 0)) {
-      throw CommandValidationError(
-          "command ", cmd_name, " not available in this mode");
-    }
-    return def;
-  }
-
-  if (mode) {
-    throw CommandValidationError("unknown command ", cmd_name);
-  }
-
-  return nullptr;
 }
 
 command_handler_def* lookup(const json_ref& args, int mode) {
@@ -192,24 +142,6 @@ bool dispatch_command(
     send_error_response(client, "%s", e.what());
     return false;
   }
-}
-
-void w_capability_register(const char* name) {
-  get_reg().capabilities.insert(w_string(name, W_STRING_UNICODE));
-}
-
-bool w_capability_supported(const w_string& name) {
-  return get_reg().capabilities.find(name) != get_reg().capabilities.end();
-}
-
-json_ref w_capability_get_list(void) {
-  auto arr = json_array_of_size(get_reg().capabilities.size());
-
-  for (auto& name : get_reg().capabilities) {
-    json_array_append(arr, w_string_to_json(name));
-  }
-
-  return arr;
 }
 
 /* vim:ts=2:sw=2:et:

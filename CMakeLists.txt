@@ -551,6 +551,7 @@ endif()
 
 list(APPEND watchman_sources
 ChildProcess.cpp
+CommandRegistry.cpp
 ContentHash.cpp
 CookieSync.cpp
 FileDescriptor.cpp
