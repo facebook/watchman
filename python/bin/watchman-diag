@@ -344,6 +344,17 @@ print("CLI version: (watchman -v)")
 passthru(["watchman", "--no-spawn", "-v"])
 print
 
+watchman_env_vars = [v for v in os.environ.keys() if v.startswith("WATCHMAN_")]
+if watchman_env_vars:
+    print()
+    print(
+        "!!!WARNING!!! The following watchman related environment variables are set",
+        "(this is unusual and may cause problems):",
+    )
+    for var in watchman_env_vars:
+        print("%s=%s" % (var, os.getenv(var)))
+    print()
+
 procinfo = ProcessInfo()
 case_sensitive = True
 
