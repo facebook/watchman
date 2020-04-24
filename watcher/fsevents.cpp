@@ -8,6 +8,7 @@
 #include <iterator>
 #include <mutex>
 #include "InMemoryView.h"
+#include "LogConfig.h"
 #include "Pipe.h"
 
 #if HAVE_FSEVENTS

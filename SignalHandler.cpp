@@ -156,7 +156,9 @@ void terminationHandler() {
 }
 } // namespace
 
-void w_setup_signal_handlers(void) {
+namespace watchman {
+
+void setup_signal_handlers() {
 #ifndef _WIN32
   struct sigaction sa;
 
@@ -186,6 +188,8 @@ void w_setup_signal_handlers(void) {
 
   std::set_terminate(terminationHandler);
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

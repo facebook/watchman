@@ -6,6 +6,7 @@
 #include <folly/ScopeGuard.h>
 #include <memory>
 #include "FileSystem.h"
+#include "LogConfig.h"
 #include "watchman_error_category.h"
 
 using watchman::readSymbolicLink;

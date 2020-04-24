@@ -2,7 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "ThreadPool.h"
 #include "Logging.h"
-#include "watchman_log.h"
 
 namespace watchman {
 

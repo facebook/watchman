@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 #include "ChildProcess.h"
+#include "LogConfig.h"
 #include "Logging.h"
 #include "ThreadPool.h"
 #ifndef _WIN32

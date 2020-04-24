@@ -17,7 +17,6 @@
 
 #include "watchman_string.h"
 #include "utf.h"
-#include "watchman_log.h"
 
 json_ref::json_ref() : ref_(nullptr) {}
 json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}

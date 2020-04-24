@@ -7,16 +7,15 @@
 
 namespace watchman {
 
-// Coupled with the defines in watchman_log.h
 enum LogLevel { ABORT = -2, FATAL = -1, OFF = 0, ERR = 1, DBG = 2 };
 
-const w_string& logLevelToLabel(enum LogLevel level);
-enum LogLevel logLabelToLevel(const w_string& label);
+const w_string& logLevelToLabel(LogLevel level);
+LogLevel logLabelToLevel(const w_string& label);
 
 class Log {
  public:
   std::shared_ptr<Publisher::Subscriber> subscribe(
-      enum LogLevel level,
+      LogLevel level,
       Publisher::Notifier notify) {
     return levelToPub(level).subscribe(notify);
   }
@@ -26,11 +25,11 @@ class Log {
   static const char* getThreadName();
   static const char* setThreadName(std::string&& name);
 
-  void setStdErrLoggingLevel(enum LogLevel level);
+  void setStdErrLoggingLevel(LogLevel level);
 
   // Build a string and log it
   template <typename... Args>
-  void log(enum LogLevel level, Args&&... args) {
+  void log(LogLevel level, Args&&... args) {
     auto& pub = levelToPub(level);
 
     // Avoid building the string if there are no subscribers
@@ -56,7 +55,7 @@ class Log {
 
   // Format a string and log it
   template <typename... Args>
-  void logf(enum LogLevel level, fmt::string_view format_str, Args&&... args) {
+  void logf(LogLevel level, fmt::string_view format_str, Args&&... args) {
     auto& pub = levelToPub(level);
 
     // Avoid building the string if there are no subscribers
@@ -89,7 +88,7 @@ class Log {
   std::shared_ptr<Publisher::Subscriber> debugSub_;
   std::mutex stdErrPrintMutex_;
 
-  inline Publisher& levelToPub(enum LogLevel level) {
+  inline Publisher& levelToPub(LogLevel level) {
     return level == DBG ? *debugPub_ : *errorPub_;
   }
 
@@ -100,12 +99,12 @@ class Log {
 Log& getLog();
 
 template <typename... Args>
-void log(enum LogLevel level, Args&&... args) {
+void log(LogLevel level, Args&&... args) {
   getLog().log(level, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void logf(enum LogLevel level, fmt::string_view format_str, Args&&... args) {
+void logf(LogLevel level, fmt::string_view format_str, Args&&... args) {
   getLog().logf(level, format_str, std::forward<Args>(args)...);
 }
 

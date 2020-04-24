@@ -11,9 +11,9 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include "SignalHandler.h"
 
 using namespace watchman;
-using watchman::FileDescriptor;
 
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
@@ -787,7 +787,7 @@ bool w_start_listener() {
   sigaddset(&sigset, SIGCHLD);
   sigprocmask(SIG_BLOCK, &sigset, NULL);
 #endif
-  w_setup_signal_handlers();
+  setup_signal_handlers();
 
   folly::Optional<AcceptLoop> tcp_loop;
   folly::Optional<AcceptLoop> unix_loop;

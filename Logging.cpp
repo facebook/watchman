@@ -15,11 +15,8 @@
 
 using namespace watchman;
 
-int log_level = LogLevel::ERR;
 static folly::ThreadLocal<folly::Optional<std::string>> threadName;
 static constexpr size_t kMaxFrames = 64;
-
-std::string log_name;
 
 namespace {
 template <typename String>
@@ -62,7 +59,7 @@ struct levelMaps {
   // Actually a map of LogLevel, w_string, but it is relatively high friction
   // to define the hasher for an enum key :-p
   std::unordered_map<int, w_string> levelToLabel;
-  std::unordered_map<w_string, enum LogLevel> labelToLevel;
+  std::unordered_map<w_string, LogLevel> labelToLevel;
 
   levelMaps()
       : levelToLabel{{ABORT, "abort"},
@@ -73,7 +70,7 @@ struct levelMaps {
     // Create the reverse map
     for (auto& it : levelToLabel) {
       labelToLevel.insert(
-          std::make_pair(it.second, static_cast<enum LogLevel>(it.first)));
+          std::make_pair(it.second, static_cast<LogLevel>(it.first)));
     }
   }
 };
@@ -86,11 +83,11 @@ levelMaps& getLevelMaps() {
 
 } // namespace
 
-const w_string& logLevelToLabel(enum LogLevel level) {
+const w_string& logLevelToLabel(LogLevel level) {
   return getLevelMaps().levelToLabel.at(static_cast<int>(level));
 }
 
-enum LogLevel logLabelToLevel(const w_string& label) {
+LogLevel logLabelToLevel(const w_string& label) {
   return getLevelMaps().labelToLevel.at(label);
 }
 
@@ -146,7 +143,7 @@ const char* Log::getThreadName() {
   return threadName->value().c_str();
 }
 
-void Log::setStdErrLoggingLevel(enum LogLevel level) {
+void Log::setStdErrLoggingLevel(LogLevel level) {
   auto notify = [this]() { doLogToStdErr(); };
   switch (level) {
     case OFF:

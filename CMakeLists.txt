@@ -474,7 +474,7 @@ add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.c
   thirdparty/wildmatch/wildmatch.h
 )
-add_library(log STATIC PubSub.cpp Logging.cpp)
+add_library(log STATIC PubSub.cpp LogConfig.cpp Logging.cpp)
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC hash.cpp)
 target_link_libraries(hash third_party_deps)
@@ -561,6 +561,7 @@ LocalFileResult.cpp
 Pipe.cpp
 # PubSub.cpp  (in liblog)
 QueryableView.cpp
+SignalHandler.cpp
 SymlinkTargets.cpp
 ThreadPool.cpp
 bser.cpp
@@ -583,7 +584,6 @@ opendir.cpp
 opt.cpp
 pending.cpp
 perf.cpp
-signal.cpp
 sockname.cpp
 spawn.cpp
 state.cpp

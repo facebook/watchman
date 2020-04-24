@@ -12,7 +12,6 @@
 #include <cstring>
 #include <initializer_list>
 #include <memory>
-#include "watchman_log.h"
 #ifdef _WIN32
 #include <string>
 #endif

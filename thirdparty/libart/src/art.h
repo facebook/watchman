@@ -6,7 +6,6 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include "watchman_log.h"
 
 #define ART_MAX_PREFIX_LEN 10u
 
