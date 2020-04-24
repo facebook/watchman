@@ -2,7 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-using CaseSensitivity = watchman::CaseSensitivity;
+
+using namespace watchman;
 
 // This can't be a simple global because other compilation units
 // may try to mutate it before this compilation unit has had its
@@ -28,7 +29,7 @@ bool w_query_register_expression_parser(
   w_string name(term, W_STRING_UNICODE);
 
   snprintf(capname, sizeof(capname), "term-%s", term);
-  w_capability_register(capname);
+  capability_register(capname);
 
   term_hash()[name] = parser;
   return true;

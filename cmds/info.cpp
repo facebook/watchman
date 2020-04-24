@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 static bool query_caps(
     json_ref& response,
     json_ref& result,
@@ -14,7 +16,7 @@ static bool query_caps(
   for (i = 0; i < json_array_size(arr); i++) {
     const auto& ele = arr.at(i);
     const char* capname = json_string_value(ele);
-    bool have = w_capability_supported(json_to_w_string(ele));
+    bool have = capability_supported(json_to_w_string(ele));
     if (!have) {
       have_all = false;
     }
@@ -88,7 +90,7 @@ static void cmd_list_capabilities(
     const json_ref&) {
   auto resp = make_response();
 
-  resp.set("capabilities", w_capability_get_list());
+  resp.set("capabilities", capability_get_list());
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG(

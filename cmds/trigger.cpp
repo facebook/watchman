@@ -5,6 +5,8 @@
 
 #include <memory>
 
+using namespace watchman;
+
 bool watchman_trigger_command::waitNoIntr() {
   if (!w_is_stopping() && !stopTrigger_) {
     if (current_proc && current_proc->terminated()) {

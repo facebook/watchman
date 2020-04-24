@@ -29,15 +29,17 @@ reg& get_reg() {
 }
 } // namespace
 
-void w_register_command(command_handler_def& def) {
+namespace watchman {
+
+void register_command(command_handler_def& def) {
   get_reg().commands.emplace(def.name, &def);
 
   char capname[128];
   snprintf(capname, sizeof(capname), "cmd-%s", def.name);
-  w_capability_register(capname);
+  capability_register(capname);
 }
 
-command_handler_def* lookup(folly::StringPiece cmd_name, int mode) {
+command_handler_def* lookup_command(folly::StringPiece cmd_name, int mode) {
   auto it = get_reg().commands.find(cmd_name.str());
   auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
@@ -64,16 +66,16 @@ std::vector<command_handler_def*> get_all_commands() {
   return defs;
 }
 
-void w_capability_register(const char* name) {
+void capability_register(const char* name) {
   get_reg().capabilities.emplace(name);
 }
 
-bool w_capability_supported(folly::StringPiece name) {
+bool capability_supported(folly::StringPiece name) {
   return get_reg().capabilities.find(name.str()) !=
       get_reg().capabilities.end();
 }
 
-json_ref w_capability_get_list() {
+json_ref capability_get_list() {
   auto& caps = get_reg().capabilities;
 
   auto arr = json_array_of_size(caps.size());
@@ -83,3 +85,5 @@ json_ref w_capability_get_list() {
 
   return arr;
 }
+
+} // namespace watchman

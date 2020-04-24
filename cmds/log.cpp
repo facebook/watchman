@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 // log-level "debug"
 // log-level "error"
 // log-level "off"

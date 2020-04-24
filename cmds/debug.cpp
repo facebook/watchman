@@ -6,7 +6,7 @@
 #include <iomanip>
 #include "Logging.h"
 
-using watchman::Log;
+using namespace watchman;
 
 static void cmd_debug_recrawl(
     struct watchman_client* client,

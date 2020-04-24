@@ -2,7 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-using watchman::realPath;
+
+using namespace watchman;
 
 void w_cmd_realpath_root(json_ref& args) {
   const char* path;

@@ -5,6 +5,8 @@
 #include <folly/String.h>
 #include <folly/memory/Malloc.h>
 
+using namespace watchman;
+
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 
 /** This command is present to manually trigger a

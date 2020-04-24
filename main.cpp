@@ -1088,8 +1088,10 @@ static void parse_cmdline(int* argcp, char*** argvp) {
     // removed once TLS authentication is added to the TCP listener.
     // TODO: When this code is removed, lookup() can be changed to return a
     // const pointer.
-    lookup(w_string("state-enter"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
-    lookup(w_string("state-leave"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
+    lookup_command(w_string("state-enter"), CMD_DAEMON)->flags |=
+        CMD_ALLOW_ANY_USER;
+    lookup_command(w_string("state-leave"), CMD_DAEMON)->flags |=
+        CMD_ALLOW_ANY_USER;
   }
 }
 

@@ -366,7 +366,7 @@ static w_ctor_fn_type(register_field_capabilities) {
   for (auto& it : field_defs()) {
     char capname[128];
     snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
-    w_capability_register(capname);
+    capability_register(capname);
   }
 }
 

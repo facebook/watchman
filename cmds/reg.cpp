@@ -42,7 +42,7 @@ command_handler_def* lookup(const json_ref& args, int mode) {
         "invalid command: expected element 0 to be the command name");
   }
 
-  return lookup(json_to_w_string(jstr), mode);
+  return lookup_command(json_to_w_string(jstr), mode);
 }
 
 void preprocess_command(

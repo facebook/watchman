@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 
+using namespace watchman;
+
 WatcherRegistry::WatcherRegistry(
     const std::string& name,
     std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init,
@@ -22,7 +24,7 @@ void WatcherRegistry::registerFactory(const WatcherRegistry& factory) {
   reg.emplace(factory.name_, factory);
 
   auto capname = folly::to<std::string>("watcher-", factory.name_);
-  w_capability_register(capname.c_str());
+  capability_register(capname.c_str());
 }
 
 const WatcherRegistry* WatcherRegistry::getWatcherByName(

@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 /* since /root <timestamp> [patterns] */
 static void cmd_since(struct watchman_client* client, const json_ref& args) {
   const char* clockspec;

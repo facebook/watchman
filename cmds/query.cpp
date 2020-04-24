@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 /* query /root {query} */
 static void cmd_query(struct watchman_client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {

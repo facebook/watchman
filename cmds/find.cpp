@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 /* find /root [patterns] */
 static void cmd_find(struct watchman_client* client, const json_ref& args) {
   /* resolve the root */
