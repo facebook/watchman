@@ -16,6 +16,20 @@ using gid_t = int;
 using uid_t = int;
 using ino_t = unsigned int;
 using nlink_t = unsigned int;
+
+/**
+ * Convertion between st_mode and d_type on Windows. On Windows the 4th nibble
+ * of mode contains the type of directory entry. Right shifting by 12 bits to
+ * form a d_type.
+ */
+static_assert(S_IFMT == 0xF000, "The S_IFMT on Windows should be 0xF000");
+
+#define DT_UNKNOWN 0
+#define DT_FIFO ((_S_IFIFO) >> 12)
+#define DT_CHR ((_S_IFCHR) >> 12)
+#define DT_DIR ((_S_IFDIR) >> 12)
+#define DT_REG ((_S_IFREG) >> 12)
+
 #endif
 
 /** Represents the type of a filesystem entry.
@@ -31,25 +45,33 @@ using nlink_t = unsigned int;
  * code here to compensate.
  */
 enum class DType {
-#ifdef DTTOIF
   Unknown = DT_UNKNOWN,
   Fifo = DT_FIFO,
   Char = DT_CHR,
   Dir = DT_DIR,
-  Block = DT_BLK,
   Regular = DT_REG,
+
+#ifdef DT_BLK
+  Block = DT_BLK,
+#else
+  Block,
+#endif
+
+#ifdef DT_LNK
   Symlink = DT_LNK,
+#else
+  Symlink,
+#endif
+
+#ifdef DT_SOCK
   Socket = DT_SOCK,
+#else
+  Socket,
+#endif
+
+#ifdef DT_WHT
   Whiteout = DT_WHT,
 #else
-  Unknown,
-  Fifo,
-  Char,
-  Dir,
-  Block,
-  Regular,
-  Symlink,
-  Socket,
   Whiteout,
 #endif
 };
