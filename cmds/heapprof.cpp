@@ -7,7 +7,7 @@
 
 using namespace watchman;
 
-#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
+#if defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
 
 /** This command is present to manually trigger a
  * heap profile dump when jemalloc is in use.
