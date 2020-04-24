@@ -2,9 +2,9 @@
 #include "watchman_system.h"
 #include "watchman_string.h"
 #include <string>
+#include "Clock.h"
 #include "LRUCache.h"
 #include "thirdparty/jansson/jansson.h"
-#include "watchman_clockspec.h"
 
 namespace watchman {
 struct SymlinkTargetCacheKey {

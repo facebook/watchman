@@ -10,8 +10,8 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "Clock.h"
 #include "FileSystem.h"
-#include "watchman_clockspec.h"
 
 namespace watchman {
 struct FileInformation;
@@ -19,7 +19,7 @@ struct FileInformation;
 struct watchman_file;
 
 struct w_query;
-typedef struct w_query w_query;
+struct w_query_ctx;
 class FileResult;
 
 struct w_query_field_renderer {

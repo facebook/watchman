@@ -19,7 +19,6 @@ struct watchman_pending_fs;
 struct watchman_trigger_command;
 typedef struct watchman_root w_root_t;
 
-#include "watchman_clockspec.h"
 #include "watchman_dir.h"
 #include "watchman_file.h"
 #include "watchman_opendir.h"

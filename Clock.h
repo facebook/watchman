@@ -5,13 +5,11 @@
 #include <unordered_map>
 #include "Logging.h"
 
-struct watchman_clock {
+struct w_clock_t {
   uint32_t ticks;
   time_t timestamp;
 };
-typedef struct watchman_clock w_clock_t;
 
-struct w_query_ctx;
 struct w_query_since;
 
 struct ClockPosition {
@@ -28,7 +26,7 @@ struct ClockPosition {
 enum w_clockspec_tag { w_cs_timestamp, w_cs_clock, w_cs_named_cursor };
 
 struct ClockSpec {
-  enum w_clockspec_tag tag;
+  w_clockspec_tag tag;
   time_t timestamp;
   struct {
     uint64_t start_time;
@@ -63,7 +61,7 @@ struct ClockSpec {
    * the effective since parameter.
    * If cursorMap is passed in, it MUST be unlocked, as this method
    * will acquire a lock to evaluate a named cursor. */
-  struct w_query_since evaluate(
+  w_query_since evaluate(
       const ClockPosition& position,
       const uint32_t lastAgeOutTick,
       folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap =

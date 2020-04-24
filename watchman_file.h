@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
+#include "Clock.h"
 #include "FileInformation.h"
 
 struct watchman_file {

@@ -551,6 +551,7 @@ endif()
 
 list(APPEND watchman_sources
 ChildProcess.cpp
+Clock.cpp
 CommandRegistry.cpp
 ContentHash.cpp
 CookieSync.cpp
@@ -568,7 +569,6 @@ bser.cpp
 cfg.cpp
 checksock.cpp
 clientmode.cpp
-clockspec.cpp
 error_category.cpp
 expflags.cpp
 fstype.cpp
