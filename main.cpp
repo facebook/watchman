@@ -847,10 +847,6 @@ static bool should_start(int err) {
 }
 
 static bool try_command(json_t* cmd, int timeout) {
-  w_jbuffer_t buffer;
-  w_jbuffer_t output_pdu_buffer;
-  int err;
-
   auto client = w_stm_connect(get_sock_name_legacy(), timeout * 1000);
   if (!client) {
     return false;
@@ -860,10 +856,13 @@ static bool try_command(json_t* cmd, int timeout) {
     return true;
   }
 
+  w_jbuffer_t buffer;
+  w_jbuffer_t output_pdu_buffer;
+
   // Send command
   if (!buffer.pduEncodeToStream(
           server_pdu, server_capabilities, cmd, client.get())) {
-    err = errno;
+    int err = errno;
     logf(ERR, "error sending PDU to server\n");
     errno = err;
     return false;
@@ -1096,8 +1095,6 @@ static void parse_cmdline(int* argcp, char*** argvp) {
 }
 
 static json_ref build_command(int argc, char** argv) {
-  int i;
-
   // Read blob from stdin
   if (json_input_arg) {
     auto err = json_error_t();
@@ -1147,7 +1144,7 @@ static json_ref build_command(int argc, char** argv) {
   }
 
   auto cmd = json_array();
-  for (i = 0; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
