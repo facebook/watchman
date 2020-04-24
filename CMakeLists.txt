@@ -474,7 +474,7 @@ add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.c
   thirdparty/wildmatch/wildmatch.h
 )
-add_library(log STATIC PubSub.cpp log.cpp)
+add_library(log STATIC PubSub.cpp Logging.cpp)
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC hash.cpp)
 target_link_libraries(hash third_party_deps)
