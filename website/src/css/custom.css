@@ -22,3 +22,9 @@
   --ifm-color-primary-lighter: #9da8ff;
   --ifm-color-primary-lightest: #d2d8ff;
 }
+
+html[data-theme="dark"] {
+  /* Avoid brightest white on black; it burnses us! */
+  --ifm-color-content-secondary: #ccc;
+  --ifm-font-base-color: #ccc;
+}

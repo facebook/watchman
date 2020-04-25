@@ -27,6 +27,7 @@ module.exports = {
           to: 'docs/install',
           activeBasePath: 'docs',
           label: 'Docs',
+          position: 'left',
         },
         {to: 'docs/support', label: 'Support', position: 'left'},
         {

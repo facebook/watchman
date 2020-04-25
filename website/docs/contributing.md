@@ -66,22 +66,20 @@ If you're changing or adding new functionality, we'll ask you to also update
 the documentation. You will need `ruby` 2.0.0 or later to preview the
 documentation.
 
-One time setup:
-
 ```bash
 $ cd website
-$ sudo gem install bundler
-$ sudo bundler install
+$ yarn
+$ yarn start
 ```
 
-Then:
-
-```bash
-$ jekyll serve -w -t
-```
-
-This will print out a URL that you can open in your browser to preview your
-documentation changes.
+This will open a URL in your browser that previews your doc changes.
 
 The source for the documentation is in the `website/docs` dir in markdown
 format.
+
+You should use the following to run formatters and checkers to verify your doc
+changes prior to submission:
+
+```bash
+$ yarn prettier
+```

@@ -68,9 +68,9 @@ of Watchman would default to `<TMPDIR>/.watchman.<USER>`, depending on how it
 was configured.
 
 If you are building a client to access the service programmatically, we
-recommend that you invoke [watchman get-sockname](get-sockname) to discover
-the path that the client and server would use. This has the side effect of
-spawning the service for you if it isn't already running.
+recommend that you invoke [watchman get-sockname](/watchman/docs/get-sockname)
+to discover the path that the client and server would use. This has the side
+effect of spawning the service for you if it isn't already running.
 
 ## Client Options
 
