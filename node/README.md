@@ -31,4 +31,4 @@ $ npm install fb-watchman
 
 ## How do I use it?
 
-[Read the NodeJS watchman documentation](https://facebook.github.io/watchman/docs/nodejs.html)
+[Read the NodeJS watchman documentation](https://facebook.github.io/watchman/docs/nodejs)
