@@ -191,7 +191,21 @@ struct TimeSpec {
 }
 
 /**
- * Information that we return when querying entries
+ * Information about filesystem entries that can be retrieved solely
+ * from the tree structure, without having to fetch the actual child
+ * objects from source control.
+ */
+struct EntryInformation {
+  1: DType dtype
+}
+
+union EntryInformationOrError {
+  1: EntryInformation info
+  2: EdenError error
+}
+
+/**
+ * Subset of stat() data returned from getFileInformation())
  */
 struct FileInformation {
   1: unsigned64 size        // wish thrift had unsigned numbers
@@ -822,7 +836,18 @@ service EdenService extends fb303_core.BaseService {
     1: DebugGetRawJournalParams params,
   ) throws (1: EdenError ex)
 
-  /** Returns a subset of the stat() information for a list of paths.
+  /**
+   * Returns the subset of information about a list of paths that can
+   * be determined from each's parent directory tree. For now, that
+   * includes whether the entry exists and its dtype.
+   */
+  list<EntryInformationOrError> getEntryInformation(
+    1: PathString mountPoint,
+    2: list<PathString> paths)
+      throws (1: EdenError ex)
+
+  /**
+   * Returns a subset of the stat() information for a list of paths.
    * The returned list of information corresponds to the input list of
    * paths; eg; result[0] holds the information for paths[0].
    * We only support returning the instantaneous information about
