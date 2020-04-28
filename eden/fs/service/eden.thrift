@@ -196,7 +196,7 @@ struct TimeSpec {
  * objects from source control.
  */
 struct EntryInformation {
-  1: OsDtype dtype
+  1: Dtype dtype
 }
 
 union EntryInformationOrError {
@@ -574,12 +574,13 @@ struct GetConfigParams {
  */
 typedef i16 OsDtype
 
-/*
+/**
  * These numbers match up with Linux and macOS.
  * Windows doesn't have dtype_t, but a subset of these map to and from
  * the GetFileType and dwFileAttributes equivalents.
  *
  * Dtype and OsDtype can be cast between each other on all platforms.
+ */
 enum Dtype {
   UNKNOWN = 0
   FIFO = 1 // DT_FIFO
@@ -591,7 +592,6 @@ enum Dtype {
   SOCKET = 12 // DT_SOCK
   WHITEOUT = 14 // DT_WHT
 }
-*/
 
 /** Params for globFiles(). */
 struct GlobParams {
