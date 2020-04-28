@@ -196,7 +196,7 @@ struct TimeSpec {
  * objects from source control.
  */
 struct EntryInformation {
-  1: DType dtype
+  1: OsDtype dtype
 }
 
 union EntryInformationOrError {
@@ -565,12 +565,33 @@ struct GetConfigParams {
     eden_config.ConfigReloadBehavior.AutoReload
 }
 
-/** A representation of the system-dependent dirent::d_type field.
+/**
+ * A representation of the system-dependent dirent::d_type field.
  * The bits and their interpretation is system dependent.
  * This value is u8 on all systems that implement it.  We
  * use i16 to pass this through thrift, which doesn't have unsigned
- * numbers */
-typedef i16 DType
+ * numbers
+ */
+typedef i16 OsDtype
+
+/*
+ * These numbers match up with Linux and macOS.
+ * Windows doesn't have dtype_t, but a subset of these map to and from
+ * the GetFileType and dwFileAttributes equivalents.
+ *
+ * Dtype and OsDtype can be cast between each other on all platforms.
+enum Dtype {
+  UNKNOWN = 0
+  FIFO = 1 // DT_FIFO
+  CHAR = 2 // DT_CHR
+  DIR = 4 // DT_DIR
+  BLOCK = 6 // DT_BLK
+  REGULAR = 8 // DT_REG
+  LINK = 10 // DT_LNK
+  SOCKET = 12 // DT_SOCK
+  WHITEOUT = 14 // DT_WHT
+}
+*/
 
 /** Params for globFiles(). */
 struct GlobParams {
@@ -591,7 +612,7 @@ struct Glob {
    * sorted.
    */
   1: list<PathString> matchingFiles,
-  2: list<DType> dtypes,
+  2: list<OsDtype> dtypes,
 }
 
 struct AccessCounts {
