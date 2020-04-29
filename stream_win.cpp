@@ -44,6 +44,10 @@ class WindowsEvent : public watchman_event {
   FileDescriptor::system_handle_type system_handle() override {
     return (FileDescriptor::system_handle_type)hEvent;
   }
+
+  bool isSocket() override {
+    return false;
+  }
 };
 } // namespace
 
@@ -607,7 +611,7 @@ bool win_handle::peerIsOwner() {
   return true;
 }
 
-std::unique_ptr<watchman_event> w_event_make(void) {
+std::unique_ptr<watchman_event> w_event_make_named_pipe(void) {
   return std::make_unique<WindowsEvent>();
 }
 
@@ -619,7 +623,7 @@ win_handle::win_handle(FileDescriptor&& handle)
   InitializeCriticalSection(&mtx);
 }
 
-std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& handle) {
+std::unique_ptr<watchman_stream> w_stm_fdopen_windows(FileDescriptor&& handle) {
   if (!handle) {
     return nullptr;
   }
@@ -681,7 +685,10 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 }
 
-int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
+int w_poll_events_named_pipe(
+    struct watchman_event_poll* p,
+    int n,
+    int timeoutms) {
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   int i;
   DWORD res;

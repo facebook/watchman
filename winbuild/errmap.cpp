@@ -70,6 +70,8 @@ int map_win32_err(DWORD err) {
       return EAGAIN;
     case ERROR_IO_PENDING:
       return EAGAIN;
+    case WSAECONNREFUSED:
+      return ECONNREFUSED;
     default:
       return EINVAL;
   }

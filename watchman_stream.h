@@ -14,6 +14,7 @@ class watchman_event {
   virtual void notify() = 0;
   virtual bool testAndClear() = 0;
   virtual watchman::FileDescriptor::system_handle_type system_handle() = 0;
+  virtual bool isSocket() = 0;
 };
 
 using w_evt_t = watchman_event*;
@@ -39,29 +40,36 @@ struct watchman_event_poll {
 };
 
 // Make a event that can be manually signalled
-std::unique_ptr<watchman_event> w_event_make(void);
+std::unique_ptr<watchman_event> w_event_make_sockets(void);
+std::unique_ptr<watchman_event> w_event_make_named_pipe(void);
 
 // Go to sleep for up to timeoutms.
 // Returns sooner if any of the watchman_event objects referenced
 // in the array P are signalled
+int w_poll_events_named_pipe(
+    struct watchman_event_poll* p,
+    int n,
+    int timeoutms);
+int w_poll_events_sockets(struct watchman_event_poll* p, int n, int timeoutms);
 int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms);
 
 // Create a connected unix socket or a named pipe client stream
-std::unique_ptr<watchman_stream> w_stm_connect(const char* path, int timeoutms);
+std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms);
 
 w_stm_t w_stm_stdout(void);
 w_stm_t w_stm_stdin(void);
-#ifndef _WIN32
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms);
-#else
+#ifdef _WIN32
 std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
     const char* path,
     int timeoutms);
 watchman::FileDescriptor w_handle_open(const char* path, int flags);
 #endif
 std::unique_ptr<watchman_stream> w_stm_fdopen(watchman::FileDescriptor&& fd);
+std::unique_ptr<watchman_stream> w_stm_fdopen_windows(
+    watchman::FileDescriptor&& fd);
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 
 // Make a temporary file name and open it.

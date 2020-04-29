@@ -79,7 +79,19 @@ std::atomic<uint64_t> id_generator{1};
 watchman_client::watchman_client() : watchman_client(nullptr) {}
 
 watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
-    : unique_id{id_generator++}, stm(std::move(stm)), ping(w_event_make()) {
+    : unique_id{id_generator++},
+      stm(std::move(stm)),
+      ping(
+#ifdef _WIN32
+          this->stm->getFileDescriptor().fdType() ==
+                  FileDescriptor::FDType::Socket
+              ? w_event_make_sockets()
+              : w_event_make_named_pipe()
+#else
+          w_event_make_sockets()
+#endif
+
+      ) {
   logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
 }
 
@@ -599,7 +611,7 @@ static void named_pipe_accept_loop() {
   log(DBG, "Starting pipe listener on ", get_named_pipe_sock_path(), "\n");
 
   std::vector<std::thread> acceptors;
-  std::shared_ptr<watchman_event> listener_event(w_event_make());
+  std::shared_ptr<watchman_event> listener_event(w_event_make_named_pipe());
 
   listener_thread_events.push_back(listener_event);
 
@@ -683,7 +695,7 @@ class AcceptLoop {
     fd.setCloExec();
     fd.setNonBlock();
 
-    std::shared_ptr<watchman_event> listener_event(w_event_make());
+    std::shared_ptr<watchman_event> listener_event(w_event_make_sockets());
     listener_thread_events.push_back(listener_event);
 
     thread_ = std::thread(

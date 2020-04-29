@@ -850,10 +850,15 @@ static bool should_start(int err) {
 }
 
 static bool try_command(json_t* cmd, int timeout) {
-  auto client = w_stm_connect(get_sock_name_legacy(), timeout * 1000);
+  auto client = w_stm_connect(timeout * 1000);
   if (!client) {
     return false;
   }
+
+  // Start in a well-defined non-blocking state as we can't tell
+  // what mode we're in on windows until we've set it to something
+  // explicitly at least once before!
+  client->setNonBlock(false);
 
   if (!cmd) {
     return true;

@@ -203,14 +203,6 @@ void FileDescriptor::clearNonBlock() {
 #endif
 }
 
-bool FileDescriptor::isNonBlock() const {
-#ifndef _WIN32
-  return (fcntl(fd_, F_GETFL) & O_NONBLOCK) == O_NONBLOCK;
-#else
-  return false;
-#endif
-}
-
 #if !CAN_OPEN_SYMLINKS
 /** Checks that the basename component of the input path exactly
  * matches the canonical case of the path on disk.

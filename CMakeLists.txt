@@ -508,6 +508,7 @@ opendir.cpp
 pending.cpp
 time.cpp
 stream.cpp
+stream_unix.cpp
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -588,6 +589,7 @@ sockname.cpp
 spawn.cpp
 state.cpp
 stream.cpp
+stream_unix.cpp
 stream_stdout.cpp
 # string.cpp (in libstring)
 time.cpp
@@ -663,10 +665,6 @@ winbuild/time.cpp
 winbuild/backtrace.cpp
 winbuild/getopt_long.cpp
 winbuild/posix_spawn.cpp
-  )
-else()
-  list(APPEND watchman_sources
-stream_unix.cpp
   )
 endif()
 

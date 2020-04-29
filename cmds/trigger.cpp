@@ -223,7 +223,7 @@ watchman_trigger_command::watchman_trigger_command(
       max_files_stdin(0),
       stdout_flags(0),
       stderr_flags(0),
-      ping_(w_event_make()) {
+      ping_(w_event_make_sockets()) {
   auto queryDef = json_object();
   auto expr = definition.get_default("expression");
   if (expr) {
