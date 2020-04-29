@@ -323,18 +323,10 @@ class EdenFileResult : public FileResult {
   }
 
   Optional<w_clock_t> ctime() override {
-    if (!stat_.has_value()) {
-      accessorNeedsProperties(FileResult::Property::CTime);
-      return folly::none;
-    }
     return ctime_;
   }
 
   Optional<w_clock_t> otime() override {
-    if (!stat_.has_value()) {
-      accessorNeedsProperties(FileResult::Property::OTime);
-      return folly::none;
-    }
     return otime_;
   }
 
@@ -529,8 +521,6 @@ class EdenFileResult : public FileResult {
       stat.mode = infoOrErr.get_info().mode;
       stat.mtime.tv_sec = infoOrErr.get_info().mtime.seconds;
       stat.mtime.tv_nsec = infoOrErr.get_info().mtime.nanoSeconds;
-
-      otime_.timestamp = ctime_.timestamp = stat.mtime.tv_sec;
 
       stat_ = std::move(stat);
       setExists(true);
