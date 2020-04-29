@@ -18,7 +18,7 @@ using namespace watchman;
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
-static std::unique_ptr<watchman_event> listener_thread_event;
+static std::vector<std::shared_ptr<watchman_event>> listener_thread_events;
 static std::atomic<bool> stopping = false;
 static constexpr size_t kResponseLogLimit = 8;
 
@@ -105,8 +105,8 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
 void w_request_shutdown(void) {
   stopping.store(true, std::memory_order_relaxed);
   // Knock listener thread out of poll/accept
-  if (listener_thread_event) {
-    listener_thread_event->notify();
+  for (auto& evt : listener_thread_events) {
+    evt->notify();
   }
 }
 
@@ -525,7 +525,8 @@ static FileDescriptor create_pipe_server(const char* path) {
       FileDescriptor::FDType::Pipe);
 }
 
-static void named_pipe_accept_loop_internal() {
+static void named_pipe_accept_loop_internal(
+    std::shared_ptr<watchman_event> listener_event) {
   HANDLE handles[2];
   auto olap = OVERLAPPED();
   HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
@@ -540,7 +541,7 @@ static void named_pipe_accept_loop_internal() {
   }
 
   handles[0] = connected_event;
-  handles[1] = (HANDLE)listener_thread_event.get()->system_handle();
+  handles[1] = (HANDLE)listener_event->system_handle();
   olap.hEvent = connected_event;
 
   logf(ERR, "waiting for pipe clients on {}\n", get_named_pipe_sock_path());
@@ -598,11 +599,14 @@ static void named_pipe_accept_loop() {
   log(DBG, "Starting pipe listener on ", get_named_pipe_sock_path(), "\n");
 
   std::vector<std::thread> acceptors;
-  listener_thread_event = w_event_make();
+  std::shared_ptr<watchman_event> listener_event(w_event_make());
+
+  listener_thread_events.push_back(listener_event);
+
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
-    acceptors.push_back(std::thread([i]() {
+    acceptors.push_back(std::thread([i, listener_event]() {
       w_set_thread_name("accept", i);
-      named_pipe_accept_loop_internal();
+      named_pipe_accept_loop_internal(listener_event);
     }));
   }
   for (auto& thr : acceptors) {
@@ -618,7 +622,9 @@ class AcceptLoop {
   std::thread thread_;
   bool joined_{false};
 
-  static void accept_thread(FileDescriptor&& listenerDescriptor) {
+  static void accept_thread(
+      FileDescriptor&& listenerDescriptor,
+      std::shared_ptr<watchman_event> listener_event) {
     auto listener = w_stm_fdopen(std::move(listenerDescriptor));
     while (!w_is_stopping()) {
       FileDescriptor client_fd;
@@ -626,7 +632,7 @@ class AcceptLoop {
       int bufsize;
 
       pfd[0].evt = listener->getEvents();
-      pfd[1].evt = listener_thread_event.get();
+      pfd[1].evt = listener_event.get();
 
       if (w_poll_events(pfd, 2, 60000) == 0) {
         if (w_is_stopping()) {
@@ -677,10 +683,14 @@ class AcceptLoop {
     fd.setCloExec();
     fd.setNonBlock();
 
-    thread_ = std::thread([listener_fd = std::move(fd), name]() mutable {
-      w_set_thread_name(name);
-      accept_thread(std::move(listener_fd));
-    });
+    std::shared_ptr<watchman_event> listener_event(w_event_make());
+    listener_thread_events.push_back(listener_event);
+
+    thread_ = std::thread(
+        [listener_fd = std::move(fd), name, listener_event]() mutable {
+          w_set_thread_name(name);
+          accept_thread(std::move(listener_fd), listener_event);
+        });
   }
 
   AcceptLoop(const AcceptLoop&) = delete;
@@ -814,8 +824,6 @@ bool w_start_listener() {
     unix_loop.clear();
     tcp_loop.clear();
   };
-
-  listener_thread_event = w_event_make();
 
   if (listener_fd) {
     // Assume that it was prepped by w_listener_prep_inetd()
