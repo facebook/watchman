@@ -21,7 +21,7 @@ class TestDashJCliOption(unittest.TestCase):
         return WatchmanInstance.getSharedInstance().getSockPath()
 
     def doJson(self, addNewLine, pretty=False):
-        sockname = self.getSockPath().legacy_sockpath()
+        sockpath = self.getSockPath()
         if pretty:
             watchman_cmd = b'[\n"get-sockname"\n]'
         else:
@@ -33,7 +33,8 @@ class TestDashJCliOption(unittest.TestCase):
 
         cli_cmd = [
             os.environ.get("WATCHMAN_BINARY", "watchman"),
-            "--sockname={0}".format(sockname),
+            "--unix-listener-path={0}".format(sockpath.unix_domain),
+            "--named-pipe-path={0}".format(sockpath.named_pipe),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",
             "--no-spawn",
@@ -51,7 +52,7 @@ class TestDashJCliOption(unittest.TestCase):
         self.assertEqual(proc.poll(), 0, stderr)
         # the response should be json because that is the default
         result = json.loads(stdout.decode("utf-8"))
-        self.assertEqual(result["sockname"], sockname)
+        self.assertEqual(result["unix_domain"], sockpath.unix_domain)
 
     def test_jsonInputNoNewLine(self):
         self.doJson(False)
@@ -63,11 +64,12 @@ class TestDashJCliOption(unittest.TestCase):
         self.doJson(True, True)
 
     def test_bserInput(self):
-        sockname = self.getSockPath().legacy_sockpath()
+        sockpath = self.getSockPath()
         watchman_cmd = bser.dumps(["get-sockname"])
         cli_cmd = [
             os.environ.get("WATCHMAN_BINARY", "watchman"),
-            "--sockname={0}".format(sockname),
+            "--unix-listener-path={0}".format(sockpath.unix_domain),
+            "--named-pipe-path={0}".format(sockpath.named_pipe),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",
             "--no-spawn",
@@ -85,9 +87,11 @@ class TestDashJCliOption(unittest.TestCase):
         self.assertEqual(proc.poll(), 0, stderr)
         # the response should be bser to match our input
         result = bser.loads(stdout)
-        result_sockname = result["sockname"]
+        result_sockname = result["unix_domain"]
         if compat.PYTHON3:
             result_sockname = encoding.decode_local(result_sockname)
         self.assertEqual(
-            result_sockname, sockname, binascii.hexlify(stdout).decode("ascii")
+            result_sockname,
+            sockpath.unix_domain,
+            binascii.hexlify(stdout).decode("ascii"),
         )

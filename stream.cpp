@@ -4,12 +4,24 @@
 #include "watchman.h"
 
 std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms) {
+  // Default to using unix domain sockets unless disabled by config
+  auto use_unix_domain = Configuration().getBool("use-unix-domain", true);
+  if (use_unix_domain) {
+    auto stm = w_stm_connect_unix(get_unix_sock_name().c_str(), timeoutms);
+    if (stm) {
+      return stm;
+    }
+  }
+
 #ifdef _WIN32
-  return w_stm_connect_named_pipe(
-      get_named_pipe_sock_path().c_str(), timeoutms);
-#else
-  return w_stm_connect_unix(get_unix_sock_name().c_str(), timeoutms);
+  // Fall back to using good? old named pipes!
+  if (WSAGetLastError() == WSAEAFNOSUPPORT) {
+    return w_stm_connect_named_pipe(
+        get_named_pipe_sock_path().c_str(), timeoutms);
+  }
 #endif
+
+  return nullptr;
 }
 
 int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
