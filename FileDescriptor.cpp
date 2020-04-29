@@ -76,13 +76,16 @@ FileDescriptor::system_handle_type FileDescriptor::normalizeHandleValue(
   return h;
 }
 
-FileDescriptor::FileDescriptor(FileDescriptor::system_handle_type fd)
-    : fd_(normalizeHandleValue(fd)) {}
+FileDescriptor::FileDescriptor(
+    FileDescriptor::system_handle_type fd,
+    FDType fdType)
+    : fd_(normalizeHandleValue(fd)), fdType_(resolveFDType(fd, fdType)) {}
 
 FileDescriptor::FileDescriptor(
     FileDescriptor::system_handle_type fd,
-    const char* operation)
-    : fd_(normalizeHandleValue(fd)) {
+    const char* operation,
+    FDType fdType)
+    : fd_(normalizeHandleValue(fd)), fdType_(resolveFDType(fd, fdType)) {
   if (fd_ == kInvalid) {
     throw std::system_error(
         errno,
@@ -92,11 +95,12 @@ FileDescriptor::FileDescriptor(
 }
 
 FileDescriptor::FileDescriptor(FileDescriptor&& other) noexcept
-    : fd_(other.release()) {}
+    : fd_(other.release()), fdType_(other.fdType_) {}
 
 FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other) noexcept {
   close();
   fd_ = other.fd_;
+  fdType_ = other.fdType_;
   other.fd_ = kInvalid;
   return *this;
 }
@@ -106,7 +110,11 @@ void FileDescriptor::close() {
 #ifndef _WIN32
     ::close(fd_);
 #else
-    CloseHandle((HANDLE)fd_);
+    if (fdType_ == FDType::Socket) {
+      ::closesocket(fd_);
+    } else {
+      CloseHandle((HANDLE)fd_);
+    }
 #endif
     fd_ = kInvalid;
   }
@@ -118,6 +126,55 @@ FileDescriptor::system_handle_type FileDescriptor::release() {
   return result;
 }
 
+FileDescriptor::FDType FileDescriptor::resolveFDType(
+    FileDescriptor::system_handle_type fd,
+    FDType fdType) {
+  if (normalizeHandleValue(fd) == kInvalid) {
+    return FDType::Unknown;
+  }
+
+  if (fdType != FDType::Unknown) {
+    return fdType;
+  }
+
+#ifdef _WIN32
+  if (GetFileType((HANDLE)fd) == FILE_TYPE_PIPE) {
+    // It may be a pipe or a socket.
+    // We can decide by asking for the underlying pipe
+    // information; anonymous pipes are implemented on
+    // top of named pipes so it is fine to use this function:
+    DWORD flags = 0;
+    DWORD out = 0;
+    DWORD in = 0;
+    DWORD inst = 0;
+    if (GetNamedPipeInfo((HANDLE)fd, &flags, &out, &in, &inst) != 0) {
+      return FDType::Pipe;
+    }
+
+    // We believe it to be a socket managed by winsock because it wasn't
+    // a pipe.  However, when using pipes between WSL and native win32
+    // we get here and the handle isn't recognized by winsock either.
+    // Let's ask it for the error associated with the handle; if winsock
+    // disavows it then we know it isn't a pipe or a socket, but we don't
+    // know precisely what it is.
+    int err = 0;
+    int errsize = sizeof(err);
+    if (::getsockopt(
+            fd,
+            SOL_SOCKET,
+            SO_ERROR,
+            reinterpret_cast<char*>(&err),
+            &errsize) &&
+        WSAGetLastError() == WSAENOTSOCK) {
+      return FDType::Generic;
+    }
+
+    return FDType::Socket;
+  }
+#endif
+  return FDType::Generic;
+}
+
 void FileDescriptor::setCloExec() {
 #ifndef _WIN32
   ignore_result(fcntl(fd_, F_SETFD, FD_CLOEXEC));
@@ -127,12 +184,22 @@ void FileDescriptor::setCloExec() {
 void FileDescriptor::setNonBlock() {
 #ifndef _WIN32
   ignore_result(fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK));
+#else
+  if (fdType_ == FDType::Socket) {
+    u_long mode = 1;
+    ignore_result(::ioctlsocket(fd_, FIONBIO, &mode));
+  }
 #endif
 }
 
 void FileDescriptor::clearNonBlock() {
 #ifndef _WIN32
   ignore_result(fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) & ~O_NONBLOCK));
+#else
+  if (fdType_ == FDType::Socket) {
+    u_long mode = 0;
+    ignore_result(::ioctlsocket(fd_, FIONBIO, &mode));
+  }
 #endif
 }
 
@@ -245,7 +312,7 @@ FileDescriptor openFileHandle(
     throw std::system_error(
         err, std::generic_category(), folly::to<std::string>("open: ", path));
   }
-  FileDescriptor file(fd);
+  FileDescriptor file(fd, FileDescriptor::FDType::Unknown);
 #else // _WIN32
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
@@ -294,8 +361,10 @@ FileDescriptor openFileHandle(
     attrs |= FILE_FLAG_OPEN_REPARSE_POINT;
   }
 
-  FileDescriptor file(intptr_t(
-      CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
+  FileDescriptor file(
+      intptr_t(CreateFileW(
+          wpath.c_str(), access, share, &sec, create, attrs, nullptr)),
+      FileDescriptor::FDType::Unknown);
   err = GetLastError();
   if (!file) {
     throw std::system_error(
@@ -727,6 +796,16 @@ Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
   }
   return Result<int, std::error_code>(result);
 #else
+  if (fdType_ == FDType::Socket) {
+    auto result = ::recv(fd_, static_cast<char*>(buf), size, 0);
+    if (result == -1) {
+      int errcode = WSAGetLastError();
+      return Result<int, std::error_code>(
+          std::error_code(errcode, std::system_category()));
+    }
+    return Result<int, std::error_code>(result);
+  }
+
   DWORD result = 0;
   if (!ReadFile((HANDLE)fd_, buf, size, &result, nullptr)) {
     auto err = GetLastError();
@@ -753,6 +832,15 @@ Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
   }
   return Result<int, std::error_code>(result);
 #else
+  if (fdType_ == FDType::Socket) {
+    auto result = ::send(fd_, static_cast<const char*>(buf), size, 0);
+    if (result == -1) {
+      int errcode = WSAGetLastError();
+      return Result<int, std::error_code>(
+          std::error_code(errcode, std::system_category()));
+    }
+    return Result<int, std::error_code>(result);
+  }
   DWORD result = 0;
   if (!WriteFile((HANDLE)fd_, buf, size, &result, nullptr)) {
     return Result<int, std::error_code>(
@@ -769,7 +857,8 @@ const FileDescriptor& FileDescriptor::stdIn() {
 #else
       STDIN_FILENO
 #endif
-  );
+          ,
+      FileDescriptor::FDType::Unknown);
   return f;
 }
 
@@ -780,7 +869,8 @@ const FileDescriptor& FileDescriptor::stdOut() {
 #else
       STDOUT_FILENO
 #endif
-  );
+          ,
+      FileDescriptor::FDType::Unknown);
   return f;
 }
 
@@ -791,7 +881,8 @@ const FileDescriptor& FileDescriptor::stdErr() {
 #else
       STDERR_FILENO
 #endif
-  );
+          ,
+      FileDescriptor::FDType::Unknown);
   return f;
 }
 } // namespace watchman

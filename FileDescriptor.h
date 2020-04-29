@@ -28,6 +28,12 @@ class FileDescriptor {
       int
 #endif
       ;
+  enum class FDType {
+    Unknown,
+    Generic,
+    Pipe,
+    Socket,
+  };
 
   // A value representing the canonical invalid handle
   // value for the system.
@@ -36,6 +42,9 @@ class FileDescriptor {
   // Normalizes invalid handle values to our canonical invalid handle value.
   // Otherwise, just returns the handle as-is.
   static system_handle_type normalizeHandleValue(system_handle_type h);
+
+  // If the FDType is Unknown, probe it to determine its type
+  static FDType resolveFDType(system_handle_type h, FDType fdType);
 
   ~FileDescriptor();
 
@@ -46,13 +55,13 @@ class FileDescriptor {
   // Will happily accept an invalid handle value without
   // raising an error; the FileDescriptor will simply evaluate as
   // false in a boolean context.
-  explicit FileDescriptor(system_handle_type fd);
+  explicit FileDescriptor(system_handle_type fd, FDType fdType);
 
   // Construct a file descriptor object from an fd.
   // If fd is invalid will throw a generic error with a message
   // constructed from the provided operation name and the current
   // errno value.
-  FileDescriptor(system_handle_type fd, const char* operation);
+  FileDescriptor(system_handle_type fd, const char* operation, FDType fdType);
 
   // No copying
   FileDescriptor(const FileDescriptor&) = delete;
@@ -95,6 +104,10 @@ class FileDescriptor {
   }
 #endif
 
+  inline FDType fdType() const {
+    return fdType_;
+  }
+
   // Set the close-on-exec bit
   void setCloExec();
 
@@ -129,5 +142,6 @@ class FileDescriptor {
 
  private:
   system_handle_type fd_{kInvalid};
+  FDType fdType_{FDType::Unknown};
 };
 } // namespace watchman

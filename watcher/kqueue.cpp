@@ -66,7 +66,7 @@ static const struct flag_map kflags[] = {
 KQueueWatcher::KQueueWatcher(w_root_t* root)
     : Watcher("kqueue", 0),
       maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))) {
-  kq_fd = FileDescriptor(kqueue(), "kqueue");
+  kq_fd = FileDescriptor(kqueue(), "kqueue", FileDescriptor::FDType::Generic);
   kq_fd.setCloExec();
 }
 
@@ -88,7 +88,8 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 #if HAVE_DECL_O_SYMLINK
   openFlags |= O_SYMLINK;
 #endif
-  FileDescriptor fdHolder(open(full_name.c_str(), openFlags));
+  FileDescriptor fdHolder(
+      open(full_name.c_str(), openFlags), FileDescriptor::FDType::Generic);
 
   auto rawFd = fdHolder.fd();
 
@@ -148,7 +149,9 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 
   auto osdir = w_dir_open(path);
 
-  FileDescriptor fdHolder(open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC));
+  FileDescriptor fdHolder(
+      open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC),
+      FileDescriptor::FDType::Generic);
   auto rawFd = fdHolder.fd();
   if (rawFd == -1) {
     // directory got deleted between opendir and open

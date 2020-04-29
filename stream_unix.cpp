@@ -277,7 +277,8 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
     return NULL;
   }
 
-  FileDescriptor fd(socket(PF_LOCAL, SOCK_STREAM, 0));
+  FileDescriptor fd(
+      socket(PF_LOCAL, SOCK_STREAM, 0), FileDescriptor::FDType::Socket);
   if (!fd) {
     return nullptr;
   }
@@ -319,5 +320,6 @@ w_stm_open(const char* filename, int flags, ...) {
     va_end(ap);
   }
 
-  return w_stm_fdopen(FileDescriptor(open(filename, flags, mode)));
+  return w_stm_fdopen(FileDescriptor(
+      open(filename, flags, mode), FileDescriptor::FDType::Unknown));
 }

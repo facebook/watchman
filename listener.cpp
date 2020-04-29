@@ -336,7 +336,11 @@ void w_listener_prep_inetd() {
         "w_listener_prep_inetd: listener_fd is already assigned");
   }
 
-  listener_fd = FileDescriptor(dup(STDIN_FILENO), "dup(stdin) for listener");
+  listener_fd = FileDescriptor(
+      dup(STDIN_FILENO),
+      "dup(stdin) for listener",
+      // It's probably a socket but we don't know for sure
+      FileDescriptor::FDType::Unknown);
 }
 
 #endif
@@ -349,7 +353,9 @@ static FileDescriptor get_listener_tcp_socket() {
       Configuration().getString("tcp-listener-address", nullptr));
 
   listener_fd = FileDescriptor(
-      ::socket(addr.getFamily(), SOCK_STREAM, 0), "socket() for TCP socket");
+      ::socket(addr.getFamily(), SOCK_STREAM, 0),
+      "socket() for TCP socket",
+      FileDescriptor::FDType::Socket);
 
   int one = 1;
   ::setsockopt(
@@ -409,7 +415,10 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
     return FileDescriptor();
   }
 
-  listener_fd = FileDescriptor(::socket(PF_LOCAL, SOCK_STREAM, 0), "socket");
+  listener_fd = FileDescriptor(
+      ::socket(PF_LOCAL, SOCK_STREAM, 0),
+      "socket",
+      FileDescriptor::FDType::Socket);
 
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path) + 1);
@@ -503,15 +512,17 @@ static std::shared_ptr<watchman_client> make_new_client(
 #ifdef _WIN32
 
 static FileDescriptor create_pipe_server(const char* path) {
-  return FileDescriptor(intptr_t(CreateNamedPipe(
-      path,
-      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
-      PIPE_UNLIMITED_INSTANCES,
-      WATCHMAN_IO_BUF_SIZE,
-      512,
-      0,
-      nullptr)));
+  return FileDescriptor(
+      intptr_t(CreateNamedPipe(
+          path,
+          PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+          PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
+          PIPE_UNLIMITED_INSTANCES,
+          WATCHMAN_IO_BUF_SIZE,
+          512,
+          0,
+          nullptr)),
+      FileDescriptor::FDType::Pipe);
 }
 
 static void named_pipe_accept_loop_internal() {
@@ -630,14 +641,17 @@ class AcceptLoop {
       }
 
 #ifdef HAVE_ACCEPT4
-      client_fd = FileDescriptor(accept4(
-          listener->getFileDescriptor().system_handle(),
-          nullptr,
-          0,
-          SOCK_CLOEXEC));
+      client_fd = FileDescriptor(
+          accept4(
+              listener->getFileDescriptor().system_handle(),
+              nullptr,
+              0,
+              SOCK_CLOEXEC),
+          FileDescriptor::FDType::Socket);
 #else
       client_fd = FileDescriptor(
-          ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0));
+          ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0),
+          FileDescriptor::FDType::Socket);
 #endif
       if (!client_fd) {
         continue;

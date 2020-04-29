@@ -63,7 +63,8 @@ FileDescriptor w_get_listener_socket_from_launchd() {
   }
 
   return FileDescriptor(
-      launch_data_get_fd(launch_data_array_get_index(socks, 0)));
+      launch_data_get_fd(launch_data_array_get_index(socks, 0)),
+      FileDescriptor::FDType::Unknown);
 }
 #endif
 

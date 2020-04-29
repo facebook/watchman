@@ -72,7 +72,9 @@ static bool lock_pidfile(void) {
   lock.l_whence = SEEK_SET;
   lock.l_len = 0;
 
-  FileDescriptor fd(open(pid_file.c_str(), O_RDWR | O_CREAT, 0644));
+  FileDescriptor fd(
+      open(pid_file.c_str(), O_RDWR | O_CREAT, 0644),
+      FileDescriptor::FDType::Generic);
 
   if (!fd) {
     log(ERR,

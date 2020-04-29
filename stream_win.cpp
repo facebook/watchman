@@ -640,14 +640,16 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 
   while (true) {
-    FileDescriptor handle(intptr_t(CreateFile(
-        path,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        nullptr,
-        OPEN_EXISTING,
-        FILE_FLAG_OVERLAPPED,
-        nullptr)));
+    FileDescriptor handle(
+        intptr_t(CreateFile(
+            path,
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            nullptr)),
+        FileDescriptor::FDType::Pipe);
 
     if (handle) {
       return w_stm_fdopen(std::move(handle));
@@ -768,8 +770,10 @@ FileDescriptor w_handle_open(const char* path, int flags) {
     attrs |= FILE_FLAG_BACKUP_SEMANTICS;
   }
 
-  FileDescriptor h(intptr_t(
-      CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
+  FileDescriptor h(
+      intptr_t(CreateFileW(
+          wpath.c_str(), access, share, &sec, create, attrs, nullptr)),
+      FileDescriptor::FDType::Unknown);
   err = GetLastError();
 
   errno = map_win32_err(err);

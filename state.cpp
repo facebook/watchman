@@ -120,9 +120,10 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #else
   FileDescriptor fd;
 #ifdef HAVE_MKOSTEMP
-  fd = FileDescriptor(mkostemp(templ, O_CLOEXEC));
+  fd = FileDescriptor(
+      mkostemp(templ, O_CLOEXEC), FileDescriptor::FDType::Generic);
 #else
-  fd = FileDescriptor(mkstemp(templ));
+  fd = FileDescriptor(mkstemp(templ), FileDescriptor::FDType::Generic);
 #endif
   if (!fd) {
     return nullptr;

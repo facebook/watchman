@@ -23,8 +23,8 @@ Pipe::Pipe() {
     throw std::system_error(
         GetLastError(), std::system_category(), "CreatePipe failed");
   }
-  read = FileDescriptor(intptr_t(readPipe));
-  write = FileDescriptor(intptr_t(writePipe));
+  read = FileDescriptor(intptr_t(readPipe), FileDescriptor::FDType::Pipe);
+  write = FileDescriptor(intptr_t(writePipe), FileDescriptor::FDType::Pipe);
 
 #else
   int fds[2];
@@ -41,8 +41,8 @@ Pipe::Pipe() {
         std::system_category(),
         std::string("pipe error: ") + strerror(errno));
   }
-  read = FileDescriptor(fds[0]);
-  write = FileDescriptor(fds[1]);
+  read = FileDescriptor(fds[0], FileDescriptor::FDType::Pipe);
+  write = FileDescriptor(fds[1], FileDescriptor::FDType::Pipe);
 
 #if !HAVE_PIPE2
   read.setCloExec();
@@ -75,8 +75,8 @@ SocketPair::SocketPair() {
 #endif
   folly::checkUnixError(r, "socketpair failed");
 
-  read = FileDescriptor(pair[0]);
-  write = FileDescriptor(pair[1]);
+  read = FileDescriptor(pair[0], FileDescriptor::FDType::Socket);
+  write = FileDescriptor(pair[1], FileDescriptor::FDType::Socket);
 
   read.setNonBlock();
   write.setNonBlock();

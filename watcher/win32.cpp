@@ -64,14 +64,16 @@ WinWatcher::WinWatcher(w_root_t* root)
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
-  dir_handle = FileDescriptor(intptr_t(CreateFileW(
-      wpath.c_str(),
-      GENERIC_READ,
-      FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
-      nullptr,
-      OPEN_EXISTING,
-      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-      nullptr)));
+  dir_handle = FileDescriptor(
+      intptr_t(CreateFileW(
+          wpath.c_str(),
+          GENERIC_READ,
+          FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
+          nullptr,
+          OPEN_EXISTING,
+          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+          nullptr)),
+      FileDescriptor::FDType::Generic);
 
   if (!dir_handle) {
     throw std::runtime_error(

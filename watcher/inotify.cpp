@@ -100,9 +100,10 @@ struct InotifyWatcher : public Watcher {
 InotifyWatcher::InotifyWatcher(w_root_t* root)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
-  infd = FileDescriptor(inotify_init1(IN_CLOEXEC));
+  infd = FileDescriptor(
+      inotify_init1(IN_CLOEXEC), FileDescriptor::FDType::Generic);
 #else
-  infd = FileDescriptor(inotify_init());
+  infd = FileDescriptor(inotify_init(), FileDescriptor::FDType::Generic);
 #endif
   if (infd.fd() == -1) {
     throw std::system_error(errno, inotify_category(), "inotify_init");

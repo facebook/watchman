@@ -81,14 +81,16 @@ w_string w_fstype(const char* path) {
 #ifdef _WIN32
   auto wpath = w_string_piece(path).asWideUNC();
   WCHAR fstype[MAX_PATH + 1];
-  watchman::FileDescriptor h(intptr_t(CreateFileW(
-      wpath.c_str(),
-      GENERIC_READ,
-      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-      nullptr,
-      OPEN_EXISTING,
-      FILE_FLAG_BACKUP_SEMANTICS,
-      nullptr)));
+  watchman::FileDescriptor h(
+      intptr_t(CreateFileW(
+          wpath.c_str(),
+          GENERIC_READ,
+          FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+          nullptr,
+          OPEN_EXISTING,
+          FILE_FLAG_BACKUP_SEMANTICS,
+          nullptr)),
+      watchman::FileDescriptor::FDType::Generic);
   if (h &&
       GetVolumeInformationByHandleW(
           (HANDLE)h.handle(), nullptr, 0, 0, 0, 0, fstype, MAX_PATH + 1)) {
