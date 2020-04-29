@@ -23,7 +23,10 @@
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
+using apache::thrift::TApplicationException;
 using facebook::eden::EdenError;
+using facebook::eden::EntryInformation;
+using facebook::eden::EntryInformationOrError;
 using facebook::eden::FileDelta;
 using facebook::eden::FileInformation;
 using facebook::eden::FileInformationOrError;
@@ -38,6 +41,37 @@ using folly::to;
 using std::make_unique;
 
 namespace {
+using EdenDtype = facebook::eden::Dtype;
+using watchman::DType;
+
+DType getDTypeFromEden(EdenDtype dtype) {
+  // TODO: Eden guarantees that dtypes have consistent values on all platforms,
+  // including Windows. If we made Watchman guarantee that too, this could be
+  // replaced with a static_cast.
+
+  switch (dtype) {
+    case EdenDtype::UNKNOWN:
+      return DType::Unknown;
+    case EdenDtype::FIFO:
+      return DType::Fifo;
+    case EdenDtype::CHAR:
+      return DType::Char;
+    case EdenDtype::DIR:
+      return DType::Dir;
+    case EdenDtype::BLOCK:
+      return DType::Block;
+    case EdenDtype::REGULAR:
+      return DType::Regular;
+    case EdenDtype::LINK:
+      return DType::Symlink;
+    case EdenDtype::SOCKET:
+      return DType::Socket;
+    case EdenDtype::WHITEOUT:
+      return DType::Whiteout;
+  }
+  return DType::Unknown;
+}
+
 /** Represents a cache key for getFilesChangedBetweenCommits()
  * It is unfortunately a bit boilerplate-y due to the requirements
  * of unordered_map<>. */
@@ -366,6 +400,9 @@ class EdenFileResult : public FileResult {
       const std::vector<std::unique_ptr<FileResult>>& files) override {
     std::vector<EdenFileResult*> getFileInformationFiles;
     std::vector<std::string> getFileInformationNames;
+    // If only dtype and exists are needed, Eden has a cheaper API for
+    // retrieving them.
+    bool onlyEntryInfoNeeded = true;
 
     std::vector<EdenFileResult*> getShaFiles;
     std::vector<std::string> getShaNames;
@@ -400,6 +437,14 @@ class EdenFileResult : public FileResult {
            FileResult::Property::FullFileInformation)) {
         getFileInformationFiles.emplace_back(&edenFile);
         getFileInformationNames.emplace_back(relName.data(), relName.size());
+
+        if (edenFile.neededProperties() &
+            ~(FileResult::Property::FileDType | FileResult::Property::Exists)) {
+          // We could maintain two lists and call both getFileInformation and
+          // getEntryInformation in parallel, but in practice the set of
+          // properties should usually be the same across all files.
+          onlyEntryInfoNeeded = false;
+        }
       }
 
       if (edenFile.neededProperties() & FileResult::Property::ContentSha1) {
@@ -419,7 +464,8 @@ class EdenFileResult : public FileResult {
         client.get(),
         root_path_,
         getFileInformationNames,
-        getFileInformationFiles);
+        getFileInformationFiles,
+        onlyEntryInfoNeeded);
 
     // TODO: add eden bulk readlink call
     loadSymlinkTargets(client.get(), getSymlinkFiles);
@@ -480,40 +526,68 @@ class EdenFileResult : public FileResult {
       StreamingEdenServiceAsyncClient* client,
       const w_string& rootPath,
       const std::vector<std::string>& names,
-      const std::vector<EdenFileResult*>& outFiles) {
+      const std::vector<EdenFileResult*>& outFiles,
+      bool onlyEntryInfoNeeded) {
     w_assert(
         names.size() == outFiles.size(), "names.size must == outFiles.size");
     if (names.empty()) {
       return;
     }
 
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, to<std::string>(rootPath), names);
+    auto applyResults = [&](const auto& edenInfo) {
+      if (names.size() != edenInfo.size()) {
+        watchman::log(
+            ERR,
+            "Requested file information of ",
+            names.size(),
+            " files but Eden returned information for ",
+            edenInfo.size(),
+            " files. Treating missing entries as missing files.");
+      }
 
-    if (names.size() != info.size()) {
-      watchman::log(
-          ERR,
-          "Requested file information of ",
-          names.size(),
-          " files but Eden returned information for ",
-          info.size(),
-          " files. Treating missing entries as missing files.");
+      auto infoIter = edenInfo.begin();
+      for (auto& edenFileResult : outFiles) {
+        if (infoIter == edenInfo.end()) {
+          edenFileResult->setExists(false);
+        } else {
+          edenFileResult->applyInformationOrError(*infoIter);
+          ++infoIter;
+        }
+      }
+    };
+
+    if (onlyEntryInfoNeeded) {
+      std::vector<EntryInformationOrError> info;
+      try {
+        client->sync_getEntryInformation(
+            info, to<std::string>(rootPath), names);
+        applyResults(info);
+        return;
+      } catch (const TApplicationException& ex) {
+        if (TApplicationException::UNKNOWN_METHOD != ex.getType()) {
+          throw;
+        }
+        // getEntryInformation is not available in this version of
+        // Eden. Fall back to the older, more expensive
+        // getFileInformation below.
+      }
     }
 
-    auto infoIter = info.begin();
-    for (auto& edenFileResult : outFiles) {
-      if (infoIter == info.end()) {
-        FileInformationOrError missingInfo;
-        missingInfo.set_error(EdenError("Missing info"));
-        edenFileResult->applyFileInformationOrError(missingInfo);
-      } else {
-        edenFileResult->applyFileInformationOrError(*infoIter);
-        infoIter++;
-      }
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, to<std::string>(rootPath), names);
+    applyResults(info);
+  }
+
+  void applyInformationOrError(const EntryInformationOrError& infoOrErr) {
+    if (infoOrErr.getType() == EntryInformationOrError::Type::info) {
+      dtype_ = getDTypeFromEden(infoOrErr.get_info().dtype);
+      setExists(true);
+    } else {
+      setExists(false);
     }
   }
 
-  void applyFileInformationOrError(const FileInformationOrError& infoOrErr) {
+  void applyInformationOrError(const FileInformationOrError& infoOrErr) {
     if (infoOrErr.getType() == FileInformationOrError::Type::info) {
       FileInformation stat;
 
