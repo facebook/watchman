@@ -2,7 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 #include "Pipe.h"
-
+#ifdef _WIN32
+#include <event2/util.h> // @manual
+#endif
 #include <system_error>
 
 namespace watchman {
@@ -49,5 +51,36 @@ Pipe::Pipe() {
   write.setNonBlock();
 #endif
 #endif
+}
+
+SocketPair::SocketPair() {
+  FileDescriptor::system_handle_type pair[2];
+
+#ifdef _WIN32
+  // The win32 libevent implementation will attempt to use unix domain sockets
+  // if available, but will fall back to using loopback TCP sockets.
+  auto r = evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, pair);
+#else
+  auto r = ::socketpair(
+      AF_UNIX,
+#ifdef SOCK_NONBLOCK
+      SOCK_NONBLOCK |
+#endif
+#ifdef SOCK_CLOEXEC
+          SOCK_CLOEXEC |
+#endif
+          SOCK_STREAM,
+      0,
+      pair);
+#endif
+  folly::checkUnixError(r, "socketpair failed");
+
+  read = FileDescriptor(pair[0]);
+  write = FileDescriptor(pair[1]);
+
+  read.setNonBlock();
+  write.setNonBlock();
+  read.setCloExec();
+  write.setCloExec();
 }
 } // namespace watchman

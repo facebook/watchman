@@ -32,16 +32,20 @@ class PollableEvent : public watchman_event {
 // The event object, implemented as pipe
 class PipeEvent : public PollableEvent {
  public:
-  Pipe pipe;
+  SocketPair pipe;
 
   void notify() override {
-    ignore_result(write(pipe.write.fd(), "a", 1));
+    ignore_result(pipe.write.write("a", 1).hasValue());
   }
 
   bool testAndClear() override {
     char buf[64];
     bool signalled = false;
-    while (read(pipe.read.fd(), buf, sizeof(buf)) > 0) {
+    while (true) {
+      auto res = pipe.read.read(buf, sizeof(buf));
+      if (res.hasError() || res.value() == 0) {
+        break;
+      }
       signalled = true;
     }
     return signalled;

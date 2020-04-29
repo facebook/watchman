@@ -15,4 +15,16 @@ class Pipe {
   // non-blocking bits.
   Pipe();
 };
+
+// Convenience for constructing a SocketPair
+class SocketPair {
+ public:
+  FileDescriptor read;
+  FileDescriptor write;
+
+  // Construct a socketpair, setting the close-on-exec and
+  // non-blocking bits.
+  SocketPair();
+};
+
 } // namespace watchman
