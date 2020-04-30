@@ -27,10 +27,11 @@ def copyfile(src, dest):
 
 
 class DepBase(object):
-    def __init__(self, buildopts, install_dirs):
+    def __init__(self, buildopts, install_dirs, strip):
         self.buildopts = buildopts
         self.env = buildopts.compute_env_for_install_dirs(install_dirs)
         self.install_dirs = install_dirs
+        self.strip = strip
         self.processed_deps = set()
 
     def list_dynamic_deps(self, objfile):
@@ -111,6 +112,9 @@ class DepBase(object):
 
                 self.rewrite_dep(objfile, d, dep, dest_dep, final_lib_dir)
 
+        if self.strip:
+            subprocess.check_call(["strip", objfile])
+
     def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
         raise RuntimeError("rewrite_dep not implemented")
 
@@ -145,8 +149,8 @@ class DepBase(object):
 
 
 class WinDeps(DepBase):
-    def __init__(self, buildopts, install_dirs):
-        super(WinDeps, self).__init__(buildopts, install_dirs)
+    def __init__(self, buildopts, install_dirs, strip):
+        super(WinDeps, self).__init__(buildopts, install_dirs, strip)
         self.dumpbin = self.find_dumpbin()
 
     def find_dumpbin(self):
@@ -308,8 +312,8 @@ try {{
 
 
 class ElfDeps(DepBase):
-    def __init__(self, buildopts, install_dirs):
-        super(ElfDeps, self).__init__(buildopts, install_dirs)
+    def __init__(self, buildopts, install_dirs, strip):
+        super(ElfDeps, self).__init__(buildopts, install_dirs, strip)
 
         # We need patchelf to rewrite deps, so ensure that it is built...
         subprocess.check_call([sys.executable, sys.argv[0], "build", "patchelf"])
@@ -409,10 +413,10 @@ class MachDeps(DepBase):
         )
 
 
-def create_dyn_dep_munger(buildopts, install_dirs):
+def create_dyn_dep_munger(buildopts, install_dirs, strip=False):
     if buildopts.is_linux():
-        return ElfDeps(buildopts, install_dirs)
+        return ElfDeps(buildopts, install_dirs, strip)
     if buildopts.is_darwin():
-        return MachDeps(buildopts, install_dirs)
+        return MachDeps(buildopts, install_dirs, strip)
     if buildopts.is_windows():
-        return WinDeps(buildopts, install_dirs)
+        return WinDeps(buildopts, install_dirs, strip=False)
