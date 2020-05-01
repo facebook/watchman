@@ -12,7 +12,6 @@
 #include <sys/socket.h>
 #endif
 #include <folly/SocketAddress.h>
-#include <folly/String.h>
 #include <folly/net/NetworkSocket.h>
 #include <memory>
 #include "FileDescriptor.h"
@@ -385,11 +384,6 @@ retry_connect:
       }
     }
 
-    logf(
-        ERR,
-        "w_stm_connect_unix({}) failed to connect: {}\n",
-        path,
-        folly::errnoStr(err));
     errno = err;
     return nullptr;
   }
