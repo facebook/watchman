@@ -644,7 +644,9 @@ static void compute_file_name(
     const std::string& user,
     const char* suffix,
     const char* what) {
+  bool str_computed = false;
   if (str.empty()) {
+    str_computed = true;
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
     const char* state_parent = !test_state_dir.empty() ? test_state_dir.c_str()
@@ -768,10 +770,15 @@ static void compute_file_name(
 
     str = folly::to<std::string>(state_dir, "/", suffix);
   }
-
 #ifndef _WIN32
-  if (str[0] != '/') {
-    log(FATAL, "invalid ", what, ": ", str, "\n");
+  if (!w_string_piece(str).pathIsAbsolute()) {
+    log(FATAL,
+        what,
+        " must be an absolute file path but ",
+        str,
+        " was",
+        str_computed ? " computed." : " provided.",
+        "\n");
   }
 #endif
 }
@@ -830,7 +837,7 @@ static void setup_sock_name(void) {
   compute_file_name(unix_sock_name, user, "sock", "sockname");
 
   compute_file_name(watchman_state_file, user, "state", "statefile");
-  compute_file_name(log_name, user, "log", "logname");
+  compute_file_name(log_name, user, "log", "logfile");
 
   if (unix_sock_name.size() >= sizeof(un.sun_path) - 1) {
     log(FATAL, unix_sock_name, ": path is too long\n");
