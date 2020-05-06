@@ -9,6 +9,10 @@
 
 using namespace watchman;
 
+namespace {
+constexpr size_t kMaximumRenderBatchSize = 1024;
+}
+
 FileResult::~FileResult() {}
 
 folly::Optional<DType> FileResult::dtype() {
@@ -287,7 +291,7 @@ void w_query_ctx::maybeRender(std::unique_ptr<FileResult>&& file) {
 void w_query_ctx::addToRenderBatch(std::unique_ptr<FileResult>&& file) {
   renderBatch_.emplace_back(std::move(file));
   // TODO: maybe allow passing this number in via the query?
-  if (renderBatch_.size() >= 1024) {
+  if (renderBatch_.size() >= kMaximumRenderBatchSize) {
     fetchRenderBatchNow();
   }
 }
