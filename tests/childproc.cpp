@@ -16,7 +16,7 @@ TEST(ChildProcess, pipe) {
   ChildProcess echo(
       {
 #ifndef _WIN32
-          "/bin/echo",
+          "echo",
 #else
           // If we're being built via cmake we know that we
           // have the cmake executable on hand to invoke its
@@ -40,7 +40,7 @@ void test_pipe_input(bool threaded) {
   Options opts;
   opts.pipeStdout();
   opts.pipeStdin();
-  ChildProcess cat({"/bin/cat", "-"}, std::move(opts));
+  ChildProcess cat({"cat", "-"}, std::move(opts));
 
   std::vector<std::string> expected{"one", "two", "three"};
   std::list<std::string> lines{"one\n", "two\n", "three\n"};
@@ -76,8 +76,7 @@ TEST(ChildProcess, stresstest_pipe_output) {
   for (int i = 0; i < 3000; ++i) {
     Options opts;
     opts.pipeStdout();
-    ChildProcess proc(
-        {"/usr/bin/head", "-n20", "/dev/urandom"}, std::move(opts));
+    ChildProcess proc({"head", "-n20", "/dev/urandom"}, std::move(opts));
     auto outputs = proc.communicate();
     w_string_piece out(outputs.first);
     proc.wait();
