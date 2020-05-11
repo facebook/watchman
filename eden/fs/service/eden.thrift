@@ -104,6 +104,12 @@ struct DaemonInfo {
    * This is the same data reported by fb303_core.getStatus()
    */
   3: optional fb303_core.fb303_status status
+  /**
+   * The uptime of the edenfs daemon
+   * Same data from /proc/pid/stat
+   * This will not be populated in Windows build
+   */
+  4: optional float uptime
 }
 
 /**
