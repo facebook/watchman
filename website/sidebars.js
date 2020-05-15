@@ -16,7 +16,7 @@ module.exports = {
       'watchman-wait',
       'watchman-replicate-subscription',
       'cppclient',
-      'nodejs',
+      'nodejs.html',
       'config',
       'socket-interface',
     ],
