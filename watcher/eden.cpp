@@ -250,7 +250,7 @@ class EdenFileResult : public FileResult {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
-      otime_.ticks = position->sequenceNumber;
+      otime_.ticks = *position->sequenceNumber_ref();
       if (isNew) {
         // the "ctime" in the context of FileResult represents the point
         // in time that we saw the file transition !exists -> exists.
@@ -580,7 +580,7 @@ class EdenFileResult : public FileResult {
 
   void applyInformationOrError(const EntryInformationOrError& infoOrErr) {
     if (infoOrErr.getType() == EntryInformationOrError::Type::info) {
-      dtype_ = getDTypeFromEden(infoOrErr.get_info().dtype);
+      dtype_ = getDTypeFromEden(*infoOrErr.get_info().dtype_ref());
       setExists(true);
     } else {
       setExists(false);
@@ -591,10 +591,10 @@ class EdenFileResult : public FileResult {
     if (infoOrErr.getType() == FileInformationOrError::Type::info) {
       FileInformation stat;
 
-      stat.size = infoOrErr.get_info().size;
-      stat.mode = infoOrErr.get_info().mode;
-      stat.mtime.tv_sec = infoOrErr.get_info().mtime.seconds;
-      stat.mtime.tv_nsec = infoOrErr.get_info().mtime.nanoSeconds;
+      stat.size = *infoOrErr.get_info().size_ref();
+      stat.mode = *infoOrErr.get_info().mode_ref();
+      stat.mtime.tv_sec = *infoOrErr.get_info().mtime_ref()->seconds_ref();
+      stat.mtime.tv_nsec = *infoOrErr.get_info().mtime_ref()->nanoSeconds_ref();
 
       stat_ = std::move(stat);
       setExists(true);
@@ -852,29 +852,30 @@ class EdenView : public QueryableView {
       JournalPosition position;
       client->sync_getCurrentJournalPosition(position, mountPoint_);
       // dial back to the sequence number from the query
-      position.sequenceNumber = ctx->since.clock.ticks;
+      *position.sequenceNumber_ref() = ctx->since.clock.ticks;
 
       // Now we can get the change journal from eden
       try {
         client->sync_getFilesChangedSince(delta, mountPoint_, position);
 
         createdFileNames.insert(
-            delta.createdPaths.begin(), delta.createdPaths.end());
+            delta.createdPaths_ref()->begin(), delta.createdPaths_ref()->end());
 
         // The list of changed files is the union of the created, added,
         // and removed sets returned from eden in list form.
-        for (auto& name : delta.changedPaths) {
+        for (auto& name : *delta.changedPaths_ref()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
-        for (auto& name : delta.removedPaths) {
+        for (auto& name : *delta.removedPaths_ref()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
-        for (auto& name : delta.createdPaths) {
+        for (auto& name : *delta.createdPaths_ref()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
 
         if (scm_ &&
-            delta.fromPosition.snapshotHash != delta.toPosition.snapshotHash) {
+            *delta.fromPosition_ref()->snapshotHash_ref() !=
+                *delta.toPosition_ref()->snapshotHash_ref()) {
           // Either they checked out a new commit or reset the commit to
           // a different hash.  We interrogate source control to discover
           // the set of changed files between those hashes, and then
@@ -887,11 +888,13 @@ class EdenView : public QueryableView {
             mergedFileList.insert(info.name);
           }
 
-          auto fromHash = folly::hexlify(delta.fromPosition.snapshotHash);
-          auto toHash = folly::hexlify(delta.toPosition.snapshotHash);
+          auto fromHash =
+              folly::hexlify(*delta.fromPosition_ref()->snapshotHash_ref());
+          auto toHash =
+              folly::hexlify(*delta.toPosition_ref()->snapshotHash_ref());
           log(ERR,
               "since ",
-              position.sequenceNumber,
+              *position.sequenceNumber_ref(),
               " we changed commit hashes from ",
               fromHash,
               " to ",
@@ -915,8 +918,8 @@ class EdenView : public QueryableView {
           // We don't know whether the unclean paths are added, removed
           // or just changed.  We're going to treat them as changed.
           mergedFileList.insert(
-              std::make_move_iterator(delta.uncleanPaths.begin()),
-              std::make_move_iterator(delta.uncleanPaths.end()));
+              std::make_move_iterator(delta.uncleanPaths_ref()->begin()),
+              std::make_move_iterator(delta.uncleanPaths_ref()->end()));
 
           // Replace the list of fileNames with the de-duped set
           // of names we've extracted from source control
@@ -926,15 +929,15 @@ class EdenView : public QueryableView {
           }
         }
 
-        resultPosition = delta.toPosition;
+        resultPosition = *delta.toPosition_ref();
         watchman::log(
             watchman::DBG,
             "wanted from ",
-            position.sequenceNumber,
+            *position.sequenceNumber_ref(),
             " result delta from ",
-            delta.fromPosition.sequenceNumber,
+            *delta.fromPosition_ref()->sequenceNumber_ref(),
             " to ",
-            delta.toPosition.sequenceNumber,
+            *delta.toPosition_ref()->sequenceNumber_ref(),
             " with ",
             fileInfo.size(),
             " changed files\n");
@@ -1131,7 +1134,8 @@ class EdenView : public QueryableView {
     auto client = getEdenClient(root_path_);
     JournalPosition position;
     client->sync_getCurrentJournalPosition(position, mountPoint_);
-    return ClockPosition(position.mountGeneration, position.sequenceNumber);
+    return ClockPosition(
+        *position.mountGeneration_ref(), *position.sequenceNumber_ref());
   }
 
   w_string getCurrentClockString() const override {
@@ -1199,13 +1203,13 @@ class EdenView : public QueryableView {
       // TODO: in the future it would be nice to compute the paths in a loop
       // first, and then add a bulk CookieSync::notifyCookies() method to avoid
       // locking and unlocking its internal mutex so frequently.
-      for (auto& file : delta.createdPaths) {
+      for (auto& file : *delta.createdPaths_ref()) {
         auto full = w_string::pathCat({root_path_, file});
         root->cookies.notifyCookie(full);
       }
 
       // Remember this position for subsequent calls
-      lastCookiePosition_ = delta.toPosition;
+      lastCookiePosition_ = *delta.toPosition_ref();
     } catch (const EdenError& err) {
       // EDOM is journal truncation, which we can recover from.
       // Other errors (including ERANGE/mountGeneration changed)
