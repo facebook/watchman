@@ -740,10 +740,10 @@ std::vector<NameAndDType> globNameAndDType(
     globFutures.reserve(globPatterns.size());
     for (const std::string& globPattern : globPatterns) {
       GlobParams params;
-      params.set_mountPoint(mountPoint);
-      params.set_globs(std::vector<std::string>{globPattern});
-      params.set_includeDotfiles(includeDotfiles);
-      params.set_wantDtype(true);
+      params.mountPoint_ref() = mountPoint;
+      params.globs_ref() = std::vector<std::string>{globPattern};
+      params.includeDotfiles_ref() = includeDotfiles;
+      params.wantDtype_ref() = true;
 
       globFutures.emplace_back(
           client->semifuture_globFiles(params).via(executor));
@@ -757,10 +757,10 @@ std::vector<NameAndDType> globNameAndDType(
     return allResults;
   } else {
     GlobParams params;
-    params.set_mountPoint(mountPoint);
-    params.set_globs(globPatterns);
-    params.set_includeDotfiles(includeDotfiles);
-    params.set_wantDtype(true);
+    params.mountPoint_ref() = mountPoint;
+    params.globs_ref() = globPatterns;
+    params.includeDotfiles_ref() = includeDotfiles;
+    params.wantDtype_ref() = true;
 
     Glob glob;
     client->sync_globFiles(glob, params);
