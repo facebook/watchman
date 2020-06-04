@@ -11,6 +11,7 @@ include "fb303/thrift/fb303_core.thrift"
 namespace cpp2 facebook.eden
 namespace java com.facebook.eden.thrift
 namespace py facebook.eden
+namespace py3 eden.fs.service
 
 /** Thrift doesn't really do unsigned numbers, but we can sort of fake it.
  * This type is serialized as an integer value that is 64-bits wide and

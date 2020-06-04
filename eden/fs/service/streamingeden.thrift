@@ -7,6 +7,7 @@
 
 include "eden/fs/service/eden.thrift"
 namespace cpp2 facebook.eden
+namespace py3 eden.fs.service
 
 /** This file holds definitions for the streaming flavor of the Eden interface
  * This is only available to cpp2 clients and won't compile for other
