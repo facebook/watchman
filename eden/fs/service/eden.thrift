@@ -632,6 +632,7 @@ struct AccessCounts {
 
 struct MountAccesses {
   1: map<pid_t, AccessCounts> accessCountsByPid
+  2: map<pid_t, i64> fetchCountsByPid
 }
 
 struct GetAccessCountsResult {
