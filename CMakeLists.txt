@@ -342,8 +342,6 @@ if (ENABLE_EDEN_SUPPORT)
   find_package(fizz CONFIG REQUIRED)
   find_package(wangle CONFIG REQUIRED)
   find_package(FBThrift CONFIG REQUIRED)
-  find_package(yarpl CONFIG REQUIRED)
-  find_package(rsocket CONFIG REQUIRED)
   find_package(fb303 CONFIG REQUIRED)
   find_package(cpptoml CONFIG REQUIRED)
   include_directories(${FB303_INCLUDE_DIR})
@@ -441,7 +439,6 @@ if (ENABLE_EDEN_SUPPORT)
     third_party_deps
     INTERFACE
     ${YARPL_LIBRARIES}
-    rsocket::ReactiveSocket
     FBThrift::thriftcpp2
     cpptoml
   )
