@@ -17,8 +17,8 @@
 // is included before this header, so we pull it in early.
 #include <folly/portability/Unistd.h>
 
-#include "config.h"
 #include <folly/portability/SysTypes.h>
+#include "config.h"
 
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS 1
