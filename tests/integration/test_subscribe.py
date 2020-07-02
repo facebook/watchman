@@ -181,6 +181,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand(
             "subscribe", root, "drop", {"fields": ["name"], "drop": ["foo"]}
         )
+        self.assertNotEqual(None, self.waitForSub("drop", root=root))
 
         self.touchRelative(root, "a")
         self.assertNotEqual(None, self.waitForSub("drop", root=root))
