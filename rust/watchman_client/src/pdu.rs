@@ -343,6 +343,12 @@ where
     pub state_leave: Option<String>,
     #[serde(rename = "metadata")]
     pub state_metadata: Option<Value>,
+
+    /// When using source control aware queries with saved
+    /// state configuration, this field holds metadata from
+    /// the save state storage engine.
+    #[serde(rename = "saved-state-info")]
+    pub saved_state_info: Option<Value>,
 }
 
 #[derive(Serialize, Default, Clone, Debug)]
