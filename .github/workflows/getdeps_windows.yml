@@ -50,6 +50,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests gflags
     - name: Fetch glog
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests glog
+    - name: Fetch lz4
+      run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests lz4
     - name: Fetch snappy
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests snappy
     - name: Fetch zlib
@@ -64,8 +66,6 @@ jobs:
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests folly
     - name: Fetch fizz
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests fizz
-    - name: Fetch rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests rsocket-cpp
     - name: Fetch wangle
       run: python build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests wangle
     - name: Fetch fbthrift
@@ -102,6 +102,8 @@ jobs:
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests gflags
     - name: Build glog
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests glog
+    - name: Build lz4
+      run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests lz4
     - name: Build snappy
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests snappy
     - name: Build zlib
@@ -116,8 +118,6 @@ jobs:
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests folly
     - name: Build fizz
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests fizz
-    - name: Build rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests rsocket-cpp
     - name: Build wangle
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests wangle
     - name: Build fbthrift
