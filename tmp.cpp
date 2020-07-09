@@ -3,4 +3,4 @@
 
 #include "watchman.h"
 
-const char* watchman_tmp_dir = NULL;
+std::string watchman_tmp_dir;

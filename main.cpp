@@ -5,6 +5,9 @@
 #include "LogConfig.h"
 #include "Logging.h"
 #include "ThreadPool.h"
+#ifdef _WIN32
+#include <Shlobj.h>
+#endif
 #ifndef _WIN32
 #include <poll.h>
 #endif
@@ -12,6 +15,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/net/NetworkSocket.h>
 
 using watchman::ChildProcess;
@@ -639,6 +643,153 @@ static const char* get_env_with_fallback(
   return val;
 }
 
+static void verify_dir_ownership(const std::string& state_dir) {
+#ifndef _WIN32
+  // verify ownership
+  struct stat st;
+  int dir_fd;
+  int ret = 0;
+  uid_t euid = geteuid();
+  // TODO: also allow a gid to be specified here
+  const char* sock_group_name = cfg_get_string("sock_group", nullptr);
+  // S_ISGID is set so that files inside this directory inherit the group
+  // name
+  mode_t dir_perms =
+      cfg_get_perms(
+          "sock_access", false /* write bits */, true /* execute bits */) |
+      S_ISGID;
+
+  auto dirp = w_dir_open(
+      state_dir.c_str(), false /* don't need strict symlink rules */);
+
+  dir_fd = dirp->getFd();
+  if (dir_fd == -1) {
+    log(ERR, "dirfd(", state_dir, "): ", strerror(errno), "\n");
+    goto bail;
+  }
+
+  if (fstat(dir_fd, &st) != 0) {
+    log(ERR, "fstat(", state_dir, "): ", strerror(errno), "\n");
+    ret = 1;
+    goto bail;
+  }
+  if (euid != st.st_uid) {
+    log(ERR,
+        "the owner of ",
+        state_dir,
+        " is uid ",
+        st.st_uid,
+        " and doesn't match your euid ",
+        euid,
+        "\n");
+    ret = 1;
+    goto bail;
+  }
+  if (st.st_mode & 0022) {
+    log(ERR,
+        "the permissions on ",
+        state_dir,
+        " allow others to write to it. "
+        "Verify that you own the contents and then fix its "
+        "permissions by running `chmod 0700 '",
+        state_dir,
+        "'`\n");
+    ret = 1;
+    goto bail;
+  }
+
+  if (sock_group_name) {
+    const struct group* sock_group = w_get_group(sock_group_name);
+    if (!sock_group) {
+      ret = 1;
+      goto bail;
+    }
+
+    if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
+      log(ERR,
+          "setting up group '",
+          sock_group_name,
+          "' failed: ",
+          strerror(errno),
+          "\n");
+      ret = 1;
+      goto bail;
+    }
+  }
+
+  // Depending on group and world accessibility, change permissions on the
+  // directory. We can't leave the directory open and set permissions on the
+  // socket because not all POSIX systems respect permissions on UNIX domain
+  // sockets, but all POSIX systems respect permissions on the containing
+  // directory.
+  logf(DBG, "Setting permissions on state dir to {:o}\n", dir_perms);
+  if (fchmod(dir_fd, dir_perms) == -1) {
+    logf(ERR, "fchmod({}, {:o}): {}\n", state_dir, dir_perms, strerror(errno));
+    ret = 1;
+    goto bail;
+  }
+
+bail:
+  if (ret) {
+    exit(ret);
+  }
+#endif
+}
+
+#ifdef _WIN32
+static std::string get_watchman_appdata_path() {
+  PWSTR local_app_data = nullptr;
+  auto res =
+      SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data);
+  if (res != S_OK) {
+    logf(
+        FATAL,
+        "SHGetKnownFolderPath FOLDERID_LocalAppData failed: {}\n",
+        win32_strerror(res));
+  }
+  SCOPE_EXIT {
+    CoTaskMemFree(local_app_data);
+  };
+  // Perform path mapping from wide string to our preferred UTF8
+  w_string temp_location(local_app_data, wcslen(local_app_data));
+  // and use the watchman subdir of LOCALAPPDATA
+  auto watchmanDir = folly::to<std::string>(temp_location, "/watchman");
+  if (mkdir(watchmanDir.c_str(), 0700) == 0 || errno == EEXIST) {
+    return watchmanDir;
+  }
+  logf(
+      ERR,
+      "failed to create directory {}: {}\n",
+      watchmanDir,
+      folly::errnoStr(errno));
+  exit(1);
+}
+
+static const std::string& cached_watchman_appdata_path() {
+  static std::string path = get_watchman_appdata_path();
+  return path;
+}
+#endif
+
+static std::string compute_per_user_state_dir(const std::string& user) {
+  if (!test_state_dir.empty()) {
+    return folly::to<std::string>(test_state_dir, "/", user, "-state");
+  }
+
+#ifdef _WIN32
+  return cached_watchman_appdata_path();
+#else
+  auto state_parent =
+#ifdef WATCHMAN_STATE_DIR
+      WATCHMAN_STATE_DIR
+#else
+      watchman_tmp_dir.c_str()
+#endif
+      ;
+  return folly::to<std::string>(state_parent, "/", user, "-state");
+#endif
+}
+
 static void compute_file_name(
     std::string& str,
     const std::string& user,
@@ -649,113 +800,10 @@ static void compute_file_name(
     str_computed = true;
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
-    const char* state_parent = !test_state_dir.empty() ? test_state_dir.c_str()
-                                                       :
-#ifdef WATCHMAN_STATE_DIR
-                                                       WATCHMAN_STATE_DIR
-#else
-                                                       watchman_tmp_dir
-#endif
-        ;
-
-    auto state_dir = folly::to<std::string>(state_parent, "/", user, "-state");
+    auto state_dir = compute_per_user_state_dir(user);
 
     if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
-#ifndef _WIN32
-      // verify ownership
-      struct stat st;
-      int dir_fd;
-      int ret = 0;
-      uid_t euid = geteuid();
-      // TODO: also allow a gid to be specified here
-      const char* sock_group_name = cfg_get_string("sock_group", nullptr);
-      // S_ISGID is set so that files inside this directory inherit the group
-      // name
-      mode_t dir_perms =
-          cfg_get_perms(
-              "sock_access", false /* write bits */, true /* execute bits */) |
-          S_ISGID;
-
-      auto dirp = w_dir_open(
-          state_dir.c_str(), false /* don't need strict symlink rules */);
-
-      dir_fd = dirp->getFd();
-      if (dir_fd == -1) {
-        log(ERR, "dirfd(", state_dir, "): ", strerror(errno), "\n");
-        goto bail;
-      }
-
-      if (fstat(dir_fd, &st) != 0) {
-        log(ERR, "fstat(", state_dir, "): ", strerror(errno), "\n");
-        ret = 1;
-        goto bail;
-      }
-      if (euid != st.st_uid) {
-        log(ERR,
-            "the owner of ",
-            state_dir,
-            " is uid ",
-            st.st_uid,
-            " and doesn't match your euid ",
-            euid,
-            "\n");
-        ret = 1;
-        goto bail;
-      }
-      if (st.st_mode & 0022) {
-        log(ERR,
-            "the permissions on ",
-            state_dir,
-            " allow others to write to it. "
-            "Verify that you own the contents and then fix its "
-            "permissions by running `chmod 0700 '",
-            state_dir,
-            "'`\n");
-        ret = 1;
-        goto bail;
-      }
-
-      if (sock_group_name) {
-        const struct group* sock_group = w_get_group(sock_group_name);
-        if (!sock_group) {
-          ret = 1;
-          goto bail;
-        }
-
-        if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
-          log(ERR,
-              "setting up group '",
-              sock_group_name,
-              "' failed: ",
-              strerror(errno),
-              "\n");
-          ret = 1;
-          goto bail;
-        }
-      }
-
-      // Depending on group and world accessibility, change permissions on the
-      // directory. We can't leave the directory open and set permissions on the
-      // socket because not all POSIX systems respect permissions on UNIX domain
-      // sockets, but all POSIX systems respect permissions on the containing
-      // directory.
-      logf(DBG, "Setting permissions on state dir to {:o}\n", dir_perms);
-      if (fchmod(dir_fd, dir_perms) == -1) {
-        logf(
-            ERR,
-            "fchmod({}, {:o}): {}\n",
-            state_dir,
-            dir_perms,
-            strerror(errno));
-        ret = 1;
-        goto bail;
-      }
-
-    bail:
-      if (ret) {
-        exit(ret);
-      }
-#endif
+      verify_dir_ownership(state_dir.c_str());
     } else {
       log(ERR,
           "while computing ",
@@ -784,22 +832,26 @@ static void compute_file_name(
 }
 
 static std::string compute_user_name(void) {
+#ifdef _WIN32
+  // We don't trust the environment on win32 because in some situations
+  // the environment may contain the domain name like `WORKGROUP\user`
+  // which can confuse some path construction we do later on.
+  char user_buf[256];
+  DWORD size = sizeof(user_buf);
+  if (GetUserName(user_buf, &size) && size > 0) {
+    // size is updated to the new length, including the
+    // NUL terminator which we don't need to include here.
+    return std::string(user_buf, size - 1);
+  }
+
+  log(FATAL,
+      "GetUserName failed: ",
+      win32_strerror(GetLastError()),
+      ". I don't know who you are!?\n");
+#else
   const char* user = get_env_with_fallback("USER", "LOGNAME", NULL);
 
   if (!user) {
-#ifdef _WIN32
-    char user_buf[256];
-    DWORD size = sizeof(user_buf);
-    if (GetUserName(user_buf, &size) && size > 0) {
-      // size is updated to the new length, including the
-      // NUL terminator which we don't need to include here.
-      return std::string(user_buf, size - 1);
-    }
-    log(FATAL,
-        "GetUserName failed: ",
-        win32_strerror(GetLastError()),
-        ". I don't know who you are\n");
-#else
     uid_t uid = getuid();
     struct passwd* pw;
 
@@ -814,7 +866,6 @@ static std::string compute_user_name(void) {
     }
 
     user = pw->pw_name;
-#endif
 
     if (!user) {
       log(FATAL, "watchman requires that you set $USER in your env\n");
@@ -822,12 +873,21 @@ static std::string compute_user_name(void) {
   }
 
   return user;
+#endif
 }
 
 static void setup_sock_name(void) {
   auto user = compute_user_name();
 
+#ifdef _WIN32
+  if (!test_state_dir.empty()) {
+    watchman_tmp_dir = test_state_dir;
+  } else {
+    watchman_tmp_dir = cached_watchman_appdata_path();
+  }
+#else
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
+#endif
 
 #ifdef _WIN32
   if (named_pipe_path.empty()) {

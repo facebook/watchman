@@ -32,7 +32,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
       stdin_file_name,
       sizeof(stdin_file_name),
       "%s/wmanXXXXXX",
-      watchman_tmp_dir);
+      watchman_tmp_dir.c_str());
   auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
     logf(

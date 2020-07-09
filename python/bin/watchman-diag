@@ -412,6 +412,12 @@ for root in [
     for path in glob.glob("%s/*-state" % root):
         collect_state_info(path)
 
+appdata = os.environ.get("LOCALAPPDATA")
+if appdata:
+    watchman_appdata = os.path.join(appdata, "watchman")
+    if os.path.exists(watchman_appdata):
+        collect_state_info(watchman_appdata)
+
 if os.name == "posix":
     print("List of running watchman processes:")
     passthru("ps -ef | grep watchman", shell=True)

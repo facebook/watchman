@@ -64,7 +64,7 @@ void w_request_shutdown(void);
 
 #include "watchman_time.h"
 
-extern const char* watchman_tmp_dir;
+extern std::string watchman_tmp_dir;
 extern std::string watchman_state_file;
 extern int dont_save_state;
 void w_state_shutdown(void);
