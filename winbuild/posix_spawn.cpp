@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 
 using namespace watchman;
@@ -362,7 +363,7 @@ static int posix_spawn_common(
             "posix_spawn: failed to open {} into target fd {}: {}\n",
             act->u.open_info.name,
             act->target_fd,
-            strerror(ret));
+            folly::errnoStr(ret));
         goto done;
       }
 

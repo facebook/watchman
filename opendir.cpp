@@ -11,6 +11,7 @@
 #include <sys/utsname.h>
 #include <sys/vnode.h>
 #endif
+#include <folly/String.h>
 #include "FileDescriptor.h"
 
 using namespace watchman;
@@ -287,7 +288,7 @@ const watchman_dir_ent* DirHandle::readDir() {
           ": ",
           item->err,
           " ",
-          strerror(item->err),
+          folly::errnoStr(item->err),
           "\n");
 
       // No name means we've got nothing useful to go on

@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include "Logging.h"
 
@@ -146,7 +147,7 @@ static bool do_state_save(void) {
         "save_state: unable to open ",
         watchman_state_file,
         " for write: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     return false;
   }

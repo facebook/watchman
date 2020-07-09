@@ -18,6 +18,7 @@
 #include "jansson.h"
 #include "jansson_private.h"
 #include "utf.h"
+#include <folly/String.h>
 
 #define STREAM_STATE_OK 0
 #define STREAM_STATE_EOF -1
@@ -913,7 +914,7 @@ json_ref json_load_file(const char* path, size_t flags, json_error_t* error) {
 
   fp = fopen(path, "rb");
   if (!fp) {
-    error_set(error, nullptr, "unable to open %s: %s", path, strerror(errno));
+    error_set(error, nullptr, "unable to open %s: %s", path, folly::errnoStr(errno).c_str());
     return nullptr;
   }
 

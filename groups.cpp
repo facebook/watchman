@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
+#include <folly/String.h>
 #ifndef _WIN32
 #include <errno.h>
 #include <grp.h>
@@ -24,7 +25,7 @@ const struct group* w_get_group(const char* group_name) {
           ERR,
           "getting gid for '{}' failed: {}\n",
           group_name,
-          strerror(errno));
+          folly::errnoStr(errno));
     }
     return nullptr;
   }

@@ -3,6 +3,7 @@
 
 #include "watchman_system.h"
 #include "watchman.h"
+#include <folly/String.h>
 #include <memory>
 
 using watchman::ChildProcess;
@@ -39,7 +40,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
         ERR,
         "unable to create a temporary file: {} {}\n",
         stdin_file_name,
-        strerror(errno));
+        folly::errnoStr(errno));
     return NULL;
   }
 
@@ -56,7 +57,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
         logf(
             ERR,
             "input_json: failed to write json data to stream: {}\n",
-            strerror(errno));
+            folly::errnoStr(errno));
         return NULL;
       }
       break;
@@ -70,7 +71,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
           logf(
               ERR,
               "write failure while producing trigger stdin: {}\n",
-              strerror(errno));
+              folly::errnoStr(errno));
           return nullptr;
         }
       }
@@ -122,7 +123,7 @@ static void spawn_command(
         "trigger {}:{} {}\n",
         root->root_path,
         cmd->triggername,
-        strerror(errno));
+        folly::errnoStr(errno));
     return;
   }
 

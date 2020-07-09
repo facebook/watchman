@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include "FileDescriptor.h"
 #include "InMemoryView.h"
@@ -321,7 +322,7 @@ bool InotifyWatcher::consumeNotify(
         "read({}, {}): error {}\n",
         infd.fd(),
         sizeof(ibuf),
-        strerror(errno));
+        folly::errnoStr(errno));
   }
 
   logf(DBG, "inotify read: returned {}.\n", n);

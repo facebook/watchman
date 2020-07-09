@@ -3,6 +3,7 @@
 
 #include "watchman_system.h"
 #include "watchman.h"
+#include <folly/String.h>
 #include <exception>
 
 namespace watchman {
@@ -62,7 +63,7 @@ folly::Future<folly::Unit> CookieSync::sync() {
         errcode,
         std::generic_category(),
         folly::to<std::string>(
-            "sync: creat(", path_str, ") failed: ", strerror(errcode)));
+            "sync: creat(", path_str, ") failed: ", folly::errnoStr(errcode)));
   }
   log(DBG, "sync created cookie file ", path_str, "\n");
   return future;

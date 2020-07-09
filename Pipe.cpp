@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #include <event2/util.h> // @manual
 #endif
+#include <folly/String.h>
 #include <system_error>
 
 namespace watchman {
@@ -39,7 +40,7 @@ Pipe::Pipe() {
     throw std::system_error(
         errno,
         std::system_category(),
-        std::string("pipe error: ") + strerror(errno));
+        std::string("pipe error: ") + folly::errnoStr(errno));
   }
   read = FileDescriptor(fds[0], FileDescriptor::FDType::Pipe);
   write = FileDescriptor(fds[1], FileDescriptor::FDType::Pipe);

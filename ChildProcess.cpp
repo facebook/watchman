@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "ChildProcess.h"
 #include <folly/ScopeGuard.h>
+#include <folly/String.h>
 #include <memory>
 #include <system_error>
 #include <thread>
@@ -502,7 +503,7 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
               "failed to read from pipe fd ",
               pfd.fd,
               " err ",
-              strerror(err),
+              folly::errnoStr(err),
               "\n");
           throw std::system_error(
               err, std::generic_category(), "reading from child process");

@@ -85,7 +85,7 @@ static bool lock_pidfile(void) {
         "Failed to open pidfile ",
         pid_file,
         " for write: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     return false;
   }
@@ -105,7 +105,7 @@ static bool lock_pidfile(void) {
         ": process ",
         pidstr,
         " owns it: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     return false;
   }
@@ -116,7 +116,7 @@ static bool lock_pidfile(void) {
         "Failed to truncate pidfile ",
         pid_file,
         ": ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     return false;
   }
@@ -487,7 +487,7 @@ static void spawn_via_launchd(void) {
         "getpwuid(",
         uid,
         ") failed: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         ".  I don't know who you are\n");
   }
 
@@ -521,7 +521,7 @@ static void spawn_via_launchd(void) {
         "Failed to open ",
         plist_path,
         " for write: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
   }
 
@@ -664,12 +664,12 @@ static void verify_dir_ownership(const std::string& state_dir) {
 
   dir_fd = dirp->getFd();
   if (dir_fd == -1) {
-    log(ERR, "dirfd(", state_dir, "): ", strerror(errno), "\n");
+    log(ERR, "dirfd(", state_dir, "): ", folly::errnoStr(errno), "\n");
     goto bail;
   }
 
   if (fstat(dir_fd, &st) != 0) {
-    log(ERR, "fstat(", state_dir, "): ", strerror(errno), "\n");
+    log(ERR, "fstat(", state_dir, "): ", folly::errnoStr(errno), "\n");
     ret = 1;
     goto bail;
   }
@@ -710,7 +710,7 @@ static void verify_dir_ownership(const std::string& state_dir) {
           "setting up group '",
           sock_group_name,
           "' failed: ",
-          strerror(errno),
+          folly::errnoStr(errno),
           "\n");
       ret = 1;
       goto bail;
@@ -724,7 +724,12 @@ static void verify_dir_ownership(const std::string& state_dir) {
   // directory.
   logf(DBG, "Setting permissions on state dir to {:o}\n", dir_perms);
   if (fchmod(dir_fd, dir_perms) == -1) {
-    logf(ERR, "fchmod({}, {:o}): {}\n", state_dir, dir_perms, strerror(errno));
+    logf(
+        ERR,
+        "fchmod({}, {:o}): {}\n",
+        state_dir,
+        dir_perms,
+        folly::errnoStr(errno));
     ret = 1;
     goto bail;
   }
@@ -811,7 +816,7 @@ static void compute_file_name(
           ": failed to create ",
           state_dir,
           ": ",
-          strerror(errno),
+          folly::errnoStr(errno),
           "\n");
       exit(1);
     }
@@ -861,7 +866,7 @@ static std::string compute_user_name(void) {
           "getpwuid(",
           uid,
           ") failed: ",
-          strerror(errno),
+          folly::errnoStr(errno),
           ". I don't know who you are\n");
     }
 
@@ -1315,7 +1320,7 @@ int main(int argc, char** argv) {
         "unable to talk to your watchman on ",
         get_sock_name_legacy(),
         "! (",
-        strerror(errno),
+        folly::errnoStr(errno),
         ")\n");
 #ifdef __APPLE__
     if (getenv("TMUX")) {

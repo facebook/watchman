@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <deque>
@@ -308,7 +309,11 @@ static fse_stream* fse_stream_make(
   // help decide whether we can use a value of `since` other than SinceNow.
   if (stat(root->root_path.c_str(), &st)) {
     failure_reason = w_string::build(
-        "failed to stat(", root->root_path, "): ", strerror(errno), "\n");
+        "failed to stat(",
+        root->root_path,
+        "): ",
+        folly::errnoStr(errno),
+        "\n");
     goto fail;
   }
 

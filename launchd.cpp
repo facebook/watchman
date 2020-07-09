@@ -1,6 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
+#include <folly/String.h>
+
 #ifdef __APPLE__
 #include <launch.h>
 
@@ -34,7 +36,7 @@ FileDescriptor w_get_listener_socket_from_launchd() {
   launch_data_free(req);
 
   if (resp == NULL) {
-    logf(ERR, "launchd checkin failed {}\n", strerror(errno));
+    logf(ERR, "launchd checkin failed {}\n", folly::errnoStr(errno));
     return FileDescriptor();
   }
 
@@ -42,7 +44,7 @@ FileDescriptor w_get_listener_socket_from_launchd() {
     logf(
         ERR,
         "launchd checkin failed: {}\n",
-        strerror(launch_data_get_errno(resp)));
+        folly::errnoStr(launch_data_get_errno(resp)));
     launch_data_free(resp);
     return FileDescriptor();
   }

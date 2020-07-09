@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 
+#include <folly/String.h>
 #include "InMemoryView.h"
 
 using namespace watchman;
@@ -17,7 +18,8 @@ static json_ref load_root_config(const char* path) {
     if (errno == ENOENT) {
       return nullptr;
     }
-    logf(ERR, "{} is not accessible: {}\n", cfgfilename, strerror(errno));
+    logf(
+        ERR, "{} is not accessible: {}\n", cfgfilename, folly::errnoStr(errno));
     return nullptr;
   }
 

@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 
 using namespace watchman;
 
@@ -241,7 +242,7 @@ json_ref watchman_json_buffer::readBserPdu(
           int64_t(val),
           wpos,
           rpos,
-          strerror(errno));
+          folly::errnoStr(errno).c_str());
       return nullptr;
     }
     wpos += r;
@@ -271,7 +272,7 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
             jerr->text,
             sizeof(jerr->text),
             "fill_buffer: %s",
-            errno ? strerror(errno) : "EOF");
+            errno ? folly::errnoStr(errno).c_str() : "EOF");
       }
       return false;
     }
@@ -288,7 +289,7 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
               jerr->text,
               sizeof(jerr->text),
               "fillBuffer: %s",
-              errno ? strerror(errno) : "EOF");
+              errno ? folly::errnoStr(errno).c_str() : "EOF");
         }
         return false;
       }
@@ -374,7 +375,7 @@ bool watchman_json_buffer::streamN(
         sizeof(jerr->text),
         "failed output headers bytes %d: %s\n",
         rpos,
-        strerror(errno));
+        folly::errnoStr(errno).c_str());
     return false;
   }
   while (len > 0) {
@@ -388,7 +389,7 @@ bool watchman_json_buffer::streamN(
             sizeof(jerr->text),
             "output_bytes: avail=%d, failed %s\n",
             avail,
-            strerror(errno));
+            folly::errnoStr(errno).c_str());
         return false;
       }
       rpos += avail;
@@ -410,7 +411,7 @@ bool watchman_json_buffer::streamN(
           (int64_t)len,
           avail,
           r,
-          strerror(errno));
+          folly::errnoStr(errno).c_str());
       return false;
     }
     wpos += r;

@@ -5,6 +5,7 @@
  * This watcher fails with the scm tests */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <memory>
 #include "InMemoryView.h"
@@ -125,7 +126,7 @@ bool PortFSWatcher::do_watch(
         ERR,
         "port_associate {} {}\n",
         rawFile->port_file.fo_name,
-        strerror(errno));
+        folly::errnoStr(errno));
     wlock->erase(name);
     if (throw_on_error) {
       throw std::system_error(err, std::generic_category(), "port_associate");
@@ -229,7 +230,7 @@ bool PortFSWatcher::consumeNotify(
     if (errno == EINTR) {
       return false;
     }
-    logf(FATAL, "port_getn: {}\n", strerror(errno));
+    logf(FATAL, "port_getn: {}\n", folly::errnoStr(errno));
   }
 
   logf(DBG, "port_getn: n={}\n", n);

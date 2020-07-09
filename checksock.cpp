@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 
 namespace watchman {
 namespace {
@@ -26,7 +27,10 @@ void check_my_sock(watchman_stream* client) {
   pid_t my_pid = ::getpid();
 
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
-    log(watchman::FATAL, "Failed to send get-pid PDU: ", strerror(errno), "\n");
+    log(watchman::FATAL,
+        "Failed to send get-pid PDU: ",
+        folly::errnoStr(errno),
+        "\n");
     /* NOTREACHED */
   }
 
@@ -37,7 +41,7 @@ void check_my_sock(watchman_stream* client) {
         "Failed to decode get-pid response: ",
         jerr.text,
         " ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     /* NOTREACHED */
   }
@@ -75,15 +79,18 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
                          root,
                          json_object({{"sync_timeout", json_integer(20000)}})});
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
-    throw std::runtime_error(
-        folly::to<std::string>("Failed to send clock PDU: ", strerror(errno)));
+    throw std::runtime_error(folly::to<std::string>(
+        "Failed to send clock PDU: ", folly::errnoStr(errno)));
   }
 
   buf.clear();
   auto result = decodeNext(client, buf, jerr);
   if (!result) {
     throw std::runtime_error(folly::to<std::string>(
-        "Failed to decode clock response: ", jerr.text, " ", strerror(errno)));
+        "Failed to decode clock response: ",
+        jerr.text,
+        " ",
+        folly::errnoStr(errno)));
   }
 
   // Check for error in the response
@@ -110,7 +117,7 @@ json_ref get_watch_list(watchman_stream* client) {
 
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
     throw std::runtime_error(folly::to<std::string>(
-        "Failed to send watch-list PDU: ", strerror(errno)));
+        "Failed to send watch-list PDU: ", folly::errnoStr(errno)));
   }
 
   buf.clear();
@@ -120,7 +127,7 @@ json_ref get_watch_list(watchman_stream* client) {
         "Failed to decode watch-list response: ",
         jerr.text,
         " error:  ",
-        strerror(errno)));
+        folly::errnoStr(errno)));
   }
   return result.get_default("roots");
 }
@@ -179,7 +186,7 @@ void sanityCheckThread() noexcept {
     if (!client) {
       log(watchman::FATAL,
           "Failed to connect to myself for sanity check: ",
-          strerror(errno),
+          folly::errnoStr(errno),
           "\n");
       /* NOTREACHED */
     }

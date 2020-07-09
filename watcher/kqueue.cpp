@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <array>
 #include "FileDescriptor.h"
@@ -99,7 +100,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
         "failed to open ",
         full_name,
         ", O_EVTONLY: ",
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     return false;
   }
@@ -127,7 +128,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
         full_name,
         " failed: ",
         full_name.c_str(),
-        strerror(errno),
+        folly::errnoStr(errno),
         "\n");
     auto wlock = maps_.wlock();
     wlock->name_to_fd.erase(full_name);
@@ -196,7 +197,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
   }
 
   if (kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0)) {
-    logf(DBG, "kevent EV_ADD dir {} failed: {}", path, strerror(errno));
+    logf(DBG, "kevent EV_ADD dir {} failed: {}", path, folly::errnoStr(errno));
 
     auto wlock = maps_.wlock();
     wlock->name_to_fd.erase(dir_name);
@@ -229,7 +230,7 @@ bool KQueueWatcher::consumeNotify(
       "consume_kqueue: {} n={} err={}\n",
       root->root_path,
       n,
-      strerror(errno));
+      folly::errnoStr(errno));
   if (root->inner.cancelled) {
     return 0;
   }

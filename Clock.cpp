@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <memory>
 
@@ -15,7 +16,7 @@ void ClockSpec::init() {
 
   proc_pid = (int)::getpid();
   if (gettimeofday(&tv, NULL) == -1) {
-    logf(FATAL, "gettimeofday failed: {}\n", strerror(errno));
+    logf(FATAL, "gettimeofday failed: {}\n", folly::errnoStr(errno));
   }
   proc_start_time = (uint64_t)tv.tv_sec;
 }

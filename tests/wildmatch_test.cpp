@@ -4,6 +4,7 @@
 #include "watchman_system.h"
 
 #include <folly/Conv.h>
+#include <folly/String.h>
 #include <folly/portability/GTest.h>
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"
@@ -42,7 +43,10 @@ TEST(WildMatch, tests) {
   }
   if (!test_cases_file) {
     throw std::runtime_error(folly::to<std::string>(
-        "Couldn't open ", WILDMATCH_TEST_JSON_FILE, ": ", strerror(errno)));
+        "Couldn't open ",
+        WILDMATCH_TEST_JSON_FILE,
+        ": ",
+        folly::errnoStr(errno)));
   }
   auto test_cases = json_loadf(test_cases_file, 0, &error);
   if (!test_cases) {

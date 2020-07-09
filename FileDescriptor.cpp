@@ -14,6 +14,7 @@
 #include "WinIoCtl.h"
 #endif
 #include <folly/ScopeGuard.h>
+#include <folly/String.h>
 
 #if defined(_WIN32) || defined(O_PATH)
 #define CAN_OPEN_SYMLINKS 1
@@ -90,7 +91,7 @@ FileDescriptor::FileDescriptor(
     throw std::system_error(
         errno,
         std::generic_category(),
-        std::string(operation) + ": " + strerror(errno));
+        std::string(operation) + ": " + folly::errnoStr(errno));
   }
 }
 

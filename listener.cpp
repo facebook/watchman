@@ -6,6 +6,7 @@
 #include <folly/MapUtil.h>
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <folly/net/NetworkSocket.h>
 #include <atomic>
@@ -438,7 +439,7 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
 
   if (::bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
       0) {
-    logf(ERR, "bind({}): {}\n", path, strerror(errno));
+    logf(ERR, "bind({}): {}\n", path, folly::errnoStr(errno));
     return FileDescriptor();
   }
 
@@ -446,7 +447,7 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   // The permissions in the containing directory should be correct, so this
   // should be correct as well. But set the permissions in any case.
   if (chmod(path, perms) == -1) {
-    logf(ERR, "chmod({}, {:o}): {}", path, perms, strerror(errno));
+    logf(ERR, "chmod({}, {:o}): {}", path, perms, folly::errnoStr(errno));
     return FileDescriptor();
   }
 
@@ -455,7 +456,8 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   // the user is no longer in.
   struct stat st;
   if (lstat(path, &st) == -1) {
-    watchman::log(watchman::ERR, "lstat(", path, "): ", strerror(errno), "\n");
+    watchman::log(
+        watchman::ERR, "lstat(", path, "): ", folly::errnoStr(errno), "\n");
     return FileDescriptor();
   }
 
@@ -491,7 +493,7 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
 #endif
 
   if (::listen(listener_fd.system_handle(), 200) != 0) {
-    logf(ERR, "listen({}): {}\n", path, strerror(errno));
+    logf(ERR, "listen({}): {}\n", path, folly::errnoStr(errno));
     return FileDescriptor();
   }
 
@@ -788,7 +790,7 @@ bool w_start_listener() {
             ERR,
             "failed to raise limit to {} ({}).\n",
             limit.rlim_cur,
-            strerror(errno));
+            folly::errnoStr(errno));
       } else {
         logf(ERR, "raised file limit to {}\n", limit.rlim_cur);
       }
