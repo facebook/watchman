@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Begin Jekyll SEO tag v2.2.3 -->
-<title>Watchman A file watching service | Watchman</title>
-<meta property="og:title" content="Watchman A file watching service" />
+<title>Need help? | Watchman</title>
+<meta property="og:title" content="Need help?" />
 <meta property="og:locale" content="en_US" />
-<link rel="canonical" href="https://facebook.github.io/watchman/" />
-<meta property="og:url" content="https://facebook.github.io/watchman/" />
+<link rel="canonical" href="https://facebook.github.io/watchman/support.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/support.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"WebSite","name":"Watchman","headline":"Watchman A file watching service","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"url":"https://facebook.github.io/watchman/"}</script>
+{"@context":"http://schema.org","@type":"WebPage","headline":"Need help?","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"url":"https://facebook.github.io/watchman/support.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -40,7 +40,7 @@
             <a href=/watchman/docs/install.html>Docs</a>
           </li>
           
-          <li class="navItem ">
+          <li class="navItem navItemActive">
             <a href=/watchman/support.html>Support</a>
           </li>
           
@@ -151,73 +151,35 @@
 </div>
 
     <div class="navPusher">
-      <div class="headerContainer">
-  <div id="header_wrap" class="wrapper headerWrapper">
-    <div class="inner">
-      <img class="projectLogo" height="200px" src="/watchman/static/logo.png" alt="Watchman" title="Watchman" />
-      <h1 id="project_title">Watchman</h1>
-      <h2 id="project_tagline" class="fbossFontLight">A file watching service</h2>
+      <div class="mainContainer blogContainer postContainer">
+  <div id="main_wrap" class="wrapper mainWrapper">
+    <h2 id="need-help">Need help?</h2>
 
-      <section id="intro">
-        <p></p>
-      </section>
-      <div id="promo" class="section promoSection">
-        
-          <a class="button blockButton fbossFontLight pluginBlock" href="docs/install.html">Get Started</a>
-          <div class="gridClear"></div>
-        
-          <div class="pluginBlock">
-  <a aria-label="Star facebook/watchman on GitHub" data-count-aria-label="# stargazers on GitHub" data-count-api="/repos/facebook/watchman#stargazers_count" data-count-href="/facebook/watchman/stargazers" data-style="mega" data-icon="octicon-star" href="https://github.com/facebook/watchman" class="github-button">Star</a>
-</div>
-<script async defer id="github-bjs" src="https://buttons.github.io/buttons.js"></script>
-          <div class="gridClear"></div>
-        
-      </div>
-    </div>
+<p>If you’re having trouble or otherwise have questions about Watchman, and
+<a href="/watchman/docs/troubleshooting.html">the troubleshooting guide</a> didn’t resolve
+your issue, you can try reaching out to the maintainers in one of the following
+ways:</p>
+
+<h3 id="stack-overflow">Stack Overflow</h3>
+
+<p>We’d like to encourage discussing and answering Watchman related questions on
+Stack Overflow.  <a href="http://stackoverflow.com/questions/tagged/watchman?sort=newest">Look at the recent Watchman questions on Stack Overflow</a> and if you
+can’t find what you’re looking for, <a href="http://stackoverflow.com/questions/ask?tags=watchman">ask your question on Stack Overflow</a></p>
+
+<h3 id="irc">IRC</h3>
+
+<p>Developers and users idle on Freenode.net’s IRC network in
+<a href="irc://chat.freenode.net/watchman">#watchman on freenode</a></p>
+
+<h3 id="bugs">Bugs?</h3>
+
+<p>If you’ve found a bug, or haven’t had any success in reaching out through the
+channels above, please <a href="https://github.com/facebook/watchman/issues/new">file an issue in our tracker</a></p>
+
   </div>
 </div>
-      <div class="mainContainer">
-        <div id="main_wrap" class="wrapper mainWrapper homeWrapper">
-          <p>Watchman exists to watch files and record when they change.  It can
-also trigger actions (such as rebuilding assets) when matching files change.</p>
 
-<h3 id="concepts">Concepts</h3>
 
-<ul>
-  <li>Watchman can recursively watch one or more directory trees
-(we call them <em>roots</em>).</li>
-  <li>Watchman does not follow symlinks.  It knows they exist, but they show up
-the same as any other file in its reporting.</li>
-  <li>Watchman waits for a <em>root</em> to settle down before it will start
-to trigger notifications or command execution.</li>
-  <li>Watchman is conservative, preferring to err on the side of caution;
-it considers files to be freshly changed when you start to
-watch them or when it is unsure.</li>
-  <li>You can query a root for file changes since you last checked, or the
-current state of the tree</li>
-  <li>You can subscribe to file changes that occur in a root</li>
-</ul>
-
-<h3 id="quickstart">Quickstart</h3>
-
-<p>These two lines establish a watch on a source directory and then set up a
-trigger named <code class="highlighter-rouge">buildme</code> that will run a tool named <code class="highlighter-rouge">minify-css</code> whenever a CSS
-file is changed.  The tool will be passed a list of the changed filenames.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch ~/src
-<span class="c"># the single quotes around '*.css' are important!</span>
-<span class="gp">$ </span>watchman -- trigger ~/src buildme <span class="s1">'*.css'</span> -- minify-css
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>The output for buildme will land in the Watchman log file unless you send it
-somewhere else.</p>
-
-        </div>
-      </div>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
