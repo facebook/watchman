@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-10T11:51:14-07:00" />
+<meta property="article:published_time" content="2020-07-13T18:39:56-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-10T11:51:14-07:00","dateModified":"2020-07-10T11:51:14-07:00","description":"System Requirements","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:39:56-07:00","dateModified":"2020-07-13T18:39:56-07:00","description":"System Requirements","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -757,31 +757,46 @@ them via GitHub!  <a href="https://github.com/facebook/watchman/issues?utf8=%E2%
 
 <h2 id="binary-downloads-for-linux-macos-and-windows-beta">Binary Downloads for Linux, macOS and Windows (Beta)</h2>
 
-<p>We use GitHub Actions to build binaries for the following platforms:</p>
+<p><em>Note: binaries are built from master only.  We don’t provide binaries for v4.9.0</em></p>
+
+<p>Watchman is continuously deployed as it passes our internal test validation
+inside Facebook and doesn’t use manually assigned or “approved” version numbers.</p>
+
+<p>Outside FB we have automation that cuts a tag and builds binaries on Monday of
+each week and assigns a tag based on the date.  That process is in a beta
+state; some or all of the binaries may not be present for any given tag.</p>
+
+<p>You can find the binary downloads in the <a href="https://github.com/facebook/watchman/releases/latest">latest release</a></p>
+
+<h3 id="windows">Windows</h3>
 
 <ul>
-  <li>macOS</li>
-  <li>Ubuntu 18.04</li>
-  <li>Windows</li>
+  <li>Download and extract the windows release from the <a href="https://github.com/facebook/watchman/releases/latest">latest release</a></li>
+  <li>It will be named something like <code class="highlighter-rouge">watchman-vYYYY.MM.DD.00-windows.zip</code></li>
+  <li>It contains a <code class="highlighter-rouge">bin</code> folder.  Move that somewhere appropriate and update your <code class="highlighter-rouge">PATH</code> environment to reference that location.</li>
 </ul>
 
-<p>GitHub Actions doesn’t provide a way to link directly to these builds at
-this time, so you will need to follow these steps to download the binaries:</p>
+<h3 id="linux-and-macos">Linux and macOS</h3>
 
 <ul>
-  <li><a href="https://github.com/facebook/watchman/actions?query=is%3Asuccess+event%3Apush+branch%3Amaster">Navigate to recent CI builds</a></li>
-  <li>Click on the <code class="highlighter-rouge">CI</code> label
-<img src="/watchman/static/ci-link.png" style="border: 1px solid black" /></li>
-  <li>Look in the top right of the resulting page for the <code class="highlighter-rouge">Artifacts</code> drop down
-<img src="/watchman/static/artifacts-download.png" style="border: 1px solid black" /></li>
-  <li>Click it to reveal the download artifacts link</li>
-  <li>Click that and extract the zip file</li>
-  <li>For Windows users:
-    <ul>
-      <li>Copy <code class="highlighter-rouge">windows\bin</code> directory somewhere and add it to your <code class="highlighter-rouge">PATH</code> environment variable.</li>
-    </ul>
-  </li>
+  <li>Download and extract the release for your system from the <a href="https://github.com/facebook/watchman/releases/latest">latest release</a></li>
+  <li>It will be named something like <code class="highlighter-rouge">watchman-vYYYY.MM.DD.00-linux.zip</code></li>
 </ul>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6</pre></td><td class="code"><pre>$ unzip watchman-*-linux.zip
+$ sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
+$ sudo cp bin/* /usr/local/bin
+$ sudo cp lib/* /usr/local/lib
+$ sudo chmod 755 /usr/local/bin/watchman
+$ sudo chmod 2777 /usr/local/var/run/watchman
+</pre></td></tr></tbody></table>
+</div>
+</div>
 
 <h2 id="buildinstall">Build/Install</h2>
 

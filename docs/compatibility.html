@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-10T11:51:14-07:00" />
+<meta property="article:published_time" content="2020-07-13T18:39:56-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Compatibility Rules","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-10T11:51:14-07:00","dateModified":"2020-07-10T11:51:14-07:00","description":"watchman has been used in production since a few weeks after it was first written, and thus it has always made an effort to be backward compatible across releases and platforms.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/compatibility.html"},"url":"https://facebook.github.io/watchman/docs/compatibility.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Compatibility Rules","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:39:56-07:00","dateModified":"2020-07-13T18:39:56-07:00","description":"watchman has been used in production since a few weeks after it was first written, and thus it has always made an effort to be backward compatible across releases and platforms.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/compatibility.html"},"url":"https://facebook.github.io/watchman/docs/compatibility.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -725,7 +725,7 @@ alternative.</li>
 documented in release notes.</li>
 </ul>
 
-<p><code class="highlighter-rouge">watchman</code> does not follow <a href="http://semver.org">semantic versioning</a>!</p>
+<p><code class="highlighter-rouge">watchman</code> does <strong>not</strong> follow <a href="http://semver.org">semantic versioning</a>!</p>
 
 <ul>
   <li>Since its public APIs never make incompatible changes, MAJOR versions are
@@ -742,6 +742,19 @@ reported by these versions will be 3.9.0 and 4.0.0 respectively.</li>
 <p><code class="highlighter-rouge">watchman</code> introduces <a href="capabilities.html">capabilities</a> to describe new
 or optional features.  You can use the <a href="/watchman/docs/cmd/version.html">expanded version command</a> to query capabilities and avoid building
 knowledge of version numbers in your client application(s).</p>
+
+<p><em>Since May 2020</em></p>
+
+<p>Watchman is continuously deployed inside Facebook, which means that we don’t
+explicitly maintain version numbers.  For a while we maintained version numbers
+for GitHub releases but found it to be too much overhead.</p>
+
+<p>Starting in 2020 we’ve set up automation to cut a weekly date based on the
+date; this more closely matches our internal processes than manually managing
+version numbers.</p>
+
+<p>You’ll notice that both the <a href="https://github.com/facebook/watchman/tags">tags on GitHub</a>
+and the version reported by <code class="highlighter-rouge">watchman version</code> are date based.</p>
 
     
   </article>
