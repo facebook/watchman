@@ -102,6 +102,7 @@ class UnixStream : public watchman_stream {
   struct ucred cred;
 #elif defined(LOCAL_PEERCRED)
   struct xucred cred;
+  pid_t epid;
 #elif defined(SO_RECVUCRED)
   struct ucred_deleter {
     void operator()(ucred_t* utp) {
@@ -126,6 +127,11 @@ class UnixStream : public watchman_stream {
     credvalid =
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
 #endif
+    if (credvalid) {
+      len = sizeof(epid);
+      credvalid =
+          getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEEREPID, &epid, &len) == 0;
+    }
 #elif defined(SO_RECVUCRED)
     ucred_t* peer_cred{nullptr};
     credvalid = getpeerucred(fd.fd(), &peer_cred) == 0;
@@ -273,6 +279,8 @@ class UnixStream : public watchman_stream {
     }
 #ifdef SO_PEERCRED
     return cred.pid;
+#elif defined(LOCAL_PEERCRED)
+    return epid;
 #elif defined(SO_RECVUCRED)
     pid_t ucredpid = ucred_getpid(cred.get());
     if (ucredpid == (pid_t)-1) {
