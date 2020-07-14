@@ -50,24 +50,36 @@ https://github.com/facebook/watchman/issues?utf8=%E2%9C%93&q=is%3Aopen+Windows).
 
 ## Binary Downloads for Linux, macOS and Windows (Beta)
 
-We use GitHub Actions to build binaries for the following platforms:
+*Note: binaries are built from master only.  We don't provide binaries for v4.9.0*
 
-* macOS
-* Ubuntu 18.04
-* Windows
+Watchman is continuously deployed as it passes our internal test validation
+inside Facebook and doesn't use manually assigned or "approved" version numbers.
 
-GitHub Actions doesn't provide a way to link directly to these builds at
-this time, so you will need to follow these steps to download the binaries:
+Outside FB we have automation that cuts a tag and builds binaries on Monday of
+each week and assigns a tag based on the date.  That process is in a beta
+state; some or all of the binaries may not be present for any given tag.
 
-* [Navigate to recent CI builds](https://github.com/facebook/watchman/actions?query=is%3Asuccess+event%3Apush+branch%3Amaster)
-* Click on the `CI` label
-  <img src="/watchman/static/ci-link.png" style="border: 1px solid black" />
-* Look in the top right of the resulting page for the `Artifacts` drop down
-  <img src="/watchman/static/artifacts-download.png" style="border: 1px solid black" />
-* Click it to reveal the download artifacts link
-* Click that and extract the zip file
-* For Windows users:
-  * Copy `windows\bin` directory somewhere and add it to your `PATH` environment variable.
+You can find the binary downloads in the [latest release](https://github.com/facebook/watchman/releases/latest)
+
+### Windows
+
+* Download and extract the windows release from the [latest release](https://github.com/facebook/watchman/releases/latest)
+* It will be named something like `watchman-vYYYY.MM.DD.00-windows.zip`
+* It contains a `bin` folder.  Move that somewhere appropriate and update your `PATH` environment to reference that location.
+
+### Linux and macOS
+
+* Download and extract the release for your system from the [latest release](https://github.com/facebook/watchman/releases/latest)
+* It will be named something like `watchman-vYYYY.MM.DD.00-linux.zip`
+
+```
+$ unzip watchman-*-linux.zip
+$ sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
+$ sudo cp bin/* /usr/local/bin
+$ sudo cp lib/* /usr/local/lib
+$ sudo chmod 755 /usr/local/bin/watchman
+$ sudo chmod 2777 /usr/local/var/run/watchman
+```
 
 ## Build/Install
 
@@ -157,19 +169,6 @@ that are specific to watchman that might be relevant to your needs:
 ```
 
 (Run `./configure --help` to get the list for the version you checked out)
-
-### Continuous Integration
-
-We use continuous integration to build out every revision and
-pull-request to make sure that we don't accidentally break things.  The
-current build status is:
-
-[![Build Status](https://travis-ci.org/facebook/watchman.svg?branch=master)](
-https://travis-ci.org/facebook/watchman)
-
-[![Build status](https://ci.appveyor.com/api/projects/status/uvafoyc550kg438h/branch/master?svg=true)
-](https://ci.appveyor.com/project/wez/watchman/branch/master)
-
 
 ## System Specific Preparation
 

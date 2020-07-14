@@ -7,11 +7,17 @@ permalink: docs/release-notes.html
 redirect_from: docs/release-notes/
 ---
 
+Watchman is continuously deployed inside Facebook, which means that we don't
+explicitly maintain version numbers.  We have automation that cuts a weekly
+tag with a named derived from the date.  You can learn more about how to reason
+about supported *capabilities* and our backwards compatibility guidelines
+in the [Compatibility Rules](compatibility.html) docs.
+
 We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
-### Watchman 5.0.0 (not yet released)
+### Watchman v2020.07.13.00
 
 * Added script `watchman-replicate-subscription`. It can replicate an 
   existing watchman subscription. Integrators can use this script to validate
@@ -21,6 +27,15 @@ GitHub](https://github.com/facebook/watchman/commits/master).
   of suffixes. See `suffix-set` documentation for
   [more details](/watchman/docs/expr/suffix.html#suffix-set)
 * pywatchman: introduced new pywatchman_aio client for python
+* Windows: we no longer trust environment variables to locate the state directory
+  which should result in a better experience for users that mix cygwin, mingw,
+  native windows and/or WSL or other environments
+* Windows: we now support unix domain sockets on Windows 10.  The CLI will prefer
+  to use unix domain sockets when available.
+
+We weren't great at updating the release notes since the prior release;
+there was a lot of work to support our sister project EdenFS that isn't
+broadly relevant to those outside FB at the time of writing.
 
 ### Watchman 4.9.0 (2017-08-24)
 

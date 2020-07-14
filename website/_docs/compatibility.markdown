@@ -19,7 +19,7 @@ releases and platforms.
 * Bugfixes might cause minor behavior changes -- these changes will usually be
 documented in release notes.
 
-`watchman` does not follow [semantic versioning](http://semver.org)!
+`watchman` does **not** follow [semantic versioning](http://semver.org)!
 
 * Since its public APIs never make incompatible changes, MAJOR versions are
   moot.
@@ -35,3 +35,16 @@ documented in release notes.
 or optional features.  You can use the [expanded version command](
 /watchman/docs/cmd/version.html) to query capabilities and avoid building
 knowledge of version numbers in your client application(s).
+
+*Since May 2020*
+
+Watchman is continuously deployed inside Facebook, which means that we don't
+explicitly maintain version numbers.  For a while we maintained version numbers
+for GitHub releases but found it to be too much overhead.
+
+Starting in 2020 we've set up automation to cut a weekly date based on the
+date; this more closely matches our internal processes than manually managing
+version numbers.
+
+You'll notice that both the [tags on GitHub](https://github.com/facebook/watchman/tags)
+and the version reported by `watchman version` are date based.
