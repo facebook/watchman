@@ -4,6 +4,7 @@ title: suffix
 layout: docs
 section: Expression Terms
 permalink: docs/expr/suffix.html
+redirect_from: docs/expr/suffix/
 ---
 
 The `suffix` expression evaluates true if the file suffix matches the second

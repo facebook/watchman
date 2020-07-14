@@ -4,6 +4,7 @@ title: Compatibility Rules
 layout: docs
 category: Compatibility
 permalink: docs/compatibility.html
+redirect_from: docs/compatibility/
 ---
 
 `watchman` has been used in production since a few weeks after it was first

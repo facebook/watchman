@@ -4,6 +4,7 @@ title: C++ Client
 layout: docs
 section: Invocation
 permalink: docs/cppclient.html
+redirect_from: docs/cppclient/
 ---
 
 *Since 4.8.*

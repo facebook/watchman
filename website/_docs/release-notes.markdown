@@ -4,6 +4,7 @@ title: Release Notes
 layout: docs
 section: Installation
 permalink: docs/release-notes.html
+redirect_from: docs/release-notes/
 ---
 
 We focus on the highlights only in these release notes.  For a full history

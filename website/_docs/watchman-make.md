@@ -4,6 +4,7 @@ title: watchman-make
 layout: docs
 category: Invocation
 permalink: docs/watchman-make.html
+redirect_from: docs/watchman-make/
 ---
 
 `watchman-make` is a convenience tool to help automatically invoke a build

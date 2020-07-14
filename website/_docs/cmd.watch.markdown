@@ -4,6 +4,7 @@ title: watch
 layout: docs
 section: Commands
 permalink: docs/cmd/watch.html
+redirect_from: docs/cmd/watch/
 ---
 
 Deprecated starting in version 3.1.  We recommend that clients adopt

@@ -4,6 +4,7 @@ title: watch-list
 layout: docs
 section: Commands
 permalink: docs/cmd/watch-list.html
+redirect_from: docs/cmd/watch-list/
 ---
 
 Returns a list of watched dirs.

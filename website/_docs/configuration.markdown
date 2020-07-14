@@ -4,6 +4,7 @@ title: Configuration Files
 layout: docs
 category: Invocation
 permalink: docs/config.html
+redirect_from: docs/config/
 ---
 
 Watchman looks for configuration files in two places:

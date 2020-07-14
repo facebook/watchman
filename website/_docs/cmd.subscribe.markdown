@@ -4,6 +4,7 @@ title: subscribe
 layout: docs
 section: Commands
 permalink: docs/cmd/subscribe.html
+redirect_from: docs/cmd/subscribe/
 ---
 
 *Since 1.6*

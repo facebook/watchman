@@ -4,6 +4,7 @@ title: clock
 layout: docs
 section: Commands
 permalink: docs/cmd/clock.html
+redirect_from: docs/cmd/clock/
 ---
 
 Returns the current clock value for a watched root.

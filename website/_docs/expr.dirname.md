@@ -4,6 +4,7 @@ title: dirname & idirname
 layout: docs
 section: Expression Terms
 permalink: docs/expr/dirname.html
+redirect_from: docs/expr/dirname/
 ---
 
 *Since version 3.1*

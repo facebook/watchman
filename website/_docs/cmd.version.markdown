@@ -4,6 +4,7 @@ title: version
 layout: docs
 section: Commands
 permalink: docs/cmd/version.html
+redirect_from: docs/cmd/version/
 ---
 
 The version command will tell you the version and build information

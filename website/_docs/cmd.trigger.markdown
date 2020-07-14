@@ -4,6 +4,7 @@ title: trigger
 layout: docs
 section: Commands
 permalink: docs/cmd/trigger.html
+redirect_from: docs/cmd/trigger/
 ---
 
 The trigger command will create or replace a trigger.

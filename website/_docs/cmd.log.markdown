@@ -4,6 +4,7 @@ title: log
 layout: docs
 section: Commands
 permalink: docs/cmd/log.html
+redirect_from: docs/cmd/log/
 ---
 
 Generates a log line in the watchman log.

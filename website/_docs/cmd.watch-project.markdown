@@ -4,6 +4,7 @@ title: watch-project
 layout: docs
 section: Commands
 permalink: docs/cmd/watch-project.html
+redirect_from: docs/cmd/watch-project/
 ---
 
 *Since 3.1.*

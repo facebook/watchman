@@ -4,6 +4,7 @@ title: name & iname
 layout: docs
 section: Expression Terms
 permalink: docs/expr/name.html
+redirect_from: docs/expr/name/
 ---
 
 The `name` expression performs exact matches against file names.  By default it

@@ -4,6 +4,7 @@ title: watchman-wait
 layout: docs
 category: Invocation
 permalink: docs/watchman-wait.html
+redirect_from: docs/watchman-wait/
 ---
 
 `watchman-wait` waits for changes to files.  It uses the watchman service to

@@ -4,6 +4,7 @@ title: flush-subscriptions
 layout: docs
 section: Commands
 permalink: docs/cmd/flush-subscriptions.html
+redirect_from: docs/cmd/flush-subscriptions/
 ---
 
 *Since 4.8.*

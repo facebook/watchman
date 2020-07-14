@@ -4,6 +4,7 @@ title: size
 layout: docs
 section: Expression Terms
 permalink: docs/expr/size.html
+redirect_from: docs/expr/size/
 ---
 
 *Since version 3.1*

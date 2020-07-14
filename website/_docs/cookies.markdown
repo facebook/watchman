@@ -4,6 +4,7 @@ title: Query Synchronization
 layout: docs
 category: Internals
 permalink: docs/cookies.html
+redirect_from: docs/cookies/
 ---
 
 A file system monitor needs to make sure that queries see up-to-date

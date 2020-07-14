@@ -4,6 +4,7 @@ title: allof
 layout: docs
 section: Expression Terms
 permalink: docs/expr/allof.html
+redirect_from: docs/expr/allof/
 ---
 
 The `allof` expression term evaluates as true if all of the grouped expressions

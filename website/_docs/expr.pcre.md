@@ -4,6 +4,7 @@ title: pcre & ipcre
 layout: docs
 section: Expression Terms
 permalink: docs/expr/pcre.html
+redirect_from: docs/expr/pcre/
 ---
 
 *To use this feature, you must configure watchman `--with-pcre`!*

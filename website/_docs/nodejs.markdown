@@ -4,6 +4,7 @@ title: NodeJS
 layout: docs
 section: Invocation
 permalink: docs/nodejs.html
+redirect_from: docs/nodejs/
 ---
 
 To install the nodejs client:

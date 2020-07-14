@@ -4,6 +4,7 @@ title: list-capabilities
 layout: docs
 category: Commands
 permalink: docs/cmd/list-capabilities.html
+redirect_from: docs/cmd/list-capabilities/
 ---
 
 *Since 3.8.*
