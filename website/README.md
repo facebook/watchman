@@ -1,47 +1,30 @@
-# Website
+# How to run the website locally
 
-This website is built using [Docusaurus 2](https://v2.docusaurus.io/), a
-modern static website generator.
+First time setup:
 
-### Installation
+* You'll need ruby 2 or higher (available by default on Mac)
 
-```
-$ yarn
-```
+Then:
 
-### Local Development
-
-```
-$ yarn start
+```bash
+sudo gem install bundler
+cd watchman/website
+sudo bundle install
 ```
 
-This command starts a local development server and open up a browser window.
-Most changes are reflected live without having to restart the server.
+## After performing the setup
 
-### Build
-
-```
-$ yarn build
-```
-
-This command generates static content into the `build` directory and can be
-served using any static contents hosting service.
-
-### Deployment
+To build the docs and start a webserver to browse them, and auto-rebuild
+as you change content files:
 
 ```
-$ GIT_USER=<Your GitHub username> USE_SSH=true yarn deploy
+jekyll serve -w -t
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to
-build the website and push to the `gh-pages` branch.
-
-### Continuous Integration
-
-Some common defaults for linting/formatting have been set for you. If you
-integrate your project with an open source Continuous Integration system (e.g.
-Travis CI, CircleCI), you may check for issues using the following command.
+If you've already got a built version of the site, you can save some time
+by skipping the initial build.  It will rebuild files when things change:
 
 ```
-$ yarn ci
+jekyll serve -w -t --skip-initial-build
 ```
+
