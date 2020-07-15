@@ -409,6 +409,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 break
         self.assertRegex(warn, r"Recrawled this watch")
 
+    # TODO: this test is very flaky on Windows
+    @unittest.skipIf(os.name == "nt", "win")
     def test_flush_subscriptions(self):
         root = self.mkdtemp()
 
