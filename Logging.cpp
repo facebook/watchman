@@ -217,7 +217,9 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
       watchman::Log::currentTimeString(timebuf, sizeof(timebuf)),
       ": [",
       watchman::Log::getThreadName(),
-      "] Unhandled win32 exception.  Fatal error detected at:\n");
+      "] Unhandled win32 exception code=",
+      folly::to<std::string>(excep->ExceptionRecord->ExceptionCode),
+      ".  Fatal error detected at:\n");
 
   for (i = 0; i < size; i++) {
     write_stderr(strings[i], "\n");
