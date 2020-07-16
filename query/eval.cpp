@@ -97,7 +97,7 @@ void w_query_process_file(
   }
 
   if (ctx->query->dedup_results) {
-    w_string_t* name = w_query_ctx_get_wholename(ctx);
+    auto name = w_query_ctx_get_wholename(ctx);
 
     auto inserted = ctx->dedup.insert(name);
     if (!inserted.second) {
