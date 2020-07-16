@@ -40,7 +40,7 @@ class TestSockPerms(unittest.TestCase):
         else:
             # If the instance is going to fail anyway then there's no point
             # waiting so long
-            start_timeout = 2
+            start_timeout = 5
         return WatchmanInstance.InstanceWithStateDir(
             config=config, start_timeout=start_timeout
         )
@@ -117,10 +117,19 @@ class TestSockPerms(unittest.TestCase):
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
+        # This is the error we expect to find
         wanted = "group '%s' does not exist" % group_name
+        # But if the site uses LDAP or YP/NIS or other similar technology for
+        # their password database then we might experience other infra flakeyness
+        # so we allow for the alternative error case to be present and consider
+        # it a pass.
+        we_love_ldap = "getting gid for '%s' failed:" % group_name
         self.assertWaitFor(
-            lambda: wanted in instance.getCLILogContents(),
-            get_debug_output=lambda: instance.getCLILogContents(),
+            lambda: (wanted in instance.getCLILogContents())
+            or (we_love_ldap in instance.getCLILogContents()),
+            get_debug_output=lambda: str(ctx.exception)
+            + "\n"
+            + instance.getCLILogContents(),
         )
 
     def test_user_not_in_sock_group(self):
