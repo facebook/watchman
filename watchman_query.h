@@ -193,6 +193,12 @@ struct w_query_ctx {
   // the files held in results
   std::unordered_set<w_string> dedup;
 
+  // When unconditional_log_if_results_contain_file_prefixes is set
+  // and one of those prefixes matches a file in the generated results,
+  // that name is added here with the intent that this is passed
+  // to the perf logger
+  std::vector<w_string> namesToLog;
+
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
 

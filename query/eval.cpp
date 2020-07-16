@@ -52,6 +52,30 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   return ctx->wholename;
 }
 
+namespace {
+std::vector<w_string> computeUnconditionalLogFilePrefixes() {
+  Configuration globalConfig;
+  auto names =
+      globalConfig.get("unconditional_log_if_results_contain_file_prefixes");
+
+  std::vector<w_string> result;
+  if (names) {
+    for (auto name : names.array()) {
+      result.push_back(json_to_w_string(name));
+    }
+  }
+
+  return result;
+}
+
+const std::vector<w_string>& getUnconditionalLogFilePrefixes() {
+  // Meyer's singleton to hold this for the life of the process
+  static const std::vector<w_string> names =
+      computeUnconditionalLogFilePrefixes();
+  return names;
+}
+} // namespace
+
 /* Query evaluator */
 void w_query_process_file(
     w_query* query,
@@ -104,6 +128,16 @@ void w_query_process_file(
       // Already present in the results, no need to emit it again
       ctx->num_deduped++;
       return;
+    }
+  }
+
+  auto logPrefixes = getUnconditionalLogFilePrefixes();
+  if (!logPrefixes.empty()) {
+    auto name = w_query_ctx_get_wholename(ctx);
+    for (auto& prefix : logPrefixes) {
+      if (name.piece().startsWith(prefix)) {
+        ctx->namesToLog.push_back(name);
+      }
     }
   }
 
@@ -219,6 +253,24 @@ static void execute_common(
   // discovered that it is actually a fresh instance [e.g. mount generation
   // changes or journal truncation]; update res to match
   res->is_fresh_instance |= ctx->since.clock.is_fresh_instance;
+
+  if (sample && !ctx->namesToLog.empty()) {
+    auto nameList = json_array_of_size(ctx->namesToLog.size());
+    for (auto& name : ctx->namesToLog) {
+      nameList.array().push_back(w_string_to_json(name));
+
+      // Avoid listing everything!
+      if (nameList.array().size() >= 12) {
+        break;
+      }
+    }
+
+    sample->add_meta(
+        "num_special_files_in_result_set",
+        json_integer(ctx->namesToLog.size()));
+    sample->add_meta("special_files_in_result_set", std::move(nameList));
+    sample->force_log();
+  }
 
   if (sample && sample->finish()) {
     sample->add_root_meta(ctx->root);
