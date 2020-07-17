@@ -84,8 +84,9 @@ watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
       stm(std::move(stm)),
       ping(
 #ifdef _WIN32
-          this->stm->getFileDescriptor().fdType() ==
-                  FileDescriptor::FDType::Socket
+          (this->stm &&
+           this->stm->getFileDescriptor().fdType() ==
+               FileDescriptor::FDType::Socket)
               ? w_event_make_sockets()
               : w_event_make_named_pipe()
 #else
