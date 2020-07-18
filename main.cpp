@@ -1264,7 +1264,7 @@ static void spawn_watchman(void) {
 #endif
 }
 
-int main(int argc, char** argv) {
+static int inner_main(int argc, char** argv) {
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
@@ -1347,6 +1347,21 @@ int main(int argc, char** argv) {
 #endif
   }
   return 1;
+}
+
+int main(int argc, char** argv) {
+  try {
+    return inner_main(argc, argv);
+  } catch (const std::exception& e) {
+    log(ERR,
+        "Uncaught C++ exception: ",
+        folly::exceptionStr(e).toStdString(),
+        "\n");
+    return 1;
+  } catch (...) {
+    log(ERR, "Uncaught C++ exception: ...\n");
+    return 1;
+  }
 }
 
 /* vim:ts=2:sw=2:et:
