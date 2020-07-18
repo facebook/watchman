@@ -361,7 +361,7 @@ endif()
 # python3, python3.6 and python3.7 that will select 3.7,
 # even though python3 -> python3.6.  On such a system we
 # want the python3/python3.6 selection, not the 3.7 selection
-find_program(PYTHON3 python3)
+find_program(PYTHON3 NAMES python3 python3.7 python3.6 python3.8)
 if(PYTHON3)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
   set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
