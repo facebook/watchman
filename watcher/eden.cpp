@@ -147,40 +147,6 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
   std::shared_ptr<w_root_t> root_;
 };
 
-/** Execute a functor, retrying it if we encounter an ESTALE exception.
- * Ideally ESTALE wouldn't happen but we've been unable to figure out
- * exactly what is happening on the Eden side so far, and it is more
- * expedient to add a basic retry to ensure smoother operation
- * for watchman clients. */
-template <typename FUNC>
-auto retryEStale(FUNC&& func) {
-  constexpr size_t kNumRetries = 5;
-  std::chrono::milliseconds backoff(1);
-  for (size_t retryAttemptsRemaining = kNumRetries; retryAttemptsRemaining >= 0;
-       --retryAttemptsRemaining) {
-    try {
-      return func();
-    } catch (const std::system_error& exc) {
-      if (exc.code() != error_code::stale_file_handle ||
-          retryAttemptsRemaining == 0) {
-        throw;
-      }
-      // Try again
-      log(ERR,
-          "Got ESTALE error from eden; will retry ",
-          retryAttemptsRemaining,
-          " more times. (",
-          exc.what(),
-          ")\n");
-      /* sleep override */ std::this_thread::sleep_for(backoff);
-      backoff *= 2;
-      continue;
-    }
-  }
-  throw std::runtime_error(
-      "unreachable line reached; should have thrown an ESTALE");
-}
-
 // Resolve the eden socket; On POSIX systems we use the .eden dir that is
 // present in every dir of an eden mount to locate the symlink to the socket.
 // On Windows systems, .eden is only present in the repo root and contains
@@ -213,13 +179,11 @@ folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
 std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
     w_string_piece rootPath,
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  return retryEStale([&] {
-    auto addr = getEdenSocketAddress(rootPath);
+  auto addr = getEdenSocketAddress(rootPath);
 
-    return make_unique<StreamingEdenServiceAsyncClient>(
-        apache::thrift::HeaderClientChannel::newChannel(
-            AsyncSocket::newSocket(eb, addr)));
-  });
+  return make_unique<StreamingEdenServiceAsyncClient>(
+      apache::thrift::HeaderClientChannel::newChannel(
+          AsyncSocket::newSocket(eb, addr)));
 }
 
 /** Create a thrift client that will connect to the eden server associated
@@ -229,13 +193,11 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
 std::unique_ptr<StreamingEdenServiceAsyncClient> getRocketEdenClient(
     w_string_piece rootPath,
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  return retryEStale([&] {
-    auto addr = getEdenSocketAddress(rootPath);
+  auto addr = getEdenSocketAddress(rootPath);
 
-    return make_unique<StreamingEdenServiceAsyncClient>(
-        apache::thrift::RocketClientChannel::newChannel(
-            AsyncSocket::UniquePtr(new AsyncSocket(eb, addr))));
-  });
+  return make_unique<StreamingEdenServiceAsyncClient>(
+      apache::thrift::RocketClientChannel::newChannel(
+          AsyncSocket::UniquePtr(new AsyncSocket(eb, addr))));
 }
 
 class EdenFileResult : public FileResult {
