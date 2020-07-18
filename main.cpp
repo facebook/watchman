@@ -6,6 +6,7 @@
 #include "Logging.h"
 #include "ThreadPool.h"
 #ifdef _WIN32
+#include <Lmcons.h>
 #include <Shlobj.h>
 #endif
 #ifndef _WIN32
@@ -841,12 +842,12 @@ static std::string compute_user_name(void) {
   // We don't trust the environment on win32 because in some situations
   // the environment may contain the domain name like `WORKGROUP\user`
   // which can confuse some path construction we do later on.
-  char user_buf[256];
-  DWORD size = sizeof(user_buf);
-  if (GetUserName(user_buf, &size) && size > 0) {
-    // size is updated to the new length, including the
-    // NUL terminator which we don't need to include here.
-    return std::string(user_buf, size - 1);
+  WCHAR userW[1 + UNLEN];
+  DWORD size = std::size(userW);
+  if (GetUserNameW(userW, &size) && size > 0) {
+    // Constructing a w_string from a WCHAR* will convert to UTF-8
+    w_string user(userW, size);
+    return folly::to<std::string>(user);
   }
 
   log(FATAL,
