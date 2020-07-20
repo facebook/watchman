@@ -392,9 +392,10 @@ void InotifyWatcher::signalThreads() {
 
 namespace {
 std::shared_ptr<watchman::QueryableView> detectInotify(w_root_t* root) {
-  if (root->fs_type == "fuse") {
-    // Linux FUSE filesystems do not support inotify.
-    throw std::runtime_error("cannot watch FUSE file systems with inotify");
+  if (root->fs_type == "edenfs") {
+    // inotify is effectively O(repo) and we know that that access
+    // pattern is undesirable when running on top of EdenFS
+    throw std::runtime_error("cannot watch EdenFS file systems with inotify");
   }
   return std::make_shared<watchman::InMemoryView>(
       root, std::make_shared<InotifyWatcher>(root));
