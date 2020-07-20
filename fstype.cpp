@@ -17,7 +17,61 @@
 #ifdef __linux__
 #include <linux/magic.h>
 #endif
+#include <folly/FileUtil.h>
+#include <folly/String.h>
 #include "FileDescriptor.h"
+
+// This function is used to return the fstype for a given path
+// based on the linux style /proc/mounts data provided.
+// It will return nullptr for paths that don't have a match.
+w_string find_fstype_in_linux_proc_mounts(
+    folly::StringPiece path,
+    folly::StringPiece procMountsData) {
+  std::vector<folly::StringPiece> lines;
+  folly::StringPiece bestMountPoint, bestVfsType;
+
+  folly::split("\n", procMountsData, lines);
+  for (auto& line : lines) {
+    folly::StringPiece device, mountPoint, vfstype, opts, freq, passno;
+    if (folly::split(
+            " ", line, device, mountPoint, vfstype, opts, freq, passno)) {
+      // Look for the mountPoint that matches the longest prefix of path
+      if (mountPoint.size() > bestMountPoint.size() &&
+          path.startsWith(mountPoint)) {
+        if (
+            // mount point matches path exactly
+            path.size() == mountPoint.size() ||
+            // prefix ends with a slash
+            mountPoint.endsWith('/') ||
+            // the byte after the mount point prefix is a slash and thus is
+            // not an ambiguous prefix match
+            (path.size() > mountPoint.size() &&
+             path[mountPoint.size()] == '/')) {
+          // This is a better match than any prior mount point
+          bestMountPoint = mountPoint;
+
+          if (vfstype == "fuse") {
+            // For example: edenfs registers with fstype "fuse"
+            // and device "edenfs", so we take the device node
+            // as the filesystem type
+            bestVfsType = device;
+          } else {
+            // Most other fuse filesystems use libfuse which registers
+            // with fstype names like "fuse.something", or we're working
+            // with non-fuse filesystems and have a more meaningful
+            // fstype reported anyway
+            bestVfsType = vfstype;
+          }
+        }
+      }
+    }
+  }
+
+  if (bestVfsType.empty()) {
+    return nullptr;
+  }
+  return w_string(bestVfsType.data(), bestVfsType.size());
+}
 
 // The primary purpose of checking the filesystem type is to prevent
 // watching filesystems that are known to be problematic, such as
@@ -27,6 +81,20 @@
 
 w_string w_fstype(const char* path) {
 #ifdef __linux__
+  // If possible, we prefer to read the filesystem type names from
+  // `/proc/self/mounts`
+  std::string mounts;
+  if (folly::readFile("/proc/self/mounts", mounts)) {
+    auto fstype = find_fstype_in_linux_proc_mounts(path, mounts);
+    if (fstype) {
+      return fstype;
+    }
+  }
+
+  // Reading the mount table can fail for the simple reason that `/proc` isn't
+  // mounted, so fall back to some slightly manual code that looks at known
+  // filesystem type ids.
+
   struct statfs sfs;
   const char* name = "unknown";
 

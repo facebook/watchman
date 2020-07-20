@@ -40,6 +40,9 @@ typedef struct watchman_root w_root_t;
 
 // Returns the name of the filesystem for the specified path
 w_string w_fstype(const char* path);
+w_string find_fstype_in_linux_proc_mounts(
+    folly::StringPiece path,
+    folly::StringPiece procMountsData);
 
 extern folly::Synchronized<std::string> poisoned_reason;
 

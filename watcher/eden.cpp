@@ -1318,8 +1318,10 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
       to<std::string>("Not an Eden clone: ", root->root_path));
 
 #else
-  if (root->fs_type != "fuse" && root->fs_type != "osxfuse_eden") {
-    throw std::runtime_error(to<std::string>("not a FUSE file system"));
+  if (root->fs_type != "edenfs" && root->fs_type != "fuse" &&
+      root->fs_type != "osxfuse_eden") {
+    throw std::runtime_error(
+        to<std::string>(root->fs_type, " is not a FUSE file system"));
   }
 
   auto edenRoot =
