@@ -322,7 +322,7 @@ json_ref json_loadb(
     size_t flags,
     json_error_t* error);
 json_ref json_loadf(FILE* input, size_t flags, json_error_t* error);
-json_ref json_load_file(const char* path, size_t flags, json_error_t* error);
+json_ref json_load_file(const char* path, size_t flags);
 
 /* encoding */
 

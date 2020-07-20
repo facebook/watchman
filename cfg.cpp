@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include <folly/Synchronized.h>
+#include "watchman_error_category.h"
 
 using namespace watchman;
 
@@ -28,8 +29,6 @@ w_string cfg_get_global_config_file_path(void) {
 }
 
 void cfg_load_global_config_file(void) {
-  json_error_t err;
-
   const char* cfg_file = getenv("WATCHMAN_CONFIG_FILE");
 #ifdef WATCHMAN_CONFIG_FILE
   if (!cfg_file) {
@@ -40,13 +39,25 @@ void cfg_load_global_config_file(void) {
     return;
   }
 
-  if (!w_path_exists(cfg_file)) {
+  json_ref config;
+  try {
+    config = json_load_file(cfg_file, 0);
+  } catch (const std::system_error& exc) {
+    if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+      return;
+    }
+    logf(
+        ERR,
+        "Failed to load config file {}: {}\n",
+        cfg_file,
+        folly::exceptionStr(exc).toStdString());
     return;
-  }
-
-  auto config = json_load_file(cfg_file, 0, &err);
-  if (!config) {
-    logf(ERR, "failed to parse json from {}: {}\n", cfg_file, err.text);
+  } catch (const std::exception& exc) {
+    logf(
+        ERR,
+        "Failed to parse config file {}: {}\n",
+        cfg_file,
+        folly::exceptionStr(exc).toStdString());
     return;
   }
 

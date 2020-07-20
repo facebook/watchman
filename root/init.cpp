@@ -10,7 +10,6 @@ using namespace watchman;
 
 static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
-  json_error_t err;
 
   snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
 
@@ -23,12 +22,7 @@ static json_ref load_root_config(const char* path) {
     return nullptr;
   }
 
-  auto res = json_load_file(cfgfilename, 0, &err);
-  if (!res) {
-    throw std::runtime_error(folly::to<std::string>(
-        "failed to parse json from ", cfgfilename, ": ", err.text));
-  }
-  return res;
+  return json_load_file(cfgfilename, 0);
 }
 
 void watchman_root::applyIgnoreConfiguration() {

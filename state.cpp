@@ -5,6 +5,7 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include "Logging.h"
+#include "watchman_error_category.h"
 
 using namespace watchman;
 
@@ -63,23 +64,32 @@ void w_state_shutdown(void) {
 }
 
 bool w_state_load(void) {
-  json_error_t err;
-
   if (dont_save_state) {
     return true;
   }
 
   state_saver_thread = std::thread(state_saver);
 
-  auto state = json_load_file(watchman_state_file.c_str(), 0, &err);
-
-  if (!state) {
-    log(ERR,
-        "failed to parse json from ",
+  json_ref state;
+  try {
+    state = json_load_file(watchman_state_file.c_str(), 0);
+  } catch (const std::system_error& exc) {
+    if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+      // No need to alarm anyone if we've never written a state file
+      return false;
+    }
+    logf(
+        ERR,
+        "failed to load json from {}: {}\n",
         watchman_state_file,
-        ": ",
-        err.text,
-        "\n");
+        folly::exceptionStr(exc).toStdString());
+    return false;
+  } catch (const std::exception& exc) {
+    logf(
+        ERR,
+        "failed to parse json from {}: {}\n",
+        watchman_state_file,
+        folly::exceptionStr(exc).toStdString());
     return false;
   }
 

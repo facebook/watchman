@@ -19,6 +19,7 @@
 #include "jansson_private.h"
 #include "utf.h"
 #include <folly/String.h>
+#include <system_error>
 
 #define STREAM_STATE_OK 0
 #define STREAM_STATE_EOF -1
@@ -902,24 +903,31 @@ json_ref json_loadf(FILE* input, size_t flags, json_error_t* error) {
   return result;
 }
 
-json_ref json_load_file(const char* path, size_t flags, json_error_t* error) {
-  FILE* fp;
-
-  jsonp_error_init(error, path);
+json_ref json_load_file(const char* path, size_t flags) {
 
   if (path == nullptr) {
-    error_set(error, nullptr, "wrong arguments");
-    return nullptr;
+    throw std::runtime_error("invalid arguments to json_load_file");
   }
 
-  fp = fopen(path, "rb");
+  auto fp = fopen(path, "rb");
   if (!fp) {
-    error_set(error, nullptr, "unable to open %s: %s", path, folly::errnoStr(errno).c_str());
-    return nullptr;
+    auto err = errno;
+    throw std::system_error(
+        err,
+        std::generic_category(),
+        folly::to<std::string>("unable to open ", path));
   }
 
-  auto result = json_loadf(fp, flags, error);
-
+  json_error_t error;
+  jsonp_error_init(&error, path);
+  auto result = json_loadf(fp, flags, &error);
   fclose(fp);
+
+  if (!result) {
+    throw std::runtime_error(
+        folly::to<std::string>(
+          "failed to parse json from ", path, ": ", error.text));
+  }
+
   return result;
 }
