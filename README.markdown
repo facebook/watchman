@@ -1,4 +1,4 @@
-![alt text](logo.png "watchman")
+![alt text](logo.png "watchman"){:height="20%" width="20%"}
 
 # Watchman
 
