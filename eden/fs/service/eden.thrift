@@ -1098,6 +1098,7 @@ service EdenService extends fb303_core.BaseService {
    * fetch counts.
    */
   void clearFetchCounts() throws (1: EdenError ex)
+  void clearFetchCountsByMount(1: PathString mountPath) throws (1: EdenError ex)
 
   /**
    * Queries all of the live Eden mounts for the processes that accessed FUSE
