@@ -1094,6 +1094,12 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex)
 
   /**
+   * Clear pidFetchCounts_ in ObjectStore to start a new recording of process
+   * fetch counts.
+   */
+  void clearFetchCounts() throws (1: EdenError ex)
+
+  /**
    * Queries all of the live Eden mounts for the processes that accessed FUSE
    * over the last `duration` seconds.
    *
