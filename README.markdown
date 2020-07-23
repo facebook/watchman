@@ -1,3 +1,5 @@
+![alt text](logo.png "watchman")
+
 # Watchman
 
 A file watching service.
