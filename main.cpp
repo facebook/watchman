@@ -406,6 +406,16 @@ static void spawn_win32(void) {
   }
 
   ChildProcess proc(args, std::move(opts));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  if (proc.terminated()) {
+    logf(
+        ERR,
+        "Failed to spawn watchman server; it exited with code {}.\n"
+        "Check the log file at {} for more information\n",
+        proc.wait(),
+        log_name);
+    exit(1);
+  }
   proc.disown();
 }
 #endif
