@@ -220,7 +220,7 @@ static void check_nice_value() {
 }
 #endif
 
-static void run_service() {
+[[noreturn]] static void run_service() {
   int fd;
   bool res;
 
@@ -258,7 +258,7 @@ static void run_service() {
 #endif
 
   if (!lock_pidfile()) {
-    return;
+    exit(1);
   }
 
 #ifndef _WIN32
