@@ -26,7 +26,13 @@ pid_t waitpid(pid_t pid, int* status, int options) {
   auto res = WaitForSingleObject(h, options == WNOHANG ? 0 : INFINITE);
 
   switch (res) {
-    case WAIT_OBJECT_0:
+    case WAIT_OBJECT_0: {
+      DWORD exitCode = 0;
+      GetExitCodeProcess(h, &exitCode);
+      *status = int(exitCode);
+      child_procs.wlock()->erase(pid);
+      return pid;
+    }
     case WAIT_ABANDONED_0:
       *status = 0;
       child_procs.wlock()->erase(pid);
