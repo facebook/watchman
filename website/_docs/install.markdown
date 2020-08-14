@@ -74,6 +74,7 @@ You can find the binary downloads in the [latest release](https://github.com/fac
 
 ```
 $ unzip watchman-*-linux.zip
+$ cd watchman-vYYYY.MM.DD.00-linux
 $ sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
 $ sudo cp bin/* /usr/local/bin
 $ sudo cp lib/* /usr/local/lib
