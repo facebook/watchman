@@ -906,6 +906,18 @@ static void setup_sock_name(void) {
 #endif
 
 #ifdef _WIN32
+  // On Windows, if an application uses --sockname to override the named
+  // pipe path so that it can isolate its watchman integration tests,
+  // but doesn't also specify --unix-listener-path then we need to
+  // take care to prevent using the default unix domain path which would
+  // otherwise break their isolation.
+  // If either option is specified without the other, then we disable
+  // the use of the other.
+  if (!named_pipe_path.empty() || !unix_sock_name.empty()) {
+    disable_named_pipe = named_pipe_path.empty();
+    disable_unix_socket = unix_sock_name.empty();
+  }
+
   if (named_pipe_path.empty()) {
     named_pipe_path = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
@@ -1007,7 +1019,9 @@ static struct watchman_getopt opts[] = {
 #ifdef _WIN32
     {"sockname",
      'U',
-     "Specify alternate named pipe path",
+     "DEPRECATED: Specify alternate named pipe path (specifying this will"
+     " disable unix domain sockets unless `--unix-listener-path` is"
+     " specified)",
      REQ_STRING,
      &named_pipe_path,
      "PATH",
@@ -1015,7 +1029,7 @@ static struct watchman_getopt opts[] = {
 #else
     {"sockname",
      'U',
-     "Specify alternate sockname",
+     "DEPRECATED: Specify alternate sockname. Use `--unix-listener-path` instead.",
      REQ_STRING,
      &unix_sock_name,
      "PATH",
@@ -1030,7 +1044,12 @@ static struct watchman_getopt opts[] = {
      IS_DAEMON},
     {"unix-listener-path",
      'u',
+#ifdef _WIN32
+     "Specify alternate unix domain socket path (specifying this will disable"
+     " named pipes unless `--named-pipe-path` is specified)",
+#else
      "Specify alternate unix domain socket path",
+#endif
      REQ_STRING,
      &unix_sock_name,
      "PATH",

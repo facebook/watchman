@@ -851,7 +851,7 @@ bool w_start_listener() {
     }
   }
 
-  if (listener_fd) {
+  if (listener_fd && !disable_unix_socket) {
     unix_loop.assign(AcceptLoop("unix-listener", std::move(listener_fd)));
   }
 
@@ -864,7 +864,9 @@ bool w_start_listener() {
 #ifdef _WIN32
   // Start the named pipes and join them; this will
   // block until the server is shutdown.
-  named_pipe_accept_loop();
+  if (!disable_named_pipe) {
+    named_pipe_accept_loop();
+  }
 #endif
 
   // Clearing these will cause .join() to be called,

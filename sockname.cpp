@@ -6,6 +6,9 @@
 std::string unix_sock_name;
 std::string named_pipe_path;
 
+bool disable_unix_socket = false;
+bool disable_named_pipe = false;
+
 const char* get_sock_name_legacy(void) {
 #ifdef _WIN32
   return named_pipe_path.c_str();
