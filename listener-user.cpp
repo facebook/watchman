@@ -34,11 +34,11 @@ void add_root_warnings_to_response(
           info->warning,
           "\n",
           "To clear this warning, run:\n"
-          "`watchman watch-del ",
+          "`watchman watch-del '",
           root->root_path,
-          " ; watchman watch-project ",
+          "' ; watchman watch-project '",
           root->root_path,
-          "`\n")));
+          "'`\n")));
 }
 
 std::shared_ptr<w_root_t> doResolveOrCreateRoot(
