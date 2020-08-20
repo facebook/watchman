@@ -71,7 +71,7 @@ def _read_project_github_hashes():
         for filename in files:
             path = os.path.join(dirname, filename)
             with open(path) as f:
-                m_proj = re.match('^' + base_dir + '(.*)-rev\.txt$', path)
+                m_proj = re.match('^' + base_dir + '(.*)-rev\\.txt$', path)
                 if m_proj is None:
                     raise RuntimeError('Not a hash file? {0}'.format(path))
                 m_hash = re.match('^Subproject commit ([0-9a-f]+)\n$', f.read())
