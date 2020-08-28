@@ -116,6 +116,11 @@ Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
       dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
       mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
+      filesChangedBetweenCommits_(
+          Configuration(),
+          "scm_hg_files_between_commits",
+          32,
+          10),
       filesChangedSinceMergeBaseWith_(
           Configuration(),
           "scm_hg_files_since_mergebase",
@@ -202,48 +207,60 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 }
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
-    w_string_piece commitA,
-    w_string_piece commitB,
+    w_string_piece commitApiece,
+    w_string_piece commitBpiece,
     w_string requestId) const {
-  // The "" argument at the end causes paths to be printed out
-  // relative to the cwd (set to root path above).
+  auto mtime = getDirStateMtime();
+  auto commitA = folly::to<std::string>(commitApiece);
+  auto commitB = folly::to<std::string>(commitBpiece);
+  auto key = folly::to<std::string>(
+      commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
 
-  auto hgresult = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "status",
-       "--print0",
-       "--rev",
-       commitA,
-       "--rev",
-       commitB,
-       ""},
-      makeHgOptions(requestId),
-      "get files changed between commits");
+  return filesChangedBetweenCommits_
+      .get(
+          key,
+          [this, commitA, commitB, requestId](const std::string&) {
+            auto hgresult = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "status",
+                 "--print0",
+                 "--rev",
+                 commitA,
+                 "--rev",
+                 commitB,
+                 // The "" argument at the end causes paths to be printed out
+                 // relative to the cwd (set to root path above).
+                 ""},
+                makeHgOptions(requestId),
+                "get files changed between commits");
 
-  std::vector<w_string> lines;
-  w_string_piece(hgresult.output).split(lines, '\0');
+            std::vector<w_string> lines;
+            w_string_piece(hgresult.output).split(lines, '\0');
 
-  SCM::StatusResult result;
-  log(DBG, "processing ", lines.size(), " status lines\n");
-  for (auto& line : lines) {
-    if (line.size() < 3) {
-      continue;
-    }
-    w_string fileName(line.data() + 2, line.size() - 2);
-    switch (line.data()[0]) {
-      case 'A':
-        result.addedFiles.emplace_back(std::move(fileName));
-        break;
-      case 'D':
-        result.removedFiles.emplace_back(std::move(fileName));
-        break;
-      default:
-        result.changedFiles.emplace_back(std::move(fileName));
-    }
-  }
+            SCM::StatusResult result;
+            log(DBG, "processing ", lines.size(), " status lines\n");
+            for (auto& line : lines) {
+              if (line.size() < 3) {
+                continue;
+              }
+              w_string fileName(line.data() + 2, line.size() - 2);
+              switch (line.data()[0]) {
+                case 'A':
+                  result.addedFiles.emplace_back(std::move(fileName));
+                  break;
+                case 'D':
+                  result.removedFiles.emplace_back(std::move(fileName));
+                  break;
+                default:
+                  result.changedFiles.emplace_back(std::move(fileName));
+              }
+            }
 
-  return result;
+            return folly::makeFuture(result);
+          })
+      .get()
+      ->value();
 }
 
 time_point<system_clock> Mercurial::getCommitDate(
