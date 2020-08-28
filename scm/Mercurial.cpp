@@ -115,7 +115,12 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
       dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
-      mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10) {}
+      mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
+      filesChangedSinceMergeBaseWith_(
+          Configuration(),
+          "scm_hg_files_since_mergebase",
+          32,
+          10) {}
 
 struct timespec Mercurial::getDirStateMtime() const {
   try {
@@ -165,22 +170,35 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
     w_string requestId) const {
-  // The "" argument at the end causes paths to be printed out relative to the
-  // cwd (set to root path above).
-  auto result = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "status",
-       "-n",
-       "--rev",
-       commitId,
-       ""},
-      makeHgOptions(requestId),
-      "query for files changed since merge base");
+  auto mtime = getDirStateMtime();
+  auto key =
+      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = folly::to<std::string>(commitId);
 
-  std::vector<w_string> lines;
-  w_string_piece(result.output).split(lines, '\n');
-  return lines;
+  return filesChangedSinceMergeBaseWith_
+      .get(
+          key,
+          [this, commit = std::move(commitCopy), requestId](
+              const std::string&) {
+            auto result = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "status",
+                 "-n",
+                 "--rev",
+                 commit,
+                 // The "" argument at the end causes paths to be printed out
+                 // relative to the cwd (set to root path above).
+                 ""},
+                makeHgOptions(requestId),
+                "query for files changed since merge base");
+
+            std::vector<w_string> lines;
+            w_string_piece(result.output).split(lines, '\n');
+            return folly::makeFuture(lines);
+          })
+      .get()
+      ->value();
 }
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(

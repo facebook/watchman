@@ -39,6 +39,8 @@ class Mercurial : public SCM {
  private:
   std::string dirStatePath_;
   mutable LRUCache<std::string, w_string> mergeBases_;
+  mutable LRUCache<std::string, std::vector<w_string>>
+      filesChangedSinceMergeBaseWith_;
 
   // Returns options for invoking hg
   ChildProcess::Options makeHgOptions(w_string requestId) const;
