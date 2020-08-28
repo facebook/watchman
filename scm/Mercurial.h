@@ -38,6 +38,7 @@ class Mercurial : public SCM {
 
  private:
   std::string dirStatePath_;
+  mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
   mutable LRUCache<std::string, w_string> mergeBases_;
   mutable LRUCache<std::string, SCM::StatusResult> filesChangedBetweenCommits_;
   mutable LRUCache<std::string, std::vector<w_string>>

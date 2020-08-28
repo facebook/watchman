@@ -115,6 +115,7 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
       dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
+      commitsPrior_(Configuration(), "scm_hg_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
       filesChangedBetweenCommits_(
           Configuration(),
@@ -292,21 +293,38 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
     w_string_piece commitId,
     int numCommits,
     w_string requestId) const {
-  auto revset = to<std::string>(
-      "reverse(last(_firstancestors(", commitId, "), ", numCommits, "))\n");
-  auto result = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "log",
-       "-r",
-       revset,
-       "-T",
-       "{node}\n"},
-      makeHgOptions(requestId),
-      "get prior commits");
+  auto mtime = getDirStateMtime();
+  auto key = folly::to<std::string>(
+      commitId, ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = folly::to<std::string>(commitId);
 
-  std::vector<w_string> lines;
-  w_string_piece(result.output).split(lines, '\n');
-  return lines;
+  return commitsPrior_
+      .get(
+          key,
+          [this, commit = std::move(commitCopy), numCommits, requestId](
+              const std::string&) {
+            auto revset = to<std::string>(
+                "reverse(last(_firstancestors(",
+                commit,
+                "), ",
+                numCommits,
+                "))\n");
+            auto result = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "log",
+                 "-r",
+                 revset,
+                 "-T",
+                 "{node}\n"},
+                makeHgOptions(requestId),
+                "get prior commits");
+
+            std::vector<w_string> lines;
+            w_string_piece(result.output).split(lines, '\n');
+            return folly::makeFuture(lines);
+          })
+      .get()
+      ->value();
 }
 } // namespace watchman
