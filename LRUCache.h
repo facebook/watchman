@@ -7,6 +7,7 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
+#include "watchman_config.h"
 
 namespace watchman {
 
@@ -267,6 +268,19 @@ class LRUCache {
   // from the start of the lookup, not its completion.
   LRUCache(size_t maxItems, std::chrono::milliseconds errorTTL)
       : maxItems_(maxItems), errorTTL_(errorTTL) {}
+
+  LRUCache(
+      Configuration&& cfg,
+      const char* configPrefix,
+      size_t defaultMaxItems,
+      size_t errorTTLSeconds)
+      : maxItems_(cfg.getInt(
+            folly::to<std::string>(configPrefix, "_cache_size").c_str(),
+            defaultMaxItems)),
+        errorTTL_(std::chrono::seconds(cfg.getInt(
+            folly::to<std::string>(configPrefix, "_cache_error_ttl_seconds")
+                .c_str(),
+            errorTTLSeconds))) {}
 
   // No moving or copying
   LRUCache(const LRUCache&) = delete;
