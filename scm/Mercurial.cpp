@@ -112,109 +112,54 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   return opt;
 }
 
-Mercurial::infoCache::infoCache(std::string path) : dirStatePath(path) {
-  dirstate = FileInformation();
-}
-
-w_string Mercurial::infoCache::lookupMergeBase(const std::string& commitId) {
-  if (dotChanged()) {
-    watchman::log(
-        watchman::DBG, "Blowing mergeBases cache because dirstate changed\n");
-
-    mergeBases.clear();
-    return nullptr;
-  }
-
-  auto it = mergeBases.find(commitId);
-  if (it != mergeBases.end()) {
-    watchman::log(watchman::DBG, "mergeBases cache hit for ", commitId, "\n");
-    return it->second;
-  }
-  watchman::log(watchman::DBG, "mergeBases cache miss for ", commitId, "\n");
-
-  return nullptr;
-}
-
-bool fileTimeEqual(const FileInformation& info1, const FileInformation& info2) {
-  return (
-      info1.size == info2.size && info1.mtime.tv_sec == info2.mtime.tv_sec &&
-      info1.mtime.tv_nsec == info2.mtime.tv_nsec);
-}
-
-bool Mercurial::infoCache::dotChanged() {
-  bool result;
-
-  try {
-    auto info = getFileInformation(
-        dirStatePath.c_str(), CaseSensitivity::CaseSensitive);
-
-    if (!fileTimeEqual(info, dirstate)) {
-      log(DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
-      result = true;
-    } else {
-      result = false;
-      log(DBG, "mergeBases stat(", dirStatePath, ") info same\n");
-    }
-
-    dirstate = info;
-
-  } catch (const std::system_error& exc) {
-    // Failed to stat, so assume that it changed
-    log(DBG, "mergeBases stat(", dirStatePath, ") failed: ", exc.what(), "\n");
-    result = true;
-  }
-  return result;
-}
-
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
-      cache_(infoCache(to<std::string>(getSCMRoot(), "/.hg/dirstate"))) {}
+      dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
+      mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10) {}
+
+struct timespec Mercurial::getDirStateMtime() const {
+  try {
+    auto info = getFileInformation(
+        dirStatePath_.c_str(), CaseSensitivity::CaseSensitive);
+    return info.mtime;
+  } catch (const std::system_error&) {
+    // Failed to stat, so assume the current time
+    struct timeval now;
+    gettimeofday(&now, nullptr);
+    struct timespec ts;
+    ts.tv_sec = now.tv_sec;
+    ts.tv_nsec = now.tv_usec * 1000;
+    return ts;
+  }
+}
 
 w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     const {
-  std::string idString(commitId.data(), commitId.size());
+  auto mtime = getDirStateMtime();
+  auto key =
+      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commit = folly::to<std::string>(commitId);
 
-  FileInformation startDirState;
-  {
-    auto cache = cache_.wlock();
-    auto result = cache->lookupMergeBase(idString);
-    if (result) {
-      watchman::log(
-          watchman::DBG,
-          "Using cached mergeBase value of ",
-          result,
-          " for commitId ",
-          commitId,
-          " because dirstate file is unchanged\n");
-      return result;
-    }
-    startDirState = cache->dirstate;
-  }
+  return mergeBases_
+      .get(
+          key,
+          [this, commit, requestId](const std::string&) {
+            auto revset = to<std::string>("ancestor(.,", commit, ")");
+            auto result = runMercurial(
+                {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
+                makeHgOptions(requestId),
+                "query for the merge base");
 
-  auto revset = to<std::string>("ancestor(.,", commitId, ")");
-  auto result = runMercurial(
-      {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
-      makeHgOptions(requestId),
-      "query for the merge base");
+            if (result.output.size() != 40) {
+              throw SCMError(
+                  "expected merge base to be a 40 character string, got ",
+                  result.output);
+            }
 
-  if (result.output.size() != 40) {
-    throw SCMError(
-        "expected merge base to be a 40 character string, got ", result.output);
-  }
-
-  {
-    // Check that the dirState did not change, if it did it means that we raced
-    // with another actor and that it is unsafe to blindly replace the cached
-    // value with what we just computed, which we know would be stale
-    // information for later consumers.  It is fine to continue using the data
-    // we collected because we know that a pending change will advise clients of
-    // the new state
-    auto cache = cache_.wlock();
-    if (fileTimeEqual(startDirState, cache->dirstate)) {
-      cache->mergeBases[idString] = result.output;
-    }
-  }
-  return result.output;
+            return folly::makeFuture(result.output);
+          })
+      .get()
+      ->value();
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
