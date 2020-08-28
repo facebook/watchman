@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman_system.h"
 #include <folly/executors/ManualExecutor.h>
+#include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 #include <deque>
 #include <stdexcept>
@@ -134,4 +135,10 @@ TEST(CacheTest, future) {
   EXPECT_NE(cache.get(42, now), nullptr) << "we found 42 in the cache";
   EXPECT_EQ(cache.size(), 5)
       << "cache should still be full (no excess) but has " << cache.size();
+}
+
+int main(int argc, char* argv[]) {
+  testing::InitGoogleTest(&argc, argv);
+  folly::init(&argc, &argv);
+  return RUN_ALL_TESTS();
 }
