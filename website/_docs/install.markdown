@@ -107,6 +107,14 @@ To install the package maintained by [MacPorts](https://www.macports.org):
 $ sudo port install watchman
 ```
 
+### Installing on Windows via Chocolatey
+
+To install the package maintained on [Chocolatey](https://www.chocolatey.org):
+
+```powershell
+PS C:\> choco install watchman
+```
+
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
