@@ -626,11 +626,11 @@ struct Glob {
 }
 
 struct AccessCounts {
-  1: i64 fuseTotal
-  2: i64 fuseReads
-  3: i64 fuseWrites
-  4: i64 fuseBackingStoreImports
-  5: i64 fuseDurationNs
+  1: i64 fsChannelTotal
+  2: i64 fsChannelReads
+  3: i64 fsChannelWrites
+  4: i64 fsChannelBackingStoreImports
+  5: i64 fsChannelDurationNs
 }
 
 struct MountAccesses {
