@@ -122,12 +122,14 @@ jobs:
     - name: Build fb303
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests fb303
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --strip --src-dir=. watchman _artifacts/linux  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --strip --src-dir=. watchman _artifacts/linux  --project-install-prefix watchman:/opt/facebook --final-install-prefix /opt/facebook
+    - name: Copy python executables
+      run: for b in $(python3 build/fbcode_builder/getdeps.py show-inst-dir)/opt/facebook/bin/* ; do cp -n $b _artifacts/linux/bin || true ; done
     - uses: actions/upload-artifact@master
       with:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook

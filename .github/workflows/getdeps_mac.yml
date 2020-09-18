@@ -126,12 +126,16 @@ jobs:
     - name: Build fb303
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests fb303
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/mac  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/mac  --project-install-prefix watchman:/opt/facebook --final-install-prefix /opt/facebook
+    - name: Peek
+      run: find $(python3 build/fbcode_builder/getdeps.py show-inst-dir) -ls
+    - name: Copy python executables
+      run: for b in $(python3 build/fbcode_builder/getdeps.py show-inst-dir)/opt/facebook/bin/* ; do cp -n $b _artifacts/mac/bin || true ; done
     - uses: actions/upload-artifact@master
       with:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
