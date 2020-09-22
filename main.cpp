@@ -892,7 +892,44 @@ static std::string compute_user_name(void) {
 #endif
 }
 
+#ifdef _WIN32
+bool initialize_winsock() {
+  WSADATA wsaData;
+  if ((WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) ||
+      (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)) {
+    return false;
+  }
+  return true;
+}
+
+bool initialize_uds() {
+  if (!initialize_winsock()) {
+    log(DBG, "unable to initialize winsock, disabling UDS support\n");
+  }
+
+  // Test if UDS support is present
+  FileDescriptor fd(
+      ::socket(PF_LOCAL, SOCK_STREAM, 0), FileDescriptor::FDType::Socket);
+
+  bool fd_initialized = (bool)fd;
+
+  if (!fd_initialized) {
+    log(DBG, "unable to create UNIX domain socket, disabling UDS support\n");
+    return false;
+  }
+
+  return true;
+}
+#endif
+
 static void setup_sock_name(void) {
+#ifdef _WIN32
+  if (!initialize_uds()) {
+    // if we can't create UNIX domain socket, disable it.
+    disable_unix_socket = true;
+  }
+#endif
+
   auto user = compute_user_name();
 
 #ifdef _WIN32
@@ -1293,42 +1330,6 @@ static void spawn_watchman(void) {
 #endif
 }
 
-#ifdef _WIN32
-void initialize_winsock() {
-  WSADATA wsaData;
-  if ((WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) ||
-      (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)) {
-    disable_unix_socket = true;
-    logf(DBG, "unable to initialize winsock, disabling UDS support");
-    return;
-  }
-
-  OSVERSIONINFOEX info;
-  DWORDLONG dwlConditionMask = 0;
-
-  ZeroMemory(&info, sizeof(OSVERSIONINFOEX));
-
-  // Windows 10 17134 is the first version supports UNIX domain socket
-  info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-  info.dwMajorVersion = 10;
-  info.dwMinorVersion = 0;
-  info.dwBuildNumber = 17134;
-
-  VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
-  VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
-  VER_SET_CONDITION(dwlConditionMask, VER_BUILDNUMBER, VER_GREATER_EQUAL);
-
-  if (VerifyVersionInfo(
-          &info,
-          VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER,
-          dwlConditionMask) == 0) {
-    disable_unix_socket = true;
-    logf(DBG, "This system does not have UDS support, disabling UDS");
-    return;
-  }
-}
-#endif
-
 static int inner_main(int argc, char** argv) {
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
@@ -1339,10 +1340,6 @@ static int inner_main(int argc, char** argv) {
   SCOPE_EXIT {
     folly::SingletonVault::singleton()->destroyInstances();
   };
-
-#ifdef _WIN32
-  initialize_winsock();
-#endif
 
   parse_cmdline(&argc, &argv);
 
