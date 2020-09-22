@@ -1270,8 +1270,30 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
 #else
   if (!is_edenfs_fs_type(root->fs_type) && root->fs_type != "fuse" &&
       root->fs_type != "osxfuse_eden") {
-    throw std::runtime_error(
-        to<std::string>(root->fs_type, " is not a FUSE file system"));
+    // Not an active EdenFS mount.  Perhaps it isn't mounted yet?
+    auto readme = to<std::string>(root->root_path, "/README_EDEN.txt");
+    try {
+      (void)getFileInformation(readme.c_str());
+    } catch (const std::exception&) {
+      // We don't really care if the readme doesn't exist or is inaccessible,
+      // we just wanted to do a best effort check for the readme file.
+      // If we can't access it, we're still not in a position to treat
+      // this as an EdenFS mount so record the issue and allow falling
+      // back to one of the other watchers.
+      throw std::runtime_error(
+          to<std::string>(root->fs_type, " is not a FUSE file system"));
+    }
+
+    // If we get here, then the readme file/symlink exists.
+    // If the readme exists then this is an offline eden mount.
+    // We can't watch it using this watcher in its current state,
+    // and we don't want to allow falling back to inotify as that
+    // will be horribly slow.
+    throw TerminalWatcherError(to<std::string>(
+        root->root_path,
+        " appears to be an offline EdenFS mount. "
+        "Try running `eden doctor` to bring it back online and "
+        "then retry your watch"));
   }
 
   auto edenRoot =
