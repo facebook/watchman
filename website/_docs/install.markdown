@@ -110,11 +110,13 @@ $ sudo port install watchman
 
 ### Installing on Windows via Chocolatey
 
-To install the package maintained on [Chocolatey](https://www.chocolatey.org):
+Watchman is available to install via the [Chocolatey](https://www.chocolatey.org) Windows package manager.  Installation is as simple as:
 
 ```powershell
 PS C:\> choco install watchman
 ```
+
+The package is maintained by the community rather than by Facebook, Inc., so if you experience issues with installation/uninstallation, you should [contact the package maintainers](https://chocolatey.org/packages/watchman/ContactOwners) for assistance.
 
 ### Installing from source
 
