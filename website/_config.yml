@@ -7,6 +7,7 @@ description:
 url: "https://facebook.github.io"
 baseurl: "/watchman"
 ghrepo: "facebook/watchman"
+repository: "facebook/watchman"
 logo: /static/logo.png
 
 # Build settings
@@ -58,7 +59,7 @@ color:
   link: "#4356e6"
 
 # Gems
-gems:
+plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap

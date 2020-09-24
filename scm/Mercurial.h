@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include "ChildProcess.h"
 #include "FileInformation.h"
+#include "LRUCache.h"
 #include "SCM.h"
 
 namespace watchman {
@@ -36,19 +37,15 @@ class Mercurial : public SCM {
       w_string requestId = nullptr) const override;
 
  private:
+  std::string dirStatePath_;
+  mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
+  mutable LRUCache<std::string, w_string> mergeBases_;
+  mutable LRUCache<std::string, SCM::StatusResult> filesChangedBetweenCommits_;
+  mutable LRUCache<std::string, std::vector<w_string>>
+      filesChangedSinceMergeBaseWith_;
+
   // Returns options for invoking hg
   ChildProcess::Options makeHgOptions(w_string requestId) const;
-
-  struct infoCache {
-    std::string dirStatePath;
-    FileInformation dirstate;
-    std::unordered_map<std::string, w_string> mergeBases;
-
-    explicit infoCache(std::string path);
-    bool dotChanged();
-
-    w_string lookupMergeBase(const std::string& commitId);
-  };
-  mutable folly::Synchronized<infoCache> cache_;
+  struct timespec getDirStateMtime() const;
 };
 } // namespace watchman

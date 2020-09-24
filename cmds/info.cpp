@@ -108,12 +108,17 @@ static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
   resp.set(
       "sockname",
       w_string_to_json(w_string(get_sock_name_legacy(), W_STRING_BYTE)));
-  resp.set(
-      "unix_domain", w_string_to_json(w_string::build(get_unix_sock_name())));
+  if (!disable_unix_socket) {
+    resp.set(
+        "unix_domain", w_string_to_json(w_string::build(get_unix_sock_name())));
+  }
+
 #ifdef WIN32
-  resp.set(
-      "named_pipe",
-      w_string_to_json(w_string::build(get_named_pipe_sock_path())));
+  if (!disable_named_pipe) {
+    resp.set(
+        "named_pipe",
+        w_string_to_json(w_string::build(get_named_pipe_sock_path())));
+  }
 #endif
 
   send_and_dispose_response(client, std::move(resp));

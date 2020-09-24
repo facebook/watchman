@@ -392,7 +392,7 @@ void InotifyWatcher::signalThreads() {
 
 namespace {
 std::shared_ptr<watchman::QueryableView> detectInotify(w_root_t* root) {
-  if (root->fs_type == "edenfs") {
+  if (is_edenfs_fs_type(root->fs_type)) {
     // inotify is effectively O(repo) and we know that that access
     // pattern is undesirable when running on top of EdenFS
     throw std::runtime_error("cannot watch EdenFS file systems with inotify");

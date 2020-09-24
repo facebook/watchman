@@ -64,7 +64,9 @@ use prelude::*;
 pub enum Error {
     #[error("IO Error: {0}")]
     Tokio(#[from] tokio::io::Error),
-    #[error("While invoking the {watchman_path} CLI to discover the server connection details: {reason}, stderr=`{stderr}`")]
+    #[error(
+        "While invoking the {watchman_path} CLI to discover the server connection details: {reason}, stderr=`{stderr}`"
+    )]
     ConnectionDiscovery {
         watchman_path: PathBuf,
         reason: String,

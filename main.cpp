@@ -220,7 +220,7 @@ static void check_nice_value() {
 }
 #endif
 
-static void run_service() {
+[[noreturn]] static void run_service() {
   int fd;
   bool res;
 
@@ -258,7 +258,7 @@ static void run_service() {
 #endif
 
   if (!lock_pidfile()) {
-    return;
+    exit(1);
   }
 
 #ifndef _WIN32
@@ -406,6 +406,16 @@ static void spawn_win32(void) {
   }
 
   ChildProcess proc(args, std::move(opts));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  if (proc.terminated()) {
+    logf(
+        ERR,
+        "Failed to spawn watchman server; it exited with code {}.\n"
+        "Check the log file at {} for more information\n",
+        proc.wait(),
+        log_name);
+    exit(1);
+  }
   proc.disown();
 }
 #endif
@@ -882,7 +892,44 @@ static std::string compute_user_name(void) {
 #endif
 }
 
+#ifdef _WIN32
+bool initialize_winsock() {
+  WSADATA wsaData;
+  if ((WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) ||
+      (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)) {
+    return false;
+  }
+  return true;
+}
+
+bool initialize_uds() {
+  if (!initialize_winsock()) {
+    log(DBG, "unable to initialize winsock, disabling UDS support\n");
+  }
+
+  // Test if UDS support is present
+  FileDescriptor fd(
+      ::socket(PF_LOCAL, SOCK_STREAM, 0), FileDescriptor::FDType::Socket);
+
+  bool fd_initialized = (bool)fd;
+
+  if (!fd_initialized) {
+    log(DBG, "unable to create UNIX domain socket, disabling UDS support\n");
+    return false;
+  }
+
+  return true;
+}
+#endif
+
 static void setup_sock_name(void) {
+#ifdef _WIN32
+  if (!initialize_uds()) {
+    // if we can't create UNIX domain socket, disable it.
+    disable_unix_socket = true;
+  }
+#endif
+
   auto user = compute_user_name();
 
 #ifdef _WIN32
@@ -896,6 +943,18 @@ static void setup_sock_name(void) {
 #endif
 
 #ifdef _WIN32
+  // On Windows, if an application uses --sockname to override the named
+  // pipe path so that it can isolate its watchman integration tests,
+  // but doesn't also specify --unix-listener-path then we need to
+  // take care to prevent using the default unix domain path which would
+  // otherwise break their isolation.
+  // If either option is specified without the other, then we disable
+  // the use of the other.
+  if (!named_pipe_path.empty() || !unix_sock_name.empty()) {
+    disable_named_pipe = named_pipe_path.empty();
+    disable_unix_socket = unix_sock_name.empty();
+  }
+
   if (named_pipe_path.empty()) {
     named_pipe_path = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
@@ -997,7 +1056,9 @@ static struct watchman_getopt opts[] = {
 #ifdef _WIN32
     {"sockname",
      'U',
-     "Specify alternate named pipe path",
+     "DEPRECATED: Specify alternate named pipe path (specifying this will"
+     " disable unix domain sockets unless `--unix-listener-path` is"
+     " specified)",
      REQ_STRING,
      &named_pipe_path,
      "PATH",
@@ -1005,7 +1066,7 @@ static struct watchman_getopt opts[] = {
 #else
     {"sockname",
      'U',
-     "Specify alternate sockname",
+     "DEPRECATED: Specify alternate sockname. Use `--unix-listener-path` instead.",
      REQ_STRING,
      &unix_sock_name,
      "PATH",
@@ -1020,7 +1081,12 @@ static struct watchman_getopt opts[] = {
      IS_DAEMON},
     {"unix-listener-path",
      'u',
+#ifdef _WIN32
+     "Specify alternate unix domain socket path (specifying this will disable"
+     " named pipes unless `--named-pipe-path` is specified)",
+#else
      "Specify alternate unix domain socket path",
+#endif
      REQ_STRING,
      &unix_sock_name,
      "PATH",

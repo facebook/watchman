@@ -7,6 +7,7 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
+#include "watchman_config.h"
 
 namespace watchman {
 
@@ -265,8 +266,29 @@ class LRUCache {
   // Construct a cache with a defined limit and the specified
   // negative caching TTL duration.  The errorTTL is measured
   // from the start of the lookup, not its completion.
-  LRUCache(size_t maxItems, std::chrono::milliseconds errorTTL)
-      : maxItems_(maxItems), errorTTL_(errorTTL) {}
+  LRUCache(
+      size_t maxItems,
+      std::chrono::milliseconds errorTTL,
+      std::chrono::milliseconds fetchTimeout = std::chrono::seconds(300))
+      : maxItems_(maxItems), errorTTL_(errorTTL), fetchTimeout_(fetchTimeout) {}
+
+  LRUCache(
+      Configuration&& cfg,
+      const char* configPrefix,
+      size_t defaultMaxItems,
+      size_t errorTTLSeconds,
+      size_t fetchTimeoutSeconds = 60)
+      : maxItems_(cfg.getInt(
+            folly::to<std::string>(configPrefix, "_cache_size").c_str(),
+            defaultMaxItems)),
+        errorTTL_(std::chrono::seconds(cfg.getInt(
+            folly::to<std::string>(configPrefix, "_cache_error_ttl_seconds")
+                .c_str(),
+            errorTTLSeconds))),
+        fetchTimeout_(std::chrono::seconds(cfg.getInt(
+            folly::to<std::string>(configPrefix, "_fetch_timeout_seconds")
+                .c_str(),
+            fetchTimeoutSeconds))) {}
 
   // No moving or copying
   LRUCache(const LRUCache&) = delete;
@@ -466,7 +488,7 @@ class LRUCache {
       }
     });
 
-    return future;
+    return std::move(future).within(fetchTimeout_);
   }
 
   // Explicitly set the value for a key.
@@ -629,6 +651,7 @@ class LRUCache {
   const size_t maxItems_;
   // How long to cache items that have an error Result
   const std::chrono::milliseconds errorTTL_;
+  const std::chrono::milliseconds fetchTimeout_;
   folly::Synchronized<State> state_;
 };
 } // namespace watchman

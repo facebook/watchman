@@ -50,7 +50,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         request_id = "f13bd3bc02c27afe2413932c6fa6c4942b0574b3"
         params = {"since": "c:0:0", "request_id": request_id}
         self.watchmanCommand("query", root, params)
-        pat = re.compile(".* \[client=.*\] request_id = %s" % request_id)
+        pat = re.compile(".* \\[client=.*\\] request_id = %s" % request_id)
 
         self.assertWaitFor(
             lambda: any(pat.match(l) for l in self.getServerLogContents()),

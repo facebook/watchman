@@ -4,7 +4,7 @@
 #include "SavedStateInterface.h"
 #include <memory>
 #include "LocalSavedStateInterface.h"
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
+#if HAVE_MANIFOLD
 #include "facebook/saved_state/ManifoldSavedStateInterface.h"
 #endif
 
@@ -18,7 +18,7 @@ std::unique_ptr<SavedStateInterface> SavedStateInterface::getInterface(
     const SCM* scm,
     const std::shared_ptr<w_root_t> root) {
   unused_parameter(root);
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
+#if HAVE_MANIFOLD
   if (storageType == "manifold") {
     return std::make_unique<ManifoldSavedStateInterface>(
         savedStateConfig, scm, root);

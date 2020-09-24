@@ -19,7 +19,6 @@
 #include "watchman_error_category.h"
 
 #include "ChildProcess.h"
-#include "LRUCache.h"
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
@@ -71,36 +70,7 @@ DType getDTypeFromEden(EdenDtype dtype) {
   }
   return DType::Unknown;
 }
-
-/** Represents a cache key for getFilesChangedBetweenCommits()
- * It is unfortunately a bit boilerplate-y due to the requirements
- * of unordered_map<>. */
-struct BetweenCommitKey {
-  std::string sinceCommit;
-  std::string toCommit;
-
-  bool operator==(const BetweenCommitKey& other) const {
-    return sinceCommit == other.sinceCommit && toCommit == other.toCommit;
-  }
-
-  std::size_t hashValue() const {
-    using namespace watchman;
-    return hash_128_to_64(
-        w_hash_bytes(sinceCommit.data(), sinceCommit.size(), 0),
-        w_hash_bytes(toCommit.data(), toCommit.size(), 0));
-  }
-};
 } // namespace
-
-namespace std {
-/** Ugly glue for unordered_map to hash BetweenCommitKey items */
-template <>
-struct hash<BetweenCommitKey> {
-  std::size_t operator()(BetweenCommitKey const& key) const {
-    return key.hashValue();
-  }
-};
-} // namespace std
 
 namespace watchman {
 namespace {
@@ -737,8 +707,6 @@ class EdenView : public QueryableView {
   // The source control system that we detected during initialization
   mutable std::unique_ptr<EdenWrappedSCM> scm_;
   folly::EventBase subscriberEventBase_;
-  mutable LRUCache<BetweenCommitKey, SCM::StatusResult>
-      filesBetweenCommitCache_;
   JournalPosition lastCookiePosition_;
   std::string mountPoint_;
   std::promise<void> subscribeReadyPromise_;
@@ -748,8 +716,6 @@ class EdenView : public QueryableView {
   explicit EdenView(w_root_t* root)
       : root_path_(root->root_path),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
-        // Allow for 32 pairs of revs, with errors cached for 10 seconds
-        filesBetweenCommitCache_(32, std::chrono::seconds(10)),
         mountPoint_(to<std::string>(root->root_path)),
         subscribeReadyFuture_(subscribeReadyPromise_.get_future()) {
     // Get the current journal position so that we can keep track of
@@ -864,7 +830,7 @@ class EdenView : public QueryableView {
               "\n");
 
           auto changedBetweenCommits =
-              getFilesChangedBetweenCommits(fromHash, toHash);
+              getSCM()->getFilesChangedBetweenCommits(fromHash, toHash);
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {
             mergedFileList.insert(to<std::string>(fileName));
@@ -1123,22 +1089,6 @@ class EdenView : public QueryableView {
     return scm_.get();
   }
 
-  SCM::StatusResult getFilesChangedBetweenCommits(
-      w_string_piece commitA,
-      w_string_piece commitB) const {
-    BetweenCommitKey key{to<std::string>(commitA), to<std::string>(commitB)};
-    auto result = filesBetweenCommitCache_
-                      .get(
-                          key,
-                          [this](const BetweenCommitKey& cacheKey) {
-                            return folly::makeFuture(
-                                getSCM()->getFilesChangedBetweenCommits(
-                                    cacheKey.sinceCommit, cacheKey.toCommit));
-                          })
-                      .get();
-    return result->value();
-  }
-
   void startThreads(const std::shared_ptr<w_root_t>& root) override {
     auto self = shared_from_this();
     std::thread thr([self, this, root]() { subscriberThread(root); });
@@ -1318,10 +1268,32 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
       to<std::string>("Not an Eden clone: ", root->root_path));
 
 #else
-  if (root->fs_type != "edenfs" && root->fs_type != "fuse" &&
+  if (!is_edenfs_fs_type(root->fs_type) && root->fs_type != "fuse" &&
       root->fs_type != "osxfuse_eden") {
-    throw std::runtime_error(
-        to<std::string>(root->fs_type, " is not a FUSE file system"));
+    // Not an active EdenFS mount.  Perhaps it isn't mounted yet?
+    auto readme = to<std::string>(root->root_path, "/README_EDEN.txt");
+    try {
+      (void)getFileInformation(readme.c_str());
+    } catch (const std::exception&) {
+      // We don't really care if the readme doesn't exist or is inaccessible,
+      // we just wanted to do a best effort check for the readme file.
+      // If we can't access it, we're still not in a position to treat
+      // this as an EdenFS mount so record the issue and allow falling
+      // back to one of the other watchers.
+      throw std::runtime_error(
+          to<std::string>(root->fs_type, " is not a FUSE file system"));
+    }
+
+    // If we get here, then the readme file/symlink exists.
+    // If the readme exists then this is an offline eden mount.
+    // We can't watch it using this watcher in its current state,
+    // and we don't want to allow falling back to inotify as that
+    // will be horribly slow.
+    throw TerminalWatcherError(to<std::string>(
+        root->root_path,
+        " appears to be an offline EdenFS mount. "
+        "Try running `eden doctor` to bring it back online and "
+        "then retry your watch"));
   }
 
   auto edenRoot =

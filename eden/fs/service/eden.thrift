@@ -458,6 +458,9 @@ struct TreeInodeEntryDebugInfo {
   */
   7: optional i64 fileSize
 }
+struct GetFetchedFilesResult {
+  1: map<string,set<PathString>> fetchedFilePaths,
+}
 
 struct WorkingDirectoryParents {
   1: BinaryHash parent1
@@ -623,11 +626,11 @@ struct Glob {
 }
 
 struct AccessCounts {
-  1: i64 fuseTotal
-  2: i64 fuseReads
-  3: i64 fuseWrites
-  4: i64 fuseBackingStoreImports
-  5: i64 fuseDurationNs
+  1: i64 fsChannelTotal
+  2: i64 fsChannelReads
+  3: i64 fsChannelWrites
+  4: i64 fsChannelBackingStoreImports
+  5: i64 fsChannelDurationNs
 }
 
 struct MountAccesses {
@@ -1107,6 +1110,23 @@ service EdenService extends fb303_core.BaseService {
    * Note that eden only maintains a few seconds worth of accesses.
    */
   GetAccessCountsResult getAccessCounts(1: i64 duration)
+    throws (1: EdenError ex)
+
+  /**
+   * Start recording paths of the files fetched from the backing store.
+   *
+   * Note that using this call twice will not clear the data and start a new
+   * recording.
+   */
+  void startRecordingBackingStoreFetch() throws (1: EdenError ex)
+
+  /**
+   * Stop recording paths of the files fetched from the backing store.
+   *
+   * Note that using this call will return and clear the previously
+   * collected data.
+   */
+  GetFetchedFilesResult stopRecordingBackingStoreFetch()
     throws (1: EdenError ex)
 
   /**

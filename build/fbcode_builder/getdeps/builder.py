@@ -100,7 +100,9 @@ class BuilderBase(object):
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -543,7 +545,9 @@ if __name__ == "__main__":
             env=env,
         )
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -618,7 +622,7 @@ if __name__ == "__main__":
             retry = 0
 
         testpilot = path_search(env, "testpilot")
-        if testpilot:
+        if testpilot and not no_testpilot:
             buck_test_info = list_tests()
             buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
             with open(buck_test_info_name, "w") as f:
@@ -709,12 +713,17 @@ if __name__ == "__main__":
                 retcode = self._run_cmd(
                     args, env=env, use_cmd_prefix=use_cmd_prefix, allow_fail=True
                 )
+
                 if retcode == 0:
                     break
                 if count == 0:
                     # Only add this option in the second run.
                     args += ["--rerun-failed"]
                 count += 1
+            if retcode != 0:
+                # Allow except clause in getdeps.main to catch and exit gracefully
+                # This allows non-testpilot runs to fail through the same logic as failed testpilot runs, which may become handy in case if post test processing is needed in the future
+                raise subprocess.CalledProcessError(retcode, args)
 
 
 class NinjaBootstrap(BuilderBase):
@@ -990,6 +999,7 @@ class CargoBuilder(BuilderBase):
         inst_dir,
         build_doc,
         workspace_dir,
+        manifests_to_build,
         loader,
     ):
         super(CargoBuilder, self).__init__(
@@ -997,6 +1007,7 @@ class CargoBuilder(BuilderBase):
         )
         self.build_doc = build_doc
         self.ws_dir = workspace_dir
+        self.manifests_to_build = manifests_to_build and manifests_to_build.split(",")
         self.loader = loader
 
     def run_cargo(self, install_dirs, operation, args=None):
@@ -1017,7 +1028,10 @@ class CargoBuilder(BuilderBase):
         return os.path.join(self.build_dir, "source")
 
     def workspace_dir(self):
-        return os.path.join(self.build_source_dir(), self.ws_dir)
+        return os.path.join(self.build_source_dir(), self.ws_dir or "")
+
+    def manifest_dir(self, manifest):
+        return os.path.join(self.build_source_dir(), manifest)
 
     def recreate_dir(self, src, dst):
         if os.path.isdir(dst):
@@ -1049,7 +1063,8 @@ incremental = false
                 )
             )
 
-        self._patchup_workspace()
+        if self.ws_dir is not None:
+            self._patchup_workspace()
 
         try:
             from getdeps.facebook.rust import vendored_crates
@@ -1060,22 +1075,46 @@ incremental = false
             # so just rely on cargo downloading crates on it's own
             pass
 
-        self.run_cargo(
-            install_dirs,
-            "build",
-            ["--out-dir", os.path.join(self.inst_dir, "bin"), "-Zunstable-options"],
-        )
+        if self.manifests_to_build is None:
+            self.run_cargo(
+                install_dirs,
+                "build",
+                ["--out-dir", os.path.join(self.inst_dir, "bin"), "-Zunstable-options"],
+            )
+        else:
+            for manifest in self.manifests_to_build:
+                self.run_cargo(
+                    install_dirs,
+                    "build",
+                    [
+                        "--out-dir",
+                        os.path.join(self.inst_dir, "bin"),
+                        "-Zunstable-options",
+                        "--manifest-path",
+                        self.manifest_dir(manifest),
+                    ],
+                )
+
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         if test_filter:
             args = ["--", test_filter]
         else:
-            args = None
+            args = []
 
-        self.run_cargo(install_dirs, "test", args)
-        if self.build_doc:
-            self.run_cargo(install_dirs, "doc", ["--no-deps"])
+        if self.manifests_to_build is None:
+            self.run_cargo(install_dirs, "test", args)
+            if self.build_doc:
+                self.run_cargo(install_dirs, "doc", ["--no-deps"])
+        else:
+            for manifest in self.manifests_to_build:
+                margs = ["--manifest-path", self.manifest_dir(manifest)]
+                self.run_cargo(install_dirs, "test", args + margs)
+                if self.build_doc:
+                    self.run_cargo(install_dirs, "doc", ["--no-deps"] + margs)
 
     def _patchup_workspace(self):
         """

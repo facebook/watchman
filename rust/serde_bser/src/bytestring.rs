@@ -74,7 +74,9 @@ impl ByteString {
                 }
                 Err(error) => {
                     let (valid, after_valid) = input.split_at(error.valid_up_to());
-                    unsafe { output.push_str(::std::str::from_utf8_unchecked(valid)) }
+                    unsafe {
+                        output.push_str(::std::str::from_utf8_unchecked(valid))
+                    }
 
                     if let Some(invalid_sequence_length) = error.error_len() {
                         for b in &after_valid[..invalid_sequence_length] {

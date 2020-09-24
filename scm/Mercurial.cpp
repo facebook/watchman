@@ -112,175 +112,156 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   return opt;
 }
 
-Mercurial::infoCache::infoCache(std::string path) : dirStatePath(path) {
-  dirstate = FileInformation();
-}
-
-w_string Mercurial::infoCache::lookupMergeBase(const std::string& commitId) {
-  if (dotChanged()) {
-    watchman::log(
-        watchman::DBG, "Blowing mergeBases cache because dirstate changed\n");
-
-    mergeBases.clear();
-    return nullptr;
-  }
-
-  auto it = mergeBases.find(commitId);
-  if (it != mergeBases.end()) {
-    watchman::log(watchman::DBG, "mergeBases cache hit for ", commitId, "\n");
-    return it->second;
-  }
-  watchman::log(watchman::DBG, "mergeBases cache miss for ", commitId, "\n");
-
-  return nullptr;
-}
-
-bool fileTimeEqual(const FileInformation& info1, const FileInformation& info2) {
-  return (
-      info1.size == info2.size && info1.mtime.tv_sec == info2.mtime.tv_sec &&
-      info1.mtime.tv_nsec == info2.mtime.tv_nsec);
-}
-
-bool Mercurial::infoCache::dotChanged() {
-  bool result;
-
-  try {
-    auto info = getFileInformation(
-        dirStatePath.c_str(), CaseSensitivity::CaseSensitive);
-
-    if (!fileTimeEqual(info, dirstate)) {
-      log(DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
-      result = true;
-    } else {
-      result = false;
-      log(DBG, "mergeBases stat(", dirStatePath, ") info same\n");
-    }
-
-    dirstate = info;
-
-  } catch (const std::system_error& exc) {
-    // Failed to stat, so assume that it changed
-    log(DBG, "mergeBases stat(", dirStatePath, ") failed: ", exc.what(), "\n");
-    result = true;
-  }
-  return result;
-}
-
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
-      cache_(infoCache(to<std::string>(getSCMRoot(), "/.hg/dirstate"))) {}
+      dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
+      commitsPrior_(Configuration(), "scm_hg_commits_prior", 32, 10),
+      mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
+      filesChangedBetweenCommits_(
+          Configuration(),
+          "scm_hg_files_between_commits",
+          32,
+          10),
+      filesChangedSinceMergeBaseWith_(
+          Configuration(),
+          "scm_hg_files_since_mergebase",
+          32,
+          10) {}
+
+struct timespec Mercurial::getDirStateMtime() const {
+  try {
+    auto info = getFileInformation(
+        dirStatePath_.c_str(), CaseSensitivity::CaseSensitive);
+    return info.mtime;
+  } catch (const std::system_error&) {
+    // Failed to stat, so assume the current time
+    struct timeval now;
+    gettimeofday(&now, nullptr);
+    struct timespec ts;
+    ts.tv_sec = now.tv_sec;
+    ts.tv_nsec = now.tv_usec * 1000;
+    return ts;
+  }
+}
 
 w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     const {
-  std::string idString(commitId.data(), commitId.size());
+  auto mtime = getDirStateMtime();
+  auto key =
+      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commit = folly::to<std::string>(commitId);
 
-  FileInformation startDirState;
-  {
-    auto cache = cache_.wlock();
-    auto result = cache->lookupMergeBase(idString);
-    if (result) {
-      watchman::log(
-          watchman::DBG,
-          "Using cached mergeBase value of ",
-          result,
-          " for commitId ",
-          commitId,
-          " because dirstate file is unchanged\n");
-      return result;
-    }
-    startDirState = cache->dirstate;
-  }
+  return mergeBases_
+      .get(
+          key,
+          [this, commit, requestId](const std::string&) {
+            auto revset = to<std::string>("ancestor(.,", commit, ")");
+            auto result = runMercurial(
+                {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
+                makeHgOptions(requestId),
+                "query for the merge base");
 
-  auto revset = to<std::string>("ancestor(.,", commitId, ")");
-  auto result = runMercurial(
-      {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
-      makeHgOptions(requestId),
-      "query for the merge base");
+            if (result.output.size() != 40) {
+              throw SCMError(
+                  "expected merge base to be a 40 character string, got ",
+                  result.output);
+            }
 
-  if (result.output.size() != 40) {
-    throw SCMError(
-        "expected merge base to be a 40 character string, got ", result.output);
-  }
-
-  {
-    // Check that the dirState did not change, if it did it means that we raced
-    // with another actor and that it is unsafe to blindly replace the cached
-    // value with what we just computed, which we know would be stale
-    // information for later consumers.  It is fine to continue using the data
-    // we collected because we know that a pending change will advise clients of
-    // the new state
-    auto cache = cache_.wlock();
-    if (fileTimeEqual(startDirState, cache->dirstate)) {
-      cache->mergeBases[idString] = result.output;
-    }
-  }
-  return result.output;
+            return folly::makeFuture(result.output);
+          })
+      .get()
+      ->value();
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
     w_string requestId) const {
-  // The "" argument at the end causes paths to be printed out relative to the
-  // cwd (set to root path above).
-  auto result = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "status",
-       "-n",
-       "--rev",
-       commitId,
-       ""},
-      makeHgOptions(requestId),
-      "query for files changed since merge base");
+  auto mtime = getDirStateMtime();
+  auto key =
+      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = folly::to<std::string>(commitId);
 
-  std::vector<w_string> lines;
-  w_string_piece(result.output).split(lines, '\n');
-  return lines;
+  return filesChangedSinceMergeBaseWith_
+      .get(
+          key,
+          [this, commit = std::move(commitCopy), requestId](
+              const std::string&) {
+            auto result = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "status",
+                 "-n",
+                 "--rev",
+                 commit,
+                 // The "" argument at the end causes paths to be printed out
+                 // relative to the cwd (set to root path above).
+                 ""},
+                makeHgOptions(requestId),
+                "query for files changed since merge base");
+
+            std::vector<w_string> lines;
+            w_string_piece(result.output).split(lines, '\n');
+            return folly::makeFuture(lines);
+          })
+      .get()
+      ->value();
 }
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
-    w_string_piece commitA,
-    w_string_piece commitB,
+    w_string_piece commitApiece,
+    w_string_piece commitBpiece,
     w_string requestId) const {
-  // The "" argument at the end causes paths to be printed out
-  // relative to the cwd (set to root path above).
+  auto mtime = getDirStateMtime();
+  auto commitA = folly::to<std::string>(commitApiece);
+  auto commitB = folly::to<std::string>(commitBpiece);
+  auto key = folly::to<std::string>(
+      commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
 
-  auto hgresult = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "status",
-       "--print0",
-       "--rev",
-       commitA,
-       "--rev",
-       commitB,
-       ""},
-      makeHgOptions(requestId),
-      "get files changed between commits");
+  return filesChangedBetweenCommits_
+      .get(
+          key,
+          [this, commitA, commitB, requestId](const std::string&) {
+            auto hgresult = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "status",
+                 "--print0",
+                 "--rev",
+                 commitA,
+                 "--rev",
+                 commitB,
+                 // The "" argument at the end causes paths to be printed out
+                 // relative to the cwd (set to root path above).
+                 ""},
+                makeHgOptions(requestId),
+                "get files changed between commits");
 
-  std::vector<w_string> lines;
-  w_string_piece(hgresult.output).split(lines, '\0');
+            std::vector<w_string> lines;
+            w_string_piece(hgresult.output).split(lines, '\0');
 
-  SCM::StatusResult result;
-  log(DBG, "processing ", lines.size(), " status lines\n");
-  for (auto& line : lines) {
-    if (line.size() < 3) {
-      continue;
-    }
-    w_string fileName(line.data() + 2, line.size() - 2);
-    switch (line.data()[0]) {
-      case 'A':
-        result.addedFiles.emplace_back(std::move(fileName));
-        break;
-      case 'D':
-        result.removedFiles.emplace_back(std::move(fileName));
-        break;
-      default:
-        result.changedFiles.emplace_back(std::move(fileName));
-    }
-  }
+            SCM::StatusResult result;
+            log(DBG, "processing ", lines.size(), " status lines\n");
+            for (auto& line : lines) {
+              if (line.size() < 3) {
+                continue;
+              }
+              w_string fileName(line.data() + 2, line.size() - 2);
+              switch (line.data()[0]) {
+                case 'A':
+                  result.addedFiles.emplace_back(std::move(fileName));
+                  break;
+                case 'D':
+                  result.removedFiles.emplace_back(std::move(fileName));
+                  break;
+                default:
+                  result.changedFiles.emplace_back(std::move(fileName));
+              }
+            }
 
-  return result;
+            return folly::makeFuture(result);
+          })
+      .get()
+      ->value();
 }
 
 time_point<system_clock> Mercurial::getCommitDate(
@@ -312,21 +293,38 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
     w_string_piece commitId,
     int numCommits,
     w_string requestId) const {
-  auto revset = to<std::string>(
-      "reverse(last(_firstancestors(", commitId, "), ", numCommits, "))\n");
-  auto result = runMercurial(
-      {hgExecutablePath(),
-       "--traceback",
-       "log",
-       "-r",
-       revset,
-       "-T",
-       "{node}\n"},
-      makeHgOptions(requestId),
-      "get prior commits");
+  auto mtime = getDirStateMtime();
+  auto key = folly::to<std::string>(
+      commitId, ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = folly::to<std::string>(commitId);
 
-  std::vector<w_string> lines;
-  w_string_piece(result.output).split(lines, '\n');
-  return lines;
+  return commitsPrior_
+      .get(
+          key,
+          [this, commit = std::move(commitCopy), numCommits, requestId](
+              const std::string&) {
+            auto revset = to<std::string>(
+                "reverse(last(_firstancestors(",
+                commit,
+                "), ",
+                numCommits,
+                "))\n");
+            auto result = runMercurial(
+                {hgExecutablePath(),
+                 "--traceback",
+                 "log",
+                 "-r",
+                 revset,
+                 "-T",
+                 "{node}\n"},
+                makeHgOptions(requestId),
+                "get prior commits");
+
+            std::vector<w_string> lines;
+            w_string_piece(result.output).split(lines, '\n');
+            return folly::makeFuture(lines);
+          })
+      .get()
+      ->value();
 }
 } // namespace watchman

@@ -98,6 +98,8 @@ void startSanityCheckThread(void);
 
 extern std::string unix_sock_name;
 extern std::string named_pipe_path;
+extern bool disable_unix_socket;
+extern bool disable_named_pipe;
 
 /** Returns the legacy socket name.
  * It is legacy because its meaning is system dependent and
