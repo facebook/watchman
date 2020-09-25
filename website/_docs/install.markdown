@@ -108,6 +108,16 @@ To install the package maintained by [MacPorts](https://www.macports.org):
 $ sudo port install watchman
 ```
 
+### Installing on Windows via Chocolatey
+
+Watchman is available to install via the [Chocolatey](https://www.chocolatey.org) Windows package manager.  Installation is as simple as:
+
+```powershell
+PS C:\> choco install watchman
+```
+
+The package is maintained by the community rather than by Facebook, Inc., so if you experience issues with installation/uninstallation, you should [contact the package maintainers](https://chocolatey.org/packages/watchman/ContactOwners) for assistance.
+
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
