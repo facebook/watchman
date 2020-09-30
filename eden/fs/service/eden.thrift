@@ -108,7 +108,6 @@ struct DaemonInfo {
   /**
    * The uptime of the edenfs daemon
    * Same data from /proc/pid/stat
-   * This will not be populated in Windows build
    */
   4: optional float uptime
 }
