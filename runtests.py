@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim:ts=4:sw=4:et:
 
 # no unicode literals
