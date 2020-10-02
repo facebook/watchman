@@ -16,6 +16,7 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
 
   const auto& query_spec = args.at(2);
   auto query = w_query_parse(root, query_spec);
+  query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
   if (client->client_mode) {
     query->sync_timeout = std::chrono::milliseconds(0);

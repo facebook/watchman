@@ -527,6 +527,8 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
 
   // Walk back in time until we hit the boundary
   auto view = view_.rlock();
+  ctx->generationStarted();
+
   for (f = view->latest_file; f; f = f->next) {
     ctx->bumpNumWalked();
     // Note that we use <= for the time comparisons in here so that we
@@ -555,6 +557,7 @@ void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
   struct watchman_file* f;
 
   auto view = view_.rlock();
+  ctx->generationStarted();
   for (const auto& suff : *query->suffixes) {
     // Head of suffix index for this suffix
     auto it = view->suffixes.find(suff);
@@ -587,6 +590,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
   }
 
   auto view = view_.rlock();
+  ctx->generationStarted();
 
   for (const auto& path : *query->paths) {
     const watchman_dir* dir;
@@ -671,6 +675,7 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
     const {
   struct watchman_file* f;
   auto view = view_.rlock();
+  ctx->generationStarted();
 
   for (f = view->latest_file; f; f = f->next) {
     ctx->bumpNumWalked();

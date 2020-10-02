@@ -223,6 +223,8 @@ static void execute_common(
     w_perf_t* sample,
     w_query_res* res,
     w_query_generator generator) {
+  ctx->stopWatch.reset();
+
   if (ctx->query->dedup_results) {
     ctx->dedup.reserve(64);
   }
@@ -235,9 +237,10 @@ static void execute_common(
     if (!generator) {
       generator = default_generators;
     }
-
     generator(ctx->query, ctx->root, ctx);
   }
+  ctx->generationDuration = ctx->stopWatch.lap();
+  ctx->state = QueryContextState::Rendering;
 
   // We may have some file results pending re-evaluation,
   // so make sure that we process them before we get to
@@ -248,6 +251,9 @@ static void execute_common(
     // the field renderers, we may need to do a couple of fetches
     // to get all that we need, so we loop until we get them all.
   }
+
+  ctx->renderDuration = ctx->stopWatch.lap();
+  ctx->state = QueryContextState::Completed;
 
   // For Eden instances it is possible that when running the query it was
   // discovered that it is actually a fresh instance [e.g. mount generation
@@ -293,7 +299,8 @@ w_query_ctx::w_query_ctx(
     w_query* q,
     const std::shared_ptr<w_root_t>& root,
     bool disableFreshInstance)
-    : query(q),
+    : created(std::chrono::steady_clock::now()),
+      query(q),
       root(root),
       resultsArray(json_array()),
       disableFreshInstance{disableFreshInstance} {
@@ -497,12 +504,23 @@ w_query_res w_query_execute(
   }
 
   w_query_ctx ctx(query, root, disableFreshInstance);
+
+  // Track the query against the root.
+  // This is to enable the `watchman debug-status` diagnostic command.
+  // It promises only to read the read-only fields in ctx and ctx.query.
+  root->queries.wlock()->insert(&ctx);
+  SCOPE_EXIT {
+    root->queries.wlock()->erase(&ctx);
+  };
   if (query->sync_timeout.count()) {
+    ctx.state = QueryContextState::WaitingForCookieSync;
+    ctx.stopWatch.reset();
     try {
       root->syncToNow(query->sync_timeout);
     } catch (const std::exception& exc) {
       throw QueryExecError("synchronization failed: ", exc.what());
     }
+    ctx.cookieSyncDuration = ctx.stopWatch.lap();
   }
 
   /* The first stage of execution is generation.

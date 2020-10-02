@@ -25,6 +25,7 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   }
 
   auto query = w_query_parse_legacy(root, args, 3, nullptr, clockspec, nullptr);
+  query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
   auto res = w_query_execute(query.get(), root, nullptr);
   auto response = make_response();

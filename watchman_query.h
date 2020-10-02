@@ -4,6 +4,7 @@
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
 #include <folly/Optional.h>
+#include <folly/stop_watch.h>
 #include <array>
 #include <deque>
 #include <stdexcept>
@@ -175,8 +176,34 @@ class FileResult {
   Properties neededProperties_{Property::None};
 };
 
+enum class QueryContextState {
+  NotStarted,
+  WaitingForCookieSync,
+  WaitingForViewLock,
+  Generating,
+  Rendering,
+  Completed,
+};
+
 // Holds state for the execution of a query
 struct w_query_ctx {
+  std::chrono::time_point<std::chrono::steady_clock> created;
+  folly::stop_watch<std::chrono::milliseconds> stopWatch;
+  std::atomic<QueryContextState> state{QueryContextState::NotStarted};
+  std::atomic<std::chrono::milliseconds> cookieSyncDuration{
+      std::chrono::milliseconds(0)};
+  std::atomic<std::chrono::milliseconds> viewLockWaitDuration{
+      std::chrono::milliseconds(0)};
+  std::atomic<std::chrono::milliseconds> generationDuration{
+      std::chrono::milliseconds(0)};
+  std::atomic<std::chrono::milliseconds> renderDuration{
+      std::chrono::milliseconds(0)};
+
+  void generationStarted() {
+    viewLockWaitDuration = stopWatch.lap();
+    state = QueryContextState::Generating;
+  }
+
   struct w_query* query;
   std::shared_ptr<w_root_t> root;
   std::unique_ptr<FileResult> file;
@@ -373,6 +400,8 @@ struct w_query {
   w_query_field_list fieldList;
 
   w_string request_id;
+  w_string subscriptionName;
+  pid_t clientPid{0};
 
   /** Returns true if the supplied name is contained in
    * the parsed fieldList in this query */

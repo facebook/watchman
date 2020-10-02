@@ -69,6 +69,10 @@ class CookieSync {
     return cookieDir_;
   }
 
+  // Returns the list of cookies that are pending observation; each of
+  // these has an associated waiting client.
+  std::vector<w_string> getOutstandingCookieFileList() const;
+
  private:
   struct Cookie {
     folly::Promise<folly::Unit> promise;

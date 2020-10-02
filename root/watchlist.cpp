@@ -104,6 +104,18 @@ json_ref w_root_watch_list_to_json(void) {
   return arr;
 }
 
+json_ref watchman_root::getStatusForAllRoots() {
+  auto arr = json_array();
+
+  auto map = watched_roots.rlock();
+  for (const auto& it : *map) {
+    auto root = it.second;
+    json_array_append_new(arr, root->getStatus());
+  }
+
+  return arr;
+}
+
 bool w_root_save_state(json_ref& state) {
   bool result = true;
 
@@ -130,6 +142,131 @@ bool w_root_save_state(json_ref& state) {
   json_object_set_new(state, "watched", std::move(watched_dirs));
 
   return result;
+}
+
+json_ref watchman_root::getStatus() const {
+  auto obj = json_object();
+  auto now = std::chrono::steady_clock::now();
+
+  auto cookie_array = json_array();
+  for (auto& name : cookies.getOutstandingCookieFileList()) {
+    cookie_array.array().push_back(w_string_to_json(name));
+  }
+
+  std::string crawl_status;
+  auto recrawl_info = json_object();
+  {
+    auto info = recrawlInfo.rlock();
+    recrawl_info.set({
+        {"count", json_integer(info->recrawlCount)},
+        {"should-recrawl", json_boolean(info->shouldRecrawl)},
+        {"warning", w_string_to_json(info->warning)},
+    });
+
+    if (!inner.done_initial) {
+      crawl_status = folly::to<std::string>(
+          info->recrawlCount ? "re-" : "",
+          "crawling for ",
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              now - info->crawlStart)
+              .count(),
+          "ms");
+    } else if (info->shouldRecrawl) {
+      crawl_status = folly::to<std::string>(
+          "needs recrawl: ",
+          info->warning,
+          ". Last crawl was ",
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              now - info->crawlFinish)
+              .count(),
+          "ms ago");
+    } else {
+      crawl_status = folly::to<std::string>(
+          "crawl completed ",
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              now - info->crawlFinish)
+              .count(),
+          "ms ago, and took ",
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              info->crawlFinish - info->crawlStart)
+              .count(),
+          "ms");
+    }
+  }
+
+  auto query_info = json_array();
+  {
+    auto locked = queries.rlock();
+    for (auto& ctx : *locked) {
+      auto info = json_object();
+      auto elapsed = now - ctx->created;
+
+      const char* queryState = "?";
+      switch (ctx->state.load()) {
+        case QueryContextState::NotStarted:
+          queryState = "NotStarted";
+          break;
+        case QueryContextState::WaitingForCookieSync:
+          queryState = "WaitingForCookieSync";
+          break;
+        case QueryContextState::WaitingForViewLock:
+          queryState = "WaitingForViewLock";
+          break;
+        case QueryContextState::Generating:
+          queryState = "Generating";
+          break;
+        case QueryContextState::Rendering:
+          queryState = "Rendering";
+          break;
+        case QueryContextState::Completed:
+          queryState = "Completed";
+          break;
+      }
+
+      info.set({
+          {"elapsed-milliseconds",
+           json_integer(
+               std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
+                   .count())},
+          {"cookie-sync-duration-milliseconds",
+           json_integer(ctx->cookieSyncDuration.load().count())},
+          {"generation-duration-milliseconds",
+           json_integer(ctx->generationDuration.load().count())},
+          {"render-duration-milliseconds",
+           json_integer(ctx->renderDuration.load().count())},
+          {"view-lock-wait-duration-milliseconds",
+           json_integer(ctx->viewLockWaitDuration.load().count())},
+          {"state", typed_string_to_json(queryState)},
+          {"client-pid", json_integer(ctx->query->clientPid)},
+          {"request-id", w_string_to_json(ctx->query->request_id)},
+          {"query", json_ref(ctx->query->query_spec)},
+      });
+      if (ctx->query->subscriptionName) {
+        info.set(
+            "subscription-name",
+            w_string_to_json(ctx->query->subscriptionName));
+      }
+
+      query_info.array().push_back(info);
+    }
+  }
+
+  obj.set({
+      {"path", w_string_to_json(root_path)},
+      {"fstype", w_string_to_json(fs_type)},
+      {"case_sensitive",
+       json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)},
+      {"cookie_prefix", w_string_to_json(cookies.cookiePrefix())},
+      {"cookie_dir", w_string_to_json(cookies.cookieDir())},
+      {"cookie_list", std::move(cookie_array)},
+      {"recrawl_info", std::move(recrawl_info)},
+      {"queries", std::move(query_info)},
+      {"done_initial", json_boolean(inner.done_initial)},
+      {"cancelled", json_boolean(inner.cancelled)},
+      {"crawl-status",
+       w_string_to_json(w_string(crawl_status.data(), crawl_status.size()))},
+  });
+  return obj;
 }
 
 json_ref watchman_root::triggerListToJson() const {

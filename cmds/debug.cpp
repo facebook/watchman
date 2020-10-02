@@ -244,5 +244,17 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root)
 
+static void cmd_debug_status(struct watchman_client* client, const json_ref&) {
+  auto resp = make_response();
+  auto roots = watchman_root::getStatusForAllRoots();
+  resp.set("roots", std::move(roots));
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "debug-status",
+    cmd_debug_status,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    NULL)
+
 /* vim:ts=2:sw=2:et:
  */

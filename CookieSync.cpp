@@ -37,6 +37,15 @@ void CookieSync::setCookieDir(const w_string& dir) {
       cookieDir_, "/" WATCHMAN_COOKIE_PREFIX, hostname, "-", ::getpid(), "-");
 }
 
+std::vector<w_string> CookieSync::getOutstandingCookieFileList() const {
+  std::vector<w_string> result;
+  for (auto& it : *cookies_.rlock()) {
+    result.push_back(it.first);
+  }
+
+  return result;
+}
+
 folly::Future<folly::Unit> CookieSync::sync() {
   /* generate a cookie name: cookie prefix + id */
   auto path_str = w_string::build(cookiePrefix_, serial_++);

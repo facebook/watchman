@@ -722,9 +722,18 @@ class EdenView : public QueryableView {
     // cookie file changes
     auto client = getEdenClient(root_path_);
     client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
+    // We don't run an iothread so we never need to crawl and
+    // thus should be considered to have "completed" the initial
+    // exploration of the root
+    root->inner.done_initial = true;
+    auto crawlInfo = root->recrawlInfo.wlock();
+    crawlInfo->shouldRecrawl = false;
+    crawlInfo->crawlStart = std::chrono::steady_clock::now();
+    crawlInfo->crawlFinish = crawlInfo->crawlStart;
   }
 
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+    ctx->generationStarted();
     auto client = getEdenClient(root_path_);
 
     FileDelta delta;
@@ -928,6 +937,7 @@ class EdenView : public QueryableView {
   }
 
   void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+    ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     w_string_piece rel;
@@ -991,6 +1001,7 @@ class EdenView : public QueryableView {
 
   /** Walks files that match the supplied set of paths */
   void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+    ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     auto rel = computeRelativePathPiece(ctx);
@@ -1017,6 +1028,7 @@ class EdenView : public QueryableView {
   }
 
   void globGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+    ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     auto rel = computeRelativePathPiece(ctx);
@@ -1046,6 +1058,7 @@ class EdenView : public QueryableView {
 
   void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
       const override {
+    ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     std::string globPattern;

@@ -99,6 +99,8 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     bool shouldRecrawl{true};
     // Last ad-hoc warning message
     w_string warning;
+    std::chrono::time_point<std::chrono::steady_clock> crawlStart;
+    std::chrono::time_point<std::chrono::steady_clock> crawlFinish;
   };
   folly::Synchronized<RecrawlInfo> recrawlInfo;
 
@@ -130,6 +132,13 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     void init(w_root_t* root);
   } inner;
 
+  // For debugging and diagnostic purposes, this set references
+  // all outstanding query contexts that are executing against this root.
+  // If is only safe to read the query contexts while the queries.rlock()
+  // is held, and even then it is only really safe to read fields that
+  // are not changed by the query exection.
+  folly::Synchronized<std::unordered_set<w_query_ctx*>> queries;
+
   // Obtain the current view pointer.
   // This is safe wrt. a concurrent recrawl operation
   std::shared_ptr<watchman::QueryableView> view();
@@ -157,6 +166,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   void signalThreads();
   bool stopWatch();
   json_ref triggerListToJson() const;
+
+  static json_ref getStatusForAllRoots();
+  json_ref getStatus() const;
 
  private:
   void applyIgnoreConfiguration();

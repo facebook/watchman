@@ -33,6 +33,11 @@ void InMemoryView::fullCrawl(
     PendingCollection::LockedPtr& pending) {
   struct timeval start;
 
+  {
+    auto crawl = root->recrawlInfo.wlock();
+    crawl->crawlStart = std::chrono::steady_clock::now();
+  }
+
   w_perf_t sample("full-crawl");
   {
     auto view = view_.wlock();
@@ -59,6 +64,7 @@ void InMemoryView::fullCrawl(
     {
       auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
       lockPair.first->shouldRecrawl = false;
+      lockPair.first->crawlFinish = std::chrono::steady_clock::now();
       if (lockPair.second->promise) {
         lockPair.second->promise->set_value();
         lockPair.second->promise.reset();
