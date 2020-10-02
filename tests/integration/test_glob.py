@@ -179,7 +179,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand("query", root, {"glob": ["//fbandroid/*.cpp"]})
         self.assertIn(
-            "watchman command error: failed to parse query: "
+            "QueryParseError: failed to parse query: "
             "glob `//fbandroid/*.cpp` is an absolute path.  "
             "All globs must be relative paths",
             str(ctx.exception),

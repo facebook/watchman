@@ -139,7 +139,8 @@ bool dispatch_command(
 
     return true;
   } catch (const std::exception& e) {
-    send_error_response(client, "%s", e.what());
+    auto what = folly::exceptionStr(e);
+    send_error_response(client, "%s", what.c_str());
     return false;
   }
 }
