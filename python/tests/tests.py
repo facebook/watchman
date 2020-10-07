@@ -339,8 +339,7 @@ class TestBSERDump(unittest.TestCase):
         self.assertEqual(b"there", obj[0])
         # make sure this doesn't crash
         self.assertRaises(Exception, lambda: obj[45.25])
-
-        hello, = obj  # sequence/list assignment
+        (hello,) = obj  # sequence/list assignment
         self.assertEqual(b"there", hello)
 
     def assertItemAttributes(self, dictish, attrish):
