@@ -33,5 +33,5 @@ service StreamingEdenService extends eden.EdenService {
    * method above.
    */
   stream<eden.JournalPosition> subscribeStreamTemporary(
-    1: string mountPoint)
+    1: eden.PathString mountPoint)
 }
