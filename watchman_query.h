@@ -496,6 +496,7 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp);
 void parse_field_list(json_ref field_list, w_query_field_list* selected);
 json_ref field_list_to_json_name_array(const w_query_field_list& fieldList);
 
+void parse_suffixes(w_query* res, const json_ref& query);
 void parse_globs(w_query* res, const json_ref& query);
 // A node in the tree of node matching rules
 struct watchman_glob_tree {

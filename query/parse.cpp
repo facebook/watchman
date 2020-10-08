@@ -81,51 +81,6 @@ static bool parse_since(w_query* res, const json_ref& query) {
   throw QueryParseError("invalid value for 'since'");
 }
 
-static w_string parse_suffix(const json_ref& ele) {
-  if (!ele.isString()) {
-    throw QueryParseError("'suffix' must be a string or an array of strings");
-  }
-
-  auto str = json_to_w_string(ele);
-
-  return str.piece().asLowerCase(str.type());
-}
-
-static void parse_suffixes(w_query* res, const json_ref& query) {
-  size_t i;
-
-  auto suffixes = query.get_default("suffix");
-  if (!suffixes) {
-    return;
-  }
-
-  if (suffixes.isString()) {
-    auto suff = parse_suffix(suffixes);
-    res->suffixes.emplace();
-    res->suffixes->emplace_back(std::move(suff));
-    return;
-  }
-
-  if (!suffixes.isArray()) {
-    throw QueryParseError("'suffix' must be a string or an array of strings");
-  }
-
-  res->suffixes.emplace();
-  std::vector<w_string>& res_suffixes = *res->suffixes;
-  res_suffixes.reserve(json_array_size(suffixes));
-
-  for (i = 0; i < json_array_size(suffixes); i++) {
-    const auto& ele = suffixes.at(i);
-
-    if (!ele.isString()) {
-      throw QueryParseError("'suffix' must be a string or an array of strings");
-    }
-
-    auto suff = parse_suffix(ele);
-    res_suffixes.emplace_back(std::move(suff));
-  }
-}
-
 static bool parse_paths(w_query* res, const json_ref& query) {
   size_t i;
 

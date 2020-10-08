@@ -16,7 +16,10 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
     def test_suffix_generator(self):
         root = self.mkdtemp()
 
-        self.touchRelative(root, "foo.c")
+        # Suffix queries are defined as being case insensitive.
+        # Use an uppercase suffix to verify that our lowercase
+        # suffixes in the pattern are matching correctly.
+        self.touchRelative(root, "foo.C")
         os.mkdir(os.path.join(root, "subdir"))
         self.touchRelative(root, "subdir", "bar.txt")
 
@@ -26,14 +29,14 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand("query", root, {"suffix": "c", "fields": ["name"]})[
                 "files"
             ],
-            ["foo.c"],
+            ["foo.C"],
         )
 
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"suffix": ["c", "txt"], "fields": ["name"]}
             )["files"],
-            ["foo.c", "subdir/bar.txt"],
+            ["foo.C", "subdir/bar.txt"],
         )
 
         self.assertFileListsEqual(
