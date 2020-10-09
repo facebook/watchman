@@ -158,10 +158,10 @@ Client.prototype.connect = function() {
       return;
     }
     spawnFailed = true;
-    if (error.errno === 'EACCES') {
+    if (error.code === 'EACCES') {
       error.message = 'The Watchman CLI is installed but cannot ' +
                       'be spawned because of a permission problem';
-    } else if (error.errno === 'ENOENT') {
+    } else if (error.code === 'ENOENT') {
       error.message = 'Watchman was not found in PATH.  See ' +
           'https://facebook.github.io/watchman/docs/install.html ' +
           'for installation instructions';
