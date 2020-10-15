@@ -80,10 +80,10 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
     def assertWaitForAssertedStates(self, root, states):
         def sortStates(states):
-            """ Deterministically sort the states for comparison.
+            """Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the
             relative ordering of the potentially multiple queueued
-            entries per name is important to preserve """
+            entries per name is important to preserve"""
             return sorted(states, key=lambda x: x["name"])
 
         states = sortStates(states)
@@ -95,7 +95,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertWaitForEqual(states, getStates)
 
     def test_state_enter_leave(self):
-        """ Check that state-enter and state-leave are basically working.
+        """Check that state-enter and state-leave are basically working.
         This is a subset of the tests that are performed in test_subscribe.py;
         we only strictly need to check the basic plumbing here and need not
         replicate the entire set of tests"""

@@ -170,11 +170,11 @@ class SocketConnectError(WatchmanError):
 
 class SocketTimeout(WatchmanError):
     """A specialized exception raised for socket timeouts during communication to/from watchman.
-       This makes it easier to implement non-blocking loops as callers can easily distinguish
-       between a routine timeout and an actual error condition.
+    This makes it easier to implement non-blocking loops as callers can easily distinguish
+    between a routine timeout and an actual error condition.
 
-       Note that catching WatchmanError will also catch this as it is a super-class, so backwards
-       compatibility in exception handling is preserved.
+    Note that catching WatchmanError will also catch this as it is a super-class, so backwards
+    compatibility in exception handling is preserved.
     """
 
 
@@ -248,7 +248,7 @@ class Transport(object):
         pass
 
     def readLine(self):
-        """ read a line
+        """read a line
         Maintains its own buffer, callers of the transport should not mix
         calls to readBytes and readLine.
         """
@@ -400,7 +400,7 @@ class TcpSocketTransport(SocketTransport):
 
 
 def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
-    """ Windows 7 and earlier does not support GetOverlappedResultEx. The
+    """Windows 7 and earlier does not support GetOverlappedResultEx. The
     alternative is to use GetOverlappedResult and wait for read or write
     operation to complete. This is done be using CreateEvent and
     WaitForSingleObjectEx. CreateEvent, WaitForSingleObjectEx
@@ -506,9 +506,9 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(value * 1000)
 
     def readBytes(self, size):
-        """ A read can block for an unbounded amount of time, even if the
-            kernel reports that the pipe handle is signalled, so we need to
-            always perform our reads asynchronously
+        """A read can block for an unbounded amount of time, even if the
+        kernel reports that the pipe handle is signalled, so we need to
+        always perform our reads asynchronously
         """
 
         # try to satisfy the read from any buffered data
@@ -618,7 +618,7 @@ def _default_binpath(binpath=None):
 
 
 class CLIProcessTransport(Transport):
-    """ open a pipe to the cli to talk to the service
+    """open a pipe to the cli to talk to the service
     This intended to be used only in the test harness!
 
     The CLI is an oddball because we only support JSON input
@@ -734,8 +734,8 @@ class BserCodec(Codec):
 
 
 class ImmutableBserCodec(BserCodec):
-    """ use the BSER encoding, decoding values using the newer
-        immutable object support """
+    """use the BSER encoding, decoding values using the newer
+    immutable object support"""
 
     def _loads(self, response):
         return bser.loads(
@@ -810,8 +810,8 @@ class Bser2WithFallbackCodec(BserCodec):
 
 
 class ImmutableBser2Codec(Bser2WithFallbackCodec, ImmutableBserCodec):
-    """ use the BSER encoding, decoding values using the newer
-        immutable object support """
+    """use the BSER encoding, decoding values using the newer
+    immutable object support"""
 
     pass
 
@@ -1071,7 +1071,7 @@ class client(object):
             self.sendConn = None
 
     def receive(self):
-        """ receive the next PDU from the watchman service
+        """receive the next PDU from the watchman service
 
         If the client has activated subscriptions or logs then
         this PDU may be a unilateral PDU sent by the service to
@@ -1119,7 +1119,7 @@ class client(object):
         return False
 
     def getLog(self, remove=True):
-        """ Retrieve buffered log data
+        """Retrieve buffered log data
 
         If remove is true the data will be removed from the buffer.
         Otherwise it will be left in the buffer
@@ -1130,7 +1130,7 @@ class client(object):
         return res
 
     def getSubscription(self, name, remove=True, root=None):
-        """ Retrieve the data associated with a named subscription
+        """Retrieve the data associated with a named subscription
 
         If remove is True (the default), the subscription data is removed
         from the buffer.  Otherwise the data is returned but left in
@@ -1165,7 +1165,7 @@ class client(object):
         return sub
 
     def query(self, *args):
-        """ Send a query to the watchman service and return the response
+        """Send a query to the watchman service and return the response
 
         This call will block until the response is returned.
         If any unilateral responses are sent by the service in between

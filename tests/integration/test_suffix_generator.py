@@ -56,8 +56,7 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
         )
 
     def test_suffix_generator_empty(self):
-        """Specifying no input suffixes should return no results.
-        """
+        """Specifying no input suffixes should return no results."""
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "mydir"))

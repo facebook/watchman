@@ -95,8 +95,7 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
             )
 
     def test_path_generator_empty(self):
-        """Specifying no input paths should return no results.
-        """
+        """Specifying no input paths should return no results."""
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "mydir"))

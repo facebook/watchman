@@ -42,8 +42,8 @@ class TestIgnore(WatchmanTestCase.WatchmanTestCase):
             self.assertIn("ignore_vcs must be an array of strings", str(ctx.exception))
 
     def test_ignore_overlap_vcs_ignore(self):
-        """ Validate that we still have working cookies even though we were
-            told to ignore .hg """
+        """Validate that we still have working cookies even though we were
+        told to ignore .hg"""
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
             json.dump({"ignore_dirs": [".hg"]}, f)

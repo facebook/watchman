@@ -158,8 +158,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         self.assertIn("expected json string object", str(ctx.exception))
 
     def test_glob_generator_empty(self):
-        """Specifying no input patterns should return no results.
-        """
+        """Specifying no input patterns should return no results."""
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "mydir"))

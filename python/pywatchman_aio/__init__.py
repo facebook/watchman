@@ -205,19 +205,19 @@ class ReceiveLoopError(Exception):
 class AIOClient(object):
     """Create and manage an asyncio Watchman connection.
 
-       Example usage:
-        with await AIOClient.from_socket() as client:
-            res = await client.query(...)
-            # ... use res ...
-            await client.query(
-                'subscribe',
-                root_dir,
-                sub_name,
-                {expression: ..., ...},
-            )
-            while True:
-                sub_update = await client.get_subscription(sub_name, root_dir)
-                # ... process sub_update ...
+    Example usage:
+     with await AIOClient.from_socket() as client:
+         res = await client.query(...)
+         # ... use res ...
+         await client.query(
+             'subscribe',
+             root_dir,
+             sub_name,
+             {expression: ..., ...},
+         )
+         while True:
+             sub_update = await client.get_subscription(sub_name, root_dir)
+             # ... process sub_update ...
     """
 
     # Don't call this directly use ::from_socket() instead.
@@ -266,7 +266,7 @@ class AIOClient(object):
         )
 
     async def get_subscription(self, name, root):
-        """ Retrieve the data associated with a named subscription
+        """Retrieve the data associated with a named subscription
 
         Returns None if there is no data associated with `name`
 

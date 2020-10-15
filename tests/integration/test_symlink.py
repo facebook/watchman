@@ -20,9 +20,9 @@ except ImportError:
 
 
 def buggy_fsevents():
-    """ older versions of macOS had some problems reporting changes
-        when a symlink was updated to a dangling value.  This was
-        fixed in macOS 10.12 """
+    """older versions of macOS had some problems reporting changes
+    when a symlink was updated to a dangling value.  This was
+    fixed in macOS 10.12"""
     if sys.platform != "darwin":
         return False
     # look at the kernel release; it is fixed in 16+

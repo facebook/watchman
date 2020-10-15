@@ -48,10 +48,10 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
     def assertWaitForAssertedStates(self, root, states):
         def sortStates(states):
-            """ Deterministically sort the states for comparison.
+            """Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the
             relative ordering of the potentially multiple queueued
-            entries per name is important to preserve """
+            entries per name is important to preserve"""
             return sorted(states, key=lambda x: x["name"])
 
         states = sortStates(states)
@@ -599,11 +599,11 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(["newfile.txt"], new_sub2["files"])
 
     def test_unsub_deadlock(self):
-        """ I saw a stack trace of a lock assertion that seemed to originate
+        """I saw a stack trace of a lock assertion that seemed to originate
         in the unsubByName() method.  It looks possible for this to call
         itself recursively and this test exercises that code path.  It
         also exercises a similar deadlock where multiple subscriptions from
-        multiple connections are torn down around the same time. """
+        multiple connections are torn down around the same time."""
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         clock = self.watchmanCommand("clock", root)["clock"]

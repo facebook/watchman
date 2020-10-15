@@ -102,9 +102,9 @@ class WatchmanEdenTestCase(TestParent):
         self.eden_watchman = None
 
     def makeEdenMount(self, populate_fn=None):
-        """ populate_fn is a function that accepts a repo object and
-            that is expected to populate it as a pre-requisite to
-            starting up the eden mount for it.
+        """populate_fn is a function that accepts a repo object and
+        that is expected to populate it as a pre-requisite to
+        starting up the eden mount for it.
         """
 
         repo_path = self.mkdtemp(prefix="eden_repo_")

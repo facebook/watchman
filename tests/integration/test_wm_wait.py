@@ -44,11 +44,11 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListContains(files, expected)
 
     def assertWaitForWmWaitWatch(self, root):
-        """ Wait for the specified root to appear in the watch list;
+        """Wait for the specified root to appear in the watch list;
         watchman-wait will initiate that asynchronously and we have
         to wait for that before proceeding.
         Then wait for the watch to be ready to query, otherwise the
-        test expectations will not be reliably met. """
+        test expectations will not be reliably met."""
 
         # wait for the watch to appear
         self.assertWaitFor(

@@ -27,9 +27,9 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         return True
 
     def skipIfNoFSMonitor(self):
-        """ cause the test to skip if fsmonitor is not available.
-            We don't call this via unittest.skip because we want
-            to have the skip message show the context """
+        """cause the test to skip if fsmonitor is not available.
+        We don't call this via unittest.skip because we want
+        to have the skip message show the context"""
         try:
             out, err = self.hg(["help", "--extension", "fsmonitor"])
         except Exception as e:

@@ -57,8 +57,8 @@ def check(version, name):
 
 
 def synthesize(vers, opts):
-    """ Synthesize a capability enabled version response
-        This is a very limited emulation for relatively recent feature sets
+    """Synthesize a capability enabled version response
+    This is a very limited emulation for relatively recent feature sets
     """
     parsed_version = parse_version(vers["version"])
     vers["capabilities"] = {}
