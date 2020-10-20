@@ -18,12 +18,13 @@ service StreamingEdenService extends eden.EdenService {
    * Request notification about changes to the journal for
    * the specified mountPoint.
    *
-   * Do not use the JournalPosition values in the stream. Instead,
-   * call getFilesChangedSince or getCurrentJournalPosition which
-   * will return up-to-date information and unblock future notifications
-   * on this subscription. If the subscriber never calls getFilesChangedSince
-   * or getCurrentJournalPosition in response to a notification on this
-   * stream, future notifications may not arrive.
+   * IMPORTANT: Do not use the JournalPosition values in the stream. They are
+   * meaningless. Instead, call getFilesChangedSince or
+   * getCurrentJournalPosition which will return up-to-date information and
+   * unblock future notifications on this subscription. If the subscriber
+   * never calls getFilesChangedSince or getCurrentJournalPosition in
+   * response to a notification on this stream, future notifications may not
+   * arrive.
    *
    * This is an implementation of the subscribe API using the
    * new rsocket based streaming thrift protocol.
