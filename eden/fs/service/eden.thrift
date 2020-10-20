@@ -561,11 +561,16 @@ struct ManifestEntry {
 struct FuseCall {
   1: i32 len
   2: i32 opcode
+  // FUSE supplies a unique ID, but it is recycled so quickly that it's not
+  // very useful. We report our own process-unique ID.
   3: i64 unique
   4: i64 nodeid
   5: i32 uid
   6: i32 gid
   7: pid_t pid
+
+  8: string opcodeName
+  9: optional string processName
 }
 
 struct GetConfigParams {
