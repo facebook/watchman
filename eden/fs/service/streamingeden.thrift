@@ -9,10 +9,36 @@ include "eden/fs/service/eden.thrift"
 namespace cpp2 facebook.eden
 namespace py3 eden.fs.service
 
-/** This file holds definitions for the streaming flavor of the Eden interface
- * This is only available to cpp2 clients and won't compile for other
- * language/runtimes. */
+enum FsEventType {
+  UNKNOWN = 0,
+  START = 1,
+  FINISH = 2,
+}
 
+struct FsEvent {
+  // Nanoseconds since epoch.
+  1: i64 timestamp
+  // Nanoseconds since arbitrary clock base, used for computing request
+  // durations between start and finish.
+  2: i64 monotonic_time_ns
+
+  3: FsEventType type
+
+  // See fuseRequest or prjfsRequest for the request opcode name.
+  4: string arguments
+
+  // Always defined on Linux and macOS, but marked optional to support Windows.
+  5: eden.FuseCall fuseRequest
+  // To add Windows support, mark fuseRequest optional, and add:
+  // 6: optional eden.PrjfsCall prjfsRequest
+}
+
+/**
+ * This Thrift service defines streaming functions. It is separate from
+ * EdenService because older Thrift runtimes do not support Thrift streaming,
+ * primarily javadeprecated which is used by Buck. When Buck is updated to
+ * use java-swift instead, we can merge EdenService and StreamingEdenService.
+ */
 service StreamingEdenService extends eden.EdenService {
   /**
    * Request notification about changes to the journal for
@@ -34,5 +60,12 @@ service StreamingEdenService extends eden.EdenService {
    * method above.
    */
   stream<eden.JournalPosition> subscribeStreamTemporary(
-    1: eden.PathString mountPoint)
+    1: eden.PathString mountPoint
+  )
+
+  /**
+   * Returns, in order, a stream of FUSE or PrjFS requests and responses for
+   * the given mount.
+   */
+  stream<FsEvent> traceFsEvents(1: eden.PathString mountPoint)
 }
