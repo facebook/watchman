@@ -457,8 +457,9 @@ struct TreeInodeEntryDebugInfo {
   */
   7: optional i64 fileSize
 }
+
 struct GetFetchedFilesResult {
-  1: map<string,set<PathString>> fetchedFilePaths,
+  1: map<string, set<PathString>> fetchedFilePaths,
 }
 
 struct WorkingDirectoryParents {
