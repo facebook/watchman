@@ -33,6 +33,18 @@ struct FsEvent {
   // 6: optional eden.PrjfsCall prjfsRequest
 }
 
+/*
+ * Bits that control the events traced from traceFsEvents.
+ *
+ * edenfs internally categorizes FUSE requests as read, write, or other. That
+ * is subject to change, and additional filtering bits may be added in the
+ * future.
+ */
+
+const i64 FS_EVENT_READ = 1
+const i64 FS_EVENT_WRITE = 2
+const i64 FS_EVENT_OTHER = 4
+
 /**
  * This Thrift service defines streaming functions. It is separate from
  * EdenService because older Thrift runtimes do not support Thrift streaming,
@@ -66,6 +78,11 @@ service StreamingEdenService extends eden.EdenService {
   /**
    * Returns, in order, a stream of FUSE or PrjFS requests and responses for
    * the given mount.
+   *
+   * eventCategoryMask is a bitset which indicates the requested trace events.
+   * 0 indicates all events are requested.
    */
-  stream<FsEvent> traceFsEvents(1: eden.PathString mountPoint)
+  stream<FsEvent> traceFsEvents(
+    1: eden.PathString mountPoint,
+    2: i64 eventCategoryMask)
 }
