@@ -619,15 +619,31 @@ struct GlobParams {
   // results.  This only really makes sense with prefetchFiles.
   5: bool suppressFileList,
   6: bool wantDtype,
+  // Commit hashes for the revisions against which the globs should be
+  // evaluated, if this is empty then globFiles will fall back to using only
+  // the current revision.
+  // If eden moves away from commit hashes this may become the tree hash
+  // for the root tree agains which this glob should be evaluated.
+  // There should be no duplicates in this list. If there are then
+  // there maybe duplicate machingFile and originHash pairs in the coresponding
+  // output Glob.
+  7: list<BinaryHash> revisions,
 }
 
 struct Glob {
   /**
-   * This list cannot contain duplicate values and is not guaranteed to be
-   * sorted.
+   * matchingFiles can contain duplicate values and is not guaranteed to be
+   * sorted. However, no duplicates may have the same originCommits (note this
+   * is not true should the input GlobParams contain duplicate revisions) .
    */
   1: list<PathString> matchingFiles,
   2: list<OsDtype> dtypes,
+  /**
+   * Currently these are the commit hash for the commit to which this file
+   * belongs. But should eden move away from commit hashes this may become
+   * the tree hash of the root tree to which this file belongs.
+   */
+  3: list<binary> originHashes
 }
 
 struct AccessCounts {
