@@ -17,20 +17,20 @@ enum FsEventType {
 
 struct FsEvent {
   // Nanoseconds since epoch.
-  1: i64 timestamp
+  1: i64 timestamp;
   // Nanoseconds since arbitrary clock base, used for computing request
   // durations between start and finish.
-  2: i64 monotonic_time_ns
+  2: i64 monotonic_time_ns;
 
-  3: FsEventType type
+  3: FsEventType type;
 
   // See fuseRequest or prjfsRequest for the request opcode name.
-  4: string arguments
+  4: string arguments;
 
   // Always defined on Linux and macOS, but marked optional to support Windows.
-  5: eden.FuseCall fuseRequest
-  // To add Windows support, mark fuseRequest optional, and add:
-  // 6: optional eden.PrjfsCall prjfsRequest
+  5: eden.FuseCall fuseRequest;
+// To add Windows support, mark fuseRequest optional, and add:
+// 6: optional eden.PrjfsCall prjfsRequest
 }
 
 /*
@@ -73,7 +73,7 @@ service StreamingEdenService extends eden.EdenService {
    */
   stream<eden.JournalPosition> subscribeStreamTemporary(
     1: eden.PathString mountPoint
-  )
+  );
 
   /**
    * Returns, in order, a stream of FUSE or PrjFS requests and responses for
@@ -84,5 +84,5 @@ service StreamingEdenService extends eden.EdenService {
    */
   stream<FsEvent> traceFsEvents(
     1: eden.PathString mountPoint,
-    2: i64 eventCategoryMask)
+    2: i64 eventCategoryMask);
 }

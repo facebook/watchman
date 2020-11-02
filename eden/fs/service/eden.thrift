@@ -22,7 +22,8 @@ namespace py3 eden.fs.service
  * over and cause problems.
  * Once t13345978 is done, we can uncomment the cpp.type below.
  */
-typedef i64 /* (cpp.type = "std::uint64_t") */ unsigned64
+typedef i64 /* (cpp.type = "std::uint64_t") */
+unsigned64
 
 typedef i32 pid_t
 
@@ -77,39 +78,38 @@ enum EdenErrorType {
   * parent that is not the current parent. errorCode will not be set.
   */
   OUT_OF_DATE_PARENT = 8,
-
 }
 
 exception EdenError {
-  1: required string message
-  2: optional i32 errorCode
-  3: EdenErrorType errorType
+  1: required string message;
+  2: optional i32 errorCode;
+  3: EdenErrorType errorType;
 } (message = 'message')
 
 exception NoValueForKeyError {
-  1: string key
+  1: string key;
 }
 
 /**
  * Information about the running edenfs daemon.
  */
 struct DaemonInfo {
-  1: i32 pid
+  1: i32 pid;
   /**
    * List of command line arguments, including the executable name,
    * given to the edenfs process.
    */
-  2: list<string> commandLine
+  2: list<string> commandLine;
   /**
    * The service status.
    * This is the same data reported by fb303_core.getStatus()
    */
-  3: optional fb303_core.fb303_status status
+  3: optional fb303_core.fb303_status status;
   /**
    * The uptime of the edenfs daemon
    * Same data from /proc/pid/stat
    */
-  4: optional float uptime
+  4: optional float uptime;
 }
 
 /**
@@ -172,28 +172,28 @@ enum MountState {
 } (cpp2.enum_type = 'uint32_t')
 
 struct MountInfo {
-  1: PathString mountPoint
-  2: PathString edenClientPath
-  3: MountState state
+  1: PathString mountPoint;
+  2: PathString edenClientPath;
+  3: MountState state;
 }
 
 struct MountArgument {
-  1: PathString mountPoint
-  2: PathString edenClientPath
-  3: bool readOnly
+  1: PathString mountPoint;
+  2: PathString edenClientPath;
+  3: bool readOnly;
 }
 
 union SHA1Result {
-  1: BinaryHash sha1
-  2: EdenError error
+  1: BinaryHash sha1;
+  2: EdenError error;
 }
 
 /**
  * Effectively a `struct timespec`
  */
 struct TimeSpec {
-  1: i64 seconds
-  2: i64 nanoSeconds
+  1: i64 seconds;
+  2: i64 nanoSeconds;
 }
 
 /**
@@ -202,29 +202,29 @@ struct TimeSpec {
  * objects from source control.
  */
 struct EntryInformation {
-  1: Dtype dtype
+  1: Dtype dtype;
 }
 
 union EntryInformationOrError {
-  1: EntryInformation info
-  2: EdenError error
+  1: EntryInformation info;
+  2: EdenError error;
 }
 
 /**
  * Subset of stat() data returned from getFileInformation())
  */
 struct FileInformation {
-  1: unsigned64 size        // wish thrift had unsigned numbers
-  2: TimeSpec mtime
-  3: i32 mode        // mode_t
+  1: unsigned64 size; // wish thrift had unsigned numbers
+  2: TimeSpec mtime;
+  3: i32 mode; // mode_t
 }
 
 /** Holds information about a file, or an error in retrieving that info.
  * The most likely error will be ENOENT, implying that the file doesn't exist.
  */
 union FileInformationOrError {
-  1: FileInformation info
-  2: EdenError error
+  1: FileInformation info;
+  2: EdenError error;
 }
 
 /** reference a point in time in the journal.
@@ -234,14 +234,14 @@ union FileInformationOrError {
 struct JournalPosition {
   /** An opaque but unique number within the scope of a given mount point.
    * This is used to determine when sequenceNumber has been invalidated. */
-  1: i64 mountGeneration
+  1: i64 mountGeneration;
 
   /** Monotonically incrementing number
    * Each journalled change causes this number to increment. */
-  2: unsigned64 sequenceNumber
+  2: unsigned64 sequenceNumber;
 
   /** Records the snapshot hash at the appropriate point in the journal */
-  3: BinaryHash snapshotHash
+  3: BinaryHash snapshotHash;
 }
 
 /** Holds information about a set of paths that changed between two points.
@@ -253,21 +253,21 @@ struct JournalPosition {
  */
 struct FileDelta {
   /** The fromPosition passed to getFilesChangedSince */
-  1: JournalPosition fromPosition
+  1: JournalPosition fromPosition;
   /** The current position at the time that getFilesChangedSince was called */
-  2: JournalPosition toPosition
+  2: JournalPosition toPosition;
   /** The union of changedPaths and createdPaths contains the total set of paths
    * changed in the overlay between fromPosition and toPosition.
    * Disjoint with createdPaths.
    */
-  3: list<PathString> changedPaths
+  3: list<PathString> changedPaths;
   /** The set of paths created between fromPosition and toPosition.
    * Used by Watchman to search for cookies and to populate its 'new' field.
    * Disjoint with changedPaths.
    */
-  4: list<PathString> createdPaths
+  4: list<PathString> createdPaths;
   /** Deprecated - always empty. */
-  5: list<PathString> removedPaths
+  5: list<PathString> removedPaths;
   /** When fromPosition.snapshotHash != toPosition.snapshotHash this holds
    * the union of the set of files whose ScmFileStatus differed from the
    * committed fromPosition hash before the hash changed, and the set of
@@ -276,32 +276,32 @@ struct FileDelta {
    * whose state may have changed as part of an update operation, but
    * in ways that may not be able to be extracted solely by performing
    * source control diff operations on the from/to hashes. */
-  6: list<PathString> uncleanPaths
+  6: list<PathString> uncleanPaths;
 }
 
 struct DebugGetRawJournalParams {
-  1: PathString mountPoint
-  2: optional i32 limit
-  3: i32 fromSequenceNumber
+  1: PathString mountPoint;
+  2: optional i32 limit;
+  3: i32 fromSequenceNumber;
 }
 
 struct DebugPathChangeInfo {
-  1: bool existedBefore
-  2: bool existedAfter
+  1: bool existedBefore;
+  2: bool existedAfter;
 }
 
 /**
  * A fairly direct modeling of the underlying JournalDelta data structure.
  */
 struct DebugJournalDelta {
-  1: JournalPosition fromPosition
-  2: JournalPosition toPosition
-  3: map<PathString, DebugPathChangeInfo> changedPaths
-  4: set<PathString> uncleanPaths
+  1: JournalPosition fromPosition;
+  2: JournalPosition toPosition;
+  3: map<PathString, DebugPathChangeInfo> changedPaths;
+  4: set<PathString> uncleanPaths;
 }
 
 struct DebugGetRawJournalResponse {
-  2: list<DebugJournalDelta> allDeltas
+  2: list<DebugJournalDelta> allDeltas;
 }
 
 /**
@@ -334,7 +334,7 @@ enum ScmFileStatus {
 }
 
 struct ScmStatus {
-  1: map<PathString, ScmFileStatus> entries
+  1: map<PathString, ScmFileStatus> entries;
 
   /**
    * A map of { path -> error message }
@@ -345,7 +345,7 @@ struct ScmStatus {
    *
    * This map will be empty if no errors occurred.
    */
-  2: map<PathString, string> errors
+  2: map<PathString, string> errors;
 }
 
 /** Option for use with checkOutRevision(). */
@@ -409,107 +409,107 @@ enum ConflictType {
  * Details about conflicts or errors that occurred during a checkout operation
  */
 struct CheckoutConflict {
-  1: PathString path
-  2: ConflictType type
-  3: string message
+  1: PathString path;
+  2: ConflictType type;
+  3: string message;
 }
 
 struct ScmBlobMetadata {
-  1: i64 size
-  2: BinaryHash contentsSha1
+  1: i64 size;
+  2: BinaryHash contentsSha1;
 }
 
 struct ScmTreeEntry {
-  1: binary name
-  2: i32 mode
-  3: BinaryHash id
+  1: binary name;
+  2: i32 mode;
+  3: BinaryHash id;
 }
 
 struct TreeInodeEntryDebugInfo {
   /**
    * The entry name.  This is just a PathComponent, not the full path
    */
-  1: binary name
+  1: binary name;
   /**
    * The inode number, or 0 if no inode number has been assigned to
    * this entry
    */
-  2: i64 inodeNumber
+  2: i64 inodeNumber;
   /**
    * The entry mode_t value
    */
-  3: i32 mode
+  3: i32 mode;
   /**
    * True if an InodeBase object exists for this inode or not.
    */
-  4: bool loaded
+  4: bool loaded;
   /**
    * True if an the inode is materialized in the overlay
    */
-  5: bool materialized
+  5: bool materialized;
   /**
    * If materialized is false, hash contains the ID of the underlying source
    * control Blob or Tree.
    */
-  6: BinaryHash hash
+  6: BinaryHash hash;
   /**
    * Size of the file in bytes, won't be set for directories
   */
-  7: optional i64 fileSize
+  7: optional i64 fileSize;
 }
 
 struct GetFetchedFilesResult {
-  1: map<string, set<PathString>> fetchedFilePaths,
+  1: map<string, set<PathString>> fetchedFilePaths;
 }
 
 struct WorkingDirectoryParents {
-  1: BinaryHash parent1
-  2: optional BinaryHash parent2
+  1: BinaryHash parent1;
+  2: optional BinaryHash parent2;
 }
 
 struct TreeInodeDebugInfo {
-  1: i64 inodeNumber
-  2: binary path
-  3: bool materialized
-  4: BinaryHash treeHash
-  5: list<TreeInodeEntryDebugInfo> entries
-  6: i64 refcount
+  1: i64 inodeNumber;
+  2: binary path;
+  3: bool materialized;
+  4: BinaryHash treeHash;
+  5: list<TreeInodeEntryDebugInfo> entries;
+  6: i64 refcount;
 }
 
 struct InodePathDebugInfo {
-  1: PathString path
-  2: bool loaded
-  3: bool linked
+  1: PathString path;
+  2: bool loaded;
+  3: bool linked;
 }
 
 struct SetLogLevelResult {
-  1: bool categoryCreated
+  1: bool categoryCreated;
 }
 
 struct JournalInfo {
-  1: i64 entryCount
+  1: i64 entryCount;
   // The estimated memory used by the journal in bytes
-  2: i64 memoryUsage
+  2: i64 memoryUsage;
   // The duration of the journal in seconds
-  3: i64 durationSeconds
+  3: i64 durationSeconds;
 }
 
 /**
  * Struct to store Information about inodes in a mount point.
  */
 struct MountInodeInfo {
-  2: i64 unloadedInodeCount
-  4: i64 loadedFileCount
-  5: i64 loadedTreeCount
+  2: i64 unloadedInodeCount;
+  4: i64 loadedFileCount;
+  5: i64 loadedTreeCount;
 }
 
 struct CacheStats {
-  1: i64 entryCount
-  2: i64 totalSizeInBytes
-  3: i64 hitCount
-  4: i64 missCount
-  5: i64 evictionCount
-  6: i64 dropCount
+  1: i64 entryCount;
+  2: i64 totalSizeInBytes;
+  3: i64 hitCount;
+  4: i64 missCount;
+  5: i64 evictionCount;
+  6: i64 dropCount;
 }
 
 /**
@@ -517,67 +517,66 @@ struct CacheStats {
  * information of all the mount points.
  */
 struct InternalStats {
-  1: i64 periodicUnloadCount
+  1: i64 periodicUnloadCount;
   /**
    * counters is the list of fb303 counters, key is the counter name, value is the
    * counter value.
    */
-  2: map<string, i64> counters
+  2: map<string, i64> counters;
   /**
    * mountPointInfo is a map whose key is the path of the mount point and value
    * is the details like number of loaded inodes,unloaded inodes in that mount
    * and number of materialized inodes in that mountpoint.
    */
-  3: map<PathString, MountInodeInfo> mountPointInfo
+  3: map<PathString, MountInodeInfo> mountPointInfo;
   /**
    * Linux-only: the contents of /proc/self/smaps, to be parsed by the caller.
    */
-  4: binary smaps
+  4: binary smaps;
   /**
    * Linux-only: privateBytes populated from contents of /proc/self/smaps.
    * Populated with current value (the fb303 counters value is an average).
    */
-  5: i64 privateBytes
+  5: i64 privateBytes;
   /**
    * Linux-only: vmRSS bytes is populated from contents of /proc/self/stats.
    * Populated with current value (the fb303 counters value is an average).
    */
-  6: i64 vmRSSBytes
+  6: i64 vmRSSBytes;
   /**
    * Statistics about the in-memory blob cache.
    */
-  7: CacheStats blobCacheStats
+  7: CacheStats blobCacheStats;
   /**
    * mountPointJournalInfo is a map whose key is the path of the mount point
    * and whose value is information about the journal on that mount
    */
-  8: map<PathString, JournalInfo> mountPointJournalInfo
+  8: map<PathString, JournalInfo> mountPointJournalInfo;
 }
 
 struct ManifestEntry {
   /* mode_t */
-  1: i32 mode
+  1: i32 mode;
 }
 
 struct FuseCall {
-  1: i32 len
-  2: i32 opcode
+  1: i32 len;
+  2: i32 opcode;
   // FUSE supplies a unique ID, but it is recycled so quickly that it's not
   // very useful. We report our own process-unique ID.
-  3: i64 unique
-  4: i64 nodeid
-  5: i32 uid
-  6: i32 gid
-  7: pid_t pid
+  3: i64 unique;
+  4: i64 nodeid;
+  5: i32 uid;
+  6: i32 gid;
+  7: pid_t pid;
 
-  8: string opcodeName
-  9: optional string processName
+  8: string opcodeName;
+  9: optional string processName;
 }
 
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
-  1: eden_config.ConfigReloadBehavior reload =
-    eden_config.ConfigReloadBehavior.AutoReload
+  1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
 }
 
 /**
@@ -597,28 +596,28 @@ typedef i16 OsDtype
  * Dtype and OsDtype can be cast between each other on all platforms.
  */
 enum Dtype {
-  UNKNOWN = 0
-  FIFO = 1 // DT_FIFO
-  CHAR = 2 // DT_CHR
-  DIR = 4 // DT_DIR
-  BLOCK = 6 // DT_BLK
-  REGULAR = 8 // DT_REG
-  LINK = 10 // DT_LNK
-  SOCKET = 12 // DT_SOCK
-  WHITEOUT = 14 // DT_WHT
+  UNKNOWN = 0,
+  FIFO = 1, // DT_FIFO
+  CHAR = 2, // DT_CHR
+  DIR = 4, // DT_DIR
+  BLOCK = 6, // DT_BLK
+  REGULAR = 8, // DT_REG
+  LINK = 10, // DT_LNK
+  SOCKET = 12, // DT_SOCK
+  WHITEOUT = 14, // DT_WHT
 }
 
 /** Params for globFiles(). */
 struct GlobParams {
-  1: PathString mountPoint,
-  2: list<string> globs,
-  3: bool includeDotfiles,
+  1: PathString mountPoint;
+  2: list<string> globs;
+  3: bool includeDotfiles;
   // if true, prefetch matching blobs
-  4: bool prefetchFiles,
+  4: bool prefetchFiles;
   // if true, don't populate matchingFiles in the Glob
   // results.  This only really makes sense with prefetchFiles.
-  5: bool suppressFileList,
-  6: bool wantDtype,
+  5: bool suppressFileList;
+  6: bool wantDtype;
   // Commit hashes for the revisions against which the globs should be
   // evaluated, if this is empty then globFiles will fall back to using only
   // the current revision.
@@ -627,7 +626,7 @@ struct GlobParams {
   // There should be no duplicates in this list. If there are then
   // there maybe duplicate machingFile and originHash pairs in the coresponding
   // output Glob.
-  7: list<BinaryHash> revisions,
+  7: list<BinaryHash> revisions;
 }
 
 struct Glob {
@@ -636,103 +635,103 @@ struct Glob {
    * sorted. However, no duplicates may have the same originCommits (note this
    * is not true should the input GlobParams contain duplicate revisions) .
    */
-  1: list<PathString> matchingFiles,
-  2: list<OsDtype> dtypes,
+  1: list<PathString> matchingFiles;
+  2: list<OsDtype> dtypes;
   /**
    * Currently these are the commit hash for the commit to which this file
    * belongs. But should eden move away from commit hashes this may become
    * the tree hash of the root tree to which this file belongs.
    */
-  3: list<binary> originHashes
+  3: list<binary> originHashes;
 }
 
 struct AccessCounts {
-  1: i64 fsChannelTotal
-  2: i64 fsChannelReads
-  3: i64 fsChannelWrites
-  4: i64 fsChannelBackingStoreImports
-  5: i64 fsChannelDurationNs
+  1: i64 fsChannelTotal;
+  2: i64 fsChannelReads;
+  3: i64 fsChannelWrites;
+  4: i64 fsChannelBackingStoreImports;
+  5: i64 fsChannelDurationNs;
 }
 
 struct MountAccesses {
-  1: map<pid_t, AccessCounts> accessCountsByPid
-  2: map<pid_t, i64> fetchCountsByPid
+  1: map<pid_t, AccessCounts> accessCountsByPid;
+  2: map<pid_t, i64> fetchCountsByPid;
 }
 
 struct GetAccessCountsResult {
-  1: map<pid_t, binary> cmdsByPid
-  2: map<PathString, MountAccesses> accessesByMount
-  // TODO: Count the number of thrift requests
-  // 3: map<pid_t, AccessCount> thriftAccesses
+  1: map<pid_t, binary> cmdsByPid;
+  2: map<PathString, MountAccesses> accessesByMount;
+// TODO: Count the number of thrift requests
+// 3: map<pid_t, AccessCount> thriftAccesses
 }
 
 enum TracePointEvent {
   // Start of a new block
-  START = 0;
+  START = 0,
   // End of a block
-  STOP = 1;
+  STOP = 1,
 }
 
 struct TracePoint {
   // Holds nanoseconds since the epoch
-  1: i64 timestamp,
+  1: i64 timestamp;
   // Opaque identifier for the entire trace - used to associate this
   // tracepoint with other tracepoints across an entire request
-  2: i64 traceId,
+  2: i64 traceId;
   // Opaque identifier for this "block" where a block is some logical
   // piece of work with a well-defined start and stop point
-  3: i64 blockId,
+  3: i64 blockId;
   // Opaque identifer for the parent block from which the current
   // block was constructed - used to create causal relationships
   // between blocks
-  4: i64 parentBlockId,
+  4: i64 parentBlockId;
   // The name of the block, only set on the tracepoint starting the
   // block, must point to a statically allocated cstring
-  5: string name = "",
+  5: string name = "";
   // What event this trace point represents
-  6: TracePointEvent event,
+  6: TracePointEvent event;
 }
 
 struct FaultDefinition {
-  1: string keyClass
-  2: string keyValueRegex
+  1: string keyClass;
+  2: string keyValueRegex;
   // If count is non-zero this fault will automatically expire after it has
   // been hit count times.
-  3: i64 count
+  3: i64 count;
   // If block is true the fault will block until explicitly unblocked later.
   // delayMilliseconds and errorMessage will be ignored if block is true
-  4: bool block
-  5: i64 delayMilliseconds
-  6: optional string errorType
-  7: optional string errorMessage
+  4: bool block;
+  5: i64 delayMilliseconds;
+  6: optional string errorType;
+  7: optional string errorMessage;
 }
 
 struct RemoveFaultArg {
-  1: string keyClass
-  2: string keyValueRegex
+  1: string keyClass;
+  2: string keyValueRegex;
 }
 
 struct UnblockFaultArg {
-  1: optional string keyClass
-  2: optional string keyValueRegex
-  3: optional string errorType
-  4: optional string errorMessage
+  1: optional string keyClass;
+  2: optional string keyValueRegex;
+  3: optional string errorType;
+  4: optional string errorMessage;
 }
 
 struct GetScmStatusResult {
-  1: ScmStatus status
+  1: ScmStatus status;
   // The version of the EdenFS daemon.
   // This is returned since we usually want status calls to be able to check
   // the current EdenFS version and warn the user if EdenFS is running an old
   // or known-bad version.
-  2: string version
+  2: string version;
 }
 
 struct GetScmStatusParams {
   /**
    * The Eden checkout to query
    */
-  1: PathString mountPoint
+  1: PathString mountPoint;
 
   /**
    * The commit ID of the current working directory parent commit.
@@ -742,7 +741,7 @@ struct GetScmStatusParams {
    * own external synchronization around access to the current parent commit,
    * like Mercurial.
    */
-  2: BinaryHash commit
+  2: BinaryHash commit;
 
   /**
    * Whether ignored files should be reported in the results.
@@ -750,13 +749,13 @@ struct GetScmStatusParams {
    * Some special source-control related files (e.g., inside the .hg or .git
    * directory) will never be reported even when listIgnored is true.
    */
-  3: bool listIgnored = false
+  3: bool listIgnored = false;
 }
 
 service EdenService extends fb303_core.BaseService {
-  list<MountInfo> listMounts() throws (1: EdenError ex)
-  void mount(1: MountArgument info) throws (1: EdenError ex)
-  void unmount(1: PathString mountPoint) throws (1: EdenError ex)
+  list<MountInfo> listMounts() throws (1: EdenError ex);
+  void mount(1: MountArgument info) throws (1: EdenError ex);
+  void unmount(1: PathString mountPoint) throws (1: EdenError ex);
 
   /**
    * Potentially check out the specified snapshot, reporting conflicts (and
@@ -783,8 +782,8 @@ service EdenService extends fb303_core.BaseService {
   list<CheckoutConflict> checkOutRevision(
     1: PathString mountPoint,
     2: BinaryHash snapshotHash,
-    3: CheckoutMode checkoutMode)
-      throws (1: EdenError ex)
+    3: CheckoutMode checkoutMode
+  ) throws (1: EdenError ex);
 
   /**
    * Reset the working directory's parent commits, without changing the working
@@ -794,8 +793,8 @@ service EdenService extends fb303_core.BaseService {
    */
   void resetParentCommits(
     1: PathString mountPoint,
-    2: WorkingDirectoryParents parents)
-      throws (1: EdenError ex)
+    2: WorkingDirectoryParents parents
+  ) throws (1: EdenError ex);
 
   /**
    * For each path, returns an EdenError instead of the SHA-1 if any of the
@@ -805,14 +804,17 @@ service EdenService extends fb303_core.BaseService {
    * - path identifies something that is not an ordinary file (e.g., symlink
    *   or directory).
    */
-  list<SHA1Result> getSHA1(1: PathString mountPoint, 2: list<PathString> paths)
-    throws (1: EdenError ex)
+  list<SHA1Result> getSHA1(
+    1: PathString mountPoint,
+    2: list<PathString> paths
+  ) throws (1: EdenError ex);
 
   /**
    * Returns a list of paths relative to the mountPoint. DEPRECATED!
    */
-  list<PathString> getBindMounts(1: PathString mountPoint)
-    throws (1: EdenError ex)
+  list<PathString> getBindMounts(1: PathString mountPoint) throws (
+    1: EdenError ex
+  );
 
   /**
    * On systems that support bind mounts, establish a bind mount within the
@@ -825,9 +827,11 @@ service EdenService extends fb303_core.BaseService {
    * If `repoPath` exists and is not a directory, an error will be thrown.
    * If the bind mount cannot be set up, an error will be thrown.
    */
-  void addBindMount(1: PathString mountPoint,
+  void addBindMount(
+    1: PathString mountPoint,
     2: PathString repoPath,
-    3: PathString targetPath) throws (1: EdenError ex)
+    3: PathString targetPath
+  ) throws (1: EdenError ex);
 
   /**
    * Removes the bind mount specified by `repoPath` from the set of managed
@@ -836,14 +840,17 @@ service EdenService extends fb303_core.BaseService {
    * will throw an error.
    * If the bind mount cannot be removed, an error will be thrown.
    */
-  void removeBindMount(1: PathString mountPoint, 2: PathString repoPath)
-    throws (1: EdenError ex)
+  void removeBindMount(
+    1: PathString mountPoint,
+    2: PathString repoPath
+  ) throws (1: EdenError ex);
 
   /** Returns the sequence position at the time the method is called.
    * Returns the instantaneous value of the journal sequence number.
    */
-  JournalPosition getCurrentJournalPosition(1: PathString mountPoint)
-    throws (1: EdenError ex)
+  JournalPosition getCurrentJournalPosition(1: PathString mountPoint) throws (
+    1: EdenError ex
+  );
 
   /** Returns the set of files (and dirs) that changed since a prior point.
    * If fromPosition.mountGeneration is mismatched with the current
@@ -856,28 +863,23 @@ service EdenService extends fb303_core.BaseService {
    */
   FileDelta getFilesChangedSince(
     1: PathString mountPoint,
-    2: JournalPosition fromPosition)
-      throws (1: EdenError ex)
+    2: JournalPosition fromPosition
+  ) throws (1: EdenError ex);
 
   /** Sets the memory limit on the journal such that the journal will forget
    * old data to keep itself under a certain estimated memory use.
    */
-  void setJournalMemoryLimit(
-    1: PathString mountPoint,
-    2: i64 limit)
-      throws (1: EdenError ex)
+  void setJournalMemoryLimit(1: PathString mountPoint, 2: i64 limit) throws (
+    1: EdenError ex
+  );
 
   /** Gets the memory limit on the journal
    */
-  i64 getJournalMemoryLimit(
-    1: PathString mountPoint,
-  ) throws (1: EdenError ex)
+  i64 getJournalMemoryLimit(1: PathString mountPoint) throws (1: EdenError ex);
 
   /** Forces the journal to flush, sending a truncated result to subscribers
    */
-  void flushJournal(
-    1: PathString mountPoint,
-  ) throws (1: EdenError ex)
+  void flushJournal(1: PathString mountPoint) throws (1: EdenError ex);
 
   /**
    * Returns the journal entries for the specified params. Useful for auditing
@@ -886,8 +888,8 @@ service EdenService extends fb303_core.BaseService {
    * DebugGetRawJournalResponse.
    */
   DebugGetRawJournalResponse debugGetRawJournal(
-    1: DebugGetRawJournalParams params,
-  ) throws (1: EdenError ex)
+    1: DebugGetRawJournalParams params
+  ) throws (1: EdenError ex);
 
   /**
    * Returns the subset of information about a list of paths that can
@@ -896,8 +898,8 @@ service EdenService extends fb303_core.BaseService {
    */
   list<EntryInformationOrError> getEntryInformation(
     1: PathString mountPoint,
-    2: list<PathString> paths)
-      throws (1: EdenError ex)
+    2: list<PathString> paths
+  ) throws (1: EdenError ex);
 
   /**
    * Returns a subset of the stat() information for a list of paths.
@@ -909,8 +911,8 @@ service EdenService extends fb303_core.BaseService {
    */
   list<FileInformationOrError> getFileInformation(
     1: PathString mountPoint,
-    2: list<PathString> paths)
-      throws (1: EdenError ex)
+    2: list<PathString> paths
+  ) throws (1: EdenError ex);
 
   /**
    * DEPRECATED: Prefer globFiles().
@@ -919,30 +921,28 @@ service EdenService extends fb303_core.BaseService {
    */
   list<PathString> glob(
     1: PathString mountPoint,
-    2: list<string> globs)
-      throws (1: EdenError ex)
+    2: list<string> globs
+  ) throws (1: EdenError ex);
 
   /**
    * Returns a list of files that match the GlobParams, notably,
    * the list of glob patterns.
    * There are no duplicate values in the result.
    */
-  Glob globFiles(
-    1: GlobParams params,
-  ) throws (1: EdenError ex)
+  Glob globFiles(1: GlobParams params) throws (1: EdenError ex);
 
   /**
    * Chowns all files in the requested mount to the requested uid and gid
    */
-  void chown(1: PathString mountPoint, 2: i32 uid, 3: i32 gid)
+  void chown(1: PathString mountPoint, 2: i32 uid, 3: i32 gid);
 
   /**
    * Return the list of files that are different from the specified source
    * control commit.
    */
-  GetScmStatusResult getScmStatusV2(
-    1: GetScmStatusParams params
-  ) throws (1: EdenError ex)
+  GetScmStatusResult getScmStatusV2(1: GetScmStatusParams params) throws (
+    1: EdenError ex
+  );
 
   /**
    * Get the status of the working directory against the specified commit.
@@ -954,8 +954,8 @@ service EdenService extends fb303_core.BaseService {
   ScmStatus getScmStatus(
     1: PathString mountPoint,
     2: bool listIgnored,
-    3: BinaryHash commit,
-  ) throws (1: EdenError ex)
+    3: BinaryHash commit
+  ) throws (1: EdenError ex);
 
   /**
    * DEPRECATED
@@ -966,8 +966,8 @@ service EdenService extends fb303_core.BaseService {
   ScmStatus getScmStatusBetweenRevisions(
     1: PathString mountPoint,
     2: BinaryHash oldHash,
-    3: BinaryHash newHash,
-  ) throws (1: EdenError ex)
+    3: BinaryHash newHash
+  ) throws (1: EdenError ex);
 
   //////// SCM Commit-Related APIs ////////
 
@@ -985,12 +985,9 @@ service EdenService extends fb303_core.BaseService {
    * parameter rather than assuming the current commit.
    */
   ManifestEntry getManifestEntry(
-    1: PathString mountPoint
+    1: PathString mountPoint,
     2: PathString relativePath
-  ) throws (
-    1: EdenError ex
-    2: NoValueForKeyError noValueForKeyError
-  )
+  ) throws (1: EdenError ex, 2: NoValueForKeyError noValueForKeyError);
 
   //////// Administrative APIs ////////
 
@@ -998,7 +995,7 @@ service EdenService extends fb303_core.BaseService {
    * Returns information about the running process, including pid and command
    * line.
    */
-  DaemonInfo getDaemonInfo() throws (1: EdenError ex)
+  DaemonInfo getDaemonInfo() throws (1: EdenError ex);
 
   /**
    * DEPRECATED
@@ -1007,23 +1004,24 @@ service EdenService extends fb303_core.BaseService {
    * getDaemonInfo instead. This method exists for Thrift clients that
    * predate getDaemonInfo, such as older versions of the CLI.
    */
-  i64 getPid() throws (1: EdenError ex)
+  i64 getPid() throws (1: EdenError ex);
 
   /**
    * Ask the server to shutdown and provide it some context for its logs
    */
-  void initiateShutdown(1: string reason) throws (1: EdenError ex)
+  void initiateShutdown(1: string reason) throws (1: EdenError ex);
 
   /**
    * Get the current configuration settings
    */
-  eden_config.EdenConfigData getConfig(1: GetConfigParams params)
-  throws (1: EdenError ex)
+  eden_config.EdenConfigData getConfig(1: GetConfigParams params) throws (
+    1: EdenError ex
+  );
 
   /**
    * Ask eden to reload its configuration data from disk.
    */
-  void reloadConfig() throws (1: EdenError ex)
+  void reloadConfig() throws (1: EdenError ex);
 
   //////// Debugging APIs ////////
 
@@ -1041,8 +1039,8 @@ service EdenService extends fb303_core.BaseService {
   list<ScmTreeEntry> debugGetScmTree(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly,
-  ) throws (1: EdenError ex)
+    3: bool localStoreOnly
+  ) throws (1: EdenError ex);
 
   /**
    * Get the contents of a source control Blob.
@@ -1053,8 +1051,8 @@ service EdenService extends fb303_core.BaseService {
   binary debugGetScmBlob(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly,
-  ) throws (1: EdenError ex)
+    3: bool localStoreOnly
+  ) throws (1: EdenError ex);
 
   /**
    * Get the metadata about a source control Blob.
@@ -1067,8 +1065,8 @@ service EdenService extends fb303_core.BaseService {
   ScmBlobMetadata debugGetScmBlobMetadata(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly,
-  ) throws (1: EdenError ex)
+    3: bool localStoreOnly
+  ) throws (1: EdenError ex);
 
   /**
    * Get status about currently loaded inode objects.
@@ -1093,8 +1091,8 @@ service EdenService extends fb303_core.BaseService {
    */
   list<TreeInodeDebugInfo> debugInodeStatus(
     1: PathString mountPoint,
-    2: PathString path,
-  ) throws (1: EdenError ex)
+    2: PathString path
+  ) throws (1: EdenError ex);
 
   /**
    * Get the list of outstanding fuse requests
@@ -1102,9 +1100,7 @@ service EdenService extends fb303_core.BaseService {
    * This will return the list of FuseCall structure containing the data from
    * fuse_in_header.
    */
-  list<FuseCall> debugOutstandingFuseCalls(
-    1: PathString mountPoint,
-  )
+  list<FuseCall> debugOutstandingFuseCalls(1: PathString mountPoint);
 
   /**
    * Get the InodePathDebugInfo for the inode that corresponds to the given
@@ -1114,15 +1110,17 @@ service EdenService extends fb303_core.BaseService {
    */
   InodePathDebugInfo debugGetInodePath(
     1: PathString mountPoint,
-    2: i64 inodeNumber,
-  ) throws (1: EdenError ex)
+    2: i64 inodeNumber
+  ) throws (1: EdenError ex);
 
   /**
    * Clear pidFetchCounts_ in ObjectStore to start a new recording of process
    * fetch counts.
    */
-  void clearFetchCounts() throws (1: EdenError ex)
-  void clearFetchCountsByMount(1: PathString mountPath) throws (1: EdenError ex)
+  void clearFetchCounts() throws (1: EdenError ex);
+  void clearFetchCountsByMount(1: PathString mountPath) throws (
+    1: EdenError ex
+  );
 
   /**
    * Queries all of the live Eden mounts for the processes that accessed FUSE
@@ -1130,8 +1128,9 @@ service EdenService extends fb303_core.BaseService {
    *
    * Note that eden only maintains a few seconds worth of accesses.
    */
-  GetAccessCountsResult getAccessCounts(1: i64 duration)
-    throws (1: EdenError ex)
+  GetAccessCountsResult getAccessCounts(1: i64 duration) throws (
+    1: EdenError ex
+  );
 
   /**
    * Start recording paths of the files fetched from the backing store.
@@ -1139,7 +1138,7 @@ service EdenService extends fb303_core.BaseService {
    * Note that using this call twice will not clear the data and start a new
    * recording.
    */
-  void startRecordingBackingStoreFetch() throws (1: EdenError ex)
+  void startRecordingBackingStoreFetch() throws (1: EdenError ex);
 
   /**
    * Stop recording paths of the files fetched from the backing store.
@@ -1147,8 +1146,9 @@ service EdenService extends fb303_core.BaseService {
    * Note that using this call will return and clear the previously
    * collected data.
    */
-  GetFetchedFilesResult stopRecordingBackingStoreFetch()
-    throws (1: EdenError ex)
+  GetFetchedFilesResult stopRecordingBackingStoreFetch() throws (
+    1: EdenError ex
+  );
 
   /**
    * Column by column, clears and compacts the LocalStore. All columns are
@@ -1160,18 +1160,18 @@ service EdenService extends fb303_core.BaseService {
    * risk of running out of disk space. Since RocksDB is a write-ahead logging
    * database, clearing a column increases its disk usage until it's compacted.
    */
-  void clearAndCompactLocalStore() throws (1: EdenError ex)
+  void clearAndCompactLocalStore() throws (1: EdenError ex);
 
   /**
    * Clears all data from the LocalStore that can be populated from the upstream
    * backing store.
    */
-  void debugClearLocalStoreCaches() throws (1: EdenError ex)
+  void debugClearLocalStoreCaches() throws (1: EdenError ex);
 
   /**
    * Asks RocksDB to perform a compaction.
    */
-  void debugCompactLocalStorage() throws (1: EdenError ex)
+  void debugCompactLocalStorage() throws (1: EdenError ex);
 
   /**
   * Unloads unused Inodes from a directory inside a mountPoint whose last
@@ -1183,8 +1183,8 @@ service EdenService extends fb303_core.BaseService {
   i64 unloadInodeForPath(
     1: PathString mountPoint,
     2: PathString path,
-    3: TimeSpec age,
-  ) throws (1: EdenError ex)
+    3: TimeSpec age
+  ) throws (1: EdenError ex);
 
   /**
    * Flush all thread-local stats to the main ServiceData object.
@@ -1197,7 +1197,7 @@ service EdenService extends fb303_core.BaseService {
    * they see up-to-date counter information without waiting for the normal
    * flush interval.
    */
-  void flushStatsNow() throws (1: EdenError ex)
+  void flushStatsNow() throws (1: EdenError ex);
 
   /**
   * Invalidate kernel cache for inode.
@@ -1205,17 +1205,16 @@ service EdenService extends fb303_core.BaseService {
   void invalidateKernelInodeCache(
     1: PathString mountPoint,
     2: PathString path
-    )
-  throws (1: EdenError ex)
+  ) throws (1: EdenError ex);
 
- /**
+  /**
    * Gets the number of inodes unloaded by periodic job on an EdenMount.
    */
-  InternalStats getStatInfo() throws (1: EdenError ex)
+  InternalStats getStatInfo() throws (1: EdenError ex);
 
-  void enableTracing()
-  void disableTracing()
-  list<TracePoint> getTracePoints()
+  void enableTracing();
+  void disableTracing();
+  list<TracePoint> getTracePoints();
 
   /**
    * Configure a new fault in Eden's fault injection framework.
@@ -1223,7 +1222,7 @@ service EdenService extends fb303_core.BaseService {
    * This throws an exception if the fault injection framework was not enabled
    * when edenfs was started.
    */
-  void injectFault(1: FaultDefinition fault) throws (1: EdenError ex)
+  void injectFault(1: FaultDefinition fault) throws (1: EdenError ex);
 
   /**
    * Remove a fault previously defined with injectFault()
@@ -1231,12 +1230,12 @@ service EdenService extends fb303_core.BaseService {
    * Returns true if a matching fault was found and remove, and false
    * if no matching fault was found.
    */
-  bool removeFault(1: RemoveFaultArg fault) throws (1: EdenError ex)
+  bool removeFault(1: RemoveFaultArg fault) throws (1: EdenError ex);
 
   /**
    * Unblock fault injection checks pending on a block fault.
    *
    * Returns the number of pending calls that were unblocked
    */
-  i64 unblockFault(1: UnblockFaultArg info) throws (1: EdenError ex)
+  i64 unblockFault(1: UnblockFaultArg info) throws (1: EdenError ex);
 }
