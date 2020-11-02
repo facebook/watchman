@@ -425,6 +425,38 @@ struct ScmTreeEntry {
   3: BinaryHash id;
 }
 
+/*
+ * Bits passed into debugInodeStatus to control the result set.
+ * 0 is legacy behavior, equivalent to DIS_REQUIRE_LOADED | DIS_COMPUTE_BLOB_SIZES
+ */
+
+/**
+ * No effect other than avoiding the legacy behavior.
+ */
+const i64 DIS_ENABLE_FLAGS = 1;
+
+/**
+ * Only return inodes currently loaded in memory.
+ */
+const i64 DIS_REQUIRE_LOADED = 2;
+
+/**
+ * Only return materialized inodes.
+ */
+const i64 DIS_REQUIRE_MATERIALIZED = 4;
+
+/**
+ * Return accurate blob sizes, which may require fetching blob metadata from
+ * the backing store.
+ */
+const i64 DIS_COMPUTE_BLOB_SIZES = 8;
+
+/**
+ * Returns accurate mode_t bits, including ownership. When unset, only
+ * the dtype bits are set.
+ */
+const i64 DIS_COMPUTE_ACCURATE_MODE = 16;
+
 struct TreeInodeEntryDebugInfo {
   /**
    * The entry name.  This is just a PathComponent, not the full path
@@ -1091,7 +1123,8 @@ service EdenService extends fb303_core.BaseService {
    */
   list<TreeInodeDebugInfo> debugInodeStatus(
     1: PathString mountPoint,
-    2: PathString path
+    2: PathString path,
+    3: i64 flags
   ) throws (1: EdenError ex);
 
   /**
