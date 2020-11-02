@@ -1101,9 +1101,9 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
-   * Get status about currently loaded inode objects.
+   * Get status about inodes with allocated inode numbers.
    *
-   * This returns details about all currently loaded inode objects under the
+   * This returns details about all previously-observed inode objects under the
    * given path.
    *
    * If the path argument is the empty string data will be returned about all
