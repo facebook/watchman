@@ -18,7 +18,7 @@ struct SerializedInodeMapEntry {
   2: i64 parentInode;
   3: string name;
   4: bool isUnlinked;
-  5: i64 numFuseReferences;
+  5: i64 numFsReferences;
   6: string hash;
   7: i32 mode;
 }
