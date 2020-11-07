@@ -1249,14 +1249,50 @@ class EdenView : public QueryableView {
   }
 };
 
+#ifdef _WIN32
+// Test if EdenFS is stopped for the given path.
+bool isEdenStopped(w_string root) {
+  static const w_string_piece kStar{"*"};
+  static const w_string_piece kNonExistencePath{"EDEN_TEST_NON_EXISTENCE_PATH"};
+  auto queryRaw = w_string::pathCat({root, kNonExistencePath, kStar});
+  auto query = queryRaw.normalizeSeparators();
+  std::wstring wquery = query.piece().asWideUNC();
+  WIN32_FIND_DATAW ffd;
+
+  auto find = FindFirstFileW(wquery.c_str(), &ffd);
+  SCOPE_EXIT {
+    if (find != INVALID_HANDLE_VALUE) {
+      FindClose(find);
+    }
+  };
+
+  auto lastError = GetLastError();
+
+  // When EdenFS is not running, `FindFirstFile` will fail with this error
+  // since it can't reach EdenFS to query directory information.
+  if (find == INVALID_HANDLE_VALUE &&
+      lastError == ERROR_FILE_SYSTEM_VIRTUALIZATION_UNAVAILABLE) {
+    watchman::log(watchman::DBG, "edenfs is NOT RUNNING\n");
+    return true;
+  }
+
+  watchman::log(watchman::DBG, "edenfs is RUNNING\n");
+  return false;
+}
+#endif
+
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
 #ifdef _WIN32
   static const w_string_piece kDotEden{".eden"};
   auto edenRoot = findFileInDirTree(root->root_path, {kDotEden});
   if (edenRoot) {
-    // On Windows, Watchman is crawling the Eden repo and pulling down
-    // all the contents. Until the Eden integration is complete Watchman will
-    // skip Eden repos on Windows.
+    if (isEdenStopped(root->root_path)) {
+      throw TerminalWatcherError(to<std::string>(
+          root->root_path,
+          " appears to be an offline EdenFS mount. "
+          "Try running `edenfsctl start` to bring it back online and "
+          "then retry your watch"));
+    }
 
     auto homeDotEdenRaw = w_string::pathCat({getenv("USERPROFILE"), kDotEden});
     auto homeDotEden = homeDotEdenRaw.normalizeSeparators();
