@@ -150,9 +150,9 @@ if args.pybuild_dir is not None:
 # The `try` block prevents the imports from being reordered
 try:
     import Interrupt
+    import pywatchman
     import TempDir
     import WatchmanInstance
-    import pywatchman
 except ImportError:
     raise
 

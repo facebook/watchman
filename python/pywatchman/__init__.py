@@ -55,6 +55,7 @@ except ImportError:
 if os.name == "nt":
     import ctypes
     from ctypes import wintypes
+
     from .windows import (
         CancelIoEx,
         CloseHandle,

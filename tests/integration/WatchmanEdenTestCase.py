@@ -15,6 +15,7 @@ import WatchmanTestCase
 TestParent = object
 try:
     import configparser  # python3
+
     from eden.integration.lib import edenclient, hgrepo
 
     def is_sandcastle():
