@@ -658,7 +658,11 @@ struct GlobParams {
   // There should be no duplicates in this list. If there are then
   // there maybe duplicate machingFile and originHash pairs in the coresponding
   // output Glob.
-  7: list<BinaryHash> revisions;
+  7: list<BinaryHash> revisions,
+  // If false we will not prefetch metadata while evaluating this glob. In
+  // in general we want to prefetch metadata, but some large globs can
+  // trigger too many metadata prefetches, so we allow skipping this.
+  8: bool prefetchMetadata = true,
 }
 
 struct Glob {
