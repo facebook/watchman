@@ -1318,7 +1318,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
 
 #else
   if (!is_edenfs_fs_type(root->fs_type) && root->fs_type != "fuse" &&
-      root->fs_type != "osxfuse_eden") {
+      root->fs_type != "osxfuse_eden" && root->fs_type != "macfuse_eden") {
     // Not an active EdenFS mount.  Perhaps it isn't mounted yet?
     auto readme = to<std::string>(root->root_path, "/README_EDEN.txt");
     try {
