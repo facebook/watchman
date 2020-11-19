@@ -15,12 +15,33 @@ enum FsEventType {
   FINISH = 2,
 }
 
+/**
+ * Common timestamps for every trace event, used to measure durations and
+ * display wall clock time.
+ */
+struct TraceEventTimes {
+  // Nanoseconds since epoch.
+  1: i64 timestamp
+  // Nanoseconds since arbitrary clock base, used for computing request
+  // durations between start and finish.
+  2: i64 monotonic_time_ns
+}
+
+struct RequestInfo {
+  // The pid that originated this request.
+  1: optional eden.pid_t pid
+  // If available, the binary name corresponding to `pid`.
+  2: optional string processName
+}
+
 struct FsEvent {
   // Nanoseconds since epoch.
   1: i64 timestamp;
   // Nanoseconds since arbitrary clock base, used for computing request
   // durations between start and finish.
   2: i64 monotonic_time_ns;
+
+  7: TraceEventTimes times;
 
   3: FsEventType type;
 
@@ -29,8 +50,10 @@ struct FsEvent {
 
   // Always defined on Linux and macOS, but marked optional to support Windows.
   5: eden.FuseCall fuseRequest;
-// To add Windows support, mark fuseRequest optional, and add:
-// 6: optional eden.PrjfsCall prjfsRequest
+  // To add Windows support, mark fuseRequest optional, and add:
+  // 6: optional eden.PrjfsCall prjfsRequest;
+
+  8: RequestInfo requestInfo;
 }
 
 /*
@@ -44,6 +67,34 @@ struct FsEvent {
 const i64 FS_EVENT_READ = 1
 const i64 FS_EVENT_WRITE = 2
 const i64 FS_EVENT_OTHER = 4
+
+enum HgEventType {
+  UNKNOWN = 0,
+  QUEUE = 1,
+  START = 2,
+  FINISH = 3,
+}
+
+enum HgResourceType {
+  UNKNOWN = 0,
+  BLOB = 1,
+  TREE = 2,
+}
+
+struct HgEvent {
+  1: TraceEventTimes times
+
+  2: HgEventType eventType
+  3: HgResourceType resourceType
+
+  4: i64 unique
+
+  // HG manifest node ID as 40-character hex string.
+  5: string manifestNodeId
+  6: binary path
+
+  7: optional RequestInfo requestInfo
+}
 
 /**
  * This Thrift service defines streaming functions. It is separate from
@@ -85,4 +136,13 @@ service StreamingEdenService extends eden.EdenService {
   stream<FsEvent> traceFsEvents(
     1: eden.PathString mountPoint,
     2: i64 eventCategoryMask);
+
+  /**
+   * Returns, in order, a stream of hg import requests for the given mount.
+   *
+   * Each request has a unique ID and transitions through three states: queued,
+   * started, and finished.
+   */
+   stream<HgEvent> traceHgEvents(
+     1: eden.PathString mountPoint)
 }
