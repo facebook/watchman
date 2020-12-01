@@ -951,9 +951,7 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
-   * DEPRECATED: Prefer globFiles().
-   * Returns a list of files that match the input globs.
-   * There are no duplicate values in the result.
+   * DEPRECATED: Use globFiles().
    */
   list<PathString> glob(
     1: PathString mountPoint,
