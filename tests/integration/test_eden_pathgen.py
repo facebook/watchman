@@ -49,7 +49,10 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand(
             "query",
             root,
-            {"expression": ["type", "l"], "fields": ["name", "symlink_target"]},
+            {
+                "expression": ["allof", ["type", "l"], ["not", ["dirname", ".eden"]]],
+                "fields": ["name", "symlink_target"],
+            },
         )
         print(res)
         self.assertEqual(res["files"][0], {"name": "slink", "symlink_target": "hello"})
