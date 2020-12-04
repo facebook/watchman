@@ -100,7 +100,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.attempt = 0
         # ASAN-enabled builds can be slower enough that we hit timeouts
         # with the default of 1 second
-        self.socketTimeout = 10.0
+        self.socketTimeout = 20.0
 
     def requiresPersistentSession(self):
         return False
@@ -265,13 +265,19 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     # is reached.  Returns a tuple of [bool, result] where the
     # first element of the tuple indicates success/failure and
     # the second element is the return value from the condition
-    def waitFor(self, cond, timeout=10):
+    def waitFor(self, cond, timeout=None):
+        timeout = self.getTimeout(timeout)
         return self._waitForCheck(cond, lambda res: res, timeout)
 
-    def waitForEqual(self, expected, actual_cond, timeout=10):
+    def waitForEqual(self, expected, actual_cond, timeout=None):
+        timeout = self.getTimeout(timeout)
         return self._waitForCheck(actual_cond, lambda res: res == expected, timeout)
 
-    def assertWaitFor(self, cond, timeout=10, message=None):
+    def getTimeout(self, timeout=None):
+        return timeout or self.socketTimeout
+
+    def assertWaitFor(self, cond, timeout=None, message=None):
+        timeout = self.getTimeout(timeout)
         status, res = self.waitFor(cond, timeout)
         if status:
             return res
@@ -279,7 +285,8 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
         self.fail(message)
 
-    def assertWaitForEqual(self, expected, actual_cond, timeout=10, message=None):
+    def assertWaitForEqual(self, expected, actual_cond, timeout=None, message=None):
+        timeout = self.getTimeout(timeout)
         status, res = self.waitForEqual(expected, actual_cond, timeout)
         if status:
             return res
@@ -363,7 +370,8 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         )
         self.assertFileListContains(self.last_root_list, roots, message)
 
-    def waitForSub(self, name, root, accept=None, timeout=10, remove=True):
+    def waitForSub(self, name, root, accept=None, timeout=None, remove=True):
+        timeout = self.getTimeout(timeout)
         client = self.getClient()
 
         def default_accept(dat):
