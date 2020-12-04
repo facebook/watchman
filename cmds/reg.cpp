@@ -132,9 +132,8 @@ bool dispatch_command(
             json_object(
                 {{"pid", json_integer(client->stm->getPeerProcessID())}}));
         sample.log();
-      } else {
-        logf(DBG, "dispatch_command: {} (completed)\n", def->name);
       }
+      logf(DBG, "dispatch_command: {} (completed)\n", def->name);
     }
 
     return true;
