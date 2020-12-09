@@ -101,8 +101,8 @@ class InotifyInfo(object):
 
 
 def walk_root(root, case_sensitive, ignores):
-    """ Generate a map of file nodes for the given dir by looking
-        at the filesystem """
+    """Generate a map of file nodes for the given dir by looking
+    at the filesystem"""
 
     # we can't use os.walk because it insists on stating and derefing
     # dewey and gvfs symlinks (== slow)
@@ -429,6 +429,9 @@ if os.name != "posix" or (os.getuid() != 0 or not os.environ.get("SUDO_UID")):
     print("Watchman service information:")
     watchman = pywatchman.client(timeout=600)
     print(watchman.query("version"))
+    print("\nStatus:\n")
+    passthru(["watchman", "debug-status"])
+
     watches = watchman.query("watch-list")["roots"]
     print("Watches:\n%s\n" % watches)
 
