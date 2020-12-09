@@ -1028,27 +1028,25 @@ class EdenView : public QueryableView {
   }
 
   void globGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+    if (!query->glob_tree) {
+      // If we are called via the codepath in the query evaluator that
+      // just speculatively executes queries then `glob` may not be
+      // present; short-circuit in that case.
+      return;
+    }
+
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     auto rel = computeRelativePathPiece(ctx);
 
     std::vector<std::string> globStrings;
-    // Use the glob array provided by the query_spec.
-    // The InMemoryView uses the compiled glob tree but we just want to
-    // pass this list through to eden to evaluate.  Note that we're
-    // relying on parse_globs() to have already checked that the glob
-    // looks sane during query parsing, and that eden itself will
-    // sanity check and throw an error if there is still something it
-    // doesn't like about it when we call sync_glob() below.
-    for (auto& glob : query->query_spec.get("glob").array()) {
-      globStrings.emplace_back(
-          to<std::string>(w_string::pathCat({rel, json_to_w_string(glob)})));
+    for (auto& glob : query->glob_tree->unparse()) {
+      globStrings.emplace_back(to<std::string>(w_string::pathCat({rel, glob})));
     }
 
     // More glob flags/functionality:
-    auto noescape =
-        query->query_spec.get_default("glob_noescape", json_false()).asBool();
+    auto noescape = bool(query->glob_flags & WM_NOESCAPE);
     if (noescape) {
       throw QueryExecError(
           "glob_noescape is not supported for the eden watcher");

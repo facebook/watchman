@@ -512,6 +512,15 @@ struct watchman_glob_tree {
   unsigned is_doublestar : 1; // pattern begins with **
 
   watchman_glob_tree(const char* pattern, uint32_t pattern_len);
+
+  // Produces a list of globs from the glob tree, effectively
+  // performing the reverse of the original parsing operation.
+  std::vector<std::string> unparse() const;
+
+  // A helper method for unparse
+  void unparse_into(
+      std::vector<std::string>& globStrings,
+      folly::StringPiece relative) const;
 };
 
 #define W_TERM_PARSER1(symbol, name, func)          \

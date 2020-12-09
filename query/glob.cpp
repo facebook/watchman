@@ -78,6 +78,42 @@ static watchman_glob_tree* lookup_node_child(
   return nullptr;
 }
 
+std::vector<std::string> watchman_glob_tree::unparse() const {
+  std::vector<std::string> result;
+  unparse_into(result, "");
+  return result;
+}
+
+// Performs the heavy lifting for reversing the parse process
+// to compute a list of glob strings.
+// `globStrings` is the target array for the glob expressions.
+// `relative` is the glob-expression-so-far that the current
+// node will append to when it produces its glob string output.
+// This function recurses down the glob tree calling unparse_into
+// on its children.
+void watchman_glob_tree::unparse_into(
+    std::vector<std::string>& globStrings,
+    folly::StringPiece relative) const {
+  auto needSlash = !relative.empty() && !relative.endsWith('/');
+  auto optSlash = needSlash ? "/" : "";
+
+  // If there are no children of this node, it is effectively a leaf
+  // node. Leaves correspond to a concrete glob string that we need
+  // to emit, so here's where we do that.
+  if (is_leaf || children.size() + doublestar_children.size() == 0) {
+    globStrings.push_back(folly::to<std::string>(relative, optSlash, pattern));
+  }
+
+  for (auto& child : children) {
+    child->unparse_into(
+        globStrings, folly::to<std::string>(relative, optSlash, pattern));
+  }
+  for (auto& child : doublestar_children) {
+    child->unparse_into(
+        globStrings, folly::to<std::string>(relative, optSlash, pattern));
+  }
+}
+
 // Compile and add a new glob pattern to the tree.
 // Compilation splits a pattern into nodes, with one node for each directory
 // separator separated path component.
