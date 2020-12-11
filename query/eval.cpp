@@ -195,12 +195,6 @@ static void default_generators(
     generated = true;
   }
 
-  // Suffix
-  if (query->suffixes.has_value()) {
-    root->view()->suffixGenerator(query, ctx);
-    generated = true;
-  }
-
   if (query->paths.has_value()) {
     root->view()->pathGenerator(query, ctx);
     generated = true;

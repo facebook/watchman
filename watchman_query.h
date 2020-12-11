@@ -381,8 +381,6 @@ struct w_query {
   // Additional flags to pass to wildmatch in the glob_generator
   int glob_flags{0};
 
-  folly::Optional<std::vector<w_string>> suffixes;
-
   std::chrono::milliseconds sync_timeout{0};
   uint32_t lock_timeout{0};
 

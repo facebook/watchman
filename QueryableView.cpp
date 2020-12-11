@@ -12,11 +12,6 @@ void QueryableView::timeGenerator(w_query*, struct w_query_ctx*) const {
   throw QueryExecError("timeGenerator not implemented");
 }
 
-/** Walks all files with the suffix(es) configured in the query */
-void QueryableView::suffixGenerator(w_query*, struct w_query_ctx*) const {
-  throw QueryExecError("suffixGenerator not implemented");
-}
-
 /** Walks files that match the supplied set of paths */
 void QueryableView::pathGenerator(w_query*, struct w_query_ctx*) const {
   throw QueryExecError("pathGenerator not implemented");

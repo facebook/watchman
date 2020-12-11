@@ -936,25 +936,6 @@ class EdenView : public QueryableView {
     ctx->bumpNumWalked(fileInfo.size());
   }
 
-  void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override {
-    ctx->generationStarted();
-    // If the query is anchored to a relative_root, use that that
-    // avoid sucking down a massive list of files from eden
-    w_string_piece rel;
-    if (query->relative_root) {
-      rel = query->relative_root;
-      rel.advance(ctx->root->root_path.size() + 1);
-    }
-
-    std::vector<std::string> globStrings;
-    // Translate the suffix list into a list of globs
-    for (auto& suff : *query->suffixes) {
-      globStrings.emplace_back(to<std::string>(w_string::pathCat(
-          {rel, to<std::string>("**/*.", escapeGlobSpecialChars(suff))})));
-    }
-    executeGlobBasedQuery(globStrings, query, ctx);
-  }
-
   void syncToNow(const std::shared_ptr<w_root_t>&, std::chrono::milliseconds)
       override {}
 

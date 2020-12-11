@@ -411,7 +411,7 @@ void InMemoryView::markDirDeleted(
 }
 
 watchman_file* InMemoryView::getOrCreateChildFile(
-    SyncView::LockedPtr& view,
+    SyncView::LockedPtr&,
     watchman_dir* dir,
     const w_string& file_name,
     const struct timeval& now) {
@@ -430,22 +430,6 @@ watchman_file* InMemoryView::getOrCreateChildFile(
 
   file_ptr->ctime.ticks = mostRecentTick_;
   file_ptr->ctime.timestamp = now.tv_sec;
-
-  auto suffix = file_name.asLowerCaseSuffix();
-  if (suffix) {
-    auto& sufhead = view->suffixes[suffix];
-    if (!sufhead) {
-      // Create the list head if we don't already have one for this suffix.
-      sufhead.reset(new watchman::InMemoryView::file_list_head);
-    }
-
-    file_ptr->suffix_next = sufhead->head;
-    if (file_ptr->suffix_next) {
-      sufhead->head->suffix_prev = &file_ptr->suffix_next;
-    }
-    sufhead->head = file_ptr.get();
-    file_ptr->suffix_prev = &sufhead->head;
-  }
 
   watcher_->startWatchFile(file_ptr.get());
 
@@ -549,32 +533,6 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
 
     w_query_process_file(
         query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
-  }
-}
-
-void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
-    const {
-  struct watchman_file* f;
-
-  auto view = view_.rlock();
-  ctx->generationStarted();
-  for (const auto& suff : *query->suffixes) {
-    // Head of suffix index for this suffix
-    auto it = view->suffixes.find(suff);
-    if (it == view->suffixes.end()) {
-      continue;
-    }
-
-    // Walk and process
-    for (f = it->second->head; f; f = f->suffix_next) {
-      ctx->bumpNumWalked();
-      if (!ctx->fileMatchesRelativeRoot(f)) {
-        continue;
-      }
-
-      w_query_process_file(
-          query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
-    }
   }
 }
 

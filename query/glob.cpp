@@ -247,47 +247,26 @@ void parse_suffixes(w_query* res, const json_ref& query) {
     throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
-  // Default to using glob, but allow an escape hatch via config
-  // in case we need to quickly roll this back
-  bool useGlob = cfg_get_bool("_rewrite_suffix_as_glob", true);
+  if (query.get_default("glob")) {
+    throw QueryParseError(
+        "'suffix' cannot be used together with the 'glob' generator");
+  }
 
-  if (useGlob) {
-    if (query.get_default("glob")) {
-      throw QueryParseError(
-          "'suffix' cannot be used together with the 'glob' generator");
+  // Globs implicitly enable dedup_results mode
+  res->dedup_results = true;
+  // Suffix queries are defined as being case insensitive
+  res->glob_flags = WM_CASEFOLD;
+  res->glob_tree = folly::make_unique<watchman_glob_tree>("", 0);
+
+  for (auto& ele : suffixArray) {
+    if (!ele.isString()) {
+      throw QueryParseError("'suffix' must be a string or an array of strings");
     }
 
-    // Globs implicitly enable dedup_results mode
-    res->dedup_results = true;
-    // Suffix queries are defined as being case insensitive
-    res->glob_flags = WM_CASEFOLD;
-    res->glob_tree = folly::make_unique<watchman_glob_tree>("", 0);
-
-    for (auto& ele : suffixArray) {
-      if (!ele.isString()) {
-        throw QueryParseError(
-            "'suffix' must be a string or an array of strings");
-      }
-
-      auto suff = parse_suffix(ele);
-      auto pattern = w_string::build("**/*.", suff);
-      if (!add_glob(res->glob_tree.get(), pattern)) {
-        throw QueryParseError("failed to compile multi-glob");
-      }
-    }
-  } else {
-    res->suffixes.emplace();
-    std::vector<w_string>& res_suffixes = *res->suffixes;
-    res_suffixes.reserve(json_array_size(suffixes));
-
-    for (auto& ele : suffixArray) {
-      if (!ele.isString()) {
-        throw QueryParseError(
-            "'suffix' must be a string or an array of strings");
-      }
-
-      auto suff = parse_suffix(ele);
-      res_suffixes.emplace_back(std::move(suff));
+    auto suff = parse_suffix(ele);
+    auto pattern = w_string::build("**/*.", suff);
+    if (!add_glob(res->glob_tree.get(), pattern)) {
+      throw QueryParseError("failed to compile multi-glob");
     }
   }
 }

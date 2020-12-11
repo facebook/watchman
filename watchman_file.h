@@ -14,12 +14,6 @@ struct watchman_file {
    * previous file node, or the head of the list. */
   struct watchman_file **prev, *next;
 
-  /* linkage to files ordered by common suffix.
-   * suffix_prev points to the address of `suffix_next`
-   * in the previous file node, or the head of the
-   * suffix list. */
-  struct watchman_file **suffix_prev, *suffix_next;
-
   /* the time we last observed a change to this file */
   w_clock_t otime;
   /* the time we first observed this file OR the time
@@ -52,9 +46,6 @@ struct watchman_file {
   static std::unique_ptr<watchman_file, watchman_dir::Deleter> make(
       const w_string& name,
       watchman_dir* parent);
-
- private:
-  void removeFromSuffixList();
 };
 
 void free_file_node(struct watchman_file* file);

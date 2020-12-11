@@ -24,9 +24,6 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
    * query context */
   virtual void timeGenerator(w_query* query, struct w_query_ctx* ctx) const;
 
-  /** Walks all files with the suffix(es) configured in the query */
-  virtual void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const;
-
   /** Walks files that match the supplied set of paths */
   virtual void pathGenerator(w_query* query, struct w_query_ctx* ctx) const;
 

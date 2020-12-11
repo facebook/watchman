@@ -84,9 +84,6 @@ struct InMemoryView : public QueryableView {
    * query context */
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
-  /** Walks all files with the suffix(es) configured in the query */
-  void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override;
-
   /** Walks files that match the supplied set of paths */
   void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
@@ -118,17 +115,9 @@ struct InMemoryView : public QueryableView {
   SCM* getSCM() const override;
 
  private:
-  /* Holds the list head for files of a given suffix */
-  struct file_list_head {
-    watchman_file* head{nullptr};
-  };
-
   struct view {
     /* the most recently changed file */
     struct watchman_file* latest_file{0};
-
-    /* Holds the list heads for all known suffixes */
-    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
     std::unique_ptr<watchman_dir> root_dir;
 

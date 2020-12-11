@@ -62,21 +62,6 @@ void watchman_file::removeFromFileList() {
   }
 }
 
-void watchman_file::removeFromSuffixList() {
-  if (suffix_next) {
-    suffix_next->suffix_prev = suffix_prev;
-  }
-  // suffix_prev points to the address of either
-  // `previous_file->suffix_next` OR the `file_list_head.head`
-  // tracked in `root->inner.suffixes`.
-  // This next assignment is therefore fixing up either
-  // the linkage from the prior file node or from the
-  // head of the list.
-  if (suffix_prev) {
-    *suffix_prev = suffix_next;
-  }
-}
-
 /* We embed our name string in the tail end of the struct that we're
  * allocating here.  This turns out to be more memory efficient due
  * to the way that the allocator bins sizeof(watchman_file); there's
@@ -108,7 +93,6 @@ std::unique_ptr<watchman_file, watchman_dir::Deleter> watchman_file::make(
 
 watchman_file::~watchman_file() {
   removeFromFileList();
-  removeFromSuffixList();
 }
 
 void free_file_node(struct watchman_file* file) {
