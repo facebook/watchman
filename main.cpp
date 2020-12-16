@@ -19,6 +19,10 @@
 #include <folly/String.h>
 #include <folly/net/NetworkSocket.h>
 
+#ifdef _WIN32
+  #include <deelevate.h>
+#endif
+
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
 using Options = ChildProcess::Options;
@@ -1331,6 +1335,12 @@ static void spawn_watchman(void) {
 }
 
 static int inner_main(int argc, char** argv) {
+  #ifdef _WIN32
+    // On Windows its not possible to connect to elevated Watchman daemon from non-elevated processes.
+    // To ensure that Watchman daemon will always be accessible, deelevating it if needed.
+    deelevate_requires_normal_privileges();
+  #endif
+
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
