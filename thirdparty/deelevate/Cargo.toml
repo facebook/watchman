@@ -1,0 +1,67 @@
+[package]
+name = "deelevate"
+version = "0.1.0"
+authors = ["Wez Furlong"]
+edition = "2018"
+description = "Drop privileges on Windows"
+license = "MIT"
+documentation = "https://docs.rs/deelevate"
+readme = "README.md"
+keywords = ["UAC", "elevate", "privileges"]
+build = "build.rs"
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[[bin]]
+name = "eledo"
+path = "bin/eledo.rs"
+
+[[bin]]
+name = "normdo"
+path = "bin/normdo.rs"
+
+[[bin]]
+name = "eledo-pty-bridge"
+path = "bin/ptybridge.rs"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+embed-resource = "1.3"
+vergen = "3"
+cc = "1.0"
+
+[dependencies]
+pathsearch = "0.2"
+lazy_static = "1.3"
+rand = "0.7"
+structopt = "0.3"
+shared_library = "0.1"
+termwiz = "0.8"
+winapi = { version = "0.3", features = [
+  "accctrl",
+  "aclapi",
+  "combaseapi",
+  "consoleapi",
+  "errhandlingapi",
+  "fileapi",
+  "handleapi",
+  "ioapiset",
+  "namedpipeapi",
+  "objbase",
+  "processenv",
+  "processthreadsapi",
+  "securitybaseapi",
+  "shellapi",
+  "synchapi",
+  "userenv",
+  "winbase",
+  "wincon",
+  "wincontypes",
+  "winnls",
+  "winerror",
+  "winsafer",
+  "winuser",
+]}
