@@ -7,4 +7,4 @@ edition = "2018"
 crate-type = ["staticlib", "lib"]
 
 [dependencies]
-deelevate = { path = "../deelevate" }
+deelevate = { git = "https://github.com/wez/EleDo", rev = "a19d7b0" }
