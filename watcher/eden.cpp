@@ -1137,48 +1137,47 @@ class EdenView : public QueryableView {
     auto client = getRocketEdenClient(root->root_path, &subscriberEventBase_);
     auto stream = client->sync_subscribeStreamTemporary(
         std::string(root->root_path.data(), root->root_path.size()));
-    auto streamFuture =
-        std::move(stream)
-            .subscribeExTry(
-                &subscriberEventBase_,
-                [&settleCallback, this, root, settleTimeout](
-                    folly::Try<JournalPosition>&& t) {
-                  if (t.hasValue()) {
-                    try {
-                      watchman::log(DBG, "Got subscription push from eden\n");
-                      if (settleCallback.isScheduled()) {
-                        watchman::log(DBG, "reschedule settle timeout\n");
-                        settleCallback.cancelTimeout();
-                      }
-                      subscriberEventBase_.timer().scheduleTimeout(
-                          &settleCallback, settleTimeout);
-
-                      // We need to process cookie files with the lowest
-                      // possible latency, so we consume that information now
-                      checkCookies(root);
-                    } catch (const std::exception& exc) {
-                      watchman::log(
-                          ERR,
-                          "Exception while processing eden subscription: ",
-                          exc.what(),
-                          ": cancel watch\n");
-                      subscriberEventBase_.terminateLoopSoon();
-                    }
-                  } else {
-                    auto reason = t.hasException()
-                        ? folly::exceptionStr(std::move(t.exception()))
-                        : "controlled shutdown";
-                    watchman::log(
-                        ERR,
-                        "subscription stream ended: ",
-                        w_string_piece(reason.data(), reason.size()),
-                        ", cancel watch\n");
-                    // We won't be called again, but we terminate the loop
-                    // just to make sure.
-                    subscriberEventBase_.terminateLoopSoon();
+    std::move(stream)
+        .subscribeExTry(
+            &subscriberEventBase_,
+            [&settleCallback, this, root, settleTimeout](
+                folly::Try<JournalPosition>&& t) {
+              if (t.hasValue()) {
+                try {
+                  watchman::log(DBG, "Got subscription push from eden\n");
+                  if (settleCallback.isScheduled()) {
+                    watchman::log(DBG, "reschedule settle timeout\n");
+                    settleCallback.cancelTimeout();
                   }
-                })
-            .futureJoin();
+                  subscriberEventBase_.timer().scheduleTimeout(
+                      &settleCallback, settleTimeout);
+
+                  // We need to process cookie files with the lowest
+                  // possible latency, so we consume that information now
+                  checkCookies(root);
+                } catch (const std::exception& exc) {
+                  watchman::log(
+                      ERR,
+                      "Exception while processing eden subscription: ",
+                      exc.what(),
+                      ": cancel watch\n");
+                  subscriberEventBase_.terminateLoopSoon();
+                }
+              } else {
+                auto reason = t.hasException()
+                    ? folly::exceptionStr(std::move(t.exception()))
+                    : "controlled shutdown";
+                watchman::log(
+                    ERR,
+                    "subscription stream ended: ",
+                    w_string_piece(reason.data(), reason.size()),
+                    ", cancel watch\n");
+                // We won't be called again, but we terminate the loop
+                // just to make sure.
+                subscriberEventBase_.terminateLoopSoon();
+              }
+            })
+        .detach();
     return client;
   }
 
