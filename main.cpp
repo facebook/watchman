@@ -1336,8 +1336,9 @@ static void spawn_watchman(void) {
 
 static int inner_main(int argc, char** argv) {
 #ifdef _WIN32
-  // On Windows its not possible to connect to elevated Watchman daemon from non-elevated processes.
-  // To ensure that Watchman daemon will always be accessible, deelevating it if needed.
+  // On Windows its not possible to connect to elevated Watchman daemon from
+  // non-elevated processes. To ensure that Watchman daemon will always be
+  // accessible, deelevating it if needed.
   deelevate_requires_normal_privileges();
 #endif
 
