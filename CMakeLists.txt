@@ -677,6 +677,15 @@ target_link_libraries(
   third_party_deps
 )
 
+if (WIN32)
+  add_subdirectory(thirdparty/deelevate_binding)
+  target_link_libraries(
+    watchman
+    libdeelevate
+  )
+  install_rust_executable(deelevate)
+endif()
+
 if (ENABLE_EDEN_SUPPORT)
   target_link_libraries(
     watchman
