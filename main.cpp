@@ -403,6 +403,7 @@ static void spawn_win32(void) {
   opts.open(
       STDOUT_FILENO, log_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
   opts.dup2(STDOUT_FILENO, STDERR_FILENO);
+  opts.chdir("/");
 
   std::vector<w_string_piece> args{module_name, "--foreground"};
   for (size_t i = 0; daemon_argv[i]; i++) {
