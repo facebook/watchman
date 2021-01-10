@@ -66,9 +66,9 @@ LocalSavedStateInterface::getMostRecentSavedStateImpl(
       log(DBG, "Found saved state for commit ", commitId, "\n");
       SavedStateInterface::SavedStateResult result;
       result.commitId = commitId;
-      result.savedStateInfo =
-          json_object({{"local-path", w_string_to_json(path)},
-                       {"commit-id", w_string_to_json(commitId)}});
+      result.savedStateInfo = json_object(
+          {{"local-path", w_string_to_json(path)},
+           {"commit-id", w_string_to_json(commitId)}});
       return result;
     }
   }

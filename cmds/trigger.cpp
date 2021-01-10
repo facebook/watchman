@@ -142,14 +142,16 @@ static json_ref build_legacy_trigger(
   uint32_t i;
   size_t n;
 
-  auto trig = json_object({{"name", args.at(2)},
-                           {"append_files", json_true()},
-                           {"stdin",
-                            json_array({typed_string_to_json("name"),
-                                        typed_string_to_json("exists"),
-                                        typed_string_to_json("new"),
-                                        typed_string_to_json("size"),
-                                        typed_string_to_json("mode")})}});
+  auto trig = json_object(
+      {{"name", args.at(2)},
+       {"append_files", json_true()},
+       {"stdin",
+        json_array(
+            {typed_string_to_json("name"),
+             typed_string_to_json("exists"),
+             typed_string_to_json("new"),
+             typed_string_to_json("size"),
+             typed_string_to_json("mode")})}});
 
   json_ref expr;
   auto query = w_query_parse_legacy(root, args, 3, &next_arg, nullptr, &expr);
@@ -295,9 +297,10 @@ watchman_trigger_command::watchman_trigger_command(
   parse_redirection(trig, stderr_name, &stderr_flags, "stderr");
 
   // Set some standard vars
-  env.set({{"WATCHMAN_ROOT", root->root_path},
-           {"WATCHMAN_SOCK", get_sock_name_legacy()},
-           {"WATCHMAN_TRIGGER", triggername}});
+  env.set(
+      {{"WATCHMAN_ROOT", root->root_path},
+       {"WATCHMAN_SOCK", get_sock_name_legacy()},
+       {"WATCHMAN_TRIGGER", triggername}});
 }
 
 void watchman_trigger_command::stop() {

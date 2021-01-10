@@ -71,7 +71,7 @@ TEST(CacheTest, future) {
 
   auto failGetter = [&exec](int k) {
     return folly::makeFuture(k).via(&exec).thenTry(
-        [](folly::Try<int> &&) -> int { throw std::runtime_error("bleet"); });
+        [](folly::Try<int>&&) -> int { throw std::runtime_error("bleet"); });
   };
 
   // Queue up a get via a getter that will succeed

@@ -225,10 +225,11 @@ static void client_thread(
                   " due to root cancellation\n");
 
               auto resp = make_response();
-              resp.set({{"root", item->payload.get_default("root")},
-                        {"unilateral", json_true()},
-                        {"canceled", json_true()},
-                        {"subscription", w_string_to_json(sub->name)}});
+              resp.set(
+                  {{"root", item->payload.get_default("root")},
+                   {"unilateral", json_true()},
+                   {"canceled", json_true()},
+                   {"subscription", w_string_to_json(sub->name)}});
               client->enqueueResponse(std::move(resp), false);
               // Remember to cancel this subscription.
               // We can't do it in this loop because that would
@@ -245,8 +246,9 @@ static void client_thread(
               // fields here (since we don't want to block the command).
               // We don't populate the fat clock for SCM aware queries
               // because determination of mergeBase could add latency.
-              resp.set({{"unilateral", json_true()},
-                        {"subscription", w_string_to_json(sub->name)}});
+              resp.set(
+                  {{"unilateral", json_true()},
+                   {"subscription", w_string_to_json(sub->name)}});
               client->enqueueResponse(std::move(resp), false);
 
               watchman::log(
@@ -749,11 +751,12 @@ bool w_start_listener() {
   {
     struct rlimit limit;
 #ifndef __OpenBSD__
-    int mib[2] = {CTL_KERN,
+    int mib[2] = {
+        CTL_KERN,
 #ifdef KERN_MAXFILESPERPROC
-                  KERN_MAXFILESPERPROC
+        KERN_MAXFILESPERPROC
 #else
-                  KERN_MAXFILES
+        KERN_MAXFILES
 #endif
     };
 #endif

@@ -39,16 +39,16 @@ class Log {
 
     char timebuf[64];
 
-    auto payload =
-        json_object({{"log",
-                      typed_string_to_json(w_string::build(
-                          currentTimeString(timebuf, sizeof(timebuf)),
-                          ": [",
-                          getThreadName(),
-                          "] ",
-                          std::forward<Args>(args)...))},
-                     {"unilateral", json_true()},
-                     {"level", typed_string_to_json(logLevelToLabel(level))}});
+    auto payload = json_object(
+        {{"log",
+          typed_string_to_json(w_string::build(
+              currentTimeString(timebuf, sizeof(timebuf)),
+              ": [",
+              getThreadName(),
+              "] ",
+              std::forward<Args>(args)...))},
+         {"unilateral", json_true()},
+         {"level", typed_string_to_json(logLevelToLabel(level))}});
 
     pub.enqueue(std::move(payload));
   }

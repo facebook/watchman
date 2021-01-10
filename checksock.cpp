@@ -75,9 +75,10 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
   w_jbuffer_t buf;
   json_error_t jerr;
 
-  auto cmd = json_array({typed_string_to_json("clock", W_STRING_UNICODE),
-                         root,
-                         json_object({{"sync_timeout", json_integer(20000)}})});
+  auto cmd = json_array(
+      {typed_string_to_json("clock", W_STRING_UNICODE),
+       root,
+       json_object({{"sync_timeout", json_integer(20000)}})});
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
     throw std::runtime_error(folly::to<std::string>(
         "Failed to send clock PDU: ", folly::errnoStr(errno)));

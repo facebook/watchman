@@ -334,11 +334,12 @@ void parse_field_list(json_ref field_list, w_query_field_list* selected) {
 
   if (!field_list) {
     // Use the default list
-    field_list = json_array({typed_string_to_json("name", W_STRING_UNICODE),
-                             typed_string_to_json("exists", W_STRING_UNICODE),
-                             typed_string_to_json("new", W_STRING_UNICODE),
-                             typed_string_to_json("size", W_STRING_UNICODE),
-                             typed_string_to_json("mode", W_STRING_UNICODE)});
+    field_list = json_array(
+        {typed_string_to_json("name", W_STRING_UNICODE),
+         typed_string_to_json("exists", W_STRING_UNICODE),
+         typed_string_to_json("new", W_STRING_UNICODE),
+         typed_string_to_json("size", W_STRING_UNICODE),
+         typed_string_to_json("mode", W_STRING_UNICODE)});
   }
 
   if (!field_list.isArray()) {

@@ -46,14 +46,15 @@ MercurialResult runMercurial(
     auto error = folly::StringPiece{outputs.second}.str();
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
-    throw SCMError{"failed to ",
-                   description,
-                   "\ncmd = ",
-                   folly::join(" ", cmdline),
-                   "\nstdout = ",
-                   output,
-                   "\nstderr = ",
-                   error};
+    throw SCMError{
+        "failed to ",
+        description,
+        "\ncmd = ",
+        folly::join(" ", cmdline),
+        "\nstdout = ",
+        output,
+        "\nstderr = ",
+        error};
   }
 
   return MercurialResult{std::move(outputs.first)};

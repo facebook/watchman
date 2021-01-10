@@ -187,8 +187,9 @@ json_ref Publisher::getDebugInfo() const {
   for (auto& sub_ref : rlock->subscribers) {
     auto sub = sub_ref.lock();
     if (sub) {
-      auto sub_json = json_object({{"serial", json_integer(sub->getSerial())},
-                                   {"info", sub->getInfo()}});
+      auto sub_json = json_object(
+          {{"serial", json_integer(sub->getSerial())},
+           {"info", sub->getInfo()}});
       subscribers_arr.emplace_back(sub_json);
     } else {
       // This is a subscriber that is now dead. It will be cleaned up the next

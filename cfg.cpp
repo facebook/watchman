@@ -204,10 +204,11 @@ json_ref cfg_compute_root_files(bool* enforcing) {
 
   // Synthesize our conservative default value.
   // .watchmanconfig MUST be first
-  return json_array({typed_string_to_json(".watchmanconfig"),
-                     typed_string_to_json(".hg"),
-                     typed_string_to_json(".git"),
-                     typed_string_to_json(".svn")});
+  return json_array(
+      {typed_string_to_json(".watchmanconfig"),
+       typed_string_to_json(".hg"),
+       typed_string_to_json(".git"),
+       typed_string_to_json(".svn")});
 }
 
 // Produces a string like:  "`foo`, `bar`, and `baz`"

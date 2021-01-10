@@ -33,8 +33,8 @@ class error_category : public std::error_category {
  public:
   const char* name() const noexcept override;
   std::string message(int err) const override;
-  bool equivalent(const std::error_code& code, int condition) const
-      noexcept override;
+  bool equivalent(const std::error_code& code, int condition)
+      const noexcept override;
 };
 
 // Obtain a ref to the above error category

@@ -207,8 +207,9 @@ static void cmd_state_enter(
   // PDUs in case CLIENT has active subscriptions for this root
   auto response = make_response();
 
-  response.set({{"root", w_string_to_json(root->root_path)},
-                {"state-enter", w_string_to_json(parsed.name)}});
+  response.set(
+      {{"root", w_string_to_json(root->root_path)},
+       {"state-enter", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
   root->cookies
@@ -232,10 +233,10 @@ static void cmd_state_enter(
           return;
         }
         auto clock = w_string_to_json(root->view()->getCurrentClockString());
-        auto payload =
-            json_object({{"root", w_string_to_json(root->root_path)},
-                         {"clock", std::move(clock)},
-                         {"state-enter", w_string_to_json(parsed.name)}});
+        auto payload = json_object(
+            {{"root", w_string_to_json(root->root_path)},
+             {"clock", std::move(clock)},
+             {"state-enter", w_string_to_json(parsed.name)}});
         if (parsed.metadata) {
           payload.set("metadata", json_ref(parsed.metadata));
         }
@@ -378,8 +379,9 @@ static void cmd_state_leave(
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   auto response = make_response();
-  response.set({{"root", w_string_to_json(root->root_path)},
-                {"state-leave", w_string_to_json(parsed.name)}});
+  response.set(
+      {{"root", w_string_to_json(root->root_path)},
+       {"state-leave", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
   root->cookies.sync().thenTry(

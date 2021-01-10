@@ -62,11 +62,12 @@ struct levelMaps {
   std::unordered_map<w_string, LogLevel> labelToLevel;
 
   levelMaps()
-      : levelToLabel{{ABORT, "abort"},
-                     {FATAL, "fatal"},
-                     {ERR, "error"},
-                     {OFF, "off"},
-                     {DBG, "debug"}} {
+      : levelToLabel{
+            {ABORT, "abort"},
+            {FATAL, "fatal"},
+            {ERR, "error"},
+            {OFF, "off"},
+            {DBG, "debug"}} {
     // Create the reverse map
     for (auto& it : levelToLabel) {
       labelToLevel.insert(

@@ -312,20 +312,21 @@ bool w_query::isFieldRequested(w_string_piece name) const {
 }
 
 void w_query_legacy_field_list(w_query_field_list* flist) {
-  static const char* names[] = {"name",
-                                "exists",
-                                "size",
-                                "mode",
-                                "uid",
-                                "gid",
-                                "mtime",
-                                "ctime",
-                                "ino",
-                                "dev",
-                                "nlink",
-                                "new",
-                                "cclock",
-                                "oclock"};
+  static const char* names[] = {
+      "name",
+      "exists",
+      "size",
+      "mode",
+      "uid",
+      "gid",
+      "mtime",
+      "ctime",
+      "ino",
+      "dev",
+      "nlink",
+      "new",
+      "cclock",
+      "oclock"};
   uint8_t i;
   auto list = json_array();
 
@@ -410,10 +411,10 @@ std::shared_ptr<w_query> w_query_parse_legacy(
       container = excluded;
     }
 
-    auto term =
-        json_array({typed_string_to_json(term_name, W_STRING_UNICODE),
-                    typed_string_to_json(arg),
-                    typed_string_to_json("wholename", W_STRING_UNICODE)});
+    auto term = json_array(
+        {typed_string_to_json(term_name, W_STRING_UNICODE),
+         typed_string_to_json(arg),
+         typed_string_to_json("wholename", W_STRING_UNICODE)});
     if (negated) {
       term = json_array({typed_string_to_json("not", W_STRING_UNICODE), term});
     }

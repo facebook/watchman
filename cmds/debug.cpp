@@ -234,8 +234,9 @@ static void cmd_debug_get_asserted_states(
 
   // copy over all the key-value pairs to stateSet and release lock
   auto states = root->assertedStates.rlock()->debugStates();
-  response.set({{"root", w_string_to_json(root->root_path)},
-                {"states", std::move(states)}});
+  response.set(
+      {{"root", w_string_to_json(root->root_path)},
+       {"states", std::move(states)}});
   send_and_dispose_response(clientbase, std::move(response));
 }
 W_CMD_REG(

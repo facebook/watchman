@@ -13,10 +13,11 @@
  */
 
 /* Return the smallest size int that can store the value */
-#define INT_SIZE(x)     \
-  (((x) == ((int8_t)x)) \
-       ? 1              \
-       : ((x) == ((int16_t)x)) ? 2 : ((x) == ((int32_t)x)) ? 4 : 8)
+#define INT_SIZE(x)                \
+  (((x) == ((int8_t)x))        ? 1 \
+       : ((x) == ((int16_t)x)) ? 2 \
+       : ((x) == ((int32_t)x)) ? 4 \
+                               : 8)
 
 #define BSER_ARRAY 0x00
 #define BSER_OBJECT 0x01

@@ -247,21 +247,22 @@ void annotate_with_clock(
 
 json_ref ClockSpec::toJson() const {
   if (hasScmParams()) {
-    auto scm =
-        json_object({{"mergebase", w_string_to_json(scmMergeBase)},
-                     {"mergebase-with", w_string_to_json(scmMergeBaseWith)}});
+    auto scm = json_object(
+        {{"mergebase", w_string_to_json(scmMergeBase)},
+         {"mergebase-with", w_string_to_json(scmMergeBaseWith)}});
     if (hasSavedStateParams()) {
-      auto savedState =
-          json_object({{"storage", w_string_to_json(savedStateStorageType)},
-                       {"config", savedStateConfig}});
+      auto savedState = json_object(
+          {{"storage", w_string_to_json(savedStateStorageType)},
+           {"config", savedStateConfig}});
       if (savedStateCommitId != w_string()) {
         json_object_set(
             savedState, "commit-id", w_string_to_json(savedStateCommitId));
       }
       json_object_set(scm, "saved-state", savedState);
     }
-    return json_object({{"clock", w_string_to_json(position().toClockString())},
-                        {"scm", scm}});
+    return json_object(
+        {{"clock", w_string_to_json(position().toClockString())},
+         {"scm", scm}});
   }
   return w_string_to_json(position().toClockString());
 }

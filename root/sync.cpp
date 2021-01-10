@@ -17,8 +17,9 @@ void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
       sample.add_root_meta(root);
       sample.add_meta(
           "sync_to_now",
-          json_object({{"success", json_boolean(true)},
-                       {"timeoutms", json_integer(timeout.count())}}));
+          json_object(
+              {{"success", json_boolean(true)},
+               {"timeoutms", json_integer(timeout.count())}}));
       sample.log();
     }
   } catch (const std::exception& exc) {
@@ -27,9 +28,10 @@ void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
     sample.add_root_meta(root);
     sample.add_meta(
         "sync_to_now",
-        json_object({{"success", json_boolean(false)},
-                     {"reason", w_string_to_json(exc.what())},
-                     {"timeoutms", json_integer(timeout.count())}}));
+        json_object(
+            {{"success", json_boolean(false)},
+             {"reason", w_string_to_json(exc.what())},
+             {"timeoutms", json_integer(timeout.count())}}));
     sample.log();
     throw;
   }

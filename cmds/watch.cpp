@@ -96,8 +96,9 @@ static void cmd_watch_delete(
   auto root = resolveRoot(client, args);
 
   auto resp = make_response();
-  resp.set({{"watch-del", json_boolean(root->stopWatch())},
-            {"root", w_string_to_json(root->root_path)}});
+  resp.set(
+      {{"watch-del", json_boolean(root->stopWatch())},
+       {"root", w_string_to_json(root->root_path)}});
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
@@ -266,8 +267,9 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
     resp.set(
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
-    resp.set({{"watch", w_string_to_json(root->root_path)},
-              {"watcher", w_string_to_json(root->view()->getName())}});
+    resp.set(
+        {{"watch", w_string_to_json(root->root_path)},
+         {"watcher", w_string_to_json(root->view()->getName())}});
   }
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, std::move(resp));
@@ -302,8 +304,9 @@ static void cmd_watch_project(
     resp.set(
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
-    resp.set({{"watch", w_string_to_json(root->root_path)},
-              {"watcher", w_string_to_json(root->view()->getName())}});
+    resp.set(
+        {{"watch", w_string_to_json(root->root_path)},
+         {"watcher", w_string_to_json(root->view()->getName())}});
   }
   add_root_warnings_to_response(resp, root);
   if (!rel_path_from_watch.empty()) {

@@ -592,7 +592,7 @@ folly::Future<w_string> ChildProcess::readPipe(int fd) {
   }
 
   auto p = std::make_shared<folly::Promise<w_string>>();
-  std::thread thr([ this, fd, p ]() noexcept {
+  std::thread thr([this, fd, p]() noexcept {
     std::string result;
     p->setWith([&] {
       auto& pipe = pipes_[fd];

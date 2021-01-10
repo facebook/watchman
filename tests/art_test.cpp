@@ -245,12 +245,13 @@ struct prefix_data {
 
 TEST(Art, iter_prefix) {
   art_tree<void*> t;
-  const char* expected2[] = {"abc.123.456",
-                             "api",
-                             "api.foe.fum",
-                             "api.foo",
-                             "api.foo.bar",
-                             "api.foo.baz"};
+  const char* expected2[] = {
+      "abc.123.456",
+      "api",
+      "api.foe.fum",
+      "api.foo",
+      "api.foo.bar",
+      "api.foo.baz"};
 
   t.insert("api.foo.bar", nullptr);
   t.insert("api.foo.baz", nullptr);

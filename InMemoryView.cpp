@@ -69,8 +69,8 @@ void InMemoryFileResult::batchFetchProperties(
           dir.advance(1);
         }
 
-        SymlinkTargetCacheKey key{w_string::pathCat({dir, file->baseName()}),
-                                  file->file_->otime};
+        SymlinkTargetCacheKey key{
+            w_string::pathCat({dir, file->baseName()}), file->file_->otime};
 
         readlinkFutures.emplace_back(
             caches_.symlinkTargetCache.get(key).thenTry(
@@ -99,9 +99,10 @@ void InMemoryFileResult::batchFetchProperties(
         dir.advance(1);
       }
 
-      ContentHashCacheKey key{w_string::pathCat({dir, file->baseName()}),
-                              size_t(file->file_->stat.size),
-                              file->file_->stat.mtime};
+      ContentHashCacheKey key{
+          w_string::pathCat({dir, file->baseName()}),
+          size_t(file->file_->stat.size),
+          file->file_->stat.mtime};
 
       sha1Futures.emplace_back(caches_.contentHashCache.get(key).thenTry(
           [file](folly::Try<std::shared_ptr<const ContentHashCache::Node>>&&
@@ -500,9 +501,10 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   }
   sample.add_meta(
       "age_out",
-      json_object({{"walked", json_integer(num_walked)},
-                   {"files", json_integer(num_aged_files)},
-                   {"dirs", json_integer(dirs_to_erase.size())}}));
+      json_object(
+          {{"walked", json_integer(num_walked)},
+           {"files", json_integer(num_aged_files)},
+           {"dirs", json_integer(dirs_to_erase.size())}}));
 }
 
 void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
@@ -790,9 +792,10 @@ void InMemoryView::warmContentCache() {
           // front of dir
           dir.advance(1);
         }
-        ContentHashCacheKey key{w_string::pathCat({dir, f->getName()}),
-                                size_t(f->stat.size),
-                                f->stat.mtime};
+        ContentHashCacheKey key{
+            w_string::pathCat({dir, f->getName()}),
+            size_t(f->stat.size),
+            f->stat.mtime};
 
         watchman::log(
             watchman::DBG, "warmContentCache: lookup ", key.relativePath, "\n");
@@ -827,15 +830,16 @@ void InMemoryView::warmContentCache() {
 
 namespace {
 void addCacheStats(json_ref& resp, const CacheStats& stats) {
-  resp.set({{"cacheHit", json_integer(stats.cacheHit)},
-            {"cacheShare", json_integer(stats.cacheShare)},
-            {"cacheMiss", json_integer(stats.cacheMiss)},
-            {"cacheEvict", json_integer(stats.cacheEvict)},
-            {"cacheStore", json_integer(stats.cacheStore)},
-            {"cacheLoad", json_integer(stats.cacheLoad)},
-            {"cacheErase", json_integer(stats.cacheErase)},
-            {"clearCount", json_integer(stats.clearCount)},
-            {"size", json_integer(stats.size)}});
+  resp.set(
+      {{"cacheHit", json_integer(stats.cacheHit)},
+       {"cacheShare", json_integer(stats.cacheShare)},
+       {"cacheMiss", json_integer(stats.cacheMiss)},
+       {"cacheEvict", json_integer(stats.cacheEvict)},
+       {"cacheStore", json_integer(stats.cacheStore)},
+       {"cacheLoad", json_integer(stats.cacheLoad)},
+       {"cacheErase", json_integer(stats.cacheErase)},
+       {"clearCount", json_integer(stats.clearCount)},
+       {"size", json_integer(stats.size)}});
 }
 
 } // namespace

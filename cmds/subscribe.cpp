@@ -278,12 +278,13 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     }
     updateSubscriptionTicks(&res);
 
-    response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
-                  {"clock", res.clockAtStartOfQuery.toJson()},
-                  {"files", std::move(res.resultsArray)},
-                  {"root", w_string_to_json(root->root_path)},
-                  {"subscription", w_string_to_json(name)},
-                  {"unilateral", json_true()}});
+    response.set(
+        {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+         {"clock", res.clockAtStartOfQuery.toJson()},
+         {"files", std::move(res.resultsArray)},
+         {"root", w_string_to_json(root->root_path)},
+         {"subscription", w_string_to_json(name)},
+         {"unilateral", json_true()}});
     if (res.savedStateInfo) {
       response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
     }
@@ -438,9 +439,10 @@ static void cmd_flush_subscriptions(
     }
   }
 
-  resp.set({{"synced", std::move(synced)},
-            {"no_sync_needed", std::move(no_sync_needed)},
-            {"dropped", std::move(dropped)}});
+  resp.set(
+      {{"synced", std::move(synced)},
+       {"no_sync_needed", std::move(no_sync_needed)},
+       {"dropped", std::move(dropped)}});
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, std::move(resp));
 }
@@ -474,8 +476,9 @@ static void cmd_unsubscribe(
   deleted = client->unsubByName(sname);
 
   auto resp = make_response();
-  resp.set({{"unsubscribe", typed_string_to_json(name)},
-            {"deleted", json_boolean(deleted)}});
+  resp.set(
+      {{"unsubscribe", typed_string_to_json(name)},
+       {"deleted", json_boolean(deleted)}});
 
   send_and_dispose_response(client, std::move(resp));
 }
@@ -581,13 +584,13 @@ static void cmd_subscribe(
   {
     auto client_id = w_string::build(client->unique_id);
     auto client_stream = w_string::build(fmt::ptr(client->stm.get()));
-    auto info_json =
-        json_object({{"name", w_string_to_json(sub->name)},
-                     {"query", sub->query->query_spec},
-                     {"client", w_string_to_json(client_id)},
-                     {"stm", w_string_to_json(client_stream)},
-                     {"is_owner", json_boolean(client->stm->peerIsOwner())},
-                     {"pid", json_integer(client->stm->getPeerProcessID())}});
+    auto info_json = json_object(
+        {{"name", w_string_to_json(sub->name)},
+         {"query", sub->query->query_spec},
+         {"client", w_string_to_json(client_id)},
+         {"stm", w_string_to_json(client_stream)},
+         {"is_owner", json_boolean(client->stm->peerIsOwner())},
+         {"pid", json_integer(client->stm->getPeerProcessID())}});
 
     std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(

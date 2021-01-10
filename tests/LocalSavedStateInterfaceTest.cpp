@@ -23,24 +23,28 @@ TEST(LocalSavedStateInterfaceTest, max_commits) {
   auto localStoragePath = w_string_to_json(w_string("/absolute/path"));
   auto project = w_string_to_json("foo");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", project},
-                   {"max-commits", w_string_to_json("string")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", project},
+           {"max-commits", w_string_to_json("string")}}),
       "failed to parse query: 'max-commits' must be an integer");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", project},
-                   {"max-commits", json_integer(0)}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", project},
+           {"max-commits", json_integer(0)}}),
       "failed to parse query: 'max-commits' must be a positive integer");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", project},
-                   {"max-commits", json_integer(-1)}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", project},
+           {"max-commits", json_integer(-1)}}),
       "failed to parse query: 'max-commits' must be a positive integer");
   LocalSavedStateInterface interface(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", project},
-                   {"max-commits", json_integer(1)}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", project},
+           {"max-commits", json_integer(1)}}),
       nullptr);
   EXPECT_TRUE(true) << "expected constructor to succeed";
 }
@@ -55,12 +59,14 @@ TEST(LocalSavedStateInterfaceTest, localStoragePath) {
           {{"project", project}, {"local-storage-path", json_integer(5)}}),
       "failed to parse query: 'local-storage-path' must be a string");
   expect_query_parse_error(
-      json_object({{"project", project},
-                   {"local-storage-path", w_string_to_json("relative/path")}}),
+      json_object(
+          {{"project", project},
+           {"local-storage-path", w_string_to_json("relative/path")}}),
       "failed to parse query: 'local-storage-path' must be an absolute path");
   LocalSavedStateInterface interface(
-      json_object({{"project", project},
-                   {"local-storage-path", w_string_to_json("/absolute/path")}}),
+      json_object(
+          {{"project", project},
+           {"local-storage-path", w_string_to_json("/absolute/path")}}),
       nullptr);
   EXPECT_TRUE(true) << "expected constructor to succeed";
 }
@@ -71,16 +77,19 @@ TEST(LocalSavedStateInterfaceTest, project) {
       json_object({{"local-storage-path", localStoragePath}}),
       "failed to parse query: 'project' must be present in saved state config");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", json_integer(5)}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", json_integer(5)}}),
       "failed to parse query: 'project' must be a string");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("/absolute/path")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("/absolute/path")}}),
       "failed to parse query: 'project' must be a relative path");
   LocalSavedStateInterface interface(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("foo")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("foo")}}),
       nullptr);
   EXPECT_TRUE(true) << "expected constructor to succeed";
 }
@@ -88,14 +97,16 @@ TEST(LocalSavedStateInterfaceTest, project) {
 TEST(LocalSavedStateInterfaceTest, project_metadata) {
   auto localStoragePath = w_string_to_json("/absolute/path");
   expect_query_parse_error(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("relative/path")},
-                   {"project-metadata", json_integer(5)}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("relative/path")},
+           {"project-metadata", json_integer(5)}}),
       "failed to parse query: 'project-metadata' must be a string");
   LocalSavedStateInterface interface(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("foo")},
-                   {"project-metadata", w_string_to_json("meta")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("foo")},
+           {"project-metadata", w_string_to_json("meta")}}),
       nullptr);
   EXPECT_TRUE(true) << "expected constructor to succeed";
 }
@@ -103,16 +114,18 @@ TEST(LocalSavedStateInterfaceTest, project_metadata) {
 TEST(LocalSavedStateInterfaceTest, path) {
   auto localStoragePath = w_string_to_json("/absolute/path");
   LocalSavedStateInterface interface(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("foo")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("foo")}}),
       nullptr);
   auto path = interface.getLocalPath("hash");
   auto expectedPath = "/absolute/path/foo/hash";
   EXPECT_EQ(path, expectedPath);
   interface = LocalSavedStateInterface(
-      json_object({{"local-storage-path", localStoragePath},
-                   {"project", w_string_to_json("foo")},
-                   {"project-metadata", w_string_to_json("meta")}}),
+      json_object(
+          {{"local-storage-path", localStoragePath},
+           {"project", w_string_to_json("foo")},
+           {"project-metadata", w_string_to_json("meta")}}),
       nullptr);
   path = interface.getLocalPath("hash");
   expectedPath = "/absolute/path/foo/hash_meta";
