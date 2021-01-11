@@ -105,7 +105,7 @@ void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
     // and wait again if we still have time
     timeout = duration_cast<milliseconds>(deadline - system_clock::now());
     if (timeout.count() <= 0) {
-      cookie.result().throwIfFailed();
+      cookie.result().throwUnlessValue();
     }
   }
 }

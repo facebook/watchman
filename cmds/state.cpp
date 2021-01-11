@@ -221,7 +221,7 @@ static void cmd_state_enter(
       // unaware of them.
       .thenTry([assertion, parsed, root](folly::Try<folly::Unit>&& result) {
         try {
-          result.throwIfFailed();
+          result.throwUnlessValue();
         } catch (const std::exception& exc) {
           // The sync failed for whatever reason; log it.
           log(ERR, "state-enter sync failed: ", exc.what(), "\n");
@@ -387,7 +387,7 @@ static void cmd_state_leave(
   root->cookies.sync().thenTry(
       [assertion, parsed, root](folly::Try<folly::Unit>&& result) {
         try {
-          result.throwIfFailed();
+          result.throwUnlessValue();
         } catch (const std::exception& exc) {
           // The sync failed for whatever reason; log it and take no futher
           // action
