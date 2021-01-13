@@ -4,8 +4,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
-from distutils.core import Extension, setup
 
+try:
+    from setuptools import setup, Extension
+except ImportError:
+    from distutils.core import setup, Extension
 
 watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
 if watchman_src_dir is None:
