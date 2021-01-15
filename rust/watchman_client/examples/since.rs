@@ -22,7 +22,7 @@ struct Opt {
     path: PathBuf,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(err) = run().await {
         // Print a prettier error than the default
