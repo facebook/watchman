@@ -38,9 +38,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 #[cfg(unix)]
 use tokio::net::UnixStream;
-use tokio::prelude::*;
 use tokio::process::Command;
 use tokio::sync::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use tokio::sync::Mutex;
@@ -935,7 +935,7 @@ impl Client {
         let (tx, responses) = tokio::sync::mpsc::unbounded_channel();
 
         {
-            let mut inner = self.inner.lock().await;
+            let inner = self.inner.lock().await;
             inner
                 .request_tx
                 .send(TaskItem::RegisterSubscription(name.clone(), tx))
