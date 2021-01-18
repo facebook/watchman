@@ -8,6 +8,7 @@
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
+#include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
 #include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <algorithm>
@@ -315,10 +316,9 @@ class EdenFileResult : public FileResult {
       // Thrift error occured
       case SHA1Result::Type::error: {
         auto& err = sha1_->get_error();
+        XCHECK(err.errorCode_ref());
         throw std::system_error(
-            err.errorCode_ref().value_unchecked(),
-            std::generic_category(),
-            err.message);
+            *err.errorCode_ref(), std::generic_category(), *err.message_ref());
       }
 
       // Something is wrong with type union
@@ -882,8 +882,8 @@ class EdenView : public QueryableView {
         // ERANGE: mountGeneration differs
         // EDOM: journal was truncated.
         // For other situations we let the error propagate.
-        if (err.errorCode_ref().value_unchecked() != ERANGE &&
-            err.errorCode_ref().value_unchecked() != EDOM) {
+        XCHECK(err.errorCode_ref());
+        if (*err.errorCode_ref() != ERANGE && *err.errorCode_ref() != EDOM) {
           throw;
         }
         // mountGeneration differs, or journal was truncated,
@@ -1118,7 +1118,8 @@ class EdenView : public QueryableView {
       // EDOM is journal truncation, which we can recover from.
       // Other errors (including ERANGE/mountGeneration changed)
       // are not recoverable, so let them propagate.
-      if (err.errorCode_ref().value_unchecked() != EDOM) {
+      XCHECK(err.errorCode_ref());
+      if (*err.errorCode_ref() != EDOM) {
         throw;
       }
       // Journal was truncated: we can remain connected and have continuity
