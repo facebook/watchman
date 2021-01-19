@@ -97,7 +97,7 @@ def _remove_readonly(func, path, exc_info):
         # func() is the function that failed.
         # This is usually os.unlink() or os.rmdir().
         func(path)
-    except OSError as ex:
+    except OSError:
         return
 
 
