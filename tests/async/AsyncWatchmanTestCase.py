@@ -53,14 +53,13 @@ class AsyncWatchmanTestCase(unittest.TestCase):
         return res
 
     def assert_sub_contains_all(self, sub, what):
-        files = set(f for f in sub["files"])
-        what = [f for f in what]
+        files = set(sub["files"])
         for obj in what:
             assert obj in files, str(obj) + " was not in subscription " + repr(sub)
 
     def assert_file_sets_equal(self, iter1, iter2, message=None):
-        set1 = set(f for f in iter1)
-        set2 = set(f for f in iter2)
+        set1 = set(iter1)
+        set2 = set(iter2)
         self.assertEqual(set1, set2, message)
 
     # Wait for the file list to match the input set
