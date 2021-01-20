@@ -175,6 +175,7 @@ struct MountInfo {
   1: PathString mountPoint;
   2: PathString edenClientPath;
   3: MountState state;
+  4: optional PathString backingRepoPath;
 }
 
 struct MountArgument {
