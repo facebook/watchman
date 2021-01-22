@@ -45,18 +45,27 @@ void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
   auto& data = try_data.value();
   auto subscription_data = data.get_ptr("subscription");
   if (subscription_data) {
-    std::lock_guard<std::mutex> guard(mutex_);
-    auto subscription = subscriptionMap_.find(subscription_data->asString());
-    if (subscription == subscriptionMap_.end()) {
+    auto subscription = [&]() -> SubscriptionPtr {
+      std::lock_guard<std::mutex> guard(mutex_);
+      auto subscriptionIt =
+          subscriptionMap_.find(subscription_data->asString());
+      if (subscriptionIt == subscriptionMap_.end()) {
+        return nullptr;
+      } else {
+        return subscriptionIt->second;
+      }
+    }();
+    if (!subscription) {
       LOG(ERROR) << "Unexpected subscription update: "
                  << subscription_data->asString();
     } else {
-      subscription->second->executor_->add(
-          [sub_ptr = subscription->second, data = std::move(data)]() mutable {
-            if (sub_ptr->active_) {
-              sub_ptr->callback_(Try<dynamic>(std::move(data)));
-            }
-          });
+      auto exec = subscription->executor_;
+      exec->add([sub_ptr = std::move(subscription),
+                 data = std::move(data)]() mutable {
+        if (sub_ptr->active_) {
+          sub_ptr->callback_(Try<dynamic>(std::move(data)));
+        }
+      });
     }
   } else {
     LOG(ERROR) << "Unhandled unilateral data: " << data;
