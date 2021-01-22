@@ -405,6 +405,26 @@ pub struct SubscribeRequest {
     /// <https://facebook.github.io/watchman/docs/cmd/query.html#case-sensitivity>
     #[serde(default, skip_serializing_if = "is_false")]
     pub case_sensitive: bool,
+
+    /// In some circumstances it is desirable for a client to observe the creation of
+    /// the control files at the start of a version control operation. You may specify
+    /// that you want this behavior by passing the defer_vcs flag to your
+    /// subscription command invocation
+    /// <https://facebook.github.io/watchman/docs/cmd/subscribe.html#filesystem-settling>
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub defer_vcs: bool,
+
+    /// The `defer` field specifies a list of state names for which the subscriber
+    /// wishes to defer the notification stream.
+    /// <https://facebook.github.io/watchman/docs/cmd/subscribe.html#defer>
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub defer: Vec<&'static str>,
+
+    /// The `drop` field specifies a list of state names for which the subscriber
+    /// wishes to discard the notification stream.
+    /// <https://facebook.github.io/watchman/docs/cmd/subscribe.html#drop>
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub drop: Vec<&'static str>,
 }
 
 #[derive(Serialize, Clone, Debug)]
