@@ -54,6 +54,11 @@ struct FsEvent {
   // 6: optional eden.PrjfsCall prjfsRequest;
 
   8: RequestInfo requestInfo;
+
+  /**
+   * The result code sent back to the kernel.
+   */
+  9: optional i32 result;
 }
 
 /*
