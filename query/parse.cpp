@@ -234,6 +234,11 @@ static void parse_fail_if_no_saved_state(w_query* res, const json_ref& query) {
       parse_bool_param(query, "fail_if_no_saved_state", false);
 }
 
+static void parse_omit_changed_files(w_query* res, const json_ref& query) {
+  res->omit_changed_files =
+      parse_bool_param(query, "omit_changed_files", false);
+}
+
 static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
   res->empty_on_fresh_instance =
       parse_bool_param(query, "empty_on_fresh_instance", false);
@@ -278,6 +283,7 @@ std::shared_ptr<w_query> w_query_parse(
   parse_relative_root(root, res, query);
   parse_empty_on_fresh_instance(res, query);
   parse_fail_if_no_saved_state(res, query);
+  parse_omit_changed_files(res, query);
 
   /* Look for path generators */
   parse_paths(res, query);

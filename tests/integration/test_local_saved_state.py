@@ -210,6 +210,28 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
+    def test_localSavedStateNotWithinLimitOmitChangedFiles(self):
+        # Local saved state should return an empty commit id, error message,
+        # and changed files since prior clock if the first available saved
+        # state is not within the limit
+        local_storage = self.mkdtemp()
+        self.saveState("example_project", "feature3", local_storage)
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 1,
+        }
+        test_query = self.getQuery(config)
+        test_query["omit_changed_files"] = True
+        res = self.watchmanCommand("query", self.root, test_query)
+        self.assertSavedStateErrorEquals(res, "No suitable saved state found")
+        self.assertEqual(self.getConfig(res), config)
+        self.assertStorageTypeLocal(res)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertFileListsEqual(res["files"], [])
+
     def test_localSavedStateNotWithinLimitError(self):
         # Local saved state should return an empty commit id, error message,
         # and changed files since prior clock if the first available saved
@@ -258,6 +280,34 @@ o  changeset:
         expected_path = os.path.join(project_dir, saved_state_rev_feature3)
         self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
         self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
+
+    def test_localSavedStateLookupSuccessOmitChangedFiles(self):
+        # Local saved state should return the saved state commit id, info, and
+        # changed files since the saved state if valid state found within limit.
+        # Since this sets omit_changed_files, we only return the files from the
+        # saved-state to the mergebase
+        local_storage = self.mkdtemp()
+        saved_state_rev_feature3 = self.saveState(
+            "example_project", "feature3", local_storage
+        )
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        test_query["omit_changed_files"] = True
+        res = self.watchmanCommand("query", self.root, test_query)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertStorageTypeLocal(res)
+        self.assertCommitIDEquals(res, saved_state_rev_feature3)
+        self.assertEqual(self.getConfig(res), config)
+        project_dir = os.path.join(local_storage, "example_project")
+        expected_path = os.path.join(project_dir, saved_state_rev_feature3)
+        self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
+        self.assertFileListsEqual(res["files"], [])
 
     def test_localSavedStateLookupSuccessWithMetadata(self):
         local_storage = self.mkdtemp()

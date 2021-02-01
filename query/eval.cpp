@@ -496,7 +496,13 @@ w_query_res w_query_execute(
       }
     }
   }
-
+  // We should skip asking SCM for the changed files if the query
+  // indicated to omit those. To do so, lets just make an empty
+  // generator.
+  if (query->omit_changed_files) {
+    generator =
+        [](w_query*, const std::shared_ptr<w_root_t>&, struct w_query_ctx*) {};
+  }
   w_query_ctx ctx(query, root, disableFreshInstance);
 
   // Track the query against the root.

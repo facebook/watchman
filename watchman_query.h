@@ -368,6 +368,7 @@ struct w_query {
       watchman::CaseSensitivity::CaseInSensitive};
   bool fail_if_no_saved_state{false};
   bool empty_on_fresh_instance{false};
+  bool omit_changed_files{false};
   bool dedup_results{false};
   uint32_t bench_iterations{0};
 

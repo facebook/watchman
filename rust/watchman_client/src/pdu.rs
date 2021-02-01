@@ -239,6 +239,12 @@ pub struct QueryRequestCommon {
     #[serde(default, skip_serializing_if = "is_false")]
     pub empty_on_fresh_instance: bool,
 
+    /// If true you indicate that you don't want watchman to query for or
+    /// return the changed files. This is most helpful if you'd quickly
+    /// like the saved-state but don't care about the changed files.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub omit_changed_files: bool,
+
     /// When requesting saved state information via SavedStateClockData, if
     /// `fail_if_no_saved_state` is set to true, the server will generate a
     /// query error in the case that the merge base change and no appropriate
