@@ -1336,13 +1336,6 @@ static void spawn_watchman(void) {
 }
 
 static int inner_main(int argc, char** argv) {
-#ifdef _WIN32
-  // On Windows its not possible to connect to elevated Watchman daemon from
-  // non-elevated processes. To ensure that Watchman daemon will always be
-  // accessible, deelevating it if needed.
-  deelevate_requires_normal_privileges();
-#endif
-
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
@@ -1354,6 +1347,17 @@ static int inner_main(int argc, char** argv) {
   };
 
   parse_cmdline(&argc, &argv);
+
+#ifdef _WIN32
+  // On Windows its not possible to connect to elevated Watchman daemon from
+  // non-elevated processes. To ensure that Watchman daemon will always be
+  // accessible, deelevate by default if needed.
+  // Note watchman runs in some environments which require elevated
+  // permissions, so we can not always de-elevate.
+  if (Configuration().getBool("should_deelevate_on_startup", false)) {
+    deelevate_requires_normal_privileges();
+  }
+#endif
 
   if (foreground) {
     run_service();
