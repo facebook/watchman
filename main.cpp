@@ -225,7 +225,6 @@ static void check_nice_value() {
 #endif
 
 [[noreturn]] static void run_service() {
-  int fd;
   bool res;
 
 #ifndef _WIN32
@@ -243,7 +242,7 @@ static void check_nice_value() {
 #endif
 
   // redirect std{in,out,err}
-  fd = ::open("/dev/null", O_RDONLY);
+  int fd = ::open("/dev/null", O_RDONLY);
   if (fd != -1) {
     ignore_result(::dup2(fd, STDIN_FILENO));
     ::close(fd);

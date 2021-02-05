@@ -605,10 +605,9 @@ class EdenWrappedSCM : public SCM {
   }
 
   SCM::StatusResult getFilesChangedBetweenCommits(
-      w_string_piece commitA,
-      w_string_piece commitB,
+      std::vector<std::string> commits,
       w_string /* requestId */ = nullptr) const override {
-    return inner_->getFilesChangedBetweenCommits(commitA, commitB);
+    return inner_->getFilesChangedBetweenCommits(std::move(commits));
   }
 
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
@@ -810,36 +809,60 @@ class EdenView : public QueryableView {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
 
-        if (scm_ &&
-            *delta.fromPosition_ref()->snapshotHash_ref() !=
-                *delta.toPosition_ref()->snapshotHash_ref()) {
-          // Either they checked out a new commit or reset the commit to
+        bool didChangeCommits = delta.snapshotTransitions_ref()->size() >= 2 ||
+            (delta.fromPosition_ref()->snapshotHash_ref() !=
+             delta.toPosition_ref()->snapshotHash_ref());
+
+        if (scm_ && didChangeCommits) {
+          // Check whether they checked out a new commit or reset the commit to
           // a different hash.  We interrogate source control to discover
           // the set of changed files between those hashes, and then
           // add in any paths that may have changed around snapshot hash
           // changes events;  These are files whose status cannot be
-          // determined purely from source control operations
+          // determined purely from source control operations.
 
           std::unordered_set<std::string> mergedFileList;
           for (auto& info : fileInfo) {
             mergedFileList.insert(info.name);
           }
 
-          auto fromHash =
-              folly::hexlify(*delta.fromPosition_ref()->snapshotHash_ref());
-          auto toHash =
-              folly::hexlify(*delta.toPosition_ref()->snapshotHash_ref());
-          log(ERR,
-              "since ",
-              *position.sequenceNumber_ref(),
-              " we changed commit hashes from ",
-              fromHash,
-              " to ",
-              toHash,
-              "\n");
+          SCM::StatusResult changedBetweenCommits;
+          if (delta.snapshotTransitions_ref()->empty()) {
+            auto fromHash =
+                folly::hexlify(*delta.fromPosition_ref()->snapshotHash_ref());
+            auto toHash =
+                folly::hexlify(*delta.toPosition_ref()->snapshotHash_ref());
 
-          auto changedBetweenCommits =
-              getSCM()->getFilesChangedBetweenCommits(fromHash, toHash);
+            // Legacy path: this (incorrectly) ignores any commit transitions
+            // between the initial commit hash and the final commit hash.
+            log(ERR,
+                "since ",
+                *position.sequenceNumber_ref(),
+                " we changed commit hashes from ",
+                fromHash,
+                " to ",
+                toHash,
+                "\n");
+
+            std::vector<std::string> commits{
+                std::move(fromHash), std::move(toHash)};
+            changedBetweenCommits =
+                getSCM()->getFilesChangedBetweenCommits(std::move(commits));
+          } else if (delta.snapshotTransitions_ref()->size() >= 2) {
+            std::vector<std::string> commits;
+            commits.reserve(delta.snapshotTransitions_ref()->size());
+            for (auto& hash : *delta.snapshotTransitions_ref()) {
+              commits.push_back(folly::hexlify(hash));
+            }
+            log(ERR,
+                "since ",
+                *position.sequenceNumber_ref(),
+                " we changed commit hashes ",
+                folly::join(" -> ", commits),
+                "\n");
+            changedBetweenCommits =
+                getSCM()->getFilesChangedBetweenCommits(std::move(commits));
+          }
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {
             mergedFileList.insert(to<std::string>(fileName));

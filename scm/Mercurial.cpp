@@ -64,6 +64,46 @@ MercurialResult runMercurial(
 
 namespace watchman {
 
+void StatusAccumulator::add(w_string_piece status) {
+  std::vector<w_string_piece> lines;
+  status.split(lines, '\0');
+
+  log(DBG, "processing ", lines.size(), " status lines\n");
+
+  for (auto& line : lines) {
+    if (line.size() < 3) {
+      continue;
+    }
+
+    w_string name{line.data() + 2, line.size() - 2};
+    switch (line.data()[0]) {
+      case 'A':
+        // Should remove + add be considered new? Treat it as changed for now.
+        byFile_[name] += 1;
+        break;
+      case 'D':
+        byFile_[name] += -1;
+        break;
+      default:
+        byFile_[name]; // just insert an entry
+    }
+  }
+}
+
+SCM::StatusResult StatusAccumulator::finalize() const {
+  SCM::StatusResult combined;
+  for (auto& [name, count] : byFile_) {
+    if (count == 0) {
+      combined.changedFiles.push_back(name);
+    } else if (count < 0) {
+      combined.removedFiles.push_back(name);
+    } else if (count > 0) {
+      combined.addedFiles.push_back(name);
+    }
+  }
+  return combined;
+}
+
 ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
@@ -209,60 +249,53 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 }
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
-    w_string_piece commitApiece,
-    w_string_piece commitBpiece,
+    std::vector<std::string> commits,
     w_string requestId) const {
-  auto mtime = getDirStateMtime();
-  auto commitA = folly::to<std::string>(commitApiece);
-  auto commitB = folly::to<std::string>(commitBpiece);
-  auto key = folly::to<std::string>(
-      commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  StatusAccumulator result;
+  for (size_t i = 0; i + 1 < commits.size(); ++i) {
+    auto mtime = getDirStateMtime();
+    auto& commitA = commits[i];
+    auto& commitB = commits[i + 1];
+    auto key = folly::to<std::string>(
+        commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
 
-  return filesChangedBetweenCommits_
-      .get(
-          key,
-          [this, commitA, commitB, requestId](const std::string&) {
-            auto hgresult = runMercurial(
-                {hgExecutablePath(),
-                 "--traceback",
-                 "status",
-                 "--print0",
-                 "--rev",
-                 commitA,
-                 "--rev",
-                 commitB,
-                 // The "" argument at the end causes paths to be printed out
-                 // relative to the cwd (set to root path above).
-                 ""},
-                makeHgOptions(requestId),
-                "get files changed between commits");
+    // This loop runs `hg status` commands sequentially. There's an opportunity
+    // to run them concurrently, but:
+    // 1. In practice since each transition in `commits` corresponds to an
+    //    `hg update` call, the list is almost always short.
+    // 2. For debugging Watchman performance issues, it's nice to have the
+    //    subprocess call on the same stack.
+    // 3. If `hg status` acquires a lock on the backing storage, there may not
+    //    be much actual concurrency.
+    // 4. This codepath is most frequently executed under very fast checkout
+    //    operations between close commits, where the cost isn't that high.
 
-            std::vector<w_string> lines;
-            w_string_piece(hgresult.output).split(lines, '\0');
+    result.add(
+        filesChangedBetweenCommits_
+            .get(
+                key,
+                [&](const std::string&) {
+                  auto hgresult = runMercurial(
+                      {hgExecutablePath(),
+                       "--traceback",
+                       "status",
+                       "--print0",
+                       "--rev",
+                       commitA,
+                       "--rev",
+                       commitB,
+                       // The "" argument at the end causes paths to be printed
+                       // out relative to the cwd (set to root path above).
+                       ""},
+                      makeHgOptions(requestId),
+                      "get files changed between commits");
 
-            SCM::StatusResult result;
-            log(DBG, "processing ", lines.size(), " status lines\n");
-            for (auto& line : lines) {
-              if (line.size() < 3) {
-                continue;
-              }
-              w_string fileName(line.data() + 2, line.size() - 2);
-              switch (line.data()[0]) {
-                case 'A':
-                  result.addedFiles.emplace_back(std::move(fileName));
-                  break;
-                case 'D':
-                  result.removedFiles.emplace_back(std::move(fileName));
-                  break;
-                default:
-                  result.changedFiles.emplace_back(std::move(fileName));
-              }
-            }
-
-            return folly::makeFuture(result);
-          })
-      .get()
-      ->value();
+                  return folly::makeFuture(hgresult.output);
+                })
+            .get()
+            ->value());
+  }
+  return result.finalize();
 }
 
 time_point<system_clock> Mercurial::getCommitDate(
@@ -328,4 +361,5 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
       .get()
       ->value();
 }
+
 } // namespace watchman

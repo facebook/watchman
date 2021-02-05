@@ -11,7 +11,8 @@
 
 namespace watchman {
 
-/** LRUCache implements a cache map with an LRU eviction policy.
+/**
+ * LRUCache implements a cache map with an LRU eviction policy.
  *
  * Items are retained in the cache until evicted.
  * Eviction occurs when attempting to insert a new item into

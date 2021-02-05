@@ -13,6 +13,19 @@
 
 namespace watchman {
 
+class StatusAccumulator {
+ public:
+  void add(w_string_piece status);
+
+  SCM::StatusResult finalize() const;
+
+ private:
+  // -1 = removed
+  // 0 = changed
+  // 1 = added
+  std::unordered_map<w_string, int> byFile_;
+};
+
 class Mercurial : public SCM {
  public:
   Mercurial(w_string_piece rootPath, w_string_piece scmRoot);
@@ -21,9 +34,8 @@ class Mercurial : public SCM {
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId,
       w_string requestId = nullptr) const override;
-  SCM::StatusResult getFilesChangedBetweenCommits(
-      w_string_piece commitA,
-      w_string_piece commitB,
+  StatusResult getFilesChangedBetweenCommits(
+      std::vector<std::string> commits,
       w_string requestId = nullptr) const override;
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
       w_string_piece commitId,
@@ -40,7 +52,7 @@ class Mercurial : public SCM {
   std::string dirStatePath_;
   mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
   mutable LRUCache<std::string, w_string> mergeBases_;
-  mutable LRUCache<std::string, SCM::StatusResult> filesChangedBetweenCommits_;
+  mutable LRUCache<std::string, w_string> filesChangedBetweenCommits_;
   mutable LRUCache<std::string, std::vector<w_string>>
       filesChangedSinceMergeBaseWith_;
 
@@ -48,4 +60,5 @@ class Mercurial : public SCM {
   ChildProcess::Options makeHgOptions(w_string requestId) const;
   struct timespec getDirStateMtime() const;
 };
+
 } // namespace watchman

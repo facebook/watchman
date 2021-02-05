@@ -96,6 +96,112 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         watches = self.watchmanCommand("watch-list")
         self.assertNotIn(root, watches["roots"])
 
+    def test_two_rapid_checkouts_show_briefly_changed_files(self):
+        initial_commit = None
+        add_commit = None
+        remove_commit = None
+
+        def populate(repo):
+            nonlocal initial_commit, add_commit, remove_commit
+            repo.write_file("hello", "hola\n")
+            initial_commit = repo.commit("initial commit.")
+
+            repo.write_file("newfile", "contents\n")
+            add_commit = repo.commit("add newfile")
+
+            repo.remove_file("newfile")
+            remove_commit = repo.commit("remove newfile")
+
+        root = self.makeEdenMount(populate)
+        repo = self.repoForPath(root)
+
+        # Synchronize to the initial commit.
+        repo.update(initial_commit, clean=True)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+        clock = self.watchmanCommand("clock", root)
+        res = self.watchmanCommand("query", root, {"fields": ["name"], "since": clock})
+        clock = res["clock"]
+
+        # Update to the latest commit, through the intermediate.
+        repo.update(add_commit)
+        repo.update(remove_commit)
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "not",
+                    [
+                        "anyof",
+                        ["dirname", ".hg"],
+                        ["match", "checklink*"],
+                        ["match", "hg-check*"],
+                    ],
+                ],
+                "fields": ["name"],
+                "since": clock,
+            },
+        )
+
+        self.assertFileListsEqual(
+            res["files"],
+            ["newfile"],
+            message="Files created and removed across the update operation should show up in the changed list",
+        )
+
+    def test_aba_checkouts_show_briefly_changed_files(self):
+        initial_commit = None
+        add_commit = None
+
+        def populate(repo):
+            nonlocal initial_commit, add_commit
+            repo.write_file("hello", "hola\n")
+            initial_commit = repo.commit("initial commit.")
+
+            repo.write_file("newfile", "contents\n")
+            add_commit = repo.commit("add newfile")
+
+        root = self.makeEdenMount(populate)
+        repo = self.repoForPath(root)
+
+        # Synchronize to the initial commit.
+        repo.update(initial_commit, clean=True)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+        clock = self.watchmanCommand("clock", root)
+        res = self.watchmanCommand("query", root, {"fields": ["name"], "since": clock})
+        clock = res["clock"]
+
+        # Update to a new file and back to the initial commit, expecting to see the modified file show up in the change list.
+        repo.update(add_commit)
+        repo.update(initial_commit)
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "not",
+                    [
+                        "anyof",
+                        ["dirname", ".hg"],
+                        ["match", "checklink*"],
+                        ["match", "hg-check*"],
+                    ],
+                ],
+                "fields": ["name"],
+                "since": clock,
+            },
+        )
+
+        self.assertFileListsEqual(
+            res["files"],
+            ["newfile"],
+            message="Files created and removed across the update operation should show up in the changed list",
+        )
+
     def test_querying_with_truncated_journal_returns_fresh_instance(self):
         def populate(repo):
             repo.write_file("hello", "hola\n")

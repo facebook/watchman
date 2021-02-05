@@ -74,12 +74,16 @@ class SCM {
     std::vector<w_string> removedFiles;
   };
 
-  // Compute the set of paths that have changed between the two
-  // specified commits.  This is purely a history operation and
-  // does not consider the working copy status.
+  // Compute the set of paths that have changed across all of the transitions
+  // between the list of given commits.
+  //
+  // For example, if commits is [A, B, C], then this accumulates the changes
+  // between [A, B] and [B, C] into one StatusResult.
+  //
+  // This is purely a history operation and does not consider the working
+  // copy status.
   virtual StatusResult getFilesChangedBetweenCommits(
-      w_string_piece commitA,
-      w_string_piece commitB,
+      std::vector<std::string> commits,
       w_string requestId = nullptr) const = 0;
 
   // Compute the source control date associated with the specified
