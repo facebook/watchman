@@ -245,7 +245,8 @@ struct JournalPosition {
   3: BinaryHash snapshotHash;
 }
 
-/** Holds information about a set of paths that changed between two points.
+/**
+ * Holds information about a set of paths that changed between two points.
  * fromPosition, toPosition define the time window.
  * paths holds the list of paths that changed in that window.
  *
@@ -253,31 +254,52 @@ struct JournalPosition {
  * rethought when we have a chance to make a breaking change.
  */
 struct FileDelta {
-  /** The fromPosition passed to getFilesChangedSince */
+  /**
+   * The fromPosition passed to getFilesChangedSince
+   */
   1: JournalPosition fromPosition;
-  /** The current position at the time that getFilesChangedSince was called */
+  /**
+   * The current position at the time that getFilesChangedSince was called
+  */
   2: JournalPosition toPosition;
-  /** The union of changedPaths and createdPaths contains the total set of paths
+  /**
+   * The union of changedPaths and createdPaths contains the total set of paths
    * changed in the overlay between fromPosition and toPosition.
    * Disjoint with createdPaths.
    */
   3: list<PathString> changedPaths;
-  /** The set of paths created between fromPosition and toPosition.
+  /**
+   * The set of paths created between fromPosition and toPosition.
    * Used by Watchman to search for cookies and to populate its 'new' field.
    * Disjoint with changedPaths.
    */
   4: list<PathString> createdPaths;
-  /** Deprecated - always empty. */
+  /**
+   * Deprecated - always empty.
+   */
   5: list<PathString> removedPaths;
-  /** When fromPosition.snapshotHash != toPosition.snapshotHash this holds
+  /**
+   * When fromPosition.snapshotHash != toPosition.snapshotHash this holds
    * the union of the set of files whose ScmFileStatus differed from the
    * committed fromPosition hash before the hash changed, and the set of
    * files whose ScmFileStatus differed from the committed toPosition hash
    * after the hash was changed.  This list of files represents files
    * whose state may have changed as part of an update operation, but
    * in ways that may not be able to be extracted solely by performing
-   * source control diff operations on the from/to hashes. */
+   * source control diff operations on the from/to hashes.
+   */
   6: list<PathString> uncleanPaths;
+  /**
+   * Contains the list of commit transitions in this range. If only files
+   * have been changed, the list has one entry. Otherwise, it has size N + 1,
+   * where N is the number of checkout operations.
+   *
+   * This list's items may not be unique: [A, B, A] is a common sequence,
+   * and [A, B, C] has a different meaning than [A, C, B].
+   *
+   * Subsumes fromPosition.snapshotHash and toPosition.snapshotHash.
+   */
+  7: list<BinaryHash> snapshotTransitions;
 }
 
 struct DebugGetRawJournalParams {
@@ -659,11 +681,11 @@ struct GlobParams {
   // There should be no duplicates in this list. If there are then
   // there maybe duplicate machingFile and originHash pairs in the coresponding
   // output Glob.
-  7: list<BinaryHash> revisions,
+  7: list<BinaryHash> revisions;
   // If false we will not prefetch metadata while evaluating this glob. In
   // in general we want to prefetch metadata, but some large globs can
   // trigger too many metadata prefetches, so we allow skipping this.
-  8: bool prefetchMetadata = true,
+  8: bool prefetchMetadata = true;
 }
 
 struct Glob {
@@ -819,7 +841,7 @@ service EdenService extends fb303_core.BaseService {
   list<CheckoutConflict> checkOutRevision(
     1: PathString mountPoint,
     2: BinaryHash snapshotHash,
-    3: CheckoutMode checkoutMode
+    3: CheckoutMode checkoutMode,
   ) throws (1: EdenError ex);
 
   /**
@@ -830,7 +852,7 @@ service EdenService extends fb303_core.BaseService {
    */
   void resetParentCommits(
     1: PathString mountPoint,
-    2: WorkingDirectoryParents parents
+    2: WorkingDirectoryParents parents,
   ) throws (1: EdenError ex);
 
   /**
@@ -843,14 +865,14 @@ service EdenService extends fb303_core.BaseService {
    */
   list<SHA1Result> getSHA1(
     1: PathString mountPoint,
-    2: list<PathString> paths
+    2: list<PathString> paths,
   ) throws (1: EdenError ex);
 
   /**
    * Returns a list of paths relative to the mountPoint. DEPRECATED!
    */
   list<PathString> getBindMounts(1: PathString mountPoint) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -867,7 +889,7 @@ service EdenService extends fb303_core.BaseService {
   void addBindMount(
     1: PathString mountPoint,
     2: PathString repoPath,
-    3: PathString targetPath
+    3: PathString targetPath,
   ) throws (1: EdenError ex);
 
   /**
@@ -879,14 +901,14 @@ service EdenService extends fb303_core.BaseService {
    */
   void removeBindMount(
     1: PathString mountPoint,
-    2: PathString repoPath
+    2: PathString repoPath,
   ) throws (1: EdenError ex);
 
   /** Returns the sequence position at the time the method is called.
    * Returns the instantaneous value of the journal sequence number.
    */
   JournalPosition getCurrentJournalPosition(1: PathString mountPoint) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /** Returns the set of files (and dirs) that changed since a prior point.
@@ -900,14 +922,14 @@ service EdenService extends fb303_core.BaseService {
    */
   FileDelta getFilesChangedSince(
     1: PathString mountPoint,
-    2: JournalPosition fromPosition
+    2: JournalPosition fromPosition,
   ) throws (1: EdenError ex);
 
   /** Sets the memory limit on the journal such that the journal will forget
    * old data to keep itself under a certain estimated memory use.
    */
   void setJournalMemoryLimit(1: PathString mountPoint, 2: i64 limit) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /** Gets the memory limit on the journal
@@ -925,7 +947,7 @@ service EdenService extends fb303_core.BaseService {
    * DebugGetRawJournalResponse.
    */
   DebugGetRawJournalResponse debugGetRawJournal(
-    1: DebugGetRawJournalParams params
+    1: DebugGetRawJournalParams params,
   ) throws (1: EdenError ex);
 
   /**
@@ -935,7 +957,7 @@ service EdenService extends fb303_core.BaseService {
    */
   list<EntryInformationOrError> getEntryInformation(
     1: PathString mountPoint,
-    2: list<PathString> paths
+    2: list<PathString> paths,
   ) throws (1: EdenError ex);
 
   /**
@@ -948,7 +970,7 @@ service EdenService extends fb303_core.BaseService {
    */
   list<FileInformationOrError> getFileInformation(
     1: PathString mountPoint,
-    2: list<PathString> paths
+    2: list<PathString> paths,
   ) throws (1: EdenError ex);
 
   /**
@@ -956,7 +978,7 @@ service EdenService extends fb303_core.BaseService {
    */
   list<PathString> glob(
     1: PathString mountPoint,
-    2: list<string> globs
+    2: list<string> globs,
   ) throws (1: EdenError ex);
 
   /**
@@ -976,7 +998,7 @@ service EdenService extends fb303_core.BaseService {
    * control commit.
    */
   GetScmStatusResult getScmStatusV2(1: GetScmStatusParams params) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -989,7 +1011,7 @@ service EdenService extends fb303_core.BaseService {
   ScmStatus getScmStatus(
     1: PathString mountPoint,
     2: bool listIgnored,
-    3: BinaryHash commit
+    3: BinaryHash commit,
   ) throws (1: EdenError ex);
 
   /**
@@ -1001,7 +1023,7 @@ service EdenService extends fb303_core.BaseService {
   ScmStatus getScmStatusBetweenRevisions(
     1: PathString mountPoint,
     2: BinaryHash oldHash,
-    3: BinaryHash newHash
+    3: BinaryHash newHash,
   ) throws (1: EdenError ex);
 
   //////// SCM Commit-Related APIs ////////
@@ -1021,7 +1043,7 @@ service EdenService extends fb303_core.BaseService {
    */
   ManifestEntry getManifestEntry(
     1: PathString mountPoint,
-    2: PathString relativePath
+    2: PathString relativePath,
   ) throws (1: EdenError ex, 2: NoValueForKeyError noValueForKeyError);
 
   //////// Administrative APIs ////////
@@ -1050,7 +1072,7 @@ service EdenService extends fb303_core.BaseService {
    * Get the current configuration settings
    */
   eden_config.EdenConfigData getConfig(1: GetConfigParams params) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -1074,7 +1096,7 @@ service EdenService extends fb303_core.BaseService {
   list<ScmTreeEntry> debugGetScmTree(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly
+    3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
   /**
@@ -1086,7 +1108,7 @@ service EdenService extends fb303_core.BaseService {
   binary debugGetScmBlob(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly
+    3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
   /**
@@ -1100,7 +1122,7 @@ service EdenService extends fb303_core.BaseService {
   ScmBlobMetadata debugGetScmBlobMetadata(
     1: PathString mountPoint,
     2: BinaryHash id,
-    3: bool localStoreOnly
+    3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
   /**
@@ -1127,7 +1149,7 @@ service EdenService extends fb303_core.BaseService {
   list<TreeInodeDebugInfo> debugInodeStatus(
     1: PathString mountPoint,
     2: PathString path,
-    3: i64 flags
+    3: i64 flags,
   ) throws (1: EdenError ex);
 
   /**
@@ -1146,7 +1168,7 @@ service EdenService extends fb303_core.BaseService {
    */
   InodePathDebugInfo debugGetInodePath(
     1: PathString mountPoint,
-    2: i64 inodeNumber
+    2: i64 inodeNumber,
   ) throws (1: EdenError ex);
 
   /**
@@ -1155,7 +1177,7 @@ service EdenService extends fb303_core.BaseService {
    */
   void clearFetchCounts() throws (1: EdenError ex);
   void clearFetchCountsByMount(1: PathString mountPath) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -1165,7 +1187,7 @@ service EdenService extends fb303_core.BaseService {
    * Note that eden only maintains a few seconds worth of accesses.
    */
   GetAccessCountsResult getAccessCounts(1: i64 duration) throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -1183,7 +1205,7 @@ service EdenService extends fb303_core.BaseService {
    * collected data.
    */
   GetFetchedFilesResult stopRecordingBackingStoreFetch() throws (
-    1: EdenError ex
+    1: EdenError ex,
   );
 
   /**
@@ -1219,7 +1241,7 @@ service EdenService extends fb303_core.BaseService {
   i64 unloadInodeForPath(
     1: PathString mountPoint,
     2: PathString path,
-    3: TimeSpec age
+    3: TimeSpec age,
   ) throws (1: EdenError ex);
 
   /**
@@ -1240,7 +1262,7 @@ service EdenService extends fb303_core.BaseService {
   */
   void invalidateKernelInodeCache(
     1: PathString mountPoint,
-    2: PathString path
+    2: PathString path,
   ) throws (1: EdenError ex);
 
   /**
