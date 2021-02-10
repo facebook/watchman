@@ -37,7 +37,12 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
 
-        self.watchmanCommand("subscribe", root, "myname", {"fields": ["name"]})
+        self.watchmanCommand(
+            "subscribe",
+            root,
+            "myname",
+            {"fields": ["name"], "expression": ["not", ["match", ".watchman-cookie*"]]},
+        )
 
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])
@@ -68,7 +73,12 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         # make another subscription and assert that we get a fresh
         # instance result with all the files in it
-        self.watchmanCommand("subscribe", root, "othersub", {"fields": ["name"]})
+        self.watchmanCommand(
+            "subscribe",
+            root,
+            "othersub",
+            {"fields": ["name"], "expression": ["not", ["match", ".watchman-cookie*"]]},
+        )
 
         dat = self.waitForSub("othersub", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
