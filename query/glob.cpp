@@ -8,7 +8,6 @@
 #include "thirdparty/wildmatch/wildmatch.h"
 
 using std::make_unique;
-using watchman::CaseSensitivity;
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
