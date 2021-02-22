@@ -6,8 +6,6 @@
 #include "InMemoryView.h"
 #include "watchman_error_category.h"
 
-using namespace watchman;
-
 static void
 apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
   if (dir->files.empty() && nfiles > 0) {

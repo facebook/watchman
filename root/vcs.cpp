@@ -3,7 +3,6 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
-using watchman::CaseSensitivity;
 
 static json_ref config_get_ignore_vcs(w_root_t* root) {
   json_ref ignores = root->config.get("ignore_vcs");
