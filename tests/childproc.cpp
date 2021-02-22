@@ -7,7 +7,6 @@
 #include "ChildProcess.h"
 
 using watchman::ChildProcess;
-using Environment = ChildProcess::Environment;
 using Options = ChildProcess::Options;
 
 TEST(ChildProcess, pipe) {

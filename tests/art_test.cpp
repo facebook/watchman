@@ -8,7 +8,6 @@
 #include <folly/portability/GTest.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "thirdparty/libart/src/art.h"
