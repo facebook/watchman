@@ -615,7 +615,10 @@ struct ManifestEntry {
 }
 
 struct FuseCall {
-  1: i32 len;
+  // This field is deprecated because its use is not worth the TraceBus
+  // storage. It may be brought back in some other form.
+  //1: i32 len;
+
   2: i32 opcode;
   // FUSE supplies a unique ID, but it is recycled so quickly that it's not
   // very useful. We report our own process-unique ID.
