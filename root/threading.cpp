@@ -16,10 +16,11 @@ void watchman_root::scheduleRecrawl(const char* why) {
     auto info = recrawlInfo.wlock();
 
     if (!info->shouldRecrawl) {
+      info->recrawlCount++;
       if (!config.getBool("suppress_recrawl_warnings", false)) {
         info->warning = w_string::build(
             "Recrawled this watch ",
-            ++info->recrawlCount,
+            info->recrawlCount,
             " times, most recently because:\n",
             why,
             "To resolve, please review the information on\n",
