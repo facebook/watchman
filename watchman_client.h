@@ -54,7 +54,7 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
 
   // The command currently being processed by dispatch_command
   json_ref current_command;
-  w_perf_t* perf_sample{nullptr};
+  watchman::w_perf_t* perf_sample{nullptr};
 
   // Queue of things to send to the client.
   std::deque<json_ref> responses;

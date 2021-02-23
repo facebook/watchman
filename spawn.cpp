@@ -90,21 +90,11 @@ static void spawn_command(
     struct watchman_trigger_command* cmd,
     w_query_res* res,
     struct ClockSpec* since_spec) {
-  long arg_max;
-  size_t argspace_remaining;
   bool file_overflow = false;
 
-#ifdef _WIN32
-  arg_max = 32 * 1024;
-#else
-  arg_max = sysconf(_SC_ARG_MAX);
-#endif
+  size_t arg_max = ChildProcess::getArgMax();
 
-  if (arg_max <= 0) {
-    argspace_remaining = UINT_MAX;
-  } else {
-    argspace_remaining = (uint32_t)arg_max;
-  }
+  size_t argspace_remaining = arg_max;
 
   // Allow some misc working overhead
   argspace_remaining -= 32;

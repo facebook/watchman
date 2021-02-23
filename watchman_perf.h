@@ -1,17 +1,15 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#ifndef WATCHMAN_PERF_H
-#define WATCHMAN_PERF_H
+#pragma once
+
 #include "thirdparty/jansson/jansson.h"
+
 struct watchman_root;
-typedef struct watchman_root w_root_t;
 
 // Performance metrics sampling
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace watchman {
 
 struct watchman_perf_sample {
   // What we're sampling across
@@ -58,7 +56,7 @@ struct watchman_perf_sample {
   void add_meta(const char* key, json_ref&& val);
 
   // Annotate the sample with some standard metadata taken from a root.
-  void add_root_meta(const std::shared_ptr<w_root_t>& root);
+  void add_root_meta(const std::shared_ptr<watchman_root>& root);
 
   // Force the sample to go to the log
   void force_log();
@@ -70,11 +68,14 @@ typedef struct watchman_perf_sample w_perf_t;
 
 void perf_shutdown();
 
-#ifdef __cplusplus
-}
-#endif
+void processSamples(
+    size_t argv_limit,
+    size_t maximum_batch_size,
+    json_ref samples,
+    std::function<void(std::vector<std::string>)> command_line,
+    std::function<void(std::string)> single_large_sample);
 
-#endif
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

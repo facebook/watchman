@@ -26,7 +26,7 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
   // large number of creates and deletes for many unique filenames in
   // a given dir (eg: temporary/randomized filenames generated as part
   // of build tooling or atomic renames)
-  w_perf_t sample("age_out");
+  watchman::w_perf_t sample("age_out");
 
   view()->ageOut(sample, std::chrono::seconds(min_age));
 

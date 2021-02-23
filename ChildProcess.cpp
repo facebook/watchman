@@ -406,6 +406,13 @@ void ChildProcess::kill(
 #endif
 }
 
+std::unique_ptr<Pipe> ChildProcess::takeStdin() {
+  CHECK_EQ(1, pipes_.size());
+  CHECK_EQ(0, pipes_.begin()->first);
+  auto pipe = std::move(pipes_.begin()->second);
+  return pipe;
+}
+
 std::pair<w_string, w_string> ChildProcess::communicate(
     pipeWriteCallback writeCallback) {
 #ifdef _WIN32
@@ -637,6 +644,19 @@ std::pair<w_string, w_string> ChildProcess::threadedCommunicate(
   }
 
   return std::make_pair(std::move(outFuture).get(), std::move(errFuture).get());
+}
+
+size_t ChildProcess::getArgMax() {
+#ifdef _WIN32
+  return 32767;
+#else
+  int result = sysconf(_SC_ARG_MAX);
+  if (result == -1) {
+    return _POSIX_ARG_MAX;
+  }
+  // POSIX guarantees _SC_ARG_MAX must be greater than _POSIX_ARG_MAX.
+  return result;
+#endif
 }
 
 } // namespace watchman

@@ -6,6 +6,7 @@
 #include "watchman_error_category.h"
 
 using folly::to;
+using watchman::w_perf_t;
 
 void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
   w_perf_t sample("sync_to_now");

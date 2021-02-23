@@ -144,6 +144,11 @@ class ChildProcess {
 #endif
   );
 
+  // If stdin is a pipe and stdout and stderr aren't, then it's safe to extract
+  // the stdin pipe, write to it, close it, and then wait for the process to
+  // terminate.
+  std::unique_ptr<Pipe> takeStdin();
+
   // The pipeWriteCallback is called by communicate when it is safe to write
   // data to the pipe.  The callback should then attempt to write to it.
   // The callback must return true when it has nothing more
@@ -169,6 +174,13 @@ class ChildProcess {
   // communicate() method instead of calling these directly.
   std::pair<w_string, w_string> pollingCommunicate(pipeWriteCallback writable);
   std::pair<w_string, w_string> threadedCommunicate(pipeWriteCallback writable);
+
+  /**
+   * Return the maximum number of platform characters allowed in the command
+   * lines, including null terminators. On POSIX, this number also includes the
+   * space consumed by environment variables.
+   */
+  static size_t getArgMax();
 
  private:
   pid_t pid_;

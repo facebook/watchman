@@ -29,6 +29,7 @@ struct w_query_field_renderer {
 };
 
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
+using w_root_t = struct watchman_root;
 
 struct w_query_since {
   bool is_timestamp;

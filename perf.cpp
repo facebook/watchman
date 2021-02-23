@@ -10,10 +10,7 @@
 #include "Logging.h"
 #include "watchman_perf.h"
 
-using namespace watchman;
-using Options = ChildProcess::Options;
-using Environment = ChildProcess::Environment;
-
+namespace watchman {
 namespace {
 class PerfLogThread {
   struct State {
@@ -69,6 +66,37 @@ PerfLogThread& getPerfThread(bool start = true) {
   return perfThread;
 }
 } // namespace
+
+void processSamples(
+    size_t argv_limit,
+    size_t maximum_batch_size,
+    json_ref samples,
+    std::function<void(std::vector<std::string>)> command_line,
+    std::function<void(std::string)> single_large_sample) {
+  while (json_array_size(samples) > 0) {
+    std::string encoded_sample = json_dumps(json_array_get(samples, 0), 0);
+    json_array_remove(samples, 0);
+
+    if (encoded_sample.size() > argv_limit) {
+      single_large_sample(std::move(encoded_sample));
+    } else {
+      std::vector<std::string> args;
+      args.push_back(std::move(encoded_sample));
+      size_t arg_size = encoded_sample.size() + 1;
+
+      while (args.size() < maximum_batch_size && json_array_size(samples) > 0) {
+        encoded_sample = json_dumps(json_array_get(samples, 0), 0);
+        if (arg_size + encoded_sample.size() + 1 > argv_limit) {
+          break;
+        }
+        json_array_remove(samples, 0);
+        arg_size += encoded_sample.size() + 1;
+        args.push_back(std::move(encoded_sample));
+      }
+      command_line(std::move(args));
+    }
+  }
+}
 
 watchman_perf_sample::watchman_perf_sample(const char* description)
     : description(description) {
@@ -201,39 +229,85 @@ void PerfLogThread::loop() noexcept {
     }
 
     if (samples) {
-      while (json_array_size(samples) > 0) {
-        int i = 0;
-        auto cmd = json_array();
+      // Hack: Divide by two because this limit includes environment variables
+      // and perf_cmd.
+      // It's possible to compute this correctly on every platform given the
+      // current environment and any specified environment variables, but it's
+      // fine to be conservative here.
+      const size_t argv_limit = ChildProcess::getArgMax() / 2;
 
-        json_array_extend(cmd, perf_cmd);
+      processSamples(
+          argv_limit,
+          sample_batch,
+          samples,
+          [&](std::vector<std::string> sample_args) {
+            std::vector<w_string_piece> cmd;
+            cmd.reserve(perf_cmd.array().size() + sample_args.size());
 
-        while (i < sample_batch && json_array_size(samples) > 0) {
-          try {
-            auto stringy = json_dumps(json_array_get(samples, 0), 0);
-            json_array_append_new(
-                cmd, typed_string_to_json(stringy.c_str(), W_STRING_MIXED));
-          } catch (const std::runtime_error&) {
-          }
-          json_array_remove(samples, 0);
-          i++;
-        }
+            for (auto& c : perf_cmd.array()) {
+              cmd.push_back(json_to_w_string(c));
+            }
+            for (auto& sample : sample_args) {
+              cmd.push_back(sample);
+            }
 
-        ChildProcess::Options opts;
-        opts.environment().set(
-            {{"WATCHMAN_STATE_DIR", stateDir},
-             {"WATCHMAN_SOCK", get_sock_name_legacy()}});
-        opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
-        opts.open(STDOUT_FILENO, "/dev/null", O_WRONLY, 0666);
-        opts.open(STDERR_FILENO, "/dev/null", O_WRONLY, 0666);
+            ChildProcess::Options opts;
+            opts.environment().set(
+                {{"WATCHMAN_STATE_DIR", stateDir},
+                 {"WATCHMAN_SOCK", get_sock_name_legacy()}});
+            opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+            opts.open(STDOUT_FILENO, "/dev/null", O_WRONLY, 0666);
+            opts.open(STDERR_FILENO, "/dev/null", O_WRONLY, 0666);
 
-        try {
-          ChildProcess proc(cmd, std::move(opts));
-          proc.wait();
-        } catch (const std::exception& exc) {
-          watchman::log(
-              watchman::ERR, "failed to spawn perf logger: ", exc.what(), "\n");
-        }
-      }
+            try {
+              ChildProcess proc(cmd, std::move(opts));
+              proc.wait();
+            } catch (const std::exception& exc) {
+              watchman::log(
+                  watchman::ERR,
+                  "failed to spawn perf logger: ",
+                  exc.what(),
+                  "\n");
+            }
+          },
+          [&](std::string sample_stdin) {
+            ChildProcess::Options opts;
+            opts.environment().set(
+                {{"WATCHMAN_STATE_DIR", stateDir},
+                 {"WATCHMAN_SOCK", get_sock_name_legacy()}});
+            opts.pipeStdin();
+            opts.open(STDOUT_FILENO, "/dev/null", O_WRONLY, 0666);
+            opts.open(STDERR_FILENO, "/dev/null", O_WRONLY, 0666);
+
+            try {
+              ChildProcess proc({perf_cmd}, std::move(opts));
+
+              auto stdinPipe = proc.takeStdin();
+
+              const char* data = sample_stdin.data();
+              size_t size = sample_stdin.size();
+
+              size_t total_written = 0;
+              while (total_written < sample_stdin.size()) {
+                auto result = stdinPipe->write.write(data, size);
+                result.throwIfError();
+                auto written = result.value();
+                data += written;
+                size -= written;
+                total_written += written;
+              }
+
+              // close stdin to allow the process to terminate
+              stdinPipe.reset();
+              proc.wait();
+            } catch (const std::exception& exc) {
+              watchman::log(
+                  watchman::ERR,
+                  "failed to spawn perf logger: ",
+                  exc.what(),
+                  "\n");
+            }
+          });
     }
   }
 }
@@ -280,6 +354,8 @@ void watchman_perf_sample::log() {
 void perf_shutdown() {
   getPerfThread(false).stop();
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */
