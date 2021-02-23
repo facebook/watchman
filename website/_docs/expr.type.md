@@ -22,4 +22,4 @@ Possible types are:
  * **l**: symbolic link
  * **s**: socket
  * **D**: Solaris Door
- * **?**: whiteout entry - in most cases this should not be visible in userspace
+ * **?**: An unknown file type
