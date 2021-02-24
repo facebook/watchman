@@ -200,27 +200,28 @@ static bool lock_pidfile() {
 #endif
 }
 
+/**
+ * Log and fatal if Watchman was started with a low priority, which can cause a
+ * poor experience, as Watchman is unable to keep up with the filesystem's
+ * change notifications, triggering recrawls.
+ */
+void detect_low_process_priority() {
 #ifndef _WIN32
-// Returns the current process priority aka `nice` level.
-// Since `-1` is a valid nice level, in order to detect an
-// error we clear errno first and then test whether it is
-// non-zero after we have retrieved the nice value.
-static int get_nice_value() {
+  // Since `-1` is a valid nice level, in order to detect an
+  // error we clear errno first and then test whether it is
+  // non-zero after we have retrieved the nice value.
   errno = 0;
-  auto value = nice(0);
+  auto nice_value = nice(0);
   folly::checkPosixError(errno, "failed to get `nice` value");
-  return value;
-}
 
-static void check_nice_value() {
-  if (get_nice_value() > cfg_get_int("min_acceptable_nice_value", 0)) {
+  if (nice_value > cfg_get_int("min_acceptable_nice_value", 0)) {
     log(watchman::FATAL,
         "Watchman is running at a lower than normal priority. Since that "
         "results in poor performance that is otherwise very difficult to "
         "trace, diagnose and debug, Watchman is refusing to start.\n");
   }
-}
 #endif
+}
 
 [[noreturn]] static void run_service() {
 #ifndef _WIN32
@@ -233,7 +234,7 @@ static void check_nice_value() {
     // This case can happen when a user is running watchman using
     // the `--foreground` switch.
     // Check and raise this error before we detach from the terminal
-    check_nice_value();
+    detect_low_process_priority();
   }
 #endif
 
@@ -253,7 +254,7 @@ static void check_nice_value() {
 #ifndef _WIN32
   // If we weren't attached to a tty, check this now that we've opened
   // the log files so that we can log the problem there.
-  check_nice_value();
+  detect_low_process_priority();
 #endif
 
   if (!lock_pidfile()) {
@@ -359,7 +360,7 @@ static void close_random_fds() {
 #if !defined(_WIN32)
 static void daemonize() {
   // Make sure we're not about to inherit an undesirable nice value
-  check_nice_value();
+  detect_low_process_priority();
   close_random_fds();
 
   // the double-fork-and-setsid trick establishes a
