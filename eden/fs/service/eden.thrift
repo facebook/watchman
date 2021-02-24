@@ -689,6 +689,9 @@ struct GlobParams {
   // in general we want to prefetch metadata, but some large globs can
   // trigger too many metadata prefetches, so we allow skipping this.
   8: bool prefetchMetadata = true;
+  // The directory from which the glob should be evaluated. Defaults to the
+  // repository root.
+  9: PathString searchRoot;
 }
 
 struct Glob {
