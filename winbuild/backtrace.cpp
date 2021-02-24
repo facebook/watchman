@@ -23,7 +23,7 @@ static HANDLE proc;
 // 4k for a symbol name? Demangled symbols are pretty huge
 static constexpr size_t kMaxSymbolLen = 4096;
 
-static void sym_init(void) {
+static void sym_init() {
   proc = GetCurrentProcess();
   SymInitialize(proc, NULL, TRUE);
   SymSetOptions(

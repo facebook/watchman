@@ -9,7 +9,7 @@ std::string named_pipe_path;
 bool disable_unix_socket = false;
 bool disable_named_pipe = false;
 
-const char* get_sock_name_legacy(void) {
+const char* get_sock_name_legacy() {
 #ifdef _WIN32
   return named_pipe_path.c_str();
 #else
@@ -17,10 +17,10 @@ const char* get_sock_name_legacy(void) {
 #endif
 }
 
-const std::string& get_unix_sock_name(void) {
+const std::string& get_unix_sock_name() {
   return unix_sock_name;
 }
 
-const std::string& get_named_pipe_sock_path(void) {
+const std::string& get_named_pipe_sock_path() {
   return named_pipe_path;
 }

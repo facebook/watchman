@@ -32,7 +32,7 @@ void write_stderr(const String& str, Strings&&... strings) {
 }
 } // namespace
 
-static void log_stack_trace(void) {
+static void log_stack_trace() {
 #if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
   std::array<void*, kMaxFrames> array;
   size_t size;

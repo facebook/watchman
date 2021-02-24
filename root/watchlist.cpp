@@ -62,7 +62,7 @@ bool findEnclosingRoot(
   return false;
 }
 
-json_ref w_root_stop_watch_all(void) {
+json_ref w_root_stop_watch_all() {
   std::vector<w_root_t*> roots;
   json_ref stopped = json_array();
 
@@ -92,7 +92,7 @@ json_ref w_root_stop_watch_all(void) {
   return stopped;
 }
 
-json_ref w_root_watch_list_to_json(void) {
+json_ref w_root_watch_list_to_json() {
   auto arr = json_array();
 
   auto map = watched_roots.rlock();
@@ -360,7 +360,7 @@ bool w_root_load_state(const json_ref& state) {
   return true;
 }
 
-void w_root_free_watched_roots(void) {
+void w_root_free_watched_roots() {
   int last, interval;
   time_t started;
   std::vector<std::shared_ptr<w_root_t>> roots;

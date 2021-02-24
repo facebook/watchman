@@ -40,8 +40,8 @@ struct watchman_event_poll {
 };
 
 // Make a event that can be manually signalled
-std::unique_ptr<watchman_event> w_event_make_sockets(void);
-std::unique_ptr<watchman_event> w_event_make_named_pipe(void);
+std::unique_ptr<watchman_event> w_event_make_sockets();
+std::unique_ptr<watchman_event> w_event_make_named_pipe();
 
 // Go to sleep for up to timeoutms.
 // Returns sooner if any of the watchman_event objects referenced
@@ -56,8 +56,8 @@ int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms);
 // Create a connected unix socket or a named pipe client stream
 std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms);
 
-w_stm_t w_stm_stdout(void);
-w_stm_t w_stm_stdin(void);
+w_stm_t w_stm_stdout();
+w_stm_t w_stm_stdin();
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms);

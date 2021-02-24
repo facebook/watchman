@@ -71,7 +71,7 @@ std::vector<command_handler_def*> get_all_commands();
 
 void capability_register(const char* name);
 bool capability_supported(folly::StringPiece name);
-json_ref capability_get_list(void);
+json_ref capability_get_list();
 
 } // namespace watchman
 

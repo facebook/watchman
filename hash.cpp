@@ -85,7 +85,7 @@
 
 static int under_valgrind = -1;
 
-static inline bool running_on_valgrind(void) {
+static inline bool running_on_valgrind() {
   if (under_valgrind == -1) {
     under_valgrind = RUNNING_ON_VALGRIND;
   }

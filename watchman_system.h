@@ -62,7 +62,7 @@ typedef ptrdiff_t ssize_t;
 
 const char* win32_strerror(DWORD err);
 int map_win32_err(DWORD err);
-int map_winsock_err(void);
+int map_winsock_err();
 
 #define snprintf _snprintf
 char* dirname(char* path);
@@ -197,21 +197,21 @@ size_t backtrace_from_exception(
 // configuration.  These are helpers to make this work
 // more portably
 #ifdef _WIN32
-#define w_ctor_fn_type(sym) void sym(void)
+#define w_ctor_fn_type(sym) void sym()
 // Define a helper struct and its constructor; the constructor
 // will call the function symbol we desire.  Also emit an
 // instance of this struct as a global.  It will be triggered
 // prior to main() being invoked.
 #define w_ctor_fn_reg(sym)            \
   static struct w_paste1(sym, _reg) { \
-    w_paste1(sym, _reg)(void) {       \
+    w_paste1(sym, _reg)() {           \
       sym();                          \
     }                                 \
   }                                   \
   w_paste1(sym, _reg_inst);
 
 #else
-#define w_ctor_fn_type(sym) __attribute__((constructor)) void sym(void)
+#define w_ctor_fn_type(sym) __attribute__((constructor)) void sym()
 #define w_ctor_fn_reg(sym) /* not needed */
 #endif
 

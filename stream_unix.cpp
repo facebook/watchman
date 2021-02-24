@@ -294,7 +294,7 @@ class UnixStream : public watchman_stream {
 };
 } // namespace
 
-std::unique_ptr<watchman_event> w_event_make_sockets(void) {
+std::unique_ptr<watchman_event> w_event_make_sockets() {
   return std::make_unique<PipeEvent>();
 }
 

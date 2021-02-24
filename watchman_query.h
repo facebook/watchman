@@ -476,7 +476,7 @@ folly::Optional<json_ref> file_result_to_json(
     const std::unique_ptr<FileResult>& file,
     const w_query_ctx* ctx);
 
-void w_query_init_all(void);
+void w_query_init_all();
 
 enum w_query_icmp_op {
   W_QUERY_ICMP_EQ,

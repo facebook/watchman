@@ -18,17 +18,17 @@ folly::Synchronized<config_state> configState;
 
 /* Called during shutdown to free things so that we run cleanly
  * under valgrind */
-void cfg_shutdown(void) {
+void cfg_shutdown() {
   auto state = configState.wlock();
   state->global_cfg.reset();
   state->arg_cfg.reset();
 }
 
-w_string cfg_get_global_config_file_path(void) {
+w_string cfg_get_global_config_file_path() {
   return configState.rlock()->global_config_file_path;
 }
 
-void cfg_load_global_config_file(void) {
+void cfg_load_global_config_file() {
   const char* cfg_file = getenv("WATCHMAN_CONFIG_FILE");
 #ifdef WATCHMAN_CONFIG_FILE
   if (!cfg_file) {
@@ -327,7 +327,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
 }
 #endif
 
-const char* cfg_get_trouble_url(void) {
+const char* cfg_get_trouble_url() {
   return cfg_get_string(
       "troubleshooting_url",
       "https://facebook.github.io/watchman/docs/troubleshooting.html");

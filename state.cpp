@@ -31,7 +31,7 @@ std::condition_variable stateCond;
 std::thread state_saver_thread;
 } // namespace
 
-static bool do_state_save(void);
+static bool do_state_save();
 
 static void state_saver() noexcept {
   bool do_save;
@@ -54,7 +54,7 @@ static void state_saver() noexcept {
   }
 }
 
-void w_state_shutdown(void) {
+void w_state_shutdown() {
   if (dont_save_state) {
     return;
   }
@@ -63,7 +63,7 @@ void w_state_shutdown(void) {
   state_saver_thread.join();
 }
 
-bool w_state_load(void) {
+bool w_state_load() {
   if (dont_save_state) {
     return true;
   }
@@ -145,7 +145,7 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #endif
 }
 
-static bool do_state_save(void) {
+static bool do_state_save() {
   w_jbuffer_t buffer;
 
   auto state = json_object();
@@ -176,7 +176,7 @@ static bool do_state_save(void) {
 
 /** Arranges for the state to be saved.
  * Does not immediately save the state. */
-void w_state_save(void) {
+void w_state_save() {
   if (dont_save_state) {
     return;
   }

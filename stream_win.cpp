@@ -611,7 +611,7 @@ bool win_handle::peerIsOwner() {
   return true;
 }
 
-std::unique_ptr<watchman_event> w_event_make_named_pipe(void) {
+std::unique_ptr<watchman_event> w_event_make_named_pipe() {
   return std::make_unique<WindowsEvent>();
 }
 

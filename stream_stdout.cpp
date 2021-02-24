@@ -67,12 +67,12 @@ class StdioStream : public watchman_stream {
 };
 } // namespace
 
-w_stm_t w_stm_stdout(void) {
+w_stm_t w_stm_stdout() {
   static StdioStream stdoutStream(FileDescriptor::stdOut());
   return &stdoutStream;
 }
 
-w_stm_t w_stm_stdin(void) {
+w_stm_t w_stm_stdin() {
   static StdioStream stdinStream(FileDescriptor::stdIn());
   return &stdinStream;
 }

@@ -9,11 +9,10 @@
 using namespace watchman;
 
 static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
-  auto resp = make_response();
-
   logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
+  auto resp = make_response();
   resp.set("shutdown-server", json_true());
   send_and_dispose_response(client, std::move(resp));
 }

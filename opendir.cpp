@@ -99,7 +99,7 @@ static DIR* opendir_nofollow(const char* path) {
 // Using statics here to avoid querying the uname on every opendir.
 // There is opportunity for a data race the first time through, but the
 // worst case side effect is wasted compute early on.
-static bool use_bulkstat_by_default(void) {
+static bool use_bulkstat_by_default() {
   static bool probed = false;
   static bool safe = false;
 

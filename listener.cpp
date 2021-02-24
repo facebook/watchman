@@ -23,11 +23,11 @@ static std::vector<std::shared_ptr<watchman_event>> listener_thread_events;
 static std::atomic<bool> stopping = false;
 static constexpr size_t kResponseLogLimit = 8;
 
-bool w_is_stopping(void) {
+bool w_is_stopping() {
   return stopping.load(std::memory_order_relaxed);
 }
 
-json_ref make_response(void) {
+json_ref make_response() {
   auto resp = json_object();
 
   resp.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
@@ -116,7 +116,7 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
   }
 }
 
-void w_request_shutdown(void) {
+void w_request_shutdown() {
   stopping.store(true, std::memory_order_relaxed);
   // Knock listener thread out of poll/accept
   for (auto& evt : listener_thread_events) {

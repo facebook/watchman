@@ -56,7 +56,7 @@ std::shared_ptr<w_root_t> resolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args);
 
-json_ref make_response(void);
+json_ref make_response();
 void annotate_with_clock(const std::shared_ptr<w_root_t>& root, json_ref& resp);
 void add_root_warnings_to_response(
     json_ref& response,

@@ -57,14 +57,14 @@ static int json_input_arg = 0;
 #include <mach-o/dyld.h>
 #endif
 
-static std::string compute_user_name(void);
+static std::string compute_user_name();
 static void compute_file_name(
     std::string& str,
     const std::string& user,
     const char* suffix,
     const char* what);
 
-static bool lock_pidfile(void) {
+static bool lock_pidfile() {
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
@@ -72,9 +72,6 @@ static bool lock_pidfile(void) {
 
 #if !defined(_WIN32)
   struct flock lock;
-  pid_t mypid;
-
-  mypid = getpid();
   memset(&lock, 0, sizeof(lock));
   lock.l_type = F_WRLCK;
   lock.l_start = 0;
@@ -126,6 +123,7 @@ static bool lock_pidfile(void) {
     return false;
   }
 
+  pid_t mypid = getpid();
   auto pidString = folly::to<std::string>(mypid);
   ignore_result(write(fd.fd(), pidString.data(), pidString.size()));
   fsync(fd.fd());
@@ -225,8 +223,6 @@ static void check_nice_value() {
 #endif
 
 [[noreturn]] static void run_service() {
-  bool res;
-
 #ifndef _WIN32
   // Before we redirect stdin/stdout to the log files, move any inetd-provided
   // socket to a different descriptor number.
@@ -306,7 +302,7 @@ static void check_nice_value() {
 
   ClockSpec::init();
   w_state_load();
-  res = w_start_listener();
+  bool res = w_start_listener();
   w_root_free_watched_roots();
   perf_shutdown();
   cfg_shutdown();
@@ -323,7 +319,7 @@ static void check_nice_value() {
 // close any random descriptors that we may have inherited,
 // leaving only the main stdio descriptors open, if we execute a
 // child process.
-static void close_random_fds(void) {
+static void close_random_fds() {
   struct rlimit limit;
   long open_max = 0;
   int max_fd;
@@ -361,7 +357,7 @@ static void close_random_fds(void) {
 #endif
 
 #if !defined(_WIN32)
-static void daemonize(void) {
+static void daemonize() {
   // Make sure we're not about to inherit an undesirable nice value
   check_nice_value();
   close_random_fds();
@@ -392,7 +388,7 @@ static void daemonize(void) {
 #endif
 
 #ifdef _WIN32
-static void spawn_win32(void) {
+static void spawn_win32() {
   char module_name[WATCHMAN_NAME_MAX];
   GetModuleFileName(NULL, module_name, sizeof(module_name));
 
@@ -481,7 +477,7 @@ static void spawn_site_specific(const char* spawner) {
 #endif
 
 #ifdef __APPLE__
-static void spawn_via_launchd(void) {
+static void spawn_via_launchd() {
   char watchman_path[WATCHMAN_NAME_MAX];
   uint32_t size = sizeof(watchman_path);
   char plist_path[WATCHMAN_NAME_MAX];
@@ -851,7 +847,7 @@ static void compute_file_name(
 #endif
 }
 
-static std::string compute_user_name(void) {
+static std::string compute_user_name() {
 #ifdef _WIN32
   // We don't trust the environment on win32 because in some situations
   // the environment may contain the domain name like `WORKGROUP\user`
@@ -926,7 +922,7 @@ bool initialize_uds() {
 }
 #endif
 
-static void setup_sock_name(void) {
+static void setup_sock_name() {
 #ifdef _WIN32
   if (!initialize_uds()) {
     // if we can't create UNIX domain socket, disable it.
@@ -1302,7 +1298,7 @@ static json_ref build_command(int argc, char** argv) {
   return cmd;
 }
 
-static void spawn_watchman(void) {
+static void spawn_watchman() {
 #ifndef _WIN32
   if (no_site_spawner) {
     // The astute reader will notice this we're calling daemonize() here

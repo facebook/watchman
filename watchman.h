@@ -61,21 +61,21 @@ bool w_path_exists(const char* path);
 #define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
 #define DECODE_DIR(dir) ((void*)(((intptr_t)dir) & ~0x1))
 
-bool w_is_stopping(void);
+bool w_is_stopping();
 
-void w_request_shutdown(void);
+void w_request_shutdown();
 
 #include "watchman_time.h"
 
 extern std::string watchman_tmp_dir;
 extern std::string watchman_state_file;
 extern int dont_save_state;
-void w_state_shutdown(void);
-void w_state_save(void);
-bool w_state_load(void);
+void w_state_shutdown();
+void w_state_save();
+bool w_state_load();
 bool w_root_save_state(json_ref& state);
 bool w_root_load_state(const json_ref& state);
-json_ref w_root_watch_list_to_json(void);
+json_ref w_root_watch_list_to_json();
 
 #include "FileDescriptor.h"
 
@@ -85,7 +85,7 @@ watchman::FileDescriptor w_get_listener_socket_from_launchd();
 void w_listener_prep_inetd();
 bool w_start_listener();
 namespace watchman {
-void startSanityCheckThread(void);
+void startSanityCheckThread();
 }
 
 #include "watchman_getopt.h"

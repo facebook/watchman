@@ -182,9 +182,9 @@ bool findEnclosingRoot(
     w_string_piece& prefix,
     w_string_piece& relativePath);
 
-void w_root_free_watched_roots(void);
-json_ref w_root_stop_watch_all(void);
-void w_root_reap(void);
+void w_root_free_watched_roots();
+json_ref w_root_stop_watch_all();
+void w_root_reap();
 
 bool did_file_change(
     const watchman::FileInformation* saved,
