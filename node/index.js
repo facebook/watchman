@@ -17,14 +17,21 @@ var unilateralTags = ['subscription', 'log'];
  *   * 'watchmanBinaryPath' (string) Absolute path to the watchman binary.
  *     If not provided, the Client locates the binary using the PATH specified
  *     by the node child_process's default env.
+ *   * 'args' (string[]) Additional arguments to be passed to the call to the
+ *     binary when watchman is executed. `watchman -h` for a detailed list.
  */
 function Client(options) {
   var self = this;
   EE.call(this);
 
   this.watchmanBinaryPath = 'watchman';
+  this.args = [];
+
   if (options && options.watchmanBinaryPath) {
     this.watchmanBinaryPath = options.watchmanBinaryPath.trim();
+  };
+  if (options && options.args) {
+    this.args = options.args;
   };
   this.commands = [];
 }
@@ -142,7 +149,7 @@ Client.prototype.connect = function() {
   // We need to ask the client binary where to find it.
   // This will cause the service to start for us if it isn't
   // already running.
-  var args = ['--no-pretty', 'get-sockname'];
+  var args = [...this.args, '--no-pretty', 'get-sockname'];
 
   // We use the more elaborate spawn rather than exec because there
   // are some error cases on Windows where process spawning can hang.
