@@ -10,13 +10,13 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/system/ThreadName.h>
 #include "Logging.h"
 
 using namespace watchman;
 
 static folly::ThreadLocal<folly::Optional<std::string>> threadName;
-static constexpr size_t kMaxFrames = 64;
 
 namespace {
 template <typename String>
@@ -33,23 +33,16 @@ void write_stderr(const String& str, Strings&&... strings) {
 } // namespace
 
 static void log_stack_trace() {
-#if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
-  std::array<void*, kMaxFrames> array;
-  size_t size;
-  char** strings;
-  size_t i;
-
-  size = backtrace(array.data(), array.size());
-  strings = backtrace_symbols(array.data(), size);
-
-  write_stderr("Fatal error detected at:\n");
-
-  for (i = 0; i < size; i++) {
-    write_stderr(strings[i], "\n");
-  }
-
-  free(strings);
+  using namespace folly::symbolizer;
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+  static FastStackTracePrinter printer{
+      std::make_unique<FDSymbolizePrinter>(STDERR_FILENO)};
+#else
+  // stack-allocated to avoid thread safety issues.
+  SafeStackTracePrinter printer;
 #endif
+  write_stderr("Fatal error detected at:\n");
+  printer.printStackTrace(true);
 }
 
 namespace watchman {
@@ -204,6 +197,8 @@ void Log::doLogToStdErr() {
 }
 
 #ifdef _WIN32
+static constexpr size_t kMaxFrames = 64;
+
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
   std::array<void*, kMaxFrames> array;
   size_t size;
