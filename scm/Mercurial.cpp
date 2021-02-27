@@ -256,6 +256,11 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     auto mtime = getDirStateMtime();
     auto& commitA = commits[i];
     auto& commitB = commits[i + 1];
+    if (commitA == commitB) {
+      // Older versions of EdenFS could report "commit transitions" from A to A,
+      // in which case we shouldn't ask Mercurial for the difference.
+      continue;
+    }
     auto key = folly::to<std::string>(
         commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
 
