@@ -601,6 +601,7 @@ FileInformation.cpp
 InMemoryView.cpp
 LocalFileResult.cpp
 Pipe.cpp
+ProcessLock.cpp
 # PubSub.cpp  (in liblog)
 QueryableView.cpp
 SignalHandler.cpp

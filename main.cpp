@@ -1,17 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
-#include "ChildProcess.h"
-#include "LogConfig.h"
-#include "Logging.h"
-#include "ThreadPool.h"
-#ifdef _WIN32
-#include <Lmcons.h>
-#include <Shlobj.h>
-#endif
-#ifndef _WIN32
-#include <poll.h>
-#endif
+
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
@@ -19,8 +9,23 @@
 #include <folly/String.h>
 #include <folly/net/NetworkSocket.h>
 
+#include <stdio.h>
+#include <variant>
+
+#include "ChildProcess.h"
+#include "LogConfig.h"
+#include "Logging.h"
+#include "ProcessLock.h"
+#include "ThreadPool.h"
+
 #ifdef _WIN32
+#include <Lmcons.h>
+#include <Shlobj.h>
 #include <deelevate.h>
+#endif
+
+#ifndef _WIN32
+#include <poll.h>
 #endif
 
 using watchman::ChildProcess;
@@ -64,141 +69,15 @@ static void compute_file_name(
     const char* suffix,
     const char* what);
 
-static bool lock_pidfile() {
+namespace {
+const std::string& get_pid_file() {
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
   compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
-
-#if !defined(_WIN32)
-  struct flock lock;
-  memset(&lock, 0, sizeof(lock));
-  lock.l_type = F_WRLCK;
-  lock.l_start = 0;
-  lock.l_whence = SEEK_SET;
-  lock.l_len = 0;
-
-  FileDescriptor fd(
-      open(pid_file.c_str(), O_RDWR | O_CREAT, 0644),
-      FileDescriptor::FDType::Generic);
-
-  if (!fd) {
-    log(ERR,
-        "Failed to open pidfile ",
-        pid_file,
-        " for write: ",
-        folly::errnoStr(errno),
-        "\n");
-    return false;
-  }
-  // Ensure that no children inherit the locked pidfile descriptor
-  fd.setCloExec();
-
-  if (fcntl(fd.fd(), F_SETLK, &lock) != 0) {
-    char pidstr[32];
-    int len;
-
-    len = read(fd.fd(), pidstr, sizeof(pidstr) - 1);
-    pidstr[len] = '\0';
-
-    log(ERR,
-        "Failed to lock pidfile ",
-        pid_file,
-        ": process ",
-        pidstr,
-        " owns it: ",
-        folly::errnoStr(errno),
-        "\n");
-    return false;
-  }
-
-  // Replace contents of the pidfile with our pid string
-  if (ftruncate(fd.fd(), 0)) {
-    log(ERR,
-        "Failed to truncate pidfile ",
-        pid_file,
-        ": ",
-        folly::errnoStr(errno),
-        "\n");
-    return false;
-  }
-
-  pid_t mypid = getpid();
-  auto pidString = folly::to<std::string>(mypid);
-  ignore_result(write(fd.fd(), pidString.data(), pidString.size()));
-  fsync(fd.fd());
-
-  /* We are intentionally not closing the fd and intentionally not storing
-   * a reference to it anywhere: the intention is that it remain locked
-   * for the rest of the lifetime of our process.
-   * close(fd); // NOPE!
-   */
-  fd.release();
-  return true;
-#else
-  // One does not simply, and without risk of races, write a pidfile
-  // on win32.  Instead we're using a named mutex in the global namespace.
-  // This gives us a very simple way to exclusively claim ownership of
-  // the lock for this user.  To make things a little more complicated,
-  // since we scope our locks based on the state dir location and require
-  // this to work for our integration tests, we need to create a unique
-  // name per state dir.  This is made even more interesting because
-  // we are forbidden from using windows directory separator characters
-  // in the name, so we cannot simply concatenate the state dir path
-  // with a watchman specific prefix.  Instead we iterate the path
-  // and rewrite any backslashes with forward slashes and use that
-  // for the name.
-  // Using a mutex for this does make it more awkward to discover
-  // the process id of the exclusive owner, but that's not critically
-  // important; it is possible to connect to the instance and issue
-  // a get-pid command if that is needed.
-
-  // We use the global namespace so that we ensure that we have one
-  // watchman process per user per state dir location.  If we didn't
-  // use the Global namespace we'd end using a local namespace scoped
-  // to the user session and that might cause confusion/insanity if
-  // they are doing something elaborate like being logged in via
-  // ssh in multiple sessions and expecting to share state.
-  std::string name("Global\\Watchman-");
-  for (const auto& it : pid_file) {
-    if (it == '\\') {
-      // We're not allowed to use backslash in the name, so normalize
-      // to forward slashes.
-      name.append("/");
-    } else {
-      name.push_back(it);
-    }
-  }
-
-  auto mutex = CreateMutexA(nullptr, true, name.c_str());
-
-  if (!mutex) {
-    log(ERR,
-        "Failed to create mutex named: ",
-        name,
-        ": ",
-        GetLastError(),
-        "\n");
-    return false;
-  }
-
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    log(ERR,
-        "Failed to acquire mutex named: ",
-        name,
-        "; watchman is already running for this context\n");
-    return false;
-  }
-
-  /* We are intentionally not closing the mutex and intentionally not storing
-   * a reference to it anywhere: the intention is that it remain locked
-   * for the rest of the lifetime of our process.
-   * CloseHandle(mutex); // NOPE!
-   */
-
-  return true;
-#endif
+  return pid_file;
 }
+} // namespace
 
 /**
  * Log and fatal if Watchman was started with a low priority, which can cause a
@@ -223,18 +102,12 @@ void detect_low_process_priority() {
 #endif
 }
 
-[[noreturn]] static void run_service() {
+[[noreturn]] static void run_service(ProcessLock::Handle&&) {
 #ifndef _WIN32
   // Before we redirect stdin/stdout to the log files, move any inetd-provided
   // socket to a different descriptor number.
   if (inetd_style) {
     w_listener_prep_inetd();
-  }
-  if (isatty(0)) {
-    // This case can happen when a user is running watchman using
-    // the `--foreground` switch.
-    // Check and raise this error before we detach from the terminal
-    detect_low_process_priority();
   }
 #endif
 
@@ -251,15 +124,12 @@ void detect_low_process_priority() {
     ::close(fd);
   }
 
-#ifndef _WIN32
   // If we weren't attached to a tty, check this now that we've opened
   // the log files so that we can log the problem there.
+  //
+  // This is unlikely to trip, as both foreground and daemonized execution
+  // check process priority prior.
   detect_low_process_priority();
-#endif
-
-  if (!lock_pidfile()) {
-    exit(1);
-  }
 
 #ifndef _WIN32
   /* we are the child, let's set things up */
@@ -316,11 +186,11 @@ void detect_low_process_priority() {
   exit(1);
 }
 
-#ifndef _WIN32
 // close any random descriptors that we may have inherited,
 // leaving only the main stdio descriptors open, if we execute a
 // child process.
 static void close_random_fds() {
+#ifndef _WIN32
   struct rlimit limit;
   long open_max = 0;
   int max_fd;
@@ -354,14 +224,64 @@ static void close_random_fds() {
   for (max_fd = open_max; max_fd > STDERR_FILENO; --max_fd) {
     close(max_fd);
   }
-}
 #endif
+}
 
-#if !defined(_WIN32)
-static void daemonize() {
-  // Make sure we're not about to inherit an undesirable nice value
+[[noreturn]] static void run_service_in_foreground() {
   detect_low_process_priority();
   close_random_fds();
+
+  auto& pid_file = get_pid_file();
+  auto processLock = ProcessLock::acquire(pid_file);
+  run_service(processLock.writePid(pid_file));
+}
+
+namespace {
+struct [[nodiscard]] SpawnResult {
+  enum Status {
+    Spawned,
+    FailedToLock,
+  };
+
+  SpawnResult() = delete;
+
+  /* implicit */ SpawnResult(Status s, std::string r = {})
+      : status{s}, reason{std::move(r)} {}
+
+  void exitIfFailed() {
+    if (status == FailedToLock) {
+      fprintf(stderr, "%s\n", reason.c_str());
+      exit(1);
+    }
+  }
+
+  Status status;
+
+  /**
+   * If status is not Spawned, then this contains the error message.
+   */
+  std::string reason;
+};
+} // namespace
+
+#ifndef _WIN32
+/**
+ * Forks and daemonizes, starting the Watchman service in the child.
+ */
+static SpawnResult run_service_as_daemon() {
+  detect_low_process_priority();
+  close_random_fds();
+
+  // Lock the pidfile before we daemonize so that errors can be detected
+  // and returned (for logging) before we drop stderr. This prevents failure to
+  // lock from causing the daemonize process to start and immediately exit with
+  // an error, making it hard to track down why a command isn't succeeding.
+  auto acquireResult = ProcessLock::tryAcquire(get_pid_file());
+  if (auto* reason = std::get_if<std::string>(&acquireResult)) {
+    return SpawnResult{SpawnResult::FailedToLock, *reason};
+  }
+
+  auto& processLock = std::get<ProcessLock>(acquireResult);
 
   // the double-fork-and-setsid trick establishes a
   // child process that runs in its own process group
@@ -371,7 +291,7 @@ static void daemonize() {
     // The parent of the first fork is the client
     // process that is being run by the user, and
     // we want to allow that to continue.
-    return;
+    return SpawnResult::Spawned;
   }
   setsid();
   if (fork()) {
@@ -383,13 +303,14 @@ static void daemonize() {
     _exit(0);
   }
 
-  // we are the child, let's set things up
-  run_service();
+  // We are the child. Let's populate the pid file and start listening on the
+  // socket.
+  run_service(processLock.writePid(get_pid_file()));
 }
 #endif
 
 #ifdef _WIN32
-static void spawn_win32() {
+static SpawnResult spawn_win32() {
   char module_name[WATCHMAN_NAME_MAX];
   GetModuleFileName(NULL, module_name, sizeof(module_name));
 
@@ -418,6 +339,7 @@ static void spawn_win32() {
     exit(1);
   }
   proc.disown();
+  return SpawnResult::Spawned;
 }
 #endif
 
@@ -425,7 +347,7 @@ static void spawn_win32() {
 // Spawn watchman via a site-specific spawn helper program.
 // We'll pass along any daemon-appropriate arguments that
 // we noticed during argument parsing.
-static void spawn_site_specific(const char* spawner) {
+static SpawnResult spawn_site_specific(const char* spawner) {
   std::vector<w_string_piece> args{
       spawner,
   };
@@ -456,7 +378,7 @@ static void spawn_site_specific(const char* spawner) {
     auto res = proc.wait();
 
     if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
-      return;
+      return SpawnResult::Spawned;
     }
 
     if (WIFEXITED(res)) {
@@ -474,11 +396,13 @@ static void spawn_site_specific(const char* spawner) {
         exc.what(),
         "\n");
   }
+
+  return SpawnResult::Spawned;
 }
 #endif
 
 #ifdef __APPLE__
-static void spawn_via_launchd() {
+static SpawnResult spawn_via_launchd() {
   char watchman_path[WATCHMAN_NAME_MAX];
   uint32_t size = sizeof(watchman_path);
   char plist_path[WATCHMAN_NAME_MAX];
@@ -604,7 +528,7 @@ static void spawn_via_launchd() {
   auto res = load_proc.wait();
 
   if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
-    return;
+    return SpawnResult::Spawned;
   }
 
   // Most likely cause is "headless" operation with no GUI context
@@ -614,7 +538,7 @@ static void spawn_via_launchd() {
     logf(ERR, "launchctl: signaled with {}\n", WTERMSIG(res));
   }
   logf(ERR, "Falling back to daemonize\n");
-  daemonize();
+  return run_service_as_daemon();
 }
 #endif
 
@@ -854,7 +778,7 @@ static std::string compute_user_name() {
   // the environment may contain the domain name like `WORKGROUP\user`
   // which can confuse some path construction we do later on.
   WCHAR userW[1 + UNLEN];
-  DWORD size = std::size(userW);
+  DWORD size = static_cast<DWORD>(std::size(userW));
   if (GetUserNameW(userW, &size) && size > 0) {
     // Constructing a w_string from a WCHAR* will convert to UTF-8
     w_string user(userW, size);
@@ -1299,35 +1223,41 @@ static json_ref build_command(int argc, char** argv) {
   return cmd;
 }
 
-static void spawn_watchman() {
+static SpawnResult try_spawn_watchman() {
+  // Every spawner that doesn't fork() this client process is susceptible to a
+  // race condition if `watchman shutdown-server` and `watchman <command>` are
+  // run in short order. The latter tries to spawn a daemon while the former is
+  // still shutting down, holding the pid lock, and this causes it to time out
+  // and fail. The solution would be to implement some kind of startup pipe that
+  // allows the server to indicate to the client when it's done starting up,
+  // communicating errors that are worthy of a retry.
+
 #ifndef _WIN32
   if (no_site_spawner) {
-    // The astute reader will notice this we're calling daemonize() here
-    // and not the various other platform spawning functions in the block
+    // The astute reader will notice this we're calling run_service_as_daemon()
+    // here and not the various other platform spawning functions in the block
     // further below in this function.  This is deliberate: we want
     // to do the most simple background running possible when the
     // no_site_spawner flag is used.   In the future we plan to
     // migrate the platform spawning functions to use the site_spawn
     // functionality.
-    daemonize();
-    return;
+    return run_service_as_daemon();
   }
   // If we have a site-specific spawning requirement, then we'll
   // invoke that spawner rather than using any of the built-in
   // spawning functionality.
   const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
   if (site_spawn) {
-    spawn_site_specific(site_spawn);
-    return;
+    return spawn_site_specific(site_spawn);
   }
 #endif
 
 #if defined(__APPLE__)
-  spawn_via_launchd();
+  return spawn_via_launchd();
 #elif defined(_WIN32)
-  spawn_win32();
+  return spawn_win32();
 #else
-  daemonize();
+  return run_service_as_daemon();
 #endif
 }
 
@@ -1356,7 +1286,7 @@ static int inner_main(int argc, char** argv) {
 #endif
 
   if (foreground) {
-    run_service();
+    run_service_in_foreground();
     return 0;
   }
 
@@ -1371,16 +1301,35 @@ static int inner_main(int argc, char** argv) {
         ran = try_client_mode_command(cmd, !no_pretty);
       }
     } else {
-      spawn_watchman();
+      // Failed to run command. Try to spawn a daemon.
+
       // Some site spawner scripts will asynchronously launch the service.
       // When that happens we may encounter ECONNREFUSED.  We need to
       // tolerate this, so we add some retries.
       int attempts = 10;
-      std::chrono::milliseconds interval(10);
+      std::chrono::milliseconds interval{10};
+
+      bool spawned = false;
       while (true) {
+        if (!spawned) {
+          auto spawn_result = try_spawn_watchman();
+          switch (spawn_result.status) {
+            case SpawnResult::Spawned:
+              spawned = true;
+              break;
+            case SpawnResult::FailedToLock:
+              // Otherwise, it's possible another daemon is still shutting down,
+              // and we should try to start again next time. Alternatively,
+              // another daemon is starting up, and when it's ready, the command
+              // should succeed.
+              break;
+          }
+        }
+
         ran = try_command(cmd, 10);
         if (!ran && should_start(errno) && attempts-- > 0) {
           /* sleep override */ std::this_thread::sleep_for(interval);
+          // 10 doublings of 10 ms is about 10 seconds total.
           interval *= 2;
           continue;
         }
