@@ -396,7 +396,7 @@ else()
   # python3, python3.6 and python3.7 that will select 3.7,
   # even though python3 -> python3.6.  On such a system we
   # want the python3/python3.6 selection, not the 3.7 selection
-  find_program(PYTHON3 python3)
+  find_program(PYTHON3 python3 PATHS /usr/bin)
 
   if(PYTHON3)
     set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
