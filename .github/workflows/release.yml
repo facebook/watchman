@@ -33,11 +33,13 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. watchman _artifacts/linux  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. watchman _artifacts/linux  --project-install-prefix watchman:/opt/facebook --final-install-prefix /opt/facebook
+    - name: Copy python executables
+      run: for b in $(python3 build/fbcode_builder/getdeps.py show-inst-dir)/opt/facebook/bin/* ; do cp -n $b _artifacts/linux/bin ; done
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Package watchman
       run: mv _artifacts/linux "watchman-${{ needs.prepare.outputs.release }}-linux" && zip -r watchman-${{ needs.prepare.outputs.release }}-linux.zip "watchman-${{ needs.prepare.outputs.release }}-linux/"
     - name: Upload Linux release
@@ -57,11 +59,13 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/mac  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/mac  --project-install-prefix watchman:/opt/facebook --final-install-prefix /opt/facebook
+    - name: Copy python executables
+      run: for b in $(python3 build/fbcode_builder/getdeps.py show-inst-dir)/opt/facebook/bin/* ; do cp -n $b _artifacts/mac/bin ; done
     - name: Test watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman  --project-install-prefix watchman:/opt/facebook
     - name: Package watchman
       run: mv _artifacts/mac "watchman-${{ needs.prepare.outputs.release }}-macos" && zip -r watchman-${{ needs.prepare.outputs.release }}-macos.zip "watchman-${{ needs.prepare.outputs.release }}-macos/"
     - name: Upload macOS release
@@ -88,7 +92,10 @@ jobs:
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/windows  --final-install-prefix /usr/local
+      run: python build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/windows
+    - name: Copy python executables
+      run: for b in $(python3 build/fbcode_builder/getdeps.py show-inst-dir)/bin/* ; do cp -n $b _artifacts/windows/bin ; done
+      shell: bash
     - name: Test watchman
       run: python build/fbcode_builder/getdeps.py --allow-system-packages test --src-dir=. watchman
     - name: Package watchman
