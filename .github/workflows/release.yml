@@ -106,14 +106,14 @@ jobs:
   homebrew-bump:
     needs: [prepare, mac-build]
     runs-on: ubuntu-latest
-     steps:
-      - uses: fanzeyi/bump-homebrew-formula-action@1.11
-        with:
-          formula-name: watchman
-          formula-path: watchman.rb
-          homebrew-tap: facebook/homebrew-fb
-          base-branch: master
-          download-url: https://github.com/facebook/watchman/releases/download/${{ needs.prepare.outputs.release }}/watchman-${{ needs.prepare.outputs.release }}-macos.zip
-          commit-message: bump watchman to ${{ needs.prepare.outputs.release }}
-        env:
-          COMMITTER_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
+    steps:
+    - uses: fanzeyi/bump-homebrew-formula-action@1.11
+      with:
+        formula-name: watchman
+        formula-path: watchman.rb
+        homebrew-tap: facebook/homebrew-fb
+        base-branch: master
+        download-url: https://github.com/facebook/watchman/releases/download/${{ needs.prepare.outputs.release }}/watchman-${{ needs.prepare.outputs.release }}-macos.zip
+        commit-message: bump watchman to ${{ needs.prepare.outputs.release }}
+      env:
+        COMMITTER_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
