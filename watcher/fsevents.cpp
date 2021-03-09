@@ -5,9 +5,9 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <condition_variable>
-#include <deque>
 #include <iterator>
 #include <mutex>
+#include <vector>
 #include "InMemoryView.h"
 #include "LogConfig.h"
 #include "Pipe.h"
@@ -47,7 +47,11 @@ struct FSEventsWatcher : public Watcher {
   watchman::Pipe fse_pipe;
 
   std::condition_variable fse_cond;
-  folly::Synchronized<std::deque<watchman_fsevent>, std::mutex> items_;
+  // Unflattened queue of pending events. The fse_callback function will push
+  // exactly one vector to the end of this one, flattening the vector would
+  // require extra copying and allocations.
+  folly::Synchronized<std::vector<std::vector<watchman_fsevent>>, std::mutex>
+      items_;
 
   struct fse_stream* stream{nullptr};
   bool attempt_resync_on_drop{false};
@@ -130,7 +134,7 @@ static void fse_callback(
   auto paths = (char**)eventPaths;
   auto stream = (fse_stream*)clientCallBackInfo;
   auto root = stream->root;
-  std::deque<watchman_fsevent> items;
+  std::vector<watchman_fsevent> items;
   auto watcher = watcherFromRoot(root);
 
   if (!stream->lost_sync) {
@@ -227,6 +231,7 @@ static void fse_callback(
 
 propagate:
 
+  items.reserve(numEvents);
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
     const char* path = paths[i];
@@ -265,7 +270,7 @@ propagate:
 
   if (!items.empty()) {
     auto wlock = watcher->items_.lock();
-    std::move(items.begin(), items.end(), std::back_inserter(*wlock));
+    wlock->push_back(std::move(items));
     watcher->fse_cond.notify_one();
   }
 }
@@ -526,7 +531,7 @@ bool FSEventsWatcher::consumeNotify(
   struct timeval now;
   bool recurse;
   char flags_label[128];
-  std::deque<watchman_fsevent> items;
+  std::vector<std::vector<watchman_fsevent>> items;
 
   {
     auto wlock = items_.lock();
@@ -535,52 +540,62 @@ bool FSEventsWatcher::consumeNotify(
 
   gettimeofday(&now, nullptr);
 
-  for (auto& item : items) {
-    w_expand_flags(kflags, item.flags, flags_label, sizeof(flags_label));
-    logf(DBG, "fsevents: got {} {:x} {}\n", item.path, item.flags, flags_label);
-
-    if (item.flags & kFSEventStreamEventFlagUserDropped) {
-      root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
-      break;
-    }
-
-    if (item.flags & kFSEventStreamEventFlagKernelDropped) {
-      root->scheduleRecrawl("kFSEventStreamEventFlagKernelDropped");
-      break;
-    }
-
-    if (item.flags & kFSEventStreamEventFlagUnmount) {
-      logf(ERR, "kFSEventStreamEventFlagUnmount {}, cancel watch\n", item.path);
-      root->cancel();
-      break;
-    }
-
-    if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
-        item.path == root->root_path) {
-      log(ERR, "Root directory removed, cancel watch\n");
-      root->cancel();
-      break;
-    }
-
-    if (item.flags & kFSEventStreamEventFlagRootChanged) {
+  for (auto& vec : items) {
+    for (auto& item : vec) {
+      w_expand_flags(kflags, item.flags, flags_label, sizeof(flags_label));
       logf(
-          ERR,
-          "kFSEventStreamEventFlagRootChanged {}, cancel watch\n",
-          item.path);
-      root->cancel();
-      break;
+          DBG,
+          "fsevents: got {} {:x} {}\n",
+          item.path,
+          item.flags,
+          flags_label);
+
+      if (item.flags & kFSEventStreamEventFlagUserDropped) {
+        root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
+        break;
+      }
+
+      if (item.flags & kFSEventStreamEventFlagKernelDropped) {
+        root->scheduleRecrawl("kFSEventStreamEventFlagKernelDropped");
+        break;
+      }
+
+      if (item.flags & kFSEventStreamEventFlagUnmount) {
+        logf(
+            ERR,
+            "kFSEventStreamEventFlagUnmount {}, cancel watch\n",
+            item.path);
+        root->cancel();
+        break;
+      }
+
+      if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
+          item.path == root->root_path) {
+        log(ERR, "Root directory removed, cancel watch\n");
+        root->cancel();
+        break;
+      }
+
+      if (item.flags & kFSEventStreamEventFlagRootChanged) {
+        logf(
+            ERR,
+            "kFSEventStreamEventFlagRootChanged {}, cancel watch\n",
+            item.path);
+        root->cancel();
+        break;
+      }
+
+      recurse = (item.flags &
+                 (kFSEventStreamEventFlagMustScanSubDirs |
+                  kFSEventStreamEventFlagItemRenamed))
+          ? true
+          : false;
+
+      coll->add(
+          item.path,
+          now,
+          W_PENDING_VIA_NOTIFY | (recurse ? W_PENDING_RECURSIVE : 0));
     }
-
-    recurse = (item.flags &
-               (kFSEventStreamEventFlagMustScanSubDirs |
-                kFSEventStreamEventFlagItemRenamed))
-        ? true
-        : false;
-
-    coll->add(
-        item.path,
-        now,
-        W_PENDING_VIA_NOTIFY | (recurse ? W_PENDING_RECURSIVE : 0));
   }
 
   return !items.empty();
