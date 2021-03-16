@@ -222,6 +222,9 @@ void InMemoryView::processPath(
     struct timeval now,
     int flags,
     const watchman_dir_ent* pre_stat) {
+  w_assert(
+      full_path.size() >= root_path.size(),
+      "full_path must be a descendant of the root directory\n");
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
    * 1. Cookies that this query has created. This marks the end of this query's
