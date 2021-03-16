@@ -124,6 +124,16 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.checkPersistentSession()
         self.checkOSApplicability()
 
+    def tearDown(self):
+        """Print the watchman logs when a test complete
+
+        When debugging watchman test issues, having access to the logs makes
+        debugging much easier, and since test runners usually omit the test
+        output on success, let's always display the test output.
+        """
+        print("Watchman logs:")
+        self.dumpLogs()
+
     def getClient(self, inst=None, replace_cached=False, no_cache=False):
         if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
