@@ -128,7 +128,7 @@ const char* w_set_thread_name(Args&&... args) {
         __FILE__,                                \
         __LINE__,                                \
         #e);                                     \
-    watchman::log(watchman::FATAL, __VA_ARGS__); \
+    watchman::log(watchman::ABORT, __VA_ARGS__); \
   }
 
 // Similar to assert(), but uses W_LOG_FATAL to log the stack trace
