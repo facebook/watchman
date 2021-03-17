@@ -654,16 +654,11 @@ std::vector<NameAndDType> globNameAndDType(
     StreamingEdenServiceAsyncClient* client,
     const std::string& mountPoint,
     const std::vector<std::string>& globPatterns,
-    bool includeDotfiles) {
-  // edenfs had a bug where, for a globFiles request like ["foo/*", "foo/*/*"],
-  // edenfs would effectively ignore the second pattern. edenfs diff D15078089
-  // fixed this bug, but that diff hasn't been deployed widely yet. Work around
-  // this bug here by not calling globFiles with more than one pattern.
-  // TODO(T44365385): Remove this workaround when a newer version of edenfs is
-  // deployed everywhere.
-  bool isEdenFSGlobFilesBuggy = true;
-
-  if (isEdenFSGlobFilesBuggy && globPatterns.size() > 1) {
+    bool includeDotfiles,
+    bool splitGlobPattern = false) {
+  // TODO(xavierd): Once the config: "eden_split_glob_pattern" is rolled out
+  // everywhere, remove this code.
+  if (splitGlobPattern && globPatterns.size() > 1) {
     folly::DrivableExecutor* executor =
         folly::EventBaseManager::get()->getEventBase();
 
@@ -710,13 +705,16 @@ class EdenView : public QueryableView {
   std::string mountPoint_;
   std::promise<void> subscribeReadyPromise_;
   std::shared_future<void> subscribeReadyFuture_;
+  bool splitGlobPattern_;
 
  public:
   explicit EdenView(w_root_t* root)
       : root_path_(root->root_path),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         mountPoint_(to<std::string>(root->root_path)),
-        subscribeReadyFuture_(subscribeReadyPromise_.get_future()) {
+        subscribeReadyFuture_(subscribeReadyPromise_.get_future()),
+        splitGlobPattern_(
+            root->config.getBool("eden_split_glob_pattern", false)) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
     auto client = getEdenClient(root_path_);
@@ -970,7 +968,11 @@ class EdenView : public QueryableView {
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
     auto fileInfo = globNameAndDType(
-        client.get(), mountPoint_, globStrings, includeDotfiles);
+        client.get(),
+        mountPoint_,
+        globStrings,
+        includeDotfiles,
+        splitGlobPattern_);
 
     // Filter out any ignored files
     filterOutPaths(fileInfo, ctx);
