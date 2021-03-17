@@ -178,7 +178,6 @@ endif ()
 # a 64-bit integer type, otherwise the mtime_us field renders as garbage
 # in the integration tests.
 foreach(wat_func
-    FSEventStreamSetExclusionPaths
     accept4
     backtrace
     backtrace_symbols

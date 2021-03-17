@@ -399,7 +399,6 @@ static fse_stream* fse_stream_make(
   FSEventStreamScheduleWithRunLoop(
       fse_stream->stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
-#ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
   if (!root->ignore.dirs_vec.empty() &&
       root->config.getBool("_use_fsevents_exclusions", true)) {
     CFMutableArrayRef ignarray;
@@ -443,7 +442,6 @@ static fse_stream* fse_stream_make(
 
     CFRelease(ignarray);
   }
-#endif
 
 out:
   if (parray) {
