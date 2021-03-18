@@ -246,21 +246,24 @@ void InMemoryView::statPath(
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->cookies.cookieDir())) {
-        if (!(watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)) {
-          /* we always need to crawl, but may not need to be fully recursive */
-          coll->add(
-              full_path,
-              now,
-              W_PENDING_CRAWL_ONLY | (recursive ? W_PENDING_RECURSIVE : 0));
+        if (recursive) {
+          /* we always need to crawl if we're recursive, this can happen when a
+           * directory is created */
+          coll->add(full_path, now, W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
         } else {
-          /* we get told about changes on the child, so we only
-           * need to crawl if we've never seen the dir before.
-           * An exception is that fsevents will only report the root
-           * of a dir rename and not a rename event for all of its
-           * children. */
-          if (recursive) {
-            coll->add(
-                full_path, now, W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
+          if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+            /* we get told about changes on the child, so we don't need to do
+             * anything */
+          } else if (watcher_->flags & WATCHER_ONLY_DIRECTORY_NOTIFICATIONS) {
+            /* on file changes, we receive a notification on the directory and
+             * thus we just need to crawl this one directory to consider all
+             * the pending files. To avoid recursing into the path recursively,
+             * the flags are passed as is and the crawler will only recurse
+             * down if W_PENDING_VIA_NOTIFY is set. */
+            coll->add(full_path, now, flags | W_PENDING_CRAWL_ONLY);
+          } else {
+            /* in all the other cases, crawl */
+            coll->add(full_path, now, W_PENDING_CRAWL_ONLY);
           }
         }
       }

@@ -23,6 +23,8 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   // if renames do not reliably report the individual
   // files renamed in the hierarchy
 #define WATCHER_COALESCED_RENAME 2
+  // if the watcher only watches the directories, and not the individual files.
+#define WATCHER_ONLY_DIRECTORY_NOTIFICATIONS 4
   unsigned flags;
 
   Watcher(const char* name, unsigned flags);

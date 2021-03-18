@@ -23,20 +23,24 @@ void InMemoryView::crawler(
     PendingCollection::LockedPtr& coll,
     const w_string& dir_name,
     struct timeval now,
-    bool recursive) {
+    int flags) {
   struct watchman_file* file;
   const watchman_dir_ent* dirent;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
+  bool recursive = flags & W_PENDING_RECURSIVE;
 
   if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
   } else {
-    // If the watcher doesn't give us per-file notifications for
-    // watched dirs, then we'll end up explicitly tracking them
-    // and will get updates for the files explicitly.
-    // We don't need to look at the files again when we crawl
-    stat_all = false;
+    // If the watcher doesn't give us per-file notifications for watched dirs
+    // and is able to watch files individually, then we'll end up explicitly
+    // tracking them and will get updates for the files explicitly. We don't
+    // need to look at the files again when we crawl. To avoid recursing into
+    // all the subdirectories, only stat all the files/directories when this
+    // directory was added by the watcher.
+    stat_all = (flags & W_PENDING_VIA_NOTIFY) &&
+        watcher_->flags & WATCHER_ONLY_DIRECTORY_NOTIFICATIONS;
   }
 
   auto dir = resolveDir(view, dir_name, true);

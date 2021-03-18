@@ -55,8 +55,10 @@ struct FSEventsWatcher : public Watcher {
 
   struct fse_stream* stream{nullptr};
   bool attempt_resync_on_drop{false};
+  bool has_file_watching{false};
 
   explicit FSEventsWatcher(w_root_t* root);
+  explicit FSEventsWatcher(bool hasFileWatching);
 
   bool start(const std::shared_ptr<w_root_t>& root) override;
 
@@ -301,6 +303,7 @@ static fse_stream* fse_stream_make(
   double latency;
   struct stat st;
   auto watcher = watcherFromRoot(root);
+  FSEventStreamCreateFlags flags;
 
   struct fse_stream* fse_stream = new struct fse_stream(root, since);
 
@@ -381,15 +384,12 @@ static fse_stream* fse_stream_make(
       root->root_path,
       latency);
 
+  flags = kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot;
+  if (watcher->has_file_watching) {
+    flags |= kFSEventStreamCreateFlagFileEvents;
+  }
   fse_stream->stream = FSEventStreamCreate(
-      nullptr,
-      fse_callback,
-      &ctx,
-      parray,
-      since,
-      latency,
-      kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot |
-          kFSEventStreamCreateFlagFileEvents);
+      nullptr, fse_callback, &ctx, parray, since, latency, flags);
 
   if (!fse_stream->stream) {
     failure_reason = w_string("FSEventStreamCreate failed", W_STRING_UNICODE);
@@ -583,6 +583,14 @@ bool FSEventsWatcher::consumeNotify(
         break;
       }
 
+      if (!has_file_watching && item.path.size() < root->root_path.size()) {
+        // The test_watch_del_all appear to trigger this?
+        log(ERR,
+            "Got an event on a directory parent to the root directory: {}?\n",
+            item.path);
+        continue;
+      }
+
       recurse = (item.flags &
                  (kFSEventStreamEventFlagMustScanSubDirs |
                   kFSEventStreamEventFlagItemRenamed))
@@ -599,10 +607,16 @@ bool FSEventsWatcher::consumeNotify(
   return !items.empty();
 }
 
-FSEventsWatcher::FSEventsWatcher(w_root_t*)
+FSEventsWatcher::FSEventsWatcher(bool hasFileWatching)
     : Watcher(
-          "fsevents",
-          WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME) {}
+          hasFileWatching ? "fsevents" : "dirfsevents",
+          hasFileWatching
+              ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
+              : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
+      has_file_watching(hasFileWatching) {}
+
+FSEventsWatcher::FSEventsWatcher(w_root_t* root)
+    : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true)) {}
 
 void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);

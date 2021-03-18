@@ -255,13 +255,7 @@ void InMemoryView::processPath(
 
   if (w_string_equal(full_path, root_path) ||
       (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
-    crawler(
-        root,
-        view,
-        coll,
-        full_path,
-        now,
-        (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
+    crawler(root, view, coll, full_path, now, flags);
   } else {
     statPath(root, view, coll, full_path, now, flags, pre_stat);
   }

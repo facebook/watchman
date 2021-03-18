@@ -197,13 +197,21 @@ struct InMemoryView : public QueryableView {
       const struct watchman_glob_tree* node,
       const char* dir_name,
       uint32_t dir_name_len) const;
+  /** Crawl the given directory.
+   *
+   * Allowed flags:
+   *  - W_PENDING_RECURSIVE: the directory will be recursively crawled,
+   *  - W_PENDING_VIA_NOTIFY when the watcher only supports directory
+   *    notification (WATCHER_ONLY_DIRECTORY_NOTIFICATIONS), this will stat all
+   *    the files and directories contained in the passed in directory and stop.
+   */
   void crawler(
       const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& dir_name,
       struct timeval now,
-      bool recursive);
+      int flags);
   void notifyThread(const std::shared_ptr<w_root_t>& root);
   void ioThread(const std::shared_ptr<w_root_t>& root);
   bool handleShouldRecrawl(const std::shared_ptr<w_root_t>& root);
