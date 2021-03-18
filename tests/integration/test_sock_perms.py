@@ -36,7 +36,7 @@ except ImportError:
 class TestSockPerms(unittest.TestCase):
     def _new_instance(self, config, expect_success=True):
         if expect_success:
-            start_timeout = 10
+            start_timeout = 20
         else:
             # If the instance is going to fail anyway then there's no point
             # waiting so long
@@ -63,7 +63,7 @@ class TestSockPerms(unittest.TestCase):
                 return group
         self.skipTest("no usable groups found")
 
-    def waitFor(self, cond, timeout=10):
+    def waitFor(self, cond, timeout=20):
         deadline = time.time() + timeout
         res = None
         while time.time() < deadline:
@@ -76,7 +76,7 @@ class TestSockPerms(unittest.TestCase):
             time.sleep(0.03)
         return [False, res]
 
-    def assertWaitFor(self, cond, timeout=10, message=None, get_debug_output=None):
+    def assertWaitFor(self, cond, timeout=20, message=None, get_debug_output=None):
         status, res = self.waitFor(cond, timeout)
         if status:
             return res
