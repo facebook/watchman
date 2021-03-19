@@ -609,11 +609,6 @@ struct InternalStats {
   8: map<PathString, JournalInfo> mountPointJournalInfo;
 }
 
-struct ManifestEntry {
-  /* mode_t */
-  1: i32 mode;
-}
-
 struct FuseCall {
   // This field is deprecated because its use is not worth the TraceBus
   // storage. It may be brought back in some other form.
@@ -1031,26 +1026,6 @@ service EdenService extends fb303_core.BaseService {
     2: BinaryHash oldHash,
     3: BinaryHash newHash,
   ) throws (1: EdenError ex);
-
-  //////// SCM Commit-Related APIs ////////
-
-  /**
-   * DEPRECATED: Remove when Mercurial has migrated to not calling
-   * getManifestEntry, probably by July 2020.
-   *
-   * If the relative path exists in the manifest (i.e., the current commit),
-   * then return the corresponding ManifestEntry; otherwise, throw
-   * NoValueForKeyError.
-   *
-   * Note that we are still experimenting with the type of SCM information Eden
-   * should be responsible for reporting, so this method is subject to change,
-   * or may go away entirely. At a minimum, it should take a commit as a
-   * parameter rather than assuming the current commit.
-   */
-  ManifestEntry getManifestEntry(
-    1: PathString mountPoint,
-    2: PathString relativePath,
-  ) throws (1: EdenError ex, 2: NoValueForKeyError noValueForKeyError);
 
   //////// Administrative APIs ////////
 
