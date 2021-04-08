@@ -15,6 +15,8 @@ class CookieSync {
   ~CookieSync();
 
   void setCookieDir(const w_string& dir);
+  void addCookieDir(const w_string& dir);
+  void removeCookieDir(const w_string& dir);
 
   /* Ensure that we're synchronized with the state of the
    * filesystem at the current time.
@@ -61,13 +63,16 @@ class CookieSync {
         path, WATCHMAN_COOKIE_PREFIX, sizeof(WATCHMAN_COOKIE_PREFIX) - 1);
   }
 
-  const w_string& cookiePrefix() const {
-    return cookiePrefix_;
-  }
+  // Check if this path matches an actual cookie.
+  bool isCookiePrefix(const w_string& path);
 
-  const w_string& cookieDir() const {
-    return cookieDir_;
-  }
+  // Check if the path matches a cookie directory.
+  bool isCookieDir(const w_string& path);
+
+  // Returns the set of prefixes for cookie files
+  std::unordered_set<w_string> cookiePrefix() const;
+
+  std::unordered_set<w_string> cookieDirs() const;
 
   // Returns the list of cookies that are pending observation; each of
   // these has an associated waiting client.
@@ -76,19 +81,25 @@ class CookieSync {
  private:
   struct Cookie {
     folly::Promise<folly::Unit> promise;
-    w_string fileName;
+    std::atomic<uint64_t> numPending;
 
-    explicit Cookie(w_string name);
-    ~Cookie();
+    explicit Cookie(uint64_t numCookies);
+
+    void notify();
   };
 
-  // path to the query cookie dir
-  w_string cookieDir_;
-  // valid filename prefix for cookies we create
-  w_string cookiePrefix_;
+  struct CookieDirectories {
+    // paths to the query cookies directories. A cookie will be written to each
+    // of these when calling `sync`.
+    std::unordered_set<w_string> dirs_;
+    // valid filename prefix for cookies we create
+    w_string cookiePrefix_;
+  };
+
+  folly::Synchronized<CookieDirectories> cookieDirs_;
   // Serial number for cookie filename
   std::atomic<uint32_t> serial_{0};
-  folly::Synchronized<std::unordered_map<w_string, std::unique_ptr<Cookie>>>
-      cookies_;
+  using CookieMap = std::unordered_map<w_string, std::shared_ptr<Cookie>>;
+  folly::Synchronized<CookieMap> cookies_;
 };
 } // namespace watchman

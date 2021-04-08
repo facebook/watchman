@@ -53,23 +53,37 @@ void watchman::InMemoryView::syncToNow(
   try {
     cookies_.syncToNow(timeout);
   } catch (const std::system_error& exc) {
+    auto cookieDirs = cookies_.cookieDirs();
+
     if (exc.code() == watchman::error_code::no_such_file_or_directory ||
         exc.code() == watchman::error_code::permission_denied ||
         exc.code() == watchman::error_code::not_a_directory) {
       // A key path was removed; this is either the vcs dir (.hg, .git, .svn)
       // or possibly the root of the watch itself.
-      if (cookies_.cookieDir() == root_path) {
-        // If the root was removed then we need to cancel the watch.
-        // We may have already observed the removal via the notifythread,
-        // but in some cases (eg: btrfs subvolume deletion) no notification
-        // is received.
+      if (!(watcher_->flags & WATCHER_HAS_SPLIT_WATCH)) {
+        w_assert(
+            cookieDirs.size() == 1,
+            "Non split watchers cannot have multiple cookie directories");
+        if (cookieDirs.count(root_path) == 1) {
+          // If the root was removed then we need to cancel the watch.
+          // We may have already observed the removal via the notifythread,
+          // but in some cases (eg: btrfs subvolume deletion) no notification
+          // is received.
+          root->cancel();
+          throw std::runtime_error("root dir was removed or is inaccessible");
+        } else {
+          // The cookie dir was a VCS subdir and it got deleted.  Let's
+          // focus instead on the parent dir and recursively retry.
+          cookies_.setCookieDir(root_path);
+          return cookies_.syncToNow(timeout);
+        }
+      } else {
+        // Split watchers have one watch on the root and watches for nested
+        // directories, and syncToNow will only throw if no cookies were
+        // created, ie: if all the nested watched directories are no longer
+        // present and the root directory has been removed.
         root->cancel();
         throw std::runtime_error("root dir was removed or is inaccessible");
-      } else {
-        // The cookie dir was a VCS subdir and it got deleted.  Let's
-        // focus instead on the parent dir and recursively retry.
-        cookies_.setCookieDir(root_path);
-        return cookies_.syncToNow(timeout);
       }
     }
 
@@ -98,7 +112,9 @@ void watchman::InMemoryView::syncToNow(
       gettimeofday(&now, nullptr);
 
       auto lock = pending_.lock();
-      lock->add(cookies_.cookieDir(), now, W_PENDING_CRAWL_ONLY);
+      for (const auto& dir : cookieDirs) {
+        lock->add(dir, now, W_PENDING_CRAWL_ONLY);
+      }
       lock->ping();
     }
 

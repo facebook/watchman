@@ -41,9 +41,13 @@ void watchman_root::applyIgnoreVCSConfiguration() {
 
     ignore.add(fullname, true);
 
-    // While we're at it, see if we can find out where to put our
-    // query cookie information
-    if (cookies.cookieDir() == root_path) {
+    // Since we do not have a watcher just yet, we can't test if the watcher
+    // will have WATCHER_HAS_SPLIT_WATCH, thus, rely on whether only the root
+    // is present in the cookies dirs.
+    auto cookieDirs = cookies.cookieDirs();
+    if (cookieDirs.size() == 1 && cookieDirs.count(root_path) == 1) {
+      // While we're at it, see if we can find out where to put our
+      // query cookie information
       try {
         auto info = getFileInformation(fullname.c_str(), case_sensitive);
         if (info.isDir()) {

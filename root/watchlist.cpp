@@ -251,13 +251,25 @@ json_ref watchman_root::getStatus() const {
     }
   }
 
+  auto cookiePrefix = cookies.cookiePrefix();
+  auto jsonCookiePrefix = json_array();
+  for (const auto& name : cookiePrefix) {
+    jsonCookiePrefix.array().push_back(w_string_to_json(name));
+  }
+
+  auto cookieDirs = cookies.cookieDirs();
+  auto jsonCookieDirs = json_array();
+  for (const auto& dir : cookieDirs) {
+    jsonCookieDirs.array().push_back(w_string_to_json(dir));
+  }
+
   obj.set({
       {"path", w_string_to_json(root_path)},
       {"fstype", w_string_to_json(fs_type)},
       {"case_sensitive",
        json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)},
-      {"cookie_prefix", w_string_to_json(cookies.cookiePrefix())},
-      {"cookie_dir", w_string_to_json(cookies.cookieDir())},
+      {"cookie_prefix", std::move(jsonCookiePrefix)},
+      {"cookie_dir", std::move(jsonCookieDirs)},
       {"cookie_list", std::move(cookie_array)},
       {"recrawl_info", std::move(recrawl_info)},
       {"queries", std::move(query_info)},

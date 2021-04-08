@@ -245,7 +245,7 @@ void InMemoryView::statPath(
       if (!root->ignore.isIgnoreVCS(dir_name) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
-          w_string_equal(full_path, root->cookies.cookieDir())) {
+          root->cookies.isCookieDir(full_path)) {
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */
