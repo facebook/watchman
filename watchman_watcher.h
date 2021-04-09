@@ -51,9 +51,16 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   // Signal any threads to terminate.  Do not join them here.
   virtual void signalThreads();
 
+  struct ConsumeNotifyRet {
+    // Were events added to the collection?
+    bool addedPending;
+    // Should the watch be cancelled?
+    bool cancelSelf;
+  };
+
   // Consume any available notifications.  If there are none pending,
   // does not block.
-  virtual bool consumeNotify(
+  virtual ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) = 0;
 

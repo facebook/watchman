@@ -49,7 +49,7 @@ struct PortFSWatcher : public Watcher {
 
   bool startWatchFile(struct watchman_file* file) override;
 
-  bool consumeNotify(
+  Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) override;
 
@@ -206,7 +206,7 @@ std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
   return osdir;
 }
 
-bool PortFSWatcher::consumeNotify(
+Watcher::ConsumeNotifyRet PortFSWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   uint_t i, n;
@@ -214,8 +214,7 @@ bool PortFSWatcher::consumeNotify(
 
   // root got deleted, cancel the watch
   if (root_deleted) {
-    root->cancel();
-    return false;
+    return {false, true};
   }
 
   errno = 0;
@@ -228,7 +227,7 @@ bool PortFSWatcher::consumeNotify(
           &n,
           nullptr)) {
     if (errno == EINTR) {
-      return false;
+      return {false, false};
     }
     logf(FATAL, "port_getn: {}\n", folly::errnoStr(errno));
   }
@@ -236,7 +235,7 @@ bool PortFSWatcher::consumeNotify(
   logf(DBG, "port_getn: n={}\n", n);
 
   if (n == 0) {
-    return false;
+    return {false, false};
   }
 
   auto wlock = port_files.wlock();
@@ -259,9 +258,7 @@ bool PortFSWatcher::consumeNotify(
           root->root_path,
           pe,
           flags_label);
-
-      root->cancel();
-      return false;
+      return {false, true};
     }
     coll->add(
         f->name,
@@ -273,7 +270,7 @@ bool PortFSWatcher::consumeNotify(
     wlock->erase(f->name);
   }
 
-  return true;
+  return {true, false};
 }
 
 bool PortFSWatcher::waitNotify(int timeoutms) {

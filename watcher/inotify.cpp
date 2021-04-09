@@ -83,13 +83,16 @@ struct InotifyWatcher : public Watcher {
       struct watchman_dir* dir,
       const char* path) override;
 
-  bool consumeNotify(
+  Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
 
-  void process_inotify_event(
+  // Process a single inotify event and add it to the pending collection if
+  // needed. Returns true if the root directory was removed and the watch needs
+  // to be cancelled.
+  bool process_inotify_event(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll,
       struct inotify_event* ine,
@@ -146,7 +149,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
   return osdir;
 }
 
-void InotifyWatcher::process_inotify_event(
+bool InotifyWatcher::process_inotify_event(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll,
     struct inotify_event* ine,
@@ -254,8 +257,7 @@ void InotifyWatcher::process_inotify_event(
               ERR,
               "root dir {} has been (re)moved, canceling watch\n",
               root->root_path);
-          root->cancel();
-          return;
+          return true;
         }
 
         // We need to examine the parent and potentially crawl down
@@ -301,15 +303,16 @@ void InotifyWatcher::process_inotify_event(
       root->scheduleRecrawl("dir missing from internal state");
     }
   }
+  return false;
 }
 
-bool InotifyWatcher::consumeNotify(
+Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
-      return false;
+      return {false, false};
     }
     logf(
         FATAL,
@@ -324,10 +327,11 @@ bool InotifyWatcher::consumeNotify(
   gettimeofday(&now, nullptr);
 
   struct inotify_event* ine;
+  bool cancel = false;
   for (char* iptr = ibuf; iptr < ibuf + n; iptr += sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
-    process_inotify_event(root, coll, ine, now);
+    cancel |= process_inotify_event(root, coll, ine, now);
   }
 
   // It is possible that we can accumulate a set of pending_move
@@ -356,7 +360,7 @@ bool InotifyWatcher::consumeNotify(
     }
   }
 
-  return true;
+  return {true, cancel};
 }
 
 bool InotifyWatcher::waitNotify(int timeoutms) {

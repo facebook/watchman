@@ -33,12 +33,24 @@ void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
     if (watcher_->waitNotify(86400)) {
-      while (watcher_->consumeNotify(root, localLock)) {
-        if (localLock->size() >= WATCHMAN_BATCH_LIMIT) {
+      while (true) {
+        auto [addedPending, cancelSelf] =
+            watcher_->consumeNotify(root, localLock);
+
+        if (cancelSelf) {
+          root->cancel();
           break;
         }
-        if (!watcher_->waitNotify(0)) {
+
+        if (!addedPending) {
           break;
+        } else {
+          if (localLock->size() >= WATCHMAN_BATCH_LIMIT) {
+            break;
+          }
+          if (!watcher_->waitNotify(0)) {
+            break;
+          }
         }
       }
       if (localLock->size() > 0) {

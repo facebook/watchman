@@ -67,7 +67,7 @@ struct FSEventsWatcher : public Watcher {
       struct watchman_dir* dir,
       const char* path) override;
 
-  bool consumeNotify(
+  Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) override;
 
@@ -523,13 +523,14 @@ done:
   logf(DBG, "fse_thread done\n");
 }
 
-bool FSEventsWatcher::consumeNotify(
+Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   struct timeval now;
   bool recurse;
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
+  bool cancelSelf = false;
 
   {
     auto wlock = items_.lock();
@@ -563,14 +564,14 @@ bool FSEventsWatcher::consumeNotify(
             ERR,
             "kFSEventStreamEventFlagUnmount {}, cancel watch\n",
             item.path);
-        root->cancel();
+        cancelSelf = true;
         break;
       }
 
       if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
           item.path == root->root_path) {
         log(ERR, "Root directory removed, cancel watch\n");
-        root->cancel();
+        cancelSelf = true;
         break;
       }
 
@@ -579,7 +580,7 @@ bool FSEventsWatcher::consumeNotify(
             ERR,
             "kFSEventStreamEventFlagRootChanged {}, cancel watch\n",
             item.path);
-        root->cancel();
+        cancelSelf = true;
         break;
       }
 
@@ -604,7 +605,7 @@ bool FSEventsWatcher::consumeNotify(
     }
   }
 
-  return !items.empty();
+  return {!items.empty(), cancelSelf};
 }
 
 FSEventsWatcher::FSEventsWatcher(bool hasFileWatching)
@@ -635,6 +636,8 @@ bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
         self->FSEventsThread(root);
       } catch (const std::exception& e) {
         watchman::log(watchman::ERR, "uncaught exception: ", e.what());
+        // TODO(xavierd): For nested watch, make sure to not invalidate the
+        // entire root.
         root->cancel();
       }
 

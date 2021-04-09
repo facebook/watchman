@@ -45,7 +45,7 @@ struct KQueueWatcher : public Watcher {
 
   bool startWatchFile(struct watchman_file* file) override;
 
-  bool consumeNotify(
+  Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) override;
 
@@ -209,7 +209,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
   return osdir;
 }
 
-bool KQueueWatcher::consumeNotify(
+Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   int n;
@@ -232,7 +232,7 @@ bool KQueueWatcher::consumeNotify(
       n,
       folly::errnoStr(errno));
   if (root->inner.cancelled) {
-    return 0;
+    return {0, false};
   }
 
   gettimeofday(&now, nullptr);
@@ -268,8 +268,7 @@ bool KQueueWatcher::consumeNotify(
             "root dir {} has been (re)moved [code {:x}], canceling watch\n",
             root->root_path,
             fflags);
-        root->cancel();
-        return 0;
+        return {0, true};
       }
 
       // Remove our watch bits
@@ -284,7 +283,7 @@ bool KQueueWatcher::consumeNotify(
         path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
   }
 
-  return n > 0;
+  return {n > 0, false};
 }
 
 bool KQueueWatcher::waitNotify(int timeoutms) {

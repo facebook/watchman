@@ -46,7 +46,7 @@ struct WinWatcher : public Watcher {
       struct watchman_dir* dir,
       const char* path) override;
 
-  bool consumeNotify(
+  Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) override;
 
@@ -362,7 +362,7 @@ std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
   return w_dir_open(path);
 }
 
-bool WinWatcher::consumeNotify(
+Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   std::list<Item> items;
@@ -386,7 +386,8 @@ bool WinWatcher::consumeNotify(
     coll->add(item.path, now, W_PENDING_VIA_NOTIFY | item.flags);
   }
 
-  return !items.empty();
+  // The readChangesThread cancels itself.
+  return {!items.empty(), false};
 }
 
 bool WinWatcher::waitNotify(int timeoutms) {
