@@ -18,7 +18,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
     def makeRootAndConfig(self):
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
-            f.write(json.dumps({"idle_reap_age_seconds": 1}))
+            f.write(json.dumps({"idle_reap_age_seconds": 3}))
         return root
 
     def test_watchReap(self):
@@ -29,7 +29,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("trigger", root, {"name": "t", "command": ["true"]})
 
         # wait long enough for the reap to be considered
-        time.sleep(2)
+        time.sleep(6)
 
         self.assertTrue(self.rootIsWatched(root))
 
