@@ -54,13 +54,6 @@ static inline bool w_path_exists(const char* path) {
 bool w_path_exists(const char* path);
 #endif
 
-/* We leverage the fact that our aligned pointers will never set the LSB of a
- * pointer value.  We can use the LSB to indicate whether kqueue entries are
- * dirs or files */
-#define SET_DIR_BIT(dir) ((void*)(((intptr_t)dir) | 0x1))
-#define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
-#define DECODE_DIR(dir) ((void*)(((intptr_t)dir) & ~0x1))
-
 bool w_is_stopping();
 
 void w_request_shutdown();

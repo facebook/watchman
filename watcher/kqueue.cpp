@@ -18,6 +18,22 @@ using namespace watchman;
 using watchman::FileDescriptor;
 using watchman::Pipe;
 
+enum KQueueUdata {
+  IS_DIR = 1,
+};
+
+bool is_udata_dir(void* udata) {
+  return reinterpret_cast<uintptr_t>(udata) == IS_DIR;
+}
+
+void* make_udata(bool is_dir) {
+  if (is_dir) {
+    return reinterpret_cast<void*>(IS_DIR);
+  } else {
+    return reinterpret_cast<void*>(0);
+  }
+}
+
 struct KQueueWatcher : public Watcher {
   FileDescriptor kq_fd;
   Pipe terminatePipe_;
@@ -113,7 +129,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
       EV_ADD | EV_CLEAR,
       NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME | NOTE_ATTRIB,
       0,
-      (w_string_t*)full_name);
+      make_udata(false));
 
   {
     auto wlock = maps_.wlock();
@@ -186,7 +202,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
       EV_ADD | EV_CLEAR,
       NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME,
       0,
-      SET_DIR_BIT((w_string_t*)dir_name));
+      make_udata(true));
 
   // Our mapping needs to be visible before we add it to the queue,
   // otherwise we can get a wakeup and not know what it is
@@ -238,7 +254,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
   gettimeofday(&now, nullptr);
   for (i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = keventbuf[i].fflags;
-    bool is_dir = IS_DIR_BIT_SET(keventbuf[i].udata);
+    bool is_dir = is_udata_dir(keventbuf[i].udata);
     char flags_label[128];
     int fd = keventbuf[i].ident;
 
