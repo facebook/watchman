@@ -374,10 +374,7 @@ watchman_dir* InMemoryView::resolveDir(
   // instance constructed below!
   auto& new_child = parent->dirs[child_name];
   new_child.reset(new watchman_dir(child_name, parent));
-
-  dir = new_child.get();
-
-  return dir;
+  return new_child.get();
 }
 
 void InMemoryView::markDirDeleted(

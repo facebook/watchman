@@ -122,8 +122,6 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>&,
     struct watchman_dir*,
     const char* path) {
-  int newwd, err;
-
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
   auto osdir = w_dir_open(path);
@@ -132,9 +130,9 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
 
   // The directory might be different since the last time we looked at it, so
   // call inotify_add_watch unconditionally.
-  newwd = inotify_add_watch(infd.fd(), path, WATCHMAN_INOTIFY_MASK);
+  int newwd = inotify_add_watch(infd.fd(), path, WATCHMAN_INOTIFY_MASK);
   if (newwd == -1) {
-    err = errno;
+    int err = errno;
     throw std::system_error(err, inotify_category(), "inotify_add_watch");
   }
 
@@ -236,6 +234,7 @@ void InotifyWatcher::process_inotify_event(
           }
         } else {
           logf(DBG, "moved {} -> {}\n", old.name.c_str(), name.c_str());
+          // TODO: assert that there is no entry in wd_to_name
           wlock->wd_to_name[wd] = name;
         }
       } else {
@@ -307,12 +306,7 @@ void InotifyWatcher::process_inotify_event(
 bool InotifyWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
-  struct inotify_event* ine;
-  char* iptr;
-  int n;
-  struct timeval now;
-
-  n = read(infd.fd(), &ibuf, sizeof(ibuf));
+  int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
       return false;
@@ -326,9 +320,11 @@ bool InotifyWatcher::consumeNotify(
   }
 
   logf(DBG, "inotify read: returned {}.\n", n);
+  struct timeval now;
   gettimeofday(&now, nullptr);
 
-  for (iptr = ibuf; iptr < ibuf + n; iptr = iptr + sizeof(*ine) + ine->len) {
+  struct inotify_event* ine;
+  for (char* iptr = ibuf; iptr < ibuf + n; iptr += sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
     process_inotify_event(root, coll, ine, now);
@@ -345,19 +341,17 @@ bool InotifyWatcher::consumeNotify(
   // observe the corresponding MOVE_TO.
   {
     auto wlock = maps.wlock();
-    if (!wlock->move_map.empty()) {
-      auto it = wlock->move_map.begin();
-      while (it != wlock->move_map.end()) {
-        auto& pending = it->second;
-        if (now.tv_sec - pending.created > 5 /* seconds */) {
-          logf(
-              DBG,
-              "deleting pending move {} (moved outside of watch?)\n",
-              pending.name);
-          it = wlock->move_map.erase(it);
-        } else {
-          ++it;
-        }
+    auto it = wlock->move_map.begin();
+    while (it != wlock->move_map.end()) {
+      auto& pending = it->second;
+      if (now.tv_sec - pending.created > 5 /* seconds */) {
+        logf(
+            DBG,
+            "deleting pending move {} (moved outside of watch?)\n",
+            pending.name);
+        it = wlock->move_map.erase(it);
+      } else {
+        ++it;
       }
     }
   }
@@ -366,15 +360,13 @@ bool InotifyWatcher::consumeNotify(
 }
 
 bool InotifyWatcher::waitNotify(int timeoutms) {
-  int n;
-  std::array<struct pollfd, 2> pfd;
-
+  struct pollfd pfd[2];
   pfd[0].fd = infd.fd();
   pfd[0].events = POLLIN;
   pfd[1].fd = terminatePipe_.read.fd();
   pfd[1].events = POLLIN;
 
-  n = poll(pfd.data(), pfd.size(), timeoutms);
+  int n = poll(pfd, std::size(pfd), timeoutms);
 
   if (n > 0) {
     if (pfd[1].revents) {

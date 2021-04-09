@@ -139,14 +139,13 @@ bool InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
 }
 
 void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
-  int timeoutms, biggest_timeout;
   PendingCollection pending;
   auto localPendingLock = pending.lock();
 
-  timeoutms = root->trigger_settle;
+  int timeoutms = root->trigger_settle;
 
   // Upper bound on sleep delay.  These options are measured in seconds.
-  biggest_timeout = root->gc_interval;
+  int biggest_timeout = root->gc_interval;
   if (biggest_timeout == 0 ||
       (root->idle_reap_age != 0 && root->idle_reap_age < biggest_timeout)) {
     biggest_timeout = root->idle_reap_age;
@@ -158,8 +157,6 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
   biggest_timeout *= 1000;
 
   while (!stopThreads_) {
-    bool pinged;
-
     if (!root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
       fullCrawl(root, localPendingLock);
@@ -169,6 +166,7 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
 
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
+    bool pinged;
     {
       logf(DBG, "poll_events timeout={}ms\n", timeoutms);
       auto targetPendingLock =

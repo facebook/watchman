@@ -77,13 +77,14 @@ struct PendingCollectionBase {
 
 class PendingCollection
     : public folly::Synchronized<PendingCollectionBase, std::mutex> {
-  std::condition_variable cond_;
-  std::atomic<bool> pinged_;
-
  public:
   PendingCollection();
   LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
 
   // Ping without requiring the lock to be held
   void ping();
+
+ private:
+  std::condition_variable cond_;
+  std::atomic<bool> pinged_;
 };
