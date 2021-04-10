@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "fsevents.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <condition_variable>
@@ -14,23 +15,16 @@
 
 #if HAVE_FSEVENTS
 
-using namespace watchman;
+namespace watchman {
 
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
 #define MAX_EXCLUSIONS size_t(8)
 
-struct watchman_fsevent {
-  w_string path;
-  FSEventStreamEventFlags flags;
-
-  watchman_fsevent(w_string&& path, FSEventStreamEventFlags flags)
-      : path(std::move(path)), flags(flags) {}
-};
-
 struct fse_stream {
   FSEventStreamRef stream{nullptr};
   std::shared_ptr<w_root_t> root;
+  FSEventsWatcher* watcher;
   FSEventStreamEventId last_good{0};
   FSEventStreamEventId since{0};
   bool lost_sync{false};
@@ -38,42 +32,12 @@ struct fse_stream {
   bool event_id_wrapped{false};
   CFUUIDRef uuid;
 
-  fse_stream(const std::shared_ptr<w_root_t>& root, FSEventStreamEventId since)
-      : root(root), since(since) {}
+  fse_stream(
+      const std::shared_ptr<w_root_t>& root,
+      FSEventsWatcher* watcher,
+      FSEventStreamEventId since)
+      : root(root), watcher(watcher), since(since) {}
   ~fse_stream();
-};
-
-struct FSEventsWatcher : public Watcher {
-  watchman::Pipe fse_pipe;
-
-  std::condition_variable fse_cond;
-  // Unflattened queue of pending events. The fse_callback function will push
-  // exactly one vector to the end of this one, flattening the vector would
-  // require extra copying and allocations.
-  folly::Synchronized<std::vector<std::vector<watchman_fsevent>>, std::mutex>
-      items_;
-
-  struct fse_stream* stream{nullptr};
-  bool attempt_resync_on_drop{false};
-  bool has_file_watching{false};
-
-  explicit FSEventsWatcher(w_root_t* root);
-  explicit FSEventsWatcher(bool hasFileWatching);
-
-  bool start(const std::shared_ptr<w_root_t>& root) override;
-
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
-      struct watchman_dir* dir,
-      const char* path) override;
-
-  Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
-      PendingCollection::LockedPtr& coll) override;
-
-  bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
-  void FSEventsThread(const std::shared_ptr<w_root_t>& root);
 };
 
 static const struct flag_map kflags[] = {
@@ -101,6 +65,7 @@ static const struct flag_map kflags[] = {
 
 static struct fse_stream* fse_stream_make(
     const std::shared_ptr<w_root_t>& root,
+    FSEventsWatcher* watcher,
     FSEventStreamEventId since,
     w_string& failure_reason);
 
@@ -137,7 +102,7 @@ static void fse_callback(
   auto stream = (fse_stream*)clientCallBackInfo;
   auto root = stream->root;
   std::vector<watchman_fsevent> items;
-  auto watcher = watcherFromRoot(root);
+  auto watcher = stream->watcher;
 
   if (!stream->lost_sync) {
     // This is to facilitate testing via debug-fsevents-inject-drop.
@@ -183,8 +148,8 @@ static void fse_callback(
             // to the consumer thread which has existing logic to schedule
             // a recrawl.
             w_string failure_reason;
-            struct fse_stream* replacement =
-                fse_stream_make(root, stream->last_good, failure_reason);
+            struct fse_stream* replacement = fse_stream_make(
+                root, watcher, stream->last_good, failure_reason);
 
             if (!replacement) {
               logf(
@@ -295,6 +260,7 @@ fse_stream::~fse_stream() {
 
 static fse_stream* fse_stream_make(
     const std::shared_ptr<w_root_t>& root,
+    FSEventsWatcher* watcher,
     FSEventStreamEventId since,
     w_string& failure_reason) {
   auto ctx = FSEventStreamContext();
@@ -302,10 +268,10 @@ static fse_stream* fse_stream_make(
   CFStringRef cpath = nullptr;
   double latency;
   struct stat st;
-  auto watcher = watcherFromRoot(root);
   FSEventStreamCreateFlags flags;
+  w_string path;
 
-  struct fse_stream* fse_stream = new struct fse_stream(root, since);
+  struct fse_stream* fse_stream = new struct fse_stream(root, watcher, since);
 
   // Each device has an optional journal maintained by fseventsd that keeps
   // track of the change events.  The journal may not be available if the
@@ -363,10 +329,16 @@ static fse_stream* fse_stream_make(
     goto fail;
   }
 
+  if (auto subdir = watcher->subdir) {
+    path = *subdir;
+  } else {
+    path = root->root_path;
+  }
+
   cpath = CFStringCreateWithBytes(
       nullptr,
-      (const UInt8*)root->root_path.data(),
-      root->root_path.size(),
+      (const UInt8*)path.data(),
+      path.size(),
       kCFStringEncodingUTF8,
       false);
   if (!cpath) {
@@ -381,7 +353,7 @@ static fse_stream* fse_stream_make(
   logf(
       DBG,
       "FSEventStreamCreate for path {} with latency {} seconds\n",
-      root->root_path,
+      path,
       latency);
 
   flags = kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot;
@@ -399,10 +371,10 @@ static fse_stream* fse_stream_make(
   FSEventStreamScheduleWithRunLoop(
       fse_stream->stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
-  if (!root->ignore.dirs_vec.empty() &&
-      root->config.getBool("_use_fsevents_exclusions", true)) {
+  if (root->config.getBool("_use_fsevents_exclusions", true)) {
     CFMutableArrayRef ignarray;
-    size_t i, nitems = std::min(root->ignore.dirs_vec.size(), MAX_EXCLUSIONS);
+    size_t nitems = std::min(root->ignore.dirs_vec.size(), MAX_EXCLUSIONS);
+    size_t appended = 0;
 
     ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
@@ -411,8 +383,14 @@ static fse_stream* fse_stream_make(
       goto fail;
     }
 
-    for (i = 0; i < nitems; ++i) {
-      const auto& path = root->ignore.dirs_vec[i];
+    for (const auto& path : root->ignore.dirs_vec) {
+      if (const auto& subdir = watcher->subdir) {
+        if (!w_string_startswith(path, *subdir)) {
+          continue;
+        }
+        logf(DBG, "Adding exclusion: {} for subdir: {}\n", path, *subdir);
+      }
+
       CFStringRef ignpath;
 
       ignpath = CFStringCreateWithBytes(
@@ -431,13 +409,20 @@ static fse_stream* fse_stream_make(
 
       CFArrayAppendValue(ignarray, ignpath);
       CFRelease(ignpath);
+
+      appended++;
+      if (appended == nitems) {
+        break;
+      }
     }
 
-    if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
-      failure_reason =
-          w_string("FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
-      CFRelease(ignarray);
-      goto fail;
+    if (appended != 0) {
+      if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
+        failure_reason =
+            w_string("FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
+        CFRelease(ignarray);
+        goto fail;
+      }
     }
 
     CFRelease(ignarray);
@@ -490,7 +475,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
     }
 
     stream = fse_stream_make(
-        root, kFSEventStreamEventIdSinceNow, root->failure_reason);
+        root, this, kFSEventStreamEventIdSinceNow, root->failure_reason);
     if (!stream) {
       goto done;
     }
@@ -523,6 +508,18 @@ done:
   logf(DBG, "fse_thread done\n");
 }
 
+namespace {
+bool isRootRemoved(
+    const w_string& path,
+    const w_string& root_path,
+    const std::optional<w_string>& subdir) {
+  if (subdir) {
+    return path == *subdir;
+  }
+  return path == root_path;
+}
+} // namespace
+
 Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
@@ -549,14 +546,19 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
           item.flags,
           flags_label);
 
-      if (item.flags & kFSEventStreamEventFlagUserDropped) {
-        root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
-        break;
-      }
-
-      if (item.flags & kFSEventStreamEventFlagKernelDropped) {
-        root->scheduleRecrawl("kFSEventStreamEventFlagKernelDropped");
-        break;
+      if (item.flags &
+          (kFSEventStreamEventFlagUserDropped |
+           kFSEventStreamEventFlagKernelDropped)) {
+        if (!subdir) {
+          root->scheduleRecrawl(flags_label);
+          break;
+        } else {
+          w_assert(
+              item.flags & kFSEventStreamEventFlagMustScanSubDirs,
+              "dropped events should specify kFSEventStreamEventFlagMustScanSubDirs");
+          auto reason = fmt::format("{}: {}", *subdir, flags_label);
+          root->recrawlTriggered(reason.c_str());
+        }
       }
 
       if (item.flags & kFSEventStreamEventFlagUnmount) {
@@ -569,7 +571,7 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
       }
 
       if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
-          item.path == root->root_path) {
+          isRootRemoved(item.path, root->root_path, subdir)) {
         log(ERR, "Root directory removed, cancel watch\n");
         cancelSelf = true;
         break;
@@ -608,16 +610,20 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
   return {!items.empty(), cancelSelf};
 }
 
-FSEventsWatcher::FSEventsWatcher(bool hasFileWatching)
+FSEventsWatcher::FSEventsWatcher(
+    bool hasFileWatching,
+    std::optional<w_string> dir)
     : Watcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
           hasFileWatching
               ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
               : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
-      has_file_watching(hasFileWatching) {}
+      has_file_watching(hasFileWatching),
+      subdir(std::move(dir)) {}
 
-FSEventsWatcher::FSEventsWatcher(w_root_t* root)
-    : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true)) {}
+FSEventsWatcher::FSEventsWatcher(w_root_t* root, std::optional<w_string> dir)
+    : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true), dir) {
+}
 
 void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);
@@ -636,9 +642,9 @@ bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
         self->FSEventsThread(root);
       } catch (const std::exception& e) {
         watchman::log(watchman::ERR, "uncaught exception: ", e.what());
-        // TODO(xavierd): For nested watch, make sure to not invalidate the
-        // entire root.
-        root->cancel();
+        if (!self->subdir) {
+          root->cancel();
+        }
       }
 
       // Ensure that we signal the condition variable before we
@@ -725,6 +731,8 @@ W_CMD_REG(
     cmd_debug_fsevents_inject_drop,
     CMD_DAEMON,
     w_cmd_realpath_root)
+
+} // namespace watchman
 
 #endif // HAVE_FSEVENTS
 

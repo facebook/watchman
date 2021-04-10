@@ -11,6 +11,13 @@ std::shared_ptr<watchman::QueryableView> watchman_root::view() {
   return inner.view_;
 }
 
+void watchman_root::recrawlTriggered(const char* why) {
+  recrawlInfo.wlock()->recrawlCount++;
+
+  watchman::log(
+      watchman::ERR, root_path, ": ", why, ": tree recrawl triggered\n");
+}
+
 void watchman_root::scheduleRecrawl(const char* why) {
   {
     auto info = recrawlInfo.wlock();

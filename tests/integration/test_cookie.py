@@ -45,7 +45,7 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
         root = self.mkdtemp()
         cookie_dir = os.path.join(root, ".git")
         os.mkdir(cookie_dir)
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
 
         host = socket.gethostname()
         pid = self.watchmanCommand("get-pid")["pid"]
@@ -57,10 +57,6 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(root, ".git/.watchman-cookie-%s-%d-1000000" % (host, pid))
 
         cookies = [
-            # Same process, different watch root
-            "foo/.watchman-cookie-%s-%d-100000" % (host, pid),
-            # Same process, root dir instead of VCS dir
-            ".watchman-cookie-%s-%d-100000" % (host, pid),
             # Different process, same watch root
             ".git/.watchman-cookie-%s-1-100000" % host,
             # Different process, root dir instead of VCS dir
@@ -68,6 +64,17 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
             # Different process, different watch root
             "foo/.watchman-cookie-%s-1-100000" % host,
         ]
+
+        if watch["watcher"] != "kqueue+fsevents":
+            # With the split watch, a cookie is written in all top-level
+            # directories and at the root, therefore the following 2 cookies
+            # are expected to not be present in watchman's queries output as
+            # they are genuine cookies.
+
+            # Same process, different watch root
+            cookies.append("foo/.watchman-cookie-%s-%d-100000" % (host, pid))
+            # Same process, root dir instead of VCS dir
+            cookies.append(".watchman-cookie-%s-%d-100000" % (host, pid))
 
         for cookie in cookies:
             self.touchRelative(root, cookie)

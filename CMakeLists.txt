@@ -686,6 +686,7 @@ watcher/fsevents.cpp
 watcher/inotify.cpp
 watcher/kqueue.cpp
 watcher/portfs.cpp
+watcher/kqueue_and_fsevents.cpp
 )
 
 if (ENABLE_EDEN_SUPPORT)

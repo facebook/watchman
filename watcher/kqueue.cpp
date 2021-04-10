@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "kqueue.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <array>
@@ -14,9 +15,9 @@
 #define O_EVTONLY O_RDONLY
 #endif
 
-using namespace watchman;
-using watchman::FileDescriptor;
-using watchman::Pipe;
+namespace watchman {
+
+namespace {
 
 enum KQueueUdata {
   IS_DIR = 1,
@@ -34,40 +35,7 @@ void* make_udata(bool is_dir) {
   }
 }
 
-struct KQueueWatcher : public Watcher {
-  FileDescriptor kq_fd;
-  Pipe terminatePipe_;
-
-  struct maps {
-    std::unordered_map<w_string, FileDescriptor> name_to_fd;
-    /* map of active watch descriptor to name of the corresponding item */
-    std::unordered_map<int, w_string> fd_to_name;
-
-    explicit maps(json_int_t sizeHint) {
-      name_to_fd.reserve(sizeHint);
-      fd_to_name.reserve(sizeHint);
-    }
-  };
-  folly::Synchronized<maps> maps_;
-
-  struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
-
-  explicit KQueueWatcher(w_root_t* root);
-
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
-      struct watchman_dir* dir,
-      const char* path) override;
-
-  bool startWatchFile(struct watchman_file* file) override;
-
-  Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
-      PendingCollection::LockedPtr& coll) override;
-
-  bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
-};
+} // namespace
 
 static const struct flag_map kflags[] = {
     {NOTE_DELETE, "NOTE_DELETE"},
@@ -80,9 +48,10 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-KQueueWatcher::KQueueWatcher(w_root_t* root)
+KQueueWatcher::KQueueWatcher(w_root_t* root, bool recursive)
     : Watcher("kqueue", 0),
-      maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))) {
+      maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
+      recursive_(recursive) {
   kq_fd = FileDescriptor(kqueue(), "kqueue", FileDescriptor::FDType::Generic);
   kq_fd.setCloExec();
 }
@@ -121,6 +90,24 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
     return false;
   }
 
+  // When not recursive, watchman is watching the top-level directories as
+  // files, make sure that we properly mark these as directory watches.
+  bool isDir = false;
+  if (!recursive_) {
+    struct stat st;
+    if (fstat(rawFd, &st) == -1) {
+      watchman::log(
+          watchman::ERR,
+          "failed to stat ",
+          full_name,
+          ": ",
+          folly::errnoStr(errno),
+          "\n");
+      return false;
+    }
+    isDir = S_ISDIR(st.st_mode);
+  }
+
   memset(&k, 0, sizeof(k));
   EV_SET(
       &k,
@@ -129,7 +116,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
       EV_ADD | EV_CLEAR,
       NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME | NOTE_ATTRIB,
       0,
-      make_udata(false));
+      make_udata(isDir));
 
   {
     auto wlock = maps_.wlock();
@@ -330,6 +317,8 @@ void KQueueWatcher::signalThreads() {
 static RegisterWatcher<KQueueWatcher> reg(
     "kqueue",
     -1 /* last resort on macOS */);
+
+} // namespace watchman
 
 #endif // HAVE_KQUEUE
 

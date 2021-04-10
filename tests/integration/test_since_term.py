@@ -20,7 +20,7 @@ class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
         os.mkdir(os.path.join(root, "subdir"))
         self.touchRelative(root, "subdir", "bar.txt")
 
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
 
         res = self.watchmanCommand("find", root, "foo.c")
         first_clock = res["clock"]
@@ -67,7 +67,12 @@ class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand(
             "query", root, {"expression": ["since", first_clock], "fields": ["name"]}
         )
-        self.assertFileListsEqual(res["files"], [])
+        expected = []
+        if watch["watcher"] == "kqueue+fsevents":
+            # A cookie is written to subdir in the split watcher, thus it is
+            # expected to have it in the files returned by the query.
+            expected.append("subdir")
+        self.assertFileListsEqual(res["files"], expected)
 
         future = base_mtime + 15
         self.touch(os.path.join(root, "foo.c"), (future, future))
@@ -76,7 +81,7 @@ class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand(
             "query", root, {"expression": ["since", first_clock], "fields": ["name"]}
         )
-        self.assertFileListsEqual(res["files"], ["foo.c"])
+        self.assertFileListsEqual(res["files"], ["foo.c"] + expected)
 
         # And check that we're still later than a later but not current mtime
         res = self.watchmanCommand(

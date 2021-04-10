@@ -24,7 +24,12 @@ class TestFSEventsResync(WatchmanTestCase.WatchmanTestCase):
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
             f.write(json.dumps({"fsevents_try_resync": True}))
 
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
+
+        # On macOS, we may not always use fsevents
+        if watch["watcher"] != "fsevents":
+            return
+
         self.touchRelative(root, "111")
         self.assertFileList(root, [".watchmanconfig", "111"])
 

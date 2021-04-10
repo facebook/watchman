@@ -85,7 +85,7 @@ o  changeset:   0:b08db10380dd
         self.hg(["addremove"], cwd=root)
         self.hg(["commit", "-m", "add m2"], cwd=root)
 
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
 
         res = self.watchmanCommand(
             "query",
@@ -285,7 +285,15 @@ o  changeset:   0:b08db10380dd
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         dat = self.getSubFatClocksOnly("scmsub", root=root)
         self.assertEqual(dat[-1]["clock"]["scm"], res["clock"]["scm"])
-        self.assertFileListsEqual(res["files"], self.getConsolidatedFileList(dat))
+        additionalFiles = []
+        if watch["watcher"] == "kqueue+fsevents":
+            # Cookies are written to all the top level directories, thus the
+            # set of files will also include the top level directory, even
+            # though no files changed in it.
+            additionalFiles.append("a")
+        self.assertFileListsEqual(
+            res["files"] + additionalFiles, self.getConsolidatedFileList(dat)
+        )
 
         # and to check whether our dirstate caching code is reasonable,
         # run a query that should be able to hit the cache

@@ -18,7 +18,7 @@ class TestBSDish(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(root, "lower", "file")
         self.touchRelative(root, "top")
 
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
 
         self.assertFileList(root, ["lower", "lower/file", "top"])
 
@@ -28,7 +28,9 @@ class TestBSDish(WatchmanTestCase.WatchmanTestCase):
         since = self.watchmanCommand("since", root, clock)
         clock = since["clock"]
 
-        since = self.watchmanCommand("since", root, clock)
+        since = self.watchmanCommand(
+            "query", root, {"expression": ["allof", ["since", clock], ["type", "f"]]}
+        )
         self.assertFileListsEqual([], since["files"])
         clock = since["clock"]
 
@@ -36,6 +38,16 @@ class TestBSDish(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, ["lower", "lower/file"])
 
         now = self.watchmanCommand("since", root, clock)
-        self.assertEqual(1, len(now["files"]))
-        self.assertFileListsEqual(["top"], [now["files"][0]["name"]])
-        self.assertFalse(now["files"][0]["exists"])
+        expected = ["top"]
+        if watch["watcher"] == "kqueue+fsevents":
+            # For the split watch, a cookie is being written to each top level
+            # directory, and thus the "lower" directory will be reported as
+            # having been changed.
+            expected.append("lower")
+        self.assertEqual(len(expected), len(now["files"]))
+        self.assertFileListsEqual(
+            expected, list(map(lambda x: x["name"], now["files"]))
+        )
+        for f in now["files"]:
+            if f["name"] == "top":
+                self.assertFalse(f["exists"])

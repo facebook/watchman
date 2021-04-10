@@ -150,6 +150,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   void performAgeOut(std::chrono::seconds min_age);
   void syncToNow(std::chrono::milliseconds timeout);
   void scheduleRecrawl(const char* why);
+  void recrawlTriggered(const char* why);
 
   // Requests cancellation of the root.
   // Returns true if this request caused the root cancellation, false
