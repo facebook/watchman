@@ -150,5 +150,9 @@ bool Watcher::start(const std::shared_ptr<w_root_t>&) {
 
 void Watcher::signalThreads() {}
 
+json_ref Watcher::getDebugInfo() {
+  return json_null();
+}
+
 /* vim:ts=2:sw=2:et:
  */

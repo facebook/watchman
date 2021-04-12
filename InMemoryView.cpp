@@ -732,12 +732,16 @@ bool InMemoryView::doAnyOfTheseFilesExist(
   return false;
 }
 
+const w_string& InMemoryView::getName() const {
+  return watcher_->name;
+}
+
 const std::shared_ptr<Watcher>& InMemoryView::getWatcher() const {
   return watcher_;
 }
 
-const w_string& InMemoryView::getName() const {
-  return watcher_->name;
+json_ref InMemoryView::getWatcherDebugInfo() const {
+  return watcher_->getDebugInfo();
 }
 
 SCM* InMemoryView::getSCM() const {

@@ -257,5 +257,17 @@ W_CMD_REG(
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
     NULL)
 
+static void cmd_debug_watcher_info(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
+  auto client = (watchman_user_client*)clientbase;
+
+  auto root = resolveRoot(client, args);
+  auto response = make_response();
+  response.set("watcher-debug-info", root->view()->getWatcherDebugInfo());
+  send_and_dispose_response(client, std::move(response));
+}
+W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
+
 /* vim:ts=2:sw=2:et:
  */

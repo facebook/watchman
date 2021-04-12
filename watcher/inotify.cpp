@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/experimental/LockFreeRingBuffer.h>
+#include <atomic>
 #include "FileDescriptor.h"
 #include "InMemoryView.h"
 #include "Pipe.h"
@@ -29,7 +31,9 @@ using watchman::Pipe;
       IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO | IN_DONT_FOLLOW | \
       IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
-static const struct flag_map inflags[] = {
+namespace {
+
+const struct flag_map inflags[] = {
     {IN_ACCESS, "IN_ACCESS"},
     {IN_MODIFY, "IN_MODIFY"},
     {IN_ATTRIB, "IN_ATTRIB"},
@@ -57,10 +61,87 @@ struct pending_move {
       : created(created), name(name) {}
 };
 
+/**
+ * Memory-efficient records for debugging inotify events after the fact.
+ */
+struct InotifyLogEntry {
+  // 52 should cover many filenames.
+  static constexpr size_t kNameLength = 52;
+
+  InotifyLogEntry() = default;
+
+  explicit InotifyLogEntry(inotify_event* evt) noexcept {
+    wd = evt->wd;
+    mask = evt->mask;
+    cookie = evt->cookie;
+
+    // If evt->len is nonzero, evt->name is a null-terminated string.
+    bool has_name = evt->len > 0;
+    if (has_name) {
+      size_t namelen = strlen(evt->name);
+      if (namelen > kNameLength) {
+        memcpy(name, evt->name, kNameLength - 3);
+        name[kNameLength - 3] = '.';
+        name[kNameLength - 2] = '.';
+        name[kNameLength - 1] = '.';
+      } else {
+        memcpy(name, evt->name, namelen);
+        if (namelen < kNameLength) {
+          name[namelen] = 0;
+        }
+      }
+    } else {
+      name[0] = 0;
+    }
+  }
+
+  json_ref asJsonValue() {
+    size_t length = strnlen(name, kNameLength);
+    auto namePiece = w_string_piece{name, length};
+
+    return json_object({
+        {"wd", json_integer(wd)},
+        {"mask", json_integer(mask)},
+        {"cookie", json_integer(cookie)},
+        {"name", typed_string_to_json(namePiece.asWString())},
+    });
+  }
+
+  w_string_piece namePiece() const {
+    size_t length = strnlen(name, kNameLength);
+    return w_string_piece{name, length};
+  }
+
+  int wd;
+  uint32_t mask;
+  uint32_t cookie;
+  // Will end with ... if truncated. May not be null-terminated.
+  char name[kNameLength];
+};
+static_assert(64 == sizeof(InotifyLogEntry));
+
+} // namespace
+
 struct InotifyWatcher : public Watcher {
   /* we use one inotify instance per watched root dir */
   FileDescriptor infd;
   Pipe terminatePipe_;
+
+  /**
+   * If not null, holds a fixed-size ring of the last `inotify_ring_log_size`
+   * inotify events.
+   */
+  std::unique_ptr<folly::LockFreeRingBuffer<InotifyLogEntry>> ringBuffer_;
+
+  /**
+   * Incremented by consumeNotify, which only runs on one thread.
+   */
+  uint64_t totalEventsSeen_ = 0;
+
+  /**
+   * Published from consumeNotify so getDebugInfo can read a recent value.
+   */
+  std::atomic<uint64_t> totalEventsSeenAtomic_ = 0;
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
@@ -99,6 +180,8 @@ struct InotifyWatcher : public Watcher {
       struct timeval now);
 
   void signalThreads() override;
+
+  json_ref getDebugInfo() override;
 };
 
 InotifyWatcher::InotifyWatcher(w_root_t* root)
@@ -118,6 +201,13 @@ InotifyWatcher::InotifyWatcher(w_root_t* root)
     auto wlock = maps.wlock();
     wlock->wd_to_name.reserve(
         root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
+  }
+
+  json_int_t inotify_ring_log_size =
+      root->config.getInt("inotify_ring_log_size", 0);
+  if (inotify_ring_log_size) {
+    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<InotifyLogEntry>>(
+        inotify_ring_log_size);
   }
 }
 
@@ -164,6 +254,10 @@ bool InotifyWatcher::process_inotify_event(
       ine->mask,
       flags_label,
       ine->len > 0 ? ine->name : "");
+
+  if (ringBuffer_) {
+    ringBuffer_->write(InotifyLogEntry{ine});
+  }
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */
@@ -332,7 +426,11 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     ine = (struct inotify_event*)iptr;
 
     cancel |= process_inotify_event(root, coll, ine, now);
+    ++totalEventsSeen_;
   }
+
+  // Relaxed because we don't really care exactly when the value is visible.
+  totalEventsSeenAtomic_.store(totalEventsSeen_, std::memory_order_relaxed);
 
   // It is possible that we can accumulate a set of pending_move
   // structs in move_map.  This happens when a directory is moved
@@ -384,6 +482,34 @@ bool InotifyWatcher::waitNotify(int timeoutms) {
 
 void InotifyWatcher::signalThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
+}
+
+json_ref InotifyWatcher::getDebugInfo() {
+  json_ref events = json_null();
+  if (ringBuffer_) {
+    std::vector<InotifyLogEntry> entries;
+
+    auto head = ringBuffer_->currentHead();
+    if (head.moveBackward()) {
+      InotifyLogEntry entry;
+      while (ringBuffer_->tryRead(entry, head)) {
+        entries.push_back(std::move(entry));
+        if (!head.moveBackward()) {
+          break;
+        }
+      }
+    }
+    std::reverse(entries.begin(), entries.end());
+
+    events = json_array();
+    for (auto& entry : entries) {
+      json_array_append(events, entry.asJsonValue());
+    }
+  }
+  return json_object({
+      {"events", events},
+      {"total_event_count", json_integer(totalEventsSeenAtomic_.load())},
+  });
 }
 
 namespace {

@@ -56,7 +56,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual void wakeThreads();
 
   virtual const w_string& getName() const = 0;
-
+  virtual json_ref getWatcherDebugInfo() const = 0;
   virtual std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& root) = 0;
 

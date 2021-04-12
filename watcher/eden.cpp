@@ -1116,6 +1116,10 @@ class EdenView : public QueryableView {
     subscriberEventBase_.terminateLoopSoon();
   }
 
+  json_ref getWatcherDebugInfo() const override {
+    return json_null();
+  }
+
   // Called by the subscriberThread to scan for cookie file creation
   // events.  These are used to manage sequencing for state-enter and
   // state-leave in eden.

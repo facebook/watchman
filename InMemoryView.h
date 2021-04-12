@@ -102,6 +102,7 @@ struct InMemoryView : public QueryableView {
 
   const w_string& getName() const override;
   const std::shared_ptr<Watcher>& getWatcher() const;
+  json_ref getWatcherDebugInfo() const override;
 
   // If content cache warming is configured, do the warm up now
   void warmContentCache();

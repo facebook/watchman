@@ -66,6 +66,12 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Wait for an inotify event to become available
   virtual bool waitNotify(int timeoutms) = 0;
+
+  /**
+   * Returns a JSON value containing this watcher's debug state. Intended for
+   * inclusion in diagnostics.
+   */
+  virtual json_ref getDebugInfo();
 };
 
 /** Maintains the list of available watchers.
