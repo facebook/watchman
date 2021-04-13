@@ -39,31 +39,41 @@ void cfg_load_global_config_file() {
     return;
   }
 
+  std::string cfg_file_default = std::string{cfg_file} + ".default";
+  const char* current_cfg_file;
+
   json_ref config;
   try {
-    config = json_load_file(cfg_file, 0);
-  } catch (const std::system_error& exc) {
-    if (exc.code() == watchman::error_code::no_such_file_or_directory) {
-      return;
+    try {
+      current_cfg_file = cfg_file;
+      config = json_load_file(current_cfg_file, 0);
+    } catch (const std::system_error& exc) {
+      if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+        current_cfg_file = cfg_file_default.c_str();
+        config = json_load_file(current_cfg_file, 0);
+      } else {
+        throw;
+      }
     }
+  } catch (const std::system_error& exc) {
     logf(
         ERR,
         "Failed to load config file {}: {}\n",
-        cfg_file,
+        current_cfg_file,
         folly::exceptionStr(exc).toStdString());
     return;
   } catch (const std::exception& exc) {
     logf(
         ERR,
         "Failed to parse config file {}: {}\n",
-        cfg_file,
+        current_cfg_file,
         folly::exceptionStr(exc).toStdString());
     return;
   }
 
   auto lockedState = configState.wlock();
   lockedState->global_cfg = config;
-  lockedState->global_config_file_path = cfg_file;
+  lockedState->global_config_file_path = current_cfg_file;
 }
 
 void cfg_set_arg(const char* name, const json_ref& val) {

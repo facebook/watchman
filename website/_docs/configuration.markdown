@@ -23,6 +23,11 @@ that your particular installation may locate it elsewhere.   In addition,
 the environmental variable `$WATCHMAN_CONFIG_FILE` will override the
 default location.
 
+If the global configuration file does not exist, Watchman will fall back
+on that path with ".default" appended (e.g. /etc/watchman.json.default).
+This allows the Watchman system package to provide different configuration
+defaults, like setting enforce_root_files to true.
+
 Changes to the `.watchmanconfig` or `/etc/watchman.json` files are not picked
 up automatically; you will need to remove and re-add the watch (for
 `.watchmanconfig`) or restart watchman (for `/etc/watchman.json`) for those
