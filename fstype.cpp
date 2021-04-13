@@ -55,6 +55,16 @@ w_string find_fstype_in_linux_proc_mounts(
             // and device "edenfs", so we take the device node
             // as the filesystem type
             bestVfsType = device;
+          } else if (vfstype == "nfs") {
+            // similar to fuse edenfs will register itself under the
+            // device name. In general, we don't want watchman to be used
+            // over nfs, so in all cases except eden we still use "nfs"
+            // as the type.
+            if (is_edenfs_fs_type(device)) {
+              bestVfsType = device;
+            } else {
+              bestVfsType = vfstype;
+            }
           } else {
             // Most other fuse filesystems use libfuse which registers
             // with fstype names like "fuse.something", or we're working
