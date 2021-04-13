@@ -83,6 +83,13 @@ w_string find_fstype_in_linux_proc_mounts(
   return w_string(bestVfsType.data(), bestVfsType.size());
 }
 
+w_string w_fstype_detect_macos_nfs(w_string fstype, w_string edenfs_indicator) {
+  if (fstype == "nfs" && is_edenfs_fs_type(edenfs_indicator)) {
+    return edenfs_indicator;
+  }
+  return fstype;
+}
+
 // The primary purpose of checking the filesystem type is to prevent
 // watching filesystems that are known to be problematic, such as
 // network or remote mounted filesystems.  As such, we don't strictly
@@ -139,6 +146,8 @@ w_string w_fstype(const char* path) {
 
   return w_string(name, W_STRING_UNICODE);
 #elif STATVFS_HAS_FSTYPE_AS_STRING
+  // if this is going to be used on macos this needs
+  // to detect edenfs with w_fstype_detect_macos_nfs
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
@@ -153,7 +162,9 @@ w_string w_fstype(const char* path) {
   struct statfs sfs;
 
   if (statfs(path, &sfs) == 0) {
-    return w_string(sfs.f_fstypename, W_STRING_UNICODE);
+    auto fstype = w_string(sfs.f_fstypename, W_STRING_UNICODE);
+    auto edenfs_indicator = w_string(sfs.f_mntfromname, W_STRING_UNICODE);
+    return w_fstype_detect_macos_nfs(fstype, edenfs_indicator);
   }
 #endif
 #ifdef _WIN32
