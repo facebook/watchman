@@ -144,7 +144,7 @@ define_field!(
     /// The field corresponding to the `size` field.
     /// This represents the size of the file in bytes.
     SizeField,
-    usize,
+    u64,
     "size"
 );
 
