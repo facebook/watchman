@@ -87,19 +87,19 @@ pub enum Error {
 
     #[error("{source} (data: {data:x?})")]
     Deserialize {
-        source: Box<dyn std::error::Error + Send>,
+        source: Box<dyn std::error::Error + Send + 'static>,
         data: Vec<u8>,
     },
 
     #[error("{source}")]
     Serialize {
-        source: Box<dyn std::error::Error + Send>,
+        source: Box<dyn std::error::Error + Send + 'static>,
     },
 
     #[error("while attempting to connect to {endpoint}: {source}")]
     Connect {
         endpoint: PathBuf,
-        source: Box<dyn std::error::Error + Send>,
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
 
     #[error("{0}")]
