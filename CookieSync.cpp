@@ -164,11 +164,12 @@ void CookieSync::abortAllCookies() {
   }
 
   for (const auto& [path, cookie] : cookies) {
+    log(ERR, "syncToNow: aborting cookie ", path, "\n");
+    unlink(path.c_str());
+
     if (cookie->numPending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      log(ERR, "syncToNow: aborting cookie ", path, "\n");
       cookie->promise.setException(
           folly::make_exception_wrapper<CookieSyncAborted>());
-      unlink(path.c_str());
     }
   }
 }
