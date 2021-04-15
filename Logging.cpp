@@ -117,8 +117,19 @@ char* Log::currentTimeString(char* buf, size_t bufsize) {
   return timeString(buf, bufsize, tv);
 }
 
+namespace {
+// The C++ standard does not require that globals are all initialized on the
+// same thread, but that's a safe assumption in practice.
+std::thread::id mainThreadId = std::this_thread::get_id();
+} // namespace
+
 const char* Log::setThreadName(std::string&& name) {
-  folly::setThreadName(name);
+  if (mainThreadId != std::this_thread::get_id()) {
+    // pthread_setname_np on the main thread sets the name of the watchman
+    // process, preventing `pkill watchman` from crashing. We still want to set
+    // our local thread name for the purposes of Watchman's log messages.
+    folly::setThreadName(name);
+  }
   threadName->assign(name);
   return threadName->value().c_str();
 }
