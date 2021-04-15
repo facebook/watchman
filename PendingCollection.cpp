@@ -113,7 +113,7 @@ void PendingCollection::ping() {
 // We use this kid_context state to pass down the required information
 // to the iterator callback so that we adjust the overall state correctly.
 
-PendingCollectionBase::iterContext::iterContext(
+PendingCollectionBase::IterContext::IterContext(
     const w_string& root,
     PendingCollectionBase& coll)
     : root(root), coll(coll) {}
@@ -122,7 +122,7 @@ PendingCollectionBase::iterContext::iterContext(
 // We need to compare the prefix to make sure that we don't delete
 // a sibling node by mistake (see commentary on the is_path_prefix
 // function for more on that).
-int PendingCollectionBase::iterContext::operator()(
+int PendingCollectionBase::IterContext::operator()(
     const w_string& key,
     std::shared_ptr<watchman_pending_fs>& p) {
   if (!p) {
@@ -166,7 +166,7 @@ void PendingCollectionBase::maybePruneObsoletedChildren(
     int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
-    iterContext ctx{path, *this};
+    IterContext ctx{path, *this};
     uint32_t pruned = 0;
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no

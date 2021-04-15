@@ -15,14 +15,12 @@
 struct watchman_file;
 struct watchman_dir;
 struct watchman_root;
-struct watchman_pending_fs;
 struct watchman_trigger_command;
 typedef struct watchman_root w_root_t;
 
 #include "watchman_dir.h"
 #include "watchman_file.h"
 #include "watchman_opendir.h"
-#include "watchman_pending.h"
 #include "watchman_watcher.h"
 
 #define WATCHMAN_IO_BUF_SIZE 1048576

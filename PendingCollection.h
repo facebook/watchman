@@ -56,7 +56,7 @@ struct PendingCollectionBase {
   art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
   std::shared_ptr<watchman_pending_fs> pending_;
 
-  struct iterContext {
+  struct IterContext {
     const w_string& root;
     PendingCollectionBase& coll;
 
@@ -64,7 +64,7 @@ struct PendingCollectionBase {
         const w_string& key,
         std::shared_ptr<watchman_pending_fs>& p);
 
-    iterContext(const w_string& root, PendingCollectionBase& coll);
+    IterContext(const w_string& root, PendingCollectionBase& coll);
   };
   friend struct iterContext;
 

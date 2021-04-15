@@ -537,6 +537,7 @@ list(APPEND testsupport_sources
 ChildProcess.cpp
 FileDescriptor.cpp
 FileInformation.cpp
+PendingCollection.cpp
 Pipe.cpp
 ThreadPool.cpp
 bser.cpp
@@ -544,7 +545,6 @@ cfg.cpp
 expflags.cpp
 ignore.cpp
 opendir.cpp
-pending.cpp
 time.cpp
 stream.cpp
 stream_unix.cpp
@@ -599,6 +599,7 @@ FileDescriptor.cpp
 FileInformation.cpp
 InMemoryView.cpp
 LocalFileResult.cpp
+PendingCollection.cpp
 Pipe.cpp
 ProcessLock.cpp
 # PubSub.cpp  (in liblog)
@@ -623,7 +624,6 @@ listener.cpp
 main.cpp
 opendir.cpp
 opt.cpp
-pending.cpp
 perf.cpp
 sockname.cpp
 spawn.cpp

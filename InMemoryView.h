@@ -10,11 +10,11 @@
 #include <utility>
 #include "ContentHash.h"
 #include "CookieSync.h"
+#include "PendingCollection.h"
 #include "QueryableView.h"
 #include "SymlinkTargets.h"
 #include "watchman_config.h"
 #include "watchman_opendir.h"
-#include "watchman_pending.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
 

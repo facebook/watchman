@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <stdexcept>
+#include "PendingCollection.h"
 #include "watchman_opendir.h"
 
 namespace watchman {
