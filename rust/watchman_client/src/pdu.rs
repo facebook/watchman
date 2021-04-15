@@ -31,6 +31,26 @@ pub struct ClockRequestParams {
     pub sync_timeout: SyncTimeout,
 }
 
+/// The `get-config` command request
+#[derive(Serialize, Debug)]
+pub struct GetConfigRequest(pub &'static str, pub PathBuf);
+
+/// An incomplete, but typed, representation of the Watchman config file,
+/// which usually lives in /etc/watchman.json. Add new fields as they're
+/// needed, and it might be worth someday exposing the serde_bser::Value
+/// directly so callers can parse it however they want.
+#[derive(Deserialize, Debug)]
+pub struct WatchmanConfig {
+    pub ignore_dirs: Option<Vec<PathBuf>>,
+}
+
+/// The `get-config` command response
+#[derive(Deserialize, Debug)]
+pub struct GetConfigResponse {
+    pub version: String,
+    pub config: WatchmanConfig,
+}
+
 /// The `watch-project` command request.
 /// You should use `Client::resolve_root` rather than directly
 /// constructing this type.

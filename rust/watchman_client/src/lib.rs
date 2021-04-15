@@ -1007,6 +1007,14 @@ impl Client {
             .await?;
         Ok(response.clock)
     }
+
+    /// Returns the current configuration for a watched root.
+    pub async fn get_config(&self, root: &ResolvedRoot) -> Result<WatchmanConfig, Error> {
+        let response: GetConfigResponse = self
+            .generic_request(GetConfigRequest("get-config", root.root.clone()))
+            .await?;
+        Ok(response.config)
+    }
 }
 
 #[cfg(test)]
