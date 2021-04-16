@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use structopt::{clap::AppSettings, StructOpt};
 
 mod audit;
@@ -27,7 +29,7 @@ impl TopLevelSubcommand {
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
     let cmd = MainCommand::from_args();
     match cmd.subcommand.run().await {

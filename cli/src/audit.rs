@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 use structopt::StructOpt;
 use walkdir::WalkDir;
@@ -29,9 +30,11 @@ query_result_type! {
 impl AuditCmd {
     pub(crate) async fn run(&self) -> crate::Result<()> {
         let client = Connector::new().connect().await?;
-        let resolved = client
-            .resolve_root(CanonicalPath::canonicalize(&self.path)?)
-            .await?;
+        let resolved = Arc::new(
+            client
+                .resolve_root(CanonicalPath::canonicalize(&self.path)?)
+                .await?,
+        );
 
         if resolved.watcher() == "eden" {
             return Err(watchman_client::Error::Generic(format!(
@@ -48,70 +51,76 @@ impl AuditCmd {
         ignore_dirs.push(".git".into());
         ignore_dirs.push(".svn".into());
 
-        let mut filesystem_state: HashMap<PathBuf, std::fs::Metadata> = HashMap::new();
+        let filesystem_state_handle = {
+            let resolved = resolved.clone();
+            tokio::spawn(async move {
+                let mut filesystem_state: HashMap<PathBuf, std::fs::Metadata> = HashMap::new();
 
-        let start_crawl = Instant::now();
+                let start_crawl = Instant::now();
 
-        // Allocate outside the loop to save time.
-        let resolved_path = resolved.path();
+                // Allocate outside the loop to save time.
+                let resolved_path = resolved.path();
 
-        for entry in WalkDir::new(&resolved_path)
-            .into_iter()
-            .filter_entry(|entry| {
-                // It sucks we have to do this here and in the loop body below. It would be nice if traversal and filtering were folded into the same callback.
-                let from_root = match entry.path().strip_prefix(&resolved_path) {
-                    Ok(from_root) => from_root,
-                    Err(_) => return true,
-                };
-                let join_storage;
-                let path_from_root = match resolved.project_relative_path() {
-                    Some(relpath) => {
-                        join_storage = relpath.join(&from_root);
-                        join_storage.as_ref()
-                    }
-                    None => from_root,
-                };
-                !ignore_dirs.iter().any(|i| i == path_from_root)
+                for entry in WalkDir::new(&resolved_path)
+                    .into_iter()
+                    .filter_entry(|entry| {
+                        // It sucks we have to do this here and in the loop body below. It would be nice if traversal and filtering were folded into the same callback.
+                        let from_root = match entry.path().strip_prefix(&resolved_path) {
+                            Ok(from_root) => from_root,
+                            Err(_) => return true,
+                        };
+                        let join_storage;
+                        let path_from_root = match resolved.project_relative_path() {
+                            Some(relpath) => {
+                                join_storage = relpath.join(&from_root);
+                                join_storage.as_ref()
+                            }
+                            None => from_root,
+                        };
+                        !ignore_dirs.iter().any(|i| i == path_from_root)
+                    })
+                {
+                    let entry = match entry {
+                        Ok(entry) => entry,
+                        Err(err) => {
+                            eprintln!("error while traversing directory: {}", err);
+                            continue;
+                        }
+                    };
+
+                    let relpath = match entry.path().strip_prefix(&resolved_path) {
+                        Ok(relpath) => relpath,
+                        Err(err) => {
+                            eprintln!(
+                                "unable to form relative path from {} to {}: {}",
+                                resolved_path.display(),
+                                entry.path().display(),
+                                err
+                            );
+                            continue;
+                        }
+                    };
+
+                    let metadata = match entry.metadata() {
+                        Ok(metadata) => metadata,
+                        Err(err) => {
+                            eprintln!(
+                                "error fetching metadata for {}: {}",
+                                entry.path().display(),
+                                err
+                            );
+                            continue;
+                        }
+                    };
+                    filesystem_state.insert(relpath.to_path_buf(), metadata);
+                }
+                // Watchman doesn't return information about the root, so remove it here.
+                filesystem_state.remove(&PathBuf::new());
+                eprintln!("Crawled filesystem in {:#?}", start_crawl.elapsed());
+
+                filesystem_state
             })
-        {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(err) => {
-                    eprintln!("error while traversing directory: {}", err);
-                    continue;
-                }
-            };
-
-            let relpath = match entry.path().strip_prefix(&resolved_path) {
-                Ok(relpath) => relpath,
-                Err(err) => {
-                    eprintln!(
-                        "unable to form relative path from {} to {}: {}",
-                        resolved_path.display(),
-                        entry.path().display(),
-                        err
-                    );
-                    continue;
-                }
-            };
-
-            let metadata = match entry.metadata() {
-                Ok(metadata) => metadata,
-                Err(err) => {
-                    eprintln!(
-                        "error fetching metadata for {}: {}",
-                        entry.path().display(),
-                        err
-                    );
-                    continue;
-                }
-            };
-            filesystem_state.insert(relpath.to_path_buf(), metadata);
-        }
-        // Watchman doesn't return information about the root, so remove it here.
-        filesystem_state.remove(&PathBuf::new());
-
-        eprintln!("Crawled filesystem in {:#?}", start_crawl.elapsed());
+        };
 
         let start_query = Instant::now();
 
@@ -157,6 +166,10 @@ impl AuditCmd {
             .await?;
 
         eprintln!("Queried Watchman in {:#?}", start_query.elapsed());
+
+        let filesystem_state = filesystem_state_handle.await.unwrap();
+
+        let diff_start = Instant::now();
 
         let watchman_files = match result.files {
             Some(files) => files,
@@ -267,6 +280,7 @@ impl AuditCmd {
             // nonzero exit codes yet.
             std::process::exit(1);
         }
+        eprintln!("Diffed in {:#?}", diff_start.elapsed());
         Ok(())
     }
 }
