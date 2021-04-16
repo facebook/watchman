@@ -207,7 +207,7 @@ impl AuditCmd {
                 ));
             }
 
-            if *watchman_file.size != metadata.size() {
+            if metadata.is_file() && *watchman_file.size != metadata.size() {
                 diffs.push(format!(
                     "watchman size is {} vs. fs {}",
                     *watchman_file.size,
@@ -215,7 +215,7 @@ impl AuditCmd {
                 ));
             }
 
-            if *watchman_file.mtime != metadata.mtime() {
+            if metadata.is_file() && *watchman_file.mtime != metadata.mtime() {
                 diffs.push(format!(
                     "watchman mtime is {} vs. fs {}",
                     *watchman_file.mtime,
