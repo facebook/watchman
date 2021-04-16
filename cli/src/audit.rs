@@ -1,5 +1,5 @@
+use ahash::AHashMap;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,7 @@ impl AuditCmd {
         let filesystem_state_handle = {
             let resolved = resolved.clone();
             tokio::spawn(async move {
-                let mut filesystem_state: HashMap<PathBuf, std::fs::Metadata> = HashMap::new();
+                let mut filesystem_state: AHashMap<PathBuf, std::fs::Metadata> = AHashMap::new();
 
                 let start_crawl = Instant::now();
 
@@ -184,8 +184,8 @@ impl AuditCmd {
         let mut phantoms = vec![];
         let mut missing = vec![];
 
-        let mut watchman_state: HashMap<&Path, &AuditQueryResult> =
-            HashMap::with_capacity(watchman_files.len());
+        let mut watchman_state: AHashMap<&Path, &AuditQueryResult> =
+            AHashMap::with_capacity(watchman_files.len());
         for watchman_file in &watchman_files {
             let filename = &*watchman_file.name;
             watchman_state.insert(filename, watchman_file);
