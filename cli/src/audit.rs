@@ -184,7 +184,8 @@ impl AuditCmd {
         let mut phantoms = vec![];
         let mut missing = vec![];
 
-        let mut watchman_state: HashMap<&Path, &AuditQueryResult> = HashMap::new();
+        let mut watchman_state: HashMap<&Path, &AuditQueryResult> =
+            HashMap::with_capacity(watchman_files.len());
         for watchman_file in &watchman_files {
             let filename = &*watchman_file.name;
             watchman_state.insert(filename, watchman_file);
@@ -244,7 +245,7 @@ impl AuditCmd {
             }
         }
 
-        for (path, val) in filesystem_state {
+        for (path, val) in &filesystem_state {
             if !watchman_state.contains_key(&path.as_path()) {
                 missing.push((path, val));
             }
@@ -258,7 +259,7 @@ impl AuditCmd {
                 "There are {} items reported by watchman not on the filesystem:",
                 phantoms.len()
             );
-            for phantom in phantoms {
+            for phantom in &phantoms {
                 println!("  {}", phantom.name.display());
             }
             any_differences = true;
@@ -269,7 +270,7 @@ impl AuditCmd {
                 "There are {} items on the filesystem not reported by watchman:",
                 missing.len()
             );
-            for (path, _) in missing {
+            for (path, _) in &missing {
                 println!("  {}", path.display());
             }
             any_differences = true;
@@ -280,7 +281,9 @@ impl AuditCmd {
             // nonzero exit codes yet.
             std::process::exit(1);
         }
+
         eprintln!("Diffed in {:#?}", diff_start.elapsed());
+
         Ok(())
     }
 }
