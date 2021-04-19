@@ -94,6 +94,12 @@ class KQueueAndFSEventsWatcher : public Watcher {
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
 
+  /**
+   * Force a recrawl to be injected in the stream. Used in the
+   * 'debug-kqueue-and-fsevents-recrawl' command.
+   */
+  void injectRecrawl(w_string path);
+
  private:
   folly::Synchronized<
       std::unordered_map<w_string, std::shared_ptr<FSEventsWatcher>>>
@@ -101,6 +107,8 @@ class KQueueAndFSEventsWatcher : public Watcher {
   std::shared_ptr<KQueueWatcher> kqueueWatcher_;
 
   std::shared_ptr<PendingEventsCond> pendingCondition_;
+
+  folly::Synchronized<std::optional<w_string>> injectedRecrawl_;
 };
 
 KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(w_root_t* root)
@@ -190,6 +198,22 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     PendingCollection::LockedPtr& coll) {
   bool ret = false;
   {
+    auto guard = injectedRecrawl_.wlock();
+    if (guard->has_value()) {
+      const auto& injectedDir = guard->value();
+
+      struct timeval now;
+      gettimeofday(&now, nullptr);
+
+      coll->add(
+          injectedDir,
+          now,
+          W_PENDING_VIA_NOTIFY | W_PENDING_RECURSIVE | W_PENDING_IS_DESYNCED);
+
+      guard->reset();
+    }
+  }
+  {
     auto fseventWatches = fseventWatchers_.wlock();
     for (auto& [watchpath, fsevent] : *fseventWatches) {
       auto [addedPending, cancelSelf] = fsevent->consumeNotify(root, coll);
@@ -222,6 +246,11 @@ void KQueueAndFSEventsWatcher::signalThreads() {
   kqueueWatcher_->signalThreads();
 }
 
+void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {
+  *injectedRecrawl_.wlock() = path;
+  pendingCondition_->notifyOneOrStop();
+}
+
 namespace {
 std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(w_root_t* root) {
   if (root->config.getBool("prefer_split_fsevents_watcher", false)) {
@@ -235,6 +264,62 @@ std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(w_root_t* root) {
 } // namespace
 
 static WatcherRegistry reg("kqueue+fsevents", makeKQueueAndFSEventsWatcher, 5);
+
+namespace {
+
+std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
+    const std::shared_ptr<w_root_t>& root) {
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  if (!view) {
+    return nullptr;
+  }
+
+  return std::dynamic_pointer_cast<KQueueAndFSEventsWatcher>(
+      view->getWatcher());
+}
+
+static void cmd_debug_kqueue_and_fsevents_recrawl(
+    struct watchman_client* client,
+    const json_ref& args) {
+  /* resolve the root */
+  if (json_array_size(args) != 3) {
+    send_error_response(
+        client,
+        "wrong number of arguments for 'debug-kqueue-and-fsevents-recrawl'");
+    return;
+  }
+
+  auto root = resolveRoot(client, args);
+
+  auto watcher = watcherFromRoot(root);
+  if (!watcher) {
+    send_error_response(
+        client, "root is not using the kqueue+fsevents watcher");
+    return;
+  }
+
+  /* Get the path that the recrawl should be triggered on */
+  const auto& json_path = args.at(2);
+  auto path = json_string_value(json_path);
+  if (!path) {
+    send_error_response(
+        client,
+        "invalid value for argument 2, expected a string naming the path to trigger a recrawl on");
+  }
+
+  watcher->injectRecrawl(path);
+
+  auto resp = make_response();
+  send_and_dispose_response(client, std::move(resp));
+}
+
+} // namespace
+
+W_CMD_REG(
+    "debug-kqueue-and-fsevents-recrawl",
+    cmd_debug_kqueue_and_fsevents_recrawl,
+    CMD_DAEMON,
+    w_cmd_realpath_root)
 
 } // namespace watchman
 

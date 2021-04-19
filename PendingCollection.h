@@ -9,6 +9,11 @@
 #define W_PENDING_RECURSIVE 1
 #define W_PENDING_VIA_NOTIFY 2
 #define W_PENDING_CRAWL_ONLY 4
+// Set this flag when the watcher is desynced and may have missed filesystem
+// events. The W_PENDING_RECURSIVE flag should also be set alongside it to
+// force an recrawl of the passed in directory. Cookies will not be considered
+// when this flag is set.
+#define W_PENDING_IS_DESYNCED 8
 
 struct watchman_pending_fs {
   // We own the next entry and will destroy that chain when we

@@ -137,12 +137,32 @@ struct InMemoryView : public QueryableView {
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
 
+  /**
+   * Return value of the processPending method.
+   */
+  struct ProcessPendingRet {
+    enum class ContinueProcessing {
+      Yes,
+      No,
+    };
+    ContinueProcessing processingState;
+
+    // When a watcher is desynced, it sets the W_PENDING_IS_DESYNCED flag, and
+    // the crawler will set these recursively. If one of these flag is set,
+    // processPending will return IsDesynced::Yes and it is expected that the
+    // caller will abort all pending cookies after processPending returns
+    // ContinueProcessing::No.
+    enum class IsDesynced { Yes, No };
+    IsDesynced desyncedState;
+  };
+
   // Consume entries from pending and apply them to the InMemoryView
-  bool processPending(
+  ProcessPendingRet processPending(
       const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& pending,
       bool pullFromRoot = false);
+
   void processPath(
       const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,

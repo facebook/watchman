@@ -10,6 +10,7 @@ static const struct flag_map kflags[] = {
     {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
     {W_PENDING_RECURSIVE, "RECURSIVE"},
     {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
+    {W_PENDING_IS_DESYNCED, "IS_DESYNCED"},
     {0, NULL},
 };
 
@@ -193,7 +194,8 @@ void PendingCollectionBase::consolidateItem(watchman_pending_fs* p, int flags) {
   // We upgrade crawl-only as well as recursive; it indicates that
   // we've recently just performed the stat and we want to avoid
   // infinitely trying to stat-and-crawl
-  p->flags |= flags & (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE);
+  p->flags |= flags &
+      (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE | W_PENDING_IS_DESYNCED);
 
   maybePruneObsoletedChildren(p->path, p->flags);
 }

@@ -524,7 +524,6 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   struct timeval now;
-  bool recurse;
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
   bool cancelSelf = false;
@@ -594,16 +593,21 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
         continue;
       }
 
-      recurse = (item.flags &
-                 (kFSEventStreamEventFlagMustScanSubDirs |
-                  kFSEventStreamEventFlagItemRenamed))
-          ? true
-          : false;
+      int flags = W_PENDING_VIA_NOTIFY;
 
-      coll->add(
-          item.path,
-          now,
-          W_PENDING_VIA_NOTIFY | (recurse ? W_PENDING_RECURSIVE : 0));
+      if (item.flags &
+          (kFSEventStreamEventFlagMustScanSubDirs |
+           kFSEventStreamEventFlagItemRenamed)) {
+        flags |= W_PENDING_RECURSIVE;
+      }
+
+      if (item.flags &
+          (kFSEventStreamEventFlagUserDropped |
+           kFSEventStreamEventFlagKernelDropped)) {
+        flags |= W_PENDING_IS_DESYNCED;
+      }
+
+      coll->add(item.path, now, flags);
     }
   }
 

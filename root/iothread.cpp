@@ -56,9 +56,21 @@ void InMemoryView::fullCrawl(
     // translates to a two level loop; the outer loop sweeps in data from
     // inotify, then the inner loop processes it and any dirs that we pick up
     // from recursive processing.
-    while (processPending(root, view, pending, true)) {
-      while (processPending(root, view, pending, false)) {
-        ;
+    while (true) {
+      auto [continueProcessingOuter, _] =
+          processPending(root, view, pending, true);
+      if (continueProcessingOuter ==
+          ProcessPendingRet::ContinueProcessing::No) {
+        break;
+      }
+
+      while (true) {
+        auto [continueProcessingInner, _] =
+            processPending(root, view, pending, false);
+        if (continueProcessingInner ==
+            ProcessPendingRet::ContinueProcessing::No) {
+          break;
+        }
       }
     }
     {
@@ -205,8 +217,22 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
 
       mostRecentTick_++;
 
-      while (processPending(root, view, localPendingLock, false)) {
-        ;
+      bool needAbortCookies = false;
+
+      while (true) {
+        auto [continueProcessing, isDesynced] =
+            processPending(root, view, localPendingLock, false);
+
+        needAbortCookies |= (isDesynced == ProcessPendingRet::IsDesynced::Yes);
+
+        if (continueProcessing == ProcessPendingRet::ContinueProcessing::No) {
+          break;
+        }
+      }
+
+      if (needAbortCookies) {
+        logf(ERR, "recrawl complete, aborting all pending cookies\n");
+        root->cookies.abortAllCookies();
       }
     }
   }
@@ -238,10 +264,21 @@ void InMemoryView::processPath(
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
   if (cookies_.isCookiePrefix(full_path)) {
-    bool consider_cookie =
-        (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
-        ? ((flags & W_PENDING_VIA_NOTIFY) || !root->inner.done_initial)
-        : true;
+    bool consider_cookie;
+    if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+      // The watcher gives us file level notification, thus only consider
+      // cookies if this path is coming directly from the watcher, not from a
+      // recursive crawl.
+      consider_cookie =
+          flags & W_PENDING_VIA_NOTIFY || !root->inner.done_initial;
+    } else {
+      // If we are de-synced, we shouldn't consider cookies as we are currently
+      // walking directories recursively and we need to wait for after the
+      // directory is fully re-crawled before notifying the cookie. At the end
+      // of the crawl, cookies will be cancelled and re-created.
+      consider_cookie =
+          (flags & W_PENDING_IS_DESYNCED) != W_PENDING_IS_DESYNCED;
+    }
 
     if (consider_cookie) {
       cookies_.notifyCookie(full_path);
@@ -259,7 +296,7 @@ void InMemoryView::processPath(
   }
 }
 
-bool InMemoryView::processPending(
+InMemoryView::ProcessPendingRet InMemoryView::processPending(
     const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
@@ -270,15 +307,32 @@ bool InMemoryView::processPending(
   }
 
   if (!coll->size()) {
-    return false;
+    return {
+        ProcessPendingRet::ContinueProcessing::No,
+        ProcessPendingRet::IsDesynced::No};
   }
 
   logf(DBG, "processing {} events in {}\n", coll->size(), root_path);
 
   auto pending = coll->stealItems();
 
+  auto desyncState = ProcessPendingRet::IsDesynced::No;
   while (pending) {
     if (!stopThreads_) {
+      if (pending->flags & W_PENDING_IS_DESYNCED) {
+        // The watcher is desynced but some cookies might be written to disk
+        // while the recursive crawl is ongoing. We are going to specifically
+        // ignore these cookies during that recursive crawl to avoid a race
+        // condition where cookies might be seen before some files have been
+        // observed as changed on disk. Due to this, and the fact that cookies
+        // notifications might simply have been dropped by the watcher, we need
+        // to abort the pending cookies to force them to be recreated on disk,
+        // and thus re-seen.
+        if (pending->flags & W_PENDING_CRAWL_ONLY) {
+          desyncState = ProcessPendingRet::IsDesynced::Yes;
+        }
+      }
+
       processPath(
           root,
           view,
@@ -292,7 +346,7 @@ bool InMemoryView::processPending(
     pending = std::move(pending->next);
   }
 
-  return true;
+  return {ProcessPendingRet::ContinueProcessing::Yes, desyncState};
 }
 } // namespace watchman
 

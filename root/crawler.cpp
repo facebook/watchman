@@ -29,6 +29,7 @@ void InMemoryView::crawler(
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
   bool recursive = flags & W_PENDING_RECURSIVE;
+  bool is_desynced = flags & W_PENDING_IS_DESYNCED;
 
   if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
@@ -143,14 +144,17 @@ void InMemoryView::crawler(
       if (!file || !file->exists || stat_all || recursive) {
         auto full_path = dir->getFullPathToChild(name);
         logf(DBG, "in crawler calling process_path on {}\n", full_path);
-        processPath(
-            root,
-            view,
-            coll,
-            full_path,
-            now,
-            ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
-            dirent);
+
+        int newFlags = 0;
+        if (recursive || !(file && file->exists)) {
+          newFlags |= W_PENDING_RECURSIVE;
+        }
+
+        if (is_desynced) {
+          newFlags |= W_PENDING_IS_DESYNCED;
+        }
+
+        processPath(root, view, coll, full_path, now, newFlags, dirent);
       }
     }
   } catch (const std::system_error& exc) {

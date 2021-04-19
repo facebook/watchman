@@ -64,6 +64,7 @@ void InMemoryView::statPath(
   char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
+  int desynced_flag = flags & W_PENDING_IS_DESYNCED;
 
   if (root->ignore.isIgnoreDir(full_path)) {
     logf(DBG, "{} matches ignore_dir rules\n", full_path);
@@ -249,7 +250,10 @@ void InMemoryView::statPath(
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */
-          coll->add(full_path, now, W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
+          coll->add(
+              full_path,
+              now,
+              desynced_flag | W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
         } else {
           if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
             /* we get told about changes on the child, so we don't need to do
@@ -263,7 +267,7 @@ void InMemoryView::statPath(
             coll->add(full_path, now, flags | W_PENDING_CRAWL_ONLY);
           } else {
             /* in all the other cases, crawl */
-            coll->add(full_path, now, W_PENDING_CRAWL_ONLY);
+            coll->add(full_path, now, desynced_flag | W_PENDING_CRAWL_ONLY);
           }
         }
       }
