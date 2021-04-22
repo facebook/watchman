@@ -44,13 +44,26 @@ void cfg_load_global_config_file() {
 
   json_ref config;
   try {
+    // Try to load system watchman configuration
     try {
       current_cfg_file = cfg_file;
       config = json_load_file(current_cfg_file, 0);
     } catch (const std::system_error& exc) {
       if (exc.code() == watchman::error_code::no_such_file_or_directory) {
-        current_cfg_file = cfg_file_default.c_str();
-        config = json_load_file(current_cfg_file, 0);
+        // Fallback to trying to load default watchman configuration if there
+        // is no system configuration
+        try {
+          current_cfg_file = cfg_file_default.c_str();
+          config = json_load_file(current_cfg_file, 0);
+        } catch (const std::system_error& default_exc) {
+          // If there is no default configuration either, just return
+          if (default_exc.code() ==
+              watchman::error_code::no_such_file_or_directory) {
+            return;
+          } else {
+            throw;
+          }
+        }
       } else {
         throw;
       }
