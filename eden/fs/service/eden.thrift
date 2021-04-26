@@ -687,6 +687,8 @@ struct GlobParams {
   // The directory from which the glob should be evaluated. Defaults to the
   // repository root.
   9: PathString searchRoot;
+  // If set, will run the prefetch but will not wait for the result.
+  10: bool background = false;
 }
 
 struct Glob {
