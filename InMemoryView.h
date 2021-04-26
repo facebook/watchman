@@ -18,7 +18,7 @@
 #include "watchman_perf.h"
 #include "watchman_query.h"
 
-struct Watcher;
+class Watcher;
 struct watchman_client;
 
 namespace watchman {

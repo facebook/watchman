@@ -14,8 +14,11 @@ class TerminalWatcherError : public std::runtime_error {
 };
 } // namespace watchman
 
-struct Watcher : public std::enable_shared_from_this<Watcher> {
-  // What's it called??
+class Watcher : public std::enable_shared_from_this<Watcher> {
+ public:
+  /**
+   * This Watcher instance's name.
+   */
   const w_string name;
 
   // if this watcher notifies for individual files contained within
@@ -31,6 +34,9 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   unsigned flags;
 
   Watcher(const char* name, unsigned flags);
+
+  Watcher(Watcher&&) = delete;
+  Watcher& operator=(Watcher&&) = delete;
 
   // Start up threads or similar.  Called in the context of the
   // notify thread

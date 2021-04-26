@@ -245,8 +245,8 @@ bool InotifyWatcher::process_inotify_event(
     struct inotify_event* ine,
     struct timeval now) {
   char flags_label[128];
-
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
+
   logf(
       DBG,
       "notify: wd={} mask={:x} {} {}\n",
