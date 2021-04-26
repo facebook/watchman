@@ -39,8 +39,13 @@ struct PendingCollectionBase {
   ~PendingCollectionBase();
 
   void drain();
-  bool add(const w_string& path, struct timeval now, int flags);
-  bool add(
+
+  /**
+   * Add a pending entry.  Will consolidate an existing entry with the same
+   * name. The caller must own the collection lock.
+   */
+  void add(const w_string& path, struct timeval now, int flags);
+  void add(
       struct watchman_dir* dir,
       const char* name,
       struct timeval now,

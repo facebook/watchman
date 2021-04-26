@@ -235,10 +235,7 @@ watchman_pending_fs::watchman_pending_fs(
     int flags)
     : path(path), now(now), flags(flags) {}
 
-/* add a pending entry.  Will consolidate an existing entry with the
- * same name.  Returns false if an allocation fails.
- * The caller must own the collection lock. */
-bool PendingCollectionBase::add(
+void PendingCollectionBase::add(
     const w_string& path,
     struct timeval now,
     int flags) {
@@ -249,11 +246,11 @@ bool PendingCollectionBase::add(
     /* Entry already exists: consolidate */
     consolidateItem(existing->get(), flags);
     /* all done */
-    return true;
+    return;
   }
 
   if (isObsoletedByContainingDir(path)) {
-    return true;
+    return;
   }
 
   // Try to allocate the new node before we prune any children.
@@ -266,11 +263,9 @@ bool PendingCollectionBase::add(
 
   tree_.insert(path, p);
   linkHead(std::move(p));
-
-  return true;
 }
 
-bool PendingCollectionBase::add(
+void PendingCollectionBase::add(
     struct watchman_dir* dir,
     const char* name,
     struct timeval now,
