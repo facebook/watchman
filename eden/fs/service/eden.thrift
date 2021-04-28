@@ -607,6 +607,10 @@ struct InternalStats {
    * and whose value is information about the journal on that mount
    */
   8: map<PathString, JournalInfo> mountPointJournalInfo;
+  /**
+   * Statistics about the in-memory tree cache.
+   */
+  9: CacheStats treeCacheStats;
 }
 
 struct FuseCall {
