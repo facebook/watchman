@@ -243,12 +243,10 @@ void InMemoryView::processPath(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
-    const w_string& full_path,
-    struct timeval now,
-    int flags,
+    const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
   w_assert(
-      full_path.size() >= rootPath_.size(),
+      pending.path.size() >= rootPath_.size(),
       "full_path must be a descendant of the root directory\n");
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
@@ -264,36 +262,36 @@ void InMemoryView::processPath(
    *
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
-  if (cookies_.isCookiePrefix(full_path)) {
+  if (cookies_.isCookiePrefix(pending.path)) {
     bool consider_cookie;
     if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
       // The watcher gives us file level notification, thus only consider
       // cookies if this path is coming directly from the watcher, not from a
       // recursive crawl.
       consider_cookie =
-          flags & W_PENDING_VIA_NOTIFY || !root->inner.done_initial;
+          pending.flags & W_PENDING_VIA_NOTIFY || !root->inner.done_initial;
     } else {
       // If we are de-synced, we shouldn't consider cookies as we are currently
       // walking directories recursively and we need to wait for after the
       // directory is fully re-crawled before notifying the cookie. At the end
       // of the crawl, cookies will be cancelled and re-created.
       consider_cookie =
-          (flags & W_PENDING_IS_DESYNCED) != W_PENDING_IS_DESYNCED;
+          (pending.flags & W_PENDING_IS_DESYNCED) != W_PENDING_IS_DESYNCED;
     }
 
     if (consider_cookie) {
-      cookies_.notifyCookie(full_path);
+      cookies_.notifyCookie(pending.path);
     }
 
     // Never allow cookie files to show up in the tree
     return;
   }
 
-  if (w_string_equal(full_path, rootPath_) ||
-      (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
-    crawler(root, view, coll, full_path, now, flags);
+  if (w_string_equal(pending.path, rootPath_) ||
+      (pending.flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
+    crawler(root, view, coll, pending);
   } else {
-    statPath(root, view, coll, full_path, now, flags, pre_stat);
+    statPath(root, view, coll, pending, pre_stat);
   }
 }
 
@@ -334,14 +332,7 @@ InMemoryView::ProcessPendingRet InMemoryView::processPending(
         }
       }
 
-      processPath(
-          root,
-          view,
-          coll,
-          pending->path,
-          pending->now,
-          pending->flags,
-          nullptr);
+      processPath(root, view, coll, *pending, nullptr);
     }
 
     pending = std::move(pending->next);

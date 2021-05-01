@@ -170,9 +170,7 @@ class InMemoryView : public QueryableView {
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
-      const w_string& full_path,
-      struct timeval now,
-      int flags,
+      const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
 
   /** Updates the otime for the file and bubbles it to the front of recency
@@ -234,9 +232,7 @@ class InMemoryView : public QueryableView {
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
-      const w_string& dir_name,
-      struct timeval now,
-      int flags);
+      const PendingChange& pending);
   void notifyThread(const std::shared_ptr<watchman_root>& root);
   void ioThread(const std::shared_ptr<watchman_root>& root);
   bool handleShouldRecrawl(const std::shared_ptr<watchman_root>& root);
@@ -247,9 +243,7 @@ class InMemoryView : public QueryableView {
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
-      const w_string& full_path,
-      struct timeval now,
-      int flags,
+      const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
   bool propagateToParentDirIfAppropriate(
       const std::shared_ptr<watchman_root>& root,

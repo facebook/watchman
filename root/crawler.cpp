@@ -21,15 +21,13 @@ void InMemoryView::crawler(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
-    const w_string& dir_name,
-    struct timeval now,
-    int flags) {
+    const PendingChange& pending) {
   struct watchman_file* file;
   const watchman_dir_ent* dirent;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
-  bool recursive = flags & W_PENDING_RECURSIVE;
-  bool is_desynced = flags & W_PENDING_IS_DESYNCED;
+  bool recursive = pending.flags & W_PENDING_RECURSIVE;
+  bool is_desynced = pending.flags & W_PENDING_IS_DESYNCED;
 
   if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
@@ -40,11 +38,11 @@ void InMemoryView::crawler(
     // need to look at the files again when we crawl. To avoid recursing into
     // all the subdirectories, only stat all the files/directories when this
     // directory was added by the watcher.
-    stat_all = (flags & W_PENDING_VIA_NOTIFY) &&
+    stat_all = (pending.flags & W_PENDING_VIA_NOTIFY) &&
         watcher_->flags & WATCHER_ONLY_DIRECTORY_NOTIFICATIONS;
   }
 
-  auto dir = resolveDir(view, dir_name, true);
+  auto dir = resolveDir(view, pending.path, true);
 
   // Detect root directory replacement.
   // The inode number check is handled more generally by the sister code
@@ -56,9 +54,9 @@ void InMemoryView::crawler(
   // for things like subvolume deletes.  We've seen situations where the
   // root has been replaced and we got no notifications at all and this has
   // left the cookie sync mechanism broken forever.
-  if (dir_name == root->root_path) {
+  if (pending.path == root->root_path) {
     try {
-      auto st = getFileInformation(dir_name.c_str(), root->case_sensitive);
+      auto st = getFileInformation(pending.path.c_str(), root->case_sensitive);
       if (st.ino != view->rootInode) {
         // If it still exists and the inode doesn't match, then we need
         // to force recrawl to make sure we're in sync.
@@ -74,14 +72,15 @@ void InMemoryView::crawler(
         view->rootInode = st.ino;
       }
     } catch (const std::system_error& err) {
-      handle_open_errno(root, dir, now, "getFileInformation", err.code());
-      markDirDeleted(view, dir, now, true);
+      handle_open_errno(
+          root, dir, pending.now, "getFileInformation", err.code());
+      markDirDeleted(view, dir, pending.now, true);
       return;
     }
   }
 
-  memcpy(path, dir_name.data(), dir_name.size());
-  path[dir_name.size()] = 0;
+  memcpy(path, pending.path.data(), pending.path.size());
+  path[pending.path.size()] = 0;
 
   logf(DBG, "opendir({}) recursive={}\n", path, recursive);
 
@@ -93,8 +92,8 @@ void InMemoryView::crawler(
   try {
     osdir = watcher_->startWatchDir(root, dir, path);
   } catch (const std::system_error& err) {
-    handle_open_errno(root, dir, now, "opendir", err.code());
-    markDirDeleted(view, dir, now, true);
+    handle_open_errno(root, dir, pending.now, "opendir", err.code());
+    markDirDeleted(view, dir, pending.now, true);
     return;
   }
 
@@ -154,7 +153,12 @@ void InMemoryView::crawler(
           newFlags |= W_PENDING_IS_DESYNCED;
         }
 
-        processPath(root, view, coll, full_path, now, newFlags, dirent);
+        processPath(
+            root,
+            view,
+            coll,
+            PendingChange{std::move(full_path), pending.now, newFlags},
+            dirent);
       }
     }
   } catch (const std::system_error& exc) {
@@ -164,7 +168,7 @@ void InMemoryView::crawler(
         ": ",
         exc.what(),
         ", re-adding to pending list to re-assess\n");
-    coll->add(path, now, 0);
+    coll->add(path, pending.now, 0);
   }
   osdir.reset();
 
@@ -177,7 +181,7 @@ void InMemoryView::crawler(
       coll->add(
           dir,
           file->getName().data(),
-          now,
+          pending.now,
           recursive ? W_PENDING_RECURSIVE : 0);
     }
   }

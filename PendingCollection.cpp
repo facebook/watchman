@@ -219,12 +219,6 @@ bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
   return false;
 }
 
-watchman_pending_fs::watchman_pending_fs(
-    const w_string& path,
-    const struct timeval& now,
-    int flags)
-    : path(path), now(now), flags(flags) {}
-
 void PendingCollectionBase::add(
     const w_string& path,
     struct timeval now,

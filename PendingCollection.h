@@ -8,6 +8,8 @@
 #include <condition_variable>
 #include "thirdparty/libart/src/art.h"
 
+namespace watchman {
+
 /**
  * Set when this change requires a recursive scan of its children.
  */
@@ -28,18 +30,24 @@
  */
 #define W_PENDING_IS_DESYNCED 8
 
-struct watchman_pending_fs {
-  // We own the next entry and will destroy that chain when we
-  // are destroyed.
-  std::shared_ptr<watchman_pending_fs> next;
+/**
+ * Represents a change notification from the Watcher.
+ */
+struct PendingChange {
   w_string path;
   struct timeval now;
   int flags;
+};
 
-  watchman_pending_fs(
-      const w_string& path,
-      const struct timeval& now,
-      int flags);
+} // namespace watchman
+
+struct watchman_pending_fs : watchman::PendingChange {
+  // We own the next entry and will destroy that chain when we
+  // are destroyed.
+  std::shared_ptr<watchman_pending_fs> next;
+
+  watchman_pending_fs(w_string path, const struct timeval& now, int flags)
+      : PendingChange{std::move(path), now, flags} {}
 
  private:
   // Only used for unlinking during pruning.

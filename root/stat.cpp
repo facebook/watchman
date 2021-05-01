@@ -56,29 +56,27 @@ void InMemoryView::statPath(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
-    const w_string& full_path,
-    struct timeval now,
-    int flags,
+    const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
-  bool recursive = flags & W_PENDING_RECURSIVE;
-  bool via_notify = flags & W_PENDING_VIA_NOTIFY;
-  int desynced_flag = flags & W_PENDING_IS_DESYNCED;
+  bool recursive = pending.flags & W_PENDING_RECURSIVE;
+  bool via_notify = pending.flags & W_PENDING_VIA_NOTIFY;
+  int desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
 
-  if (root->ignore.isIgnoreDir(full_path)) {
-    logf(DBG, "{} matches ignore_dir rules\n", full_path);
+  if (root->ignore.isIgnoreDir(pending.path)) {
+    logf(DBG, "{} matches ignore_dir rules\n", pending.path);
     return;
   }
 
   char path[WATCHMAN_NAME_MAX];
-  if (full_path.size() > sizeof(path) - 1) {
-    logf(FATAL, "path {} is too big\n", full_path);
+  if (pending.path.size() > sizeof(path) - 1) {
+    logf(FATAL, "path {} is too big\n", pending.path);
   }
 
-  memcpy(path, full_path.data(), full_path.size());
-  path[full_path.size()] = 0;
+  memcpy(path, pending.path.data(), pending.path.size());
+  path[pending.path.size()] = 0;
 
-  auto dir_name = full_path.dirName();
-  auto file_name = full_path.baseName();
+  auto dir_name = pending.path.dirName();
+  auto file_name = pending.path.baseName();
   auto parentDir = resolveDir(view, dir_name, true);
 
   auto file = parentDir->getChildFile(file_name);
@@ -119,7 +117,7 @@ void InMemoryView::statPath(
       errcode == watchman::error_code::not_a_directory) {
     /* it's not there, update our state */
     if (dir_ent) {
-      markDirDeleted(view, dir_ent, now, true);
+      markDirDeleted(view, dir_ent, pending.now, true);
       watchman::log(
           watchman::DBG,
           "getFileInformation(",
@@ -140,14 +138,14 @@ void InMemoryView::statPath(
             file->getName(),
             " deleted\n");
         file->exists = false;
-        markFileChanged(view, file, now);
+        markFileChanged(view, file, pending.now);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = getOrCreateChildFile(view, parentDir, file_name, now);
+      file = getOrCreateChildFile(view, parentDir, file_name, pending.now);
       log(DBG,
           "getFileInformation(",
           path,
@@ -156,13 +154,13 @@ void InMemoryView::statPath(
           " and file node was NULL. "
           "Generating a deleted node.\n");
       file->exists = false;
-      markFileChanged(view, file, now);
+      markFileChanged(view, file, pending.now);
     }
 
     if (!propagateToParentDirIfAppropriate(
             root,
             coll,
-            now,
+            pending.now,
             file->stat,
             dir_name,
             parentDir,
@@ -179,7 +177,7 @@ void InMemoryView::statPath(
           "speculatively look at parent dir {}\n",
           path,
           dir_name);
-      coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
+      coll->add(dir_name, pending.now, W_PENDING_CRAWL_ONLY);
     }
 
   } else if (errcode.value()) {
@@ -195,14 +193,14 @@ void InMemoryView::statPath(
         "\n");
   } else {
     if (!file) {
-      file = getOrCreateChildFile(view, parentDir, file_name, now);
+      file = getOrCreateChildFile(view, parentDir, file_name, pending.now);
     }
 
     if (!file->exists) {
       /* we're transitioning from deleted to existing,
        * so we're effectively new again */
       file->ctime.ticks = mostRecentTick_;
-      file->ctime.timestamp = now.tv_sec;
+      file->ctime.timestamp = pending.now.tv_sec;
       /* if a dir was deleted and now exists again, we want
        * to crawl it again */
       recursive = true;
@@ -217,7 +215,7 @@ void InMemoryView::statPath(
           st.isDir(),
           path);
       file->exists = true;
-      markFileChanged(view, file, now);
+      markFileChanged(view, file, pending.now);
 
       // If the inode number changed then we definitely need to recursively
       // examine any children because we cannot assume that the kernel will
@@ -232,7 +230,8 @@ void InMemoryView::statPath(
 
     // check for symbolic link
     if (st.isSymlink() && root->config.getBool("watch_symlinks", false)) {
-      root->inner.pending_symlink_targets.lock()->add(full_path, now, 0);
+      root->inner.pending_symlink_targets.lock()->add(
+          pending.path, pending.now, 0);
     }
 
     if (st.isDir()) {
@@ -247,13 +246,13 @@ void InMemoryView::statPath(
       if (!root->ignore.isIgnoreVCS(dir_name) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
-          root->cookies.isCookieDir(full_path)) {
+          root->cookies.isCookieDir(pending.path)) {
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */
           coll->add(
-              full_path,
-              now,
+              pending.path,
+              pending.now,
               desynced_flag | W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
         } else {
           if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
@@ -265,20 +264,32 @@ void InMemoryView::statPath(
              * the pending files. To avoid recursing into the path recursively,
              * the flags are passed as is and the crawler will only recurse
              * down if W_PENDING_VIA_NOTIFY is set. */
-            coll->add(full_path, now, flags | W_PENDING_CRAWL_ONLY);
+            coll->add(
+                pending.path,
+                pending.now,
+                pending.flags | W_PENDING_CRAWL_ONLY);
           } else {
             /* in all the other cases, crawl */
-            coll->add(full_path, now, desynced_flag | W_PENDING_CRAWL_ONLY);
+            coll->add(
+                pending.path,
+                pending.now,
+                desynced_flag | W_PENDING_CRAWL_ONLY);
           }
         }
       }
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      markDirDeleted(view, dir_ent, now, true);
+      markDirDeleted(view, dir_ent, pending.now, true);
     }
     propagateToParentDirIfAppropriate(
-        root, coll, now, st, dir_name, parentDir, /* isUnlink= */ false);
+        root,
+        coll,
+        pending.now,
+        st,
+        dir_name,
+        parentDir,
+        /* isUnlink= */ false);
   }
 }
 } // namespace watchman
