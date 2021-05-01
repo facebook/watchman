@@ -214,7 +214,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 
 Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll) {
+    PendingChanges& coll) {
   int n;
   int i;
   struct timespec ts = {0, 0};
@@ -282,7 +282,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
       wlock->fd_to_name.erase(fd);
     }
 
-    coll->add(
+    coll.add(
         path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
   }
 

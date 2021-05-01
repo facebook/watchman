@@ -523,7 +523,7 @@ bool isRootRemoved(
 
 Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll) {
+    PendingChanges& coll) {
   struct timeval now;
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
@@ -608,7 +608,7 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
         flags |= W_PENDING_IS_DESYNCED;
       }
 
-      coll->add(item.path, now, flags);
+      coll.add(item.path, now, flags);
     }
   }
 

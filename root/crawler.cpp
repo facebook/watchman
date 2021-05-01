@@ -20,7 +20,7 @@ namespace watchman {
 void InMemoryView::crawler(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     const PendingChange& pending) {
   struct watchman_file* file;
   const watchman_dir_ent* dirent;
@@ -168,7 +168,7 @@ void InMemoryView::crawler(
         ": ",
         exc.what(),
         ", re-adding to pending list to re-assess\n");
-    coll->add(path, pending.now, 0);
+    coll.add(path, pending.now, 0);
   }
   osdir.reset();
 
@@ -178,7 +178,7 @@ void InMemoryView::crawler(
     auto file = it.second.get();
     if (file->exists &&
         (file->maybe_deleted || (file->stat.isDir() && recursive))) {
-      coll->add(
+      coll.add(
           dir,
           file->getName().data(),
           pending.now,

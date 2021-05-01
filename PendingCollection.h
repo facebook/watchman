@@ -52,17 +52,18 @@ struct watchman_pending_fs : watchman::PendingChange {
  private:
   // Only used for unlinking during pruning.
   std::weak_ptr<watchman_pending_fs> prev;
-  friend class PendingCollectionBase;
+  friend class PendingChanges;
 };
 
-class PendingCollectionBase {
+/**
+ * Holds a linked list of watchman_pending_fs instances and a trie that
+ * efficiently prunes redundant changes.
+ */
+class PendingChanges {
  public:
-  PendingCollectionBase(
-      std::condition_variable& cond,
-      std::atomic<bool>& pinged);
-  PendingCollectionBase(PendingCollectionBase&&) = delete;
-  PendingCollectionBase& operator=(PendingCollectionBase&&) = delete;
-  ~PendingCollectionBase() = default;
+  PendingChanges() = default;
+  PendingChanges(PendingChanges&&) = delete;
+  PendingChanges& operator=(PendingChanges&&) = delete;
 
   /**
    * Erase all elements from the collection.
@@ -93,20 +94,34 @@ class PendingCollectionBase {
   std::shared_ptr<watchman_pending_fs> stealItems();
 
   uint32_t size() const;
+
+ protected:
+  art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
+  std::shared_ptr<watchman_pending_fs> pending_;
+
+ private:
+  void maybePruneObsoletedChildren(w_string path, int flags);
+  inline void consolidateItem(watchman_pending_fs* p, int flags);
+  bool isObsoletedByContainingDir(const w_string& path);
+  inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
+  inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
+};
+
+class PendingCollectionBase : public PendingChanges {
+ public:
+  PendingCollectionBase(
+      std::condition_variable& cond,
+      std::atomic<bool>& pinged);
+  PendingCollectionBase(PendingCollectionBase&&) = delete;
+  PendingCollectionBase& operator=(PendingCollectionBase&&) = delete;
+  ~PendingCollectionBase() = default;
+
   void ping();
   bool checkAndResetPinged();
 
  private:
   std::condition_variable& cond_;
   std::atomic<bool>& pinged_;
-  art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
-  std::shared_ptr<watchman_pending_fs> pending_;
-
-  void maybePruneObsoletedChildren(w_string path, int flags);
-  inline void consolidateItem(watchman_pending_fs* p, int flags);
-  bool isObsoletedByContainingDir(const w_string& path);
-  inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
-  inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
 };
 
 class PendingCollection

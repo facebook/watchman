@@ -50,7 +50,7 @@ struct FSEventsWatcher : public Watcher {
 
   Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll) override;
+      PendingChanges& changes) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;

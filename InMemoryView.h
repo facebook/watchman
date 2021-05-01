@@ -163,13 +163,13 @@ class InMemoryView : public QueryableView {
   ProcessPendingRet processPending(
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
-      PendingCollection::LockedPtr& pending,
+      PendingChanges& pending,
       bool pullFromRoot = false);
 
   void processPath(
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
-      PendingCollection::LockedPtr& coll,
+      PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
 
@@ -231,23 +231,23 @@ class InMemoryView : public QueryableView {
   void crawler(
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
-      PendingCollection::LockedPtr& coll,
+      PendingChanges& coll,
       const PendingChange& pending);
   void notifyThread(const std::shared_ptr<watchman_root>& root);
   void ioThread(const std::shared_ptr<watchman_root>& root);
   bool handleShouldRecrawl(const std::shared_ptr<watchman_root>& root);
   void fullCrawl(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& pending);
+      PendingChanges& pending);
   void statPath(
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
-      PendingCollection::LockedPtr& coll,
+      PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
   bool propagateToParentDirIfAppropriate(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll,
+      PendingChanges& coll,
       struct timeval now,
       const FileInformation& entryStat,
       const w_string& dirName,

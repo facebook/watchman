@@ -89,7 +89,7 @@ class KQueueAndFSEventsWatcher : public Watcher {
 
   Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll) override;
+      PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
@@ -196,7 +196,7 @@ bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
 
 Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll) {
+    PendingChanges& coll) {
   bool ret = false;
   {
     auto guard = injectedRecrawl_.wlock();
@@ -206,7 +206,7 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
       struct timeval now;
       gettimeofday(&now, nullptr);
 
-      coll->add(
+      coll.add(
           injectedDir,
           now,
           W_PENDING_VIA_NOTIFY | W_PENDING_RECURSIVE | W_PENDING_IS_DESYNCED);

@@ -187,8 +187,7 @@ class NaivePendingCollection {
   std::shared_ptr<watchman_pending_fs> head_;
 };
 
-using PCTypes =
-    ::testing::Types<NaivePendingCollection, WrappedPendingCollection>;
+using PCTypes = ::testing::Types<NaivePendingCollection, PendingChanges>;
 
 } // namespace
 

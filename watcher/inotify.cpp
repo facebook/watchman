@@ -166,7 +166,7 @@ struct InotifyWatcher : public Watcher {
 
   Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll) override;
+      PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
 
@@ -175,7 +175,7 @@ struct InotifyWatcher : public Watcher {
   // to be cancelled.
   bool process_inotify_event(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll,
+      PendingChanges& coll,
       struct inotify_event* ine,
       struct timeval now);
 
@@ -241,7 +241,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
 
 bool InotifyWatcher::process_inotify_event(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     struct inotify_event* ine,
     struct timeval now) {
   char flags_label[128];
@@ -369,7 +369,7 @@ bool InotifyWatcher::process_inotify_event(
           "add_pending for inotify mask={:x} {}\n",
           ine->mask,
           name.c_str());
-      coll->add(name, now, pending_flags);
+      coll.add(name, now, pending_flags);
 
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also
@@ -402,7 +402,7 @@ bool InotifyWatcher::process_inotify_event(
 
 Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll) {
+    PendingChanges& coll) {
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {

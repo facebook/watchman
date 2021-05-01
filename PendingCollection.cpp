@@ -46,62 +46,85 @@ bool is_path_prefix(
 
 } // namespace watchman
 
-// Helper to un-doubly-link a pending item.
-void PendingCollectionBase::unlinkItem(
-    std::shared_ptr<watchman_pending_fs>& p) {
-  if (pending_ == p) {
-    pending_ = p->next;
-  }
-  auto prev = p->prev.lock();
-
-  if (prev) {
-    prev->next = p->next;
-  }
-
-  if (p->next) {
-    p->next->prev = prev;
-  }
-
-  p->next.reset();
-  p->prev.reset();
-}
-
-// Helper to doubly-link a pending item to the head of a collection.
-void PendingCollectionBase::linkHead(std::shared_ptr<watchman_pending_fs>&& p) {
-  p->prev.reset();
-  p->next = pending_;
-  if (p->next) {
-    p->next->prev = p;
-  }
-  pending_ = std::move(p);
-}
-
-/* initialize a pending_coll */
-PendingCollectionBase::PendingCollectionBase(
-    std::condition_variable& cond,
-    std::atomic<bool>& pinged)
-    : cond_(cond), pinged_(pinged) {}
-
-void PendingCollectionBase::clear() {
+void PendingChanges::clear() {
   pending_.reset();
   tree_.clear();
 }
 
-void PendingCollectionBase::ping() {
-  pinged_ = true;
-  cond_.notify_all();
+void PendingChanges::add(const w_string& path, struct timeval now, int flags) {
+  char flags_label[128];
+
+  auto existing = tree_.search(path);
+  if (existing) {
+    /* Entry already exists: consolidate */
+    consolidateItem(existing->get(), flags);
+    /* all done */
+    return;
+  }
+
+  if (isObsoletedByContainingDir(path)) {
+    return;
+  }
+
+  // Try to allocate the new node before we prune any children.
+  auto p = std::make_shared<watchman_pending_fs>(path, now, flags);
+
+  maybePruneObsoletedChildren(path, flags);
+
+  w_expand_flags(kFlags, flags, flags_label, sizeof(flags_label));
+  logf(DBG, "add_pending: {} {}\n", path, flags_label);
+
+  tree_.insert(path, p);
+  linkHead(std::move(p));
 }
 
-void PendingCollection::ping() {
-  pinged_ = true;
-  cond_.notify_all();
+void PendingChanges::add(
+    struct watchman_dir* dir,
+    const char* name,
+    struct timeval now,
+    int flags) {
+  return add(dir->getFullPathToChild(name), now, flags);
+}
+
+void PendingChanges::append(std::shared_ptr<watchman_pending_fs> chain) {
+  auto p = std::move(chain);
+  while (p) {
+    auto target_p =
+        tree_.search((const uint8_t*)p->path.data(), p->path.size());
+    if (target_p) {
+      /* Entry already exists: consolidate */
+      consolidateItem(target_p->get(), p->flags);
+      p = std::move(p->next);
+      continue;
+    }
+
+    if (isObsoletedByContainingDir(p->path)) {
+      p = std::move(p->next);
+      continue;
+    }
+    maybePruneObsoletedChildren(p->path, p->flags);
+
+    auto next = std::move(p->next);
+    tree_.insert(p->path, p);
+    linkHead(std::move(p));
+
+    p = std::move(next);
+  }
+}
+
+std::shared_ptr<watchman_pending_fs> PendingChanges::stealItems() {
+  tree_.clear();
+  return std::move(pending_);
+}
+
+/* Returns the number of unique pending items in the collection */
+uint32_t PendingChanges::size() const {
+  return tree_.size();
 }
 
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
-void PendingCollectionBase::maybePruneObsoletedChildren(
-    w_string path,
-    int flags) {
+void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
     uint32_t pruned = 0;
@@ -177,7 +200,7 @@ void PendingCollectionBase::maybePruneObsoletedChildren(
   }
 }
 
-void PendingCollectionBase::consolidateItem(watchman_pending_fs* p, int flags) {
+void PendingChanges::consolidateItem(watchman_pending_fs* p, int flags) {
   // Increase the strength of the pending item if either of these
   // flags are set.
   // We upgrade crawl-only as well as recursive; it indicates that
@@ -193,7 +216,7 @@ void PendingCollectionBase::consolidateItem(watchman_pending_fs* p, int flags) {
 // filesystem than the input path; if there is, and it is recursive,
 // return true to indicate that there is no need to track this new path
 // due to the already scheduled higher level path.
-bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
+bool PendingChanges::isObsoletedByContainingDir(const w_string& path) {
   auto leaf = tree_.longestMatch((const uint8_t*)path.data(), path.size());
   if (!leaf) {
     return false;
@@ -218,78 +241,48 @@ bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
   return false;
 }
 
-void PendingCollectionBase::add(
-    const w_string& path,
-    struct timeval now,
-    int flags) {
-  char flags_label[128];
+// Helper to doubly-link a pending item to the head of a collection.
+void PendingChanges::linkHead(std::shared_ptr<watchman_pending_fs>&& p) {
+  p->prev.reset();
+  p->next = pending_;
+  if (p->next) {
+    p->next->prev = p;
+  }
+  pending_ = std::move(p);
+}
 
-  auto existing = tree_.search(path);
-  if (existing) {
-    /* Entry already exists: consolidate */
-    consolidateItem(existing->get(), flags);
-    /* all done */
-    return;
+// Helper to un-doubly-link a pending item.
+void PendingChanges::unlinkItem(std::shared_ptr<watchman_pending_fs>& p) {
+  if (pending_ == p) {
+    pending_ = p->next;
+  }
+  auto prev = p->prev.lock();
+
+  if (prev) {
+    prev->next = p->next;
   }
 
-  if (isObsoletedByContainingDir(path)) {
-    return;
+  if (p->next) {
+    p->next->prev = prev;
   }
 
-  // Try to allocate the new node before we prune any children.
-  auto p = std::make_shared<watchman_pending_fs>(path, now, flags);
-
-  maybePruneObsoletedChildren(path, flags);
-
-  w_expand_flags(kFlags, flags, flags_label, sizeof(flags_label));
-  logf(DBG, "add_pending: {} {}\n", path, flags_label);
-
-  tree_.insert(path, p);
-  linkHead(std::move(p));
+  p->next.reset();
+  p->prev.reset();
 }
 
-void PendingCollectionBase::add(
-    struct watchman_dir* dir,
-    const char* name,
-    struct timeval now,
-    int flags) {
-  return add(dir->getFullPathToChild(name), now, flags);
+PendingCollectionBase::PendingCollectionBase(
+    std::condition_variable& cond,
+    std::atomic<bool>& pinged)
+    : cond_(cond), pinged_(pinged) {}
+
+void PendingCollectionBase::ping() {
+  pinged_ = true;
+  cond_.notify_all();
 }
 
-void PendingCollectionBase::append(std::shared_ptr<watchman_pending_fs> chain) {
-  auto p = std::move(chain);
-  while (p) {
-    auto target_p =
-        tree_.search((const uint8_t*)p->path.data(), p->path.size());
-    if (target_p) {
-      /* Entry already exists: consolidate */
-      consolidateItem(target_p->get(), p->flags);
-      p = std::move(p->next);
-      continue;
-    }
-
-    if (isObsoletedByContainingDir(p->path)) {
-      p = std::move(p->next);
-      continue;
-    }
-    maybePruneObsoletedChildren(p->path, p->flags);
-
-    auto next = std::move(p->next);
-    tree_.insert(p->path, p);
-    linkHead(std::move(p));
-
-    p = std::move(next);
-  }
-}
-
-std::shared_ptr<watchman_pending_fs> PendingCollectionBase::stealItems() {
-  tree_.clear();
-  return std::move(pending_);
-}
-
-/* Returns the number of unique pending items in the collection */
-uint32_t PendingCollectionBase::size() const {
-  return tree_.size();
+void PendingCollection::ping() {
+  pinged_ = true;
+  cond_.notify_all();
 }
 
 bool PendingCollectionBase::checkAndResetPinged() {

@@ -65,11 +65,15 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
     bool cancelSelf;
   };
 
-  // Consume any available notifications.  If there are none pending,
-  // does not block.
+  /**
+   * Consume any available notifications.  If there are none pending,
+   * does not block.
+   *
+   * Notifications are inserted into `coll`.
+   */
   virtual ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll) = 0;
+      PendingChanges& coll) = 0;
 
   // Wait for an inotify event to become available
   virtual bool waitNotify(int timeoutms) = 0;

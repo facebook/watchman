@@ -18,7 +18,7 @@ namespace watchman {
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     struct timeval now,
     const FileInformation& entryStat,
     const w_string& dirName,
@@ -46,7 +46,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
      * otherwise we'll only do so if the directory has
      * observably changed via stat().
      */
-    coll->add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : 0);
+    coll.add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : 0);
     return true;
   }
   return false;
@@ -55,7 +55,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
 void InMemoryView::statPath(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
   bool recursive = pending.flags & W_PENDING_RECURSIVE;
@@ -177,7 +177,7 @@ void InMemoryView::statPath(
           "speculatively look at parent dir {}\n",
           path,
           dir_name);
-      coll->add(dir_name, pending.now, W_PENDING_CRAWL_ONLY);
+      coll.add(dir_name, pending.now, W_PENDING_CRAWL_ONLY);
     }
 
   } else if (errcode.value()) {
@@ -250,7 +250,7 @@ void InMemoryView::statPath(
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */
-          coll->add(
+          coll.add(
               pending.path,
               pending.now,
               desynced_flag | W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
@@ -264,13 +264,13 @@ void InMemoryView::statPath(
              * the pending files. To avoid recursing into the path recursively,
              * the flags are passed as is and the crawler will only recurse
              * down if W_PENDING_VIA_NOTIFY is set. */
-            coll->add(
+            coll.add(
                 pending.path,
                 pending.now,
                 pending.flags | W_PENDING_CRAWL_ONLY);
           } else {
             /* in all the other cases, crawl */
-            coll->add(
+            coll.add(
                 pending.path,
                 pending.now,
                 desynced_flag | W_PENDING_CRAWL_ONLY);

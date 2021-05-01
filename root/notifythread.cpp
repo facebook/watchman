@@ -12,8 +12,7 @@ namespace watchman {
 // descriptor and then queues the filesystem IO work until after
 // we have drained the inotify descriptor
 void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
-  PendingCollection pending;
-  auto localLock = pending.lock();
+  PendingChanges fromWatcher;
 
   if (!watcher_->start(root)) {
     logf(
@@ -34,7 +33,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
     // -1 meaning infinite wait at the moment
     if (watcher_->waitNotify(86400)) {
       while (true) {
-        auto resultFlags = watcher_->consumeNotify(root, localLock);
+        auto resultFlags = watcher_->consumeNotify(root, fromWatcher);
 
         if (resultFlags.cancelSelf) {
           root->cancel();
@@ -43,16 +42,16 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
         if (!resultFlags.addedPending) {
           break;
         }
-        if (localLock->size() >= WATCHMAN_BATCH_LIMIT) {
+        if (fromWatcher.size() >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
         if (!watcher_->waitNotify(0)) {
           break;
         }
       }
-      if (localLock->size() > 0) {
+      if (fromWatcher.size() > 0) {
         auto lock = pending_.lock();
-        lock->append(localLock->stealItems());
+        lock->append(fromWatcher.stealItems());
         lock->ping();
       }
     }

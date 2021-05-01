@@ -30,7 +30,7 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 
 void InMemoryView::fullCrawl(
     const std::shared_ptr<watchman_root>& root,
-    PendingCollection::LockedPtr& pending) {
+    PendingChanges& pending) {
   struct timeval start;
 
   {
@@ -127,10 +127,8 @@ static bool do_settle_things(const std::shared_ptr<watchman_root>& root) {
 }
 
 void InMemoryView::clientModeCrawl(const std::shared_ptr<watchman_root>& root) {
-  PendingCollection pending;
-
-  auto lock = pending.lock();
-  fullCrawl(root, lock);
+  PendingChanges pending;
+  fullCrawl(root, pending);
 }
 
 bool InMemoryView::handleShouldRecrawl(
@@ -152,8 +150,7 @@ bool InMemoryView::handleShouldRecrawl(
 }
 
 void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
-  PendingCollection pending;
-  auto localPendingLock = pending.lock();
+  PendingChanges localPending;
 
   int timeoutms = root->trigger_settle;
 
@@ -172,7 +169,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   while (!stopThreads_) {
     if (!root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
-      fullCrawl(root, localPendingLock);
+      fullCrawl(root, localPending);
 
       timeoutms = root->trigger_settle;
     }
@@ -185,16 +182,16 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       auto targetPendingLock =
           pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
       logf(DBG, " ... wake up (pinged={})\n", pinged);
-      localPendingLock->append(targetPendingLock->stealItems());
+      localPending.append(targetPendingLock->stealItems());
     }
 
     if (handleShouldRecrawl(root)) {
-      fullCrawl(root, localPendingLock);
+      fullCrawl(root, localPending);
       timeoutms = root->trigger_settle;
       continue;
     }
 
-    if (!pinged && localPendingLock->size() == 0) {
+    if (!pinged && localPending.size() == 0) {
       if (do_settle_things(root)) {
         break;
       }
@@ -212,7 +209,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       auto view = view_.wlock();
       if (!root->inner.done_initial) {
         // we need to recrawl.  Discard these notifications
-        localPendingLock->clear();
+        localPending.clear();
         continue;
       }
 
@@ -222,7 +219,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 
       while (true) {
         auto [continueProcessing, isDesynced] =
-            processPending(root, view, localPendingLock, false);
+            processPending(root, view, localPending, false);
 
         needAbortCookies |= (isDesynced == ProcessPendingRet::IsDesynced::Yes);
 
@@ -242,7 +239,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 void InMemoryView::processPath(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
   w_assert(
@@ -298,21 +295,21 @@ void InMemoryView::processPath(
 InMemoryView::ProcessPendingRet InMemoryView::processPending(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
-    PendingCollection::LockedPtr& coll,
+    PendingChanges& coll,
     bool pullFromRoot) {
   if (pullFromRoot) {
-    coll->append(pending_.lock()->stealItems());
+    coll.append(pending_.lock()->stealItems());
   }
 
-  if (!coll->size()) {
+  if (!coll.size()) {
     return {
         ProcessPendingRet::ContinueProcessing::No,
         ProcessPendingRet::IsDesynced::No};
   }
 
-  logf(DBG, "processing {} events in {}\n", coll->size(), rootPath_);
+  logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
 
-  auto pending = coll->stealItems();
+  auto pending = coll.stealItems();
 
   auto desyncState = ProcessPendingRet::IsDesynced::No;
   while (pending) {

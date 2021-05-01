@@ -39,7 +39,7 @@ struct KQueueWatcher : public Watcher {
 
   Watcher::ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
-      PendingCollection::LockedPtr& coll) override;
+      PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
