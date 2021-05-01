@@ -7,13 +7,14 @@
 
 namespace watchman {
 
-/* The purpose of this function is to help us decide whether we should
- * update the parent directory when a non-directory directory entry
- * is changed.  If so, we schedule re-examining the parent.
- * Not all systems report the containing directory as changed in that
- * situation, so we decide this based on the capabilities of the watcher.
- * If the directory is added to the PendingCollection, this function
- * returns true. Otherwise, this function returns false.
+/**
+ * The purpose of this function is to help us decide whether we should
+ * update the parent directory when a non-directory directory entry is changed.
+ * If so, we schedule re-examining the parent. Not all systems report the
+ * containing directory as changed in that situation, so we decide this based on
+ * the capabilities of the watcher. If the directory is added to the
+ * PendingCollection, this function returns true. Otherwise, this function
+ * returns false.
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
     const std::shared_ptr<w_root_t>& root,
@@ -59,9 +60,6 @@ void InMemoryView::statPath(
     struct timeval now,
     int flags,
     const watchman_dir_ent* pre_stat) {
-  watchman::FileInformation st;
-  std::error_code errcode;
-  char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
   int desynced_flag = flags & W_PENDING_IS_DESYNCED;
@@ -71,6 +69,7 @@ void InMemoryView::statPath(
     return;
   }
 
+  char path[WATCHMAN_NAME_MAX];
   if (full_path.size() > sizeof(path) - 1) {
     logf(FATAL, "path {} is too big\n", full_path);
   }
@@ -86,6 +85,8 @@ void InMemoryView::statPath(
 
   auto dir_ent = parentDir->getChildDir(file_name);
 
+  watchman::FileInformation st;
+  std::error_code errcode;
   if (pre_stat && pre_stat->has_stat) {
     st = pre_stat->stat;
   } else {

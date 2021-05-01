@@ -6,20 +6,19 @@
 
 using namespace watchman;
 
-static const struct flag_map kflags[] = {
+namespace watchman {
+
+namespace {
+constexpr flag_map kFlags[] = {
     {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
     {W_PENDING_RECURSIVE, "RECURSIVE"},
     {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
     {W_PENDING_IS_DESYNCED, "IS_DESYNCED"},
     {0, NULL},
 };
+}
 
-// Since the tree has no internal knowledge about path structures, when we
-// search for "foo/bar" it may return a prefix match for an existing node
-// with the key "foo/bard".  We use this function to test whether the string
-// exactly matches the input ("foo/bar") or whether it has a slash as the next
-// character after the common prefix ("foo/bar/" as a prefix).
-static bool is_path_prefix(
+bool is_path_prefix(
     const char* path,
     size_t path_len,
     const char* other,
@@ -44,6 +43,8 @@ static bool is_path_prefix(
 
   return is_slash(path[common_prefix]);
 }
+
+} // namespace watchman
 
 // Helper to un-doubly-link a pending item.
 void PendingCollectionBase::unlinkItem(
@@ -258,7 +259,7 @@ void PendingCollectionBase::add(
 
   maybePruneObsoletedChildren(path, flags);
 
-  w_expand_flags(kflags, flags, flags_label, sizeof(flags_label));
+  w_expand_flags(kFlags, flags, flags_label, sizeof(flags_label));
   logf(DBG, "add_pending: {} {}\n", path, flags_label);
 
   tree_.insert(path, p);
@@ -321,9 +322,10 @@ bool PendingCollectionBase::checkAndResetPinged() {
 }
 
 PendingCollection::PendingCollection()
-    : folly::Synchronized<PendingCollectionBase, std::mutex>(
-          PendingCollectionBase(cond_, pinged_)),
-      pinged_(false) {}
+    : folly::Synchronized<
+          PendingCollectionBase,
+          std::mutex>{folly::in_place, cond_, pinged_},
+      pinged_{false} {}
 
 PendingCollection::LockedPtr PendingCollection::lockAndWait(
     std::chrono::milliseconds timeoutms,

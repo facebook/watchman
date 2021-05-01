@@ -787,7 +787,7 @@ endif()
 
 t_test(art tests/art_test.cpp)
 t_test(ignore tests/ignore_test.cpp)
-t_test(pending tests/pending_test.cpp)
+t_test(PendingCollectionTest tests/PendingCollectionTest.cpp)
 t_test(string tests/string_test.cpp)
 t_test(log tests/log.cpp)
 t_test(bser tests/bser.cpp)
