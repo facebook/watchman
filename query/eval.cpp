@@ -6,6 +6,7 @@
 #include <folly/ScopeGuard.h>
 #include "LocalFileResult.h"
 #include "saved_state/SavedStateInterface.h"
+#include "scm/SCM.h"
 
 using namespace watchman;
 

@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "LocalSavedStateInterface.h"
+#include "scm/SCM.h"
 #include "watchman_cmd.h"
 
 static const int kDefaultMaxCommits{10};

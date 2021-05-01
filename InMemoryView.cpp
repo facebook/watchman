@@ -7,6 +7,7 @@
 #include <memory>
 #include <thread>
 #include "ThreadPool.h"
+#include "scm/SCM.h"
 
 using folly::Optional;
 
@@ -218,6 +219,8 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
       syncContentCacheWarming_(
           config_.getBool("content_hash_warm_wait_before_settle", false)),
       scm_(SCM::scmForPath(root->root_path)) {}
+
+InMemoryView::~InMemoryView() = default;
 
 void InMemoryView::View::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;

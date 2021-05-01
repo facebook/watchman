@@ -15,13 +15,13 @@
 #include <chrono>
 #include <iterator>
 #include <thread>
-#include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
-#include "thirdparty/wildmatch/wildmatch.h"
-#include "watchman_error_category.h"
-
 #include "ChildProcess.h"
 #include "QueryableView.h"
 #include "ThreadPool.h"
+#include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
+#include "scm/SCM.h"
+#include "thirdparty/wildmatch/wildmatch.h"
+#include "watchman_error_category.h"
 
 using apache::thrift::TApplicationException;
 using facebook::eden::EdenError;

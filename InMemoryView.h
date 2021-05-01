@@ -68,6 +68,7 @@ class InMemoryFileResult : public FileResult {
 class InMemoryView : public QueryableView {
  public:
   InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
+  ~InMemoryView() override;
 
   InMemoryView(InMemoryView&&) = delete;
   InMemoryView& operator=(InMemoryView&&) = delete;
@@ -85,11 +86,8 @@ class InMemoryView : public QueryableView {
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
 
-  /** Perform a time-based (since) query and emit results to the supplied
-   * query context */
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
-  /** Walks files that match the supplied set of paths */
   void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
   void globGenerator(w_query* query, struct w_query_ctx* ctx) const override;
