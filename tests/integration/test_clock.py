@@ -20,10 +20,10 @@ class TestClock(WatchmanTestCase.WatchmanTestCase):
     def test_clock_sync(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
-        clock1 = self.watchmanCommand("clock", root, {"sync_timeout": 100})
+        clock1 = self.watchmanCommand("clock", root, {"sync_timeout": 5000})
         self.assertRegex(clock1["clock"], "^c:\\d+:\\d+:\\d+:\\d+$")
 
-        clock2 = self.watchmanCommand("clock", root, {"sync_timeout": 100})
+        clock2 = self.watchmanCommand("clock", root, {"sync_timeout": 5000})
         self.assertRegex(clock2["clock"], "^c:\\d+:\\d+:\\d+:\\d+$")
 
         self.assertNotEqual(clock1, clock2)
