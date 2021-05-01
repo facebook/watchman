@@ -82,11 +82,6 @@ PendingCollectionBase::PendingCollectionBase(
     std::atomic<bool>& pinged)
     : cond_(cond), pinged_(pinged) {}
 
-/* destroy a pending_coll */
-PendingCollectionBase::~PendingCollectionBase() {
-  drain();
-}
-
 /* drain and discard the content of a pending_coll, but do not destroy it */
 void PendingCollectionBase::drain() {
   pending_.reset();
@@ -103,64 +98,6 @@ void PendingCollection::ping() {
   cond_.notify_all();
 }
 
-// Deletion is a bit awkward in this radix tree implementation.
-// We can't recursively delete a given prefix as a built-in operation
-// and it is non-trivial to add that functionality right now.
-// When we lop-off a portion of a tree that we're going to analyze
-// recursively, we have to iterate each leaf and explicitly delete
-// that leaf.
-// Since deletion invalidates the iteration state we have to signal
-// to stop iteration after each deletion and then retry the prefix
-// deletion.
-// We use this kid_context state to pass down the required information
-// to the iterator callback so that we adjust the overall state correctly.
-
-PendingCollectionBase::IterContext::IterContext(
-    const w_string& root,
-    PendingCollectionBase& coll)
-    : root(root), coll(coll) {}
-
-// This is the iterator callback we use to prune out obsoleted leaves.
-// We need to compare the prefix to make sure that we don't delete
-// a sibling node by mistake (see commentary on the is_path_prefix
-// function for more on that).
-int PendingCollectionBase::IterContext::operator()(
-    const w_string& key,
-    std::shared_ptr<watchman_pending_fs>& p) {
-  if (!p) {
-    // It was removed; update the tree to reflect this
-    coll.tree_.erase(key);
-    // Stop iteration: we deleted something and invalidated the iterators.
-    return 1;
-  }
-
-  if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > root.size() &&
-      is_path_prefix(
-          (const char*)key.data(), key.size(), root.data(), root.size()) &&
-      !watchman::CookieSync::isPossiblyACookie(p->path)) {
-    logf(
-        DBG,
-        "delete_kids: removing ({}) {} from pending because it is "
-        "obsoleted by ({}) {}\n",
-        p->path.size(),
-        p->path,
-        root.size(),
-        root);
-
-    // Unlink the child from the pending index.
-    coll.unlinkItem(p);
-
-    // Remove it from the art tree.
-    coll.tree_.erase(key);
-
-    // Stop iteration because we just invalidated the iterator state
-    // by modifying the tree mid-iteration.
-    return 1;
-  }
-
-  return 0;
-}
-
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
 void PendingCollectionBase::maybePruneObsoletedChildren(
@@ -168,12 +105,64 @@ void PendingCollectionBase::maybePruneObsoletedChildren(
     int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
-    IterContext ctx{path, *this};
     uint32_t pruned = 0;
+
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no
     // matching prefixes are found and deleted.
-    while (tree_.iterPrefix((const uint8_t*)path.data(), path.size(), ctx)) {
+    // Deletion is a bit awkward in this radix tree implementation.
+    // We can't recursively delete a given prefix as a built-in operation
+    // and it is non-trivial to add that functionality right now.
+    // When we lop-off a portion of a tree that we're going to analyze
+    // recursively, we have to iterate each leaf and explicitly delete
+    // that leaf.
+    // Since deletion invalidates the iteration state we have to signal
+    // to stop iteration after each deletion and then retry the prefix
+    // deletion.
+    //
+    // We need to compare the prefix to make sure that we don't delete
+    // a sibling node by mistake (see commentary on the is_path_prefix
+    // function for more on that).
+
+    auto callback = [&](const w_string& key,
+                        std::shared_ptr<watchman_pending_fs>& p) -> int {
+      if (!p) {
+        // It was removed; update the tree to reflect this
+        tree_.erase(key);
+        // Stop iteration: we deleted something and invalidated the
+        // iterators.
+        return 1;
+      }
+
+      if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > path.size() &&
+          is_path_prefix(
+              (const char*)key.data(), key.size(), path.data(), path.size()) &&
+          !watchman::CookieSync::isPossiblyACookie(p->path)) {
+        logf(
+            DBG,
+            "delete_kids: removing ({}) {} from pending because it is "
+            "obsoleted by ({}) {}\n",
+            p->path.size(),
+            p->path,
+            path.size(),
+            path);
+
+        // Unlink the child from the pending index.
+        unlinkItem(p);
+
+        // Remove it from the art tree.
+        tree_.erase(key);
+
+        // Stop iteration because we just invalidated the iterator state
+        // by modifying the tree mid-iteration.
+        return 1;
+      }
+
+      return 0;
+    };
+
+    while (tree_.iterPrefix(
+        reinterpret_cast<const uint8_t*>(path.data()), path.size(), callback)) {
       // OK; try again
       ++pruned;
     }

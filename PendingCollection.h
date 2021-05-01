@@ -54,7 +54,7 @@ class PendingCollectionBase {
       std::atomic<bool>& pinged);
   PendingCollectionBase(PendingCollectionBase&&) = delete;
   PendingCollectionBase& operator=(PendingCollectionBase&&) = delete;
-  ~PendingCollectionBase();
+  ~PendingCollectionBase() = default;
 
   void drain();
 
@@ -83,18 +83,6 @@ class PendingCollectionBase {
   std::atomic<bool>& pinged_;
   art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
   std::shared_ptr<watchman_pending_fs> pending_;
-
-  struct IterContext {
-    const w_string& root;
-    PendingCollectionBase& coll;
-
-    int operator()(
-        const w_string& key,
-        std::shared_ptr<watchman_pending_fs>& p);
-
-    IterContext(const w_string& root, PendingCollectionBase& coll);
-  };
-  friend struct iterContext;
 
   void maybePruneObsoletedChildren(w_string path, int flags);
   inline void consolidateItem(watchman_pending_fs* p, int flags);
