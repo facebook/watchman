@@ -185,7 +185,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       auto targetPendingLock =
           pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
       logf(DBG, " ... wake up (pinged={})\n", pinged);
-      localPendingLock->append(&*targetPendingLock);
+      localPendingLock->append(targetPendingLock->stealItems());
     }
 
     if (handleShouldRecrawl(root)) {
@@ -212,7 +212,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       auto view = view_.wlock();
       if (!root->inner.done_initial) {
         // we need to recrawl.  Discard these notifications
-        localPendingLock->drain();
+        localPendingLock->clear();
         continue;
       }
 
@@ -301,8 +301,7 @@ InMemoryView::ProcessPendingRet InMemoryView::processPending(
     PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {
   if (pullFromRoot) {
-    auto srcLock = pending_.lock();
-    coll->append(&*srcLock);
+    coll->append(pending_.lock()->stealItems());
   }
 
   if (!coll->size()) {

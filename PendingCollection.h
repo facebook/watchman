@@ -64,7 +64,10 @@ class PendingCollectionBase {
   PendingCollectionBase& operator=(PendingCollectionBase&&) = delete;
   ~PendingCollectionBase() = default;
 
-  void drain();
+  /**
+   * Erase all elements from the collection.
+   */
+  void clear();
 
   /**
    * Add a pending entry.  Will consolidate an existing entry with the same
@@ -76,7 +79,14 @@ class PendingCollectionBase {
       const char* name,
       struct timeval now,
       int flags);
-  void append(PendingCollectionBase* src);
+
+  /**
+   * Merge the full contents of `chain` into this collection. They are usually
+   * from a stealItems() call.
+   *
+   * `chain` is consumed -- the links are broken.
+   */
+  void append(std::shared_ptr<watchman_pending_fs> chain);
 
   /* Moves the head of the chain of items to the caller.
    * The tree is cleared and the caller owns the whole chain */

@@ -52,7 +52,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
       }
       if (localLock->size() > 0) {
         auto lock = pending_.lock();
-        lock->append(&*localLock);
+        lock->append(localLock->stealItems());
         lock->ping();
       }
     }

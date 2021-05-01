@@ -82,8 +82,7 @@ PendingCollectionBase::PendingCollectionBase(
     std::atomic<bool>& pinged)
     : cond_(cond), pinged_(pinged) {}
 
-/* drain and discard the content of a pending_coll, but do not destroy it */
-void PendingCollectionBase::drain() {
+void PendingCollectionBase::clear() {
   pending_.reset();
   tree_.clear();
 }
@@ -257,11 +256,8 @@ void PendingCollectionBase::add(
   return add(dir->getFullPathToChild(name), now, flags);
 }
 
-/* Append the contents of src to target, consolidating in target.
- * src is effectively drained in the process.
- * Caller must own the lock on both src and target. */
-void PendingCollectionBase::append(PendingCollectionBase* src) {
-  auto p = src->stealItems();
+void PendingCollectionBase::append(std::shared_ptr<watchman_pending_fs> chain) {
+  auto p = std::move(chain);
   while (p) {
     auto target_p =
         tree_.search((const uint8_t*)p->path.data(), p->path.size());
