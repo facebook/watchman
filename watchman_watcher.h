@@ -7,7 +7,7 @@
 
 namespace watchman {
 class QueryableView;
-struct InMemoryView;
+class InMemoryView;
 class TerminalWatcherError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;

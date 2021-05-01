@@ -37,6 +37,8 @@ void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
   }
 }
 
+namespace watchman {
+
 /* Ensure that we're synchronized with the state of the
  * filesystem at the current time.
  * We do this by touching a cookie file and waiting to
@@ -47,7 +49,7 @@ void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
  * the timeout expires before we observe the change, or
  * a runtime_error if the root has been deleted or rendered
  * inaccessible. */
-void watchman::InMemoryView::syncToNow(
+void InMemoryView::syncToNow(
     const std::shared_ptr<w_root_t>& root,
     std::chrono::milliseconds timeout) {
   try {
@@ -64,7 +66,7 @@ void watchman::InMemoryView::syncToNow(
         w_assert(
             cookieDirs.size() == 1,
             "Non split watchers cannot have multiple cookie directories");
-        if (cookieDirs.count(root_path) == 1) {
+        if (cookieDirs.count(rootPath_) == 1) {
           // If the root was removed then we need to cancel the watch.
           // We may have already observed the removal via the notifythread,
           // but in some cases (eg: btrfs subvolume deletion) no notification
@@ -74,7 +76,7 @@ void watchman::InMemoryView::syncToNow(
         } else {
           // The cookie dir was a VCS subdir and it got deleted.  Let's
           // focus instead on the parent dir and recursively retry.
-          cookies_.setCookieDir(root_path);
+          cookies_.setCookieDir(rootPath_);
           return cookies_.syncToNow(timeout);
         }
       } else {
@@ -123,6 +125,8 @@ void watchman::InMemoryView::syncToNow(
     throw;
   }
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

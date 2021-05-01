@@ -247,7 +247,7 @@ void InMemoryView::processPath(
     int flags,
     const watchman_dir_ent* pre_stat) {
   w_assert(
-      full_path.size() >= root_path.size(),
+      full_path.size() >= rootPath_.size(),
       "full_path must be a descendant of the root directory\n");
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
@@ -288,7 +288,7 @@ void InMemoryView::processPath(
     return;
   }
 
-  if (w_string_equal(full_path, root_path) ||
+  if (w_string_equal(full_path, rootPath_) ||
       (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
     crawler(root, view, coll, full_path, now, flags);
   } else {
@@ -312,7 +312,7 @@ InMemoryView::ProcessPendingRet InMemoryView::processPending(
         ProcessPendingRet::IsDesynced::No};
   }
 
-  logf(DBG, "processing {} events in {}\n", coll->size(), root_path);
+  logf(DBG, "processing {} events in {}\n", coll->size(), rootPath_);
 
   auto pending = coll->stealItems();
 

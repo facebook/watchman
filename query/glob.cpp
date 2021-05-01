@@ -478,7 +478,7 @@ void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
   if (query->relative_root) {
     relative_root = query->relative_root;
   } else {
-    relative_root = root_path;
+    relative_root = rootPath_;
   }
 
   auto view = view_.rlock();

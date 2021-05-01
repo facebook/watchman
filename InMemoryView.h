@@ -37,9 +37,7 @@ struct InMemoryViewCaches {
 
 class InMemoryFileResult : public FileResult {
  public:
-  explicit InMemoryFileResult(
-      const watchman_file* file,
-      InMemoryViewCaches& caches);
+  InMemoryFileResult(const watchman_file* file, InMemoryViewCaches& caches);
   folly::Optional<FileInformation> stat() override;
   folly::Optional<struct timespec> accessedTime() override;
   folly::Optional<struct timespec> modifiedTime() override;
@@ -63,14 +61,21 @@ class InMemoryFileResult : public FileResult {
   Result<FileResult::ContentHash> contentSha1_;
 };
 
-/** Keeps track of the state of the filesystem in-memory. */
-struct InMemoryView : public QueryableView {
+/**
+ * Keeps track of the state of the filesystem in-memory and drives a notify
+ * thread which consumes events from the watcher.
+ */
+class InMemoryView : public QueryableView {
+ public:
+  InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
+
+  InMemoryView(InMemoryView&&) = delete;
+  InMemoryView& operator=(InMemoryView&&) = delete;
+
   ClockPosition getMostRecentRootNumberAndTickValue() const override;
   uint32_t getLastAgeOutTickValue() const override;
   time_t getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
-
-  explicit InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
   void syncToNow(
@@ -116,7 +121,7 @@ struct InMemoryView : public QueryableView {
   SCM* getSCM() const override;
 
  private:
-  struct view {
+  struct View {
     /* the most recently changed file */
     struct watchman_file* latest_file{0};
 
@@ -127,11 +132,11 @@ struct InMemoryView : public QueryableView {
     // eg: BTRFS not delivering all events for subvolumes
     ino_t rootInode{0};
 
-    explicit view(const w_string& root_path);
+    explicit View(const w_string& root_path);
 
     void insertAtHeadOfFileList(struct watchman_file* file);
   };
-  using SyncView = folly::Synchronized<view>;
+  using SyncView = folly::Synchronized<View>;
 
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
@@ -218,7 +223,8 @@ struct InMemoryView : public QueryableView {
       const struct watchman_glob_tree* node,
       const char* dir_name,
       uint32_t dir_name_len) const;
-  /** Crawl the given directory.
+  /**
+   * Crawl the given directory.
    *
    * Allowed flags:
    *  - W_PENDING_RECURSIVE: the directory will be recursively crawled,
@@ -264,7 +270,7 @@ struct InMemoryView : public QueryableView {
   std::atomic<uint32_t> mostRecentTick_{1};
   /* root number */
   std::atomic<uint32_t> rootNumber_{0};
-  w_string root_path;
+  w_string rootPath_;
 
   // This allows a client to wait for a recrawl to complete.
   // The primary use of this is so that "watch-project" doesn't
@@ -273,11 +279,11 @@ struct InMemoryView : public QueryableView {
   // point, so this is a bit of a weak promise that a query can
   // be immediately executed, but is good enough assuming that
   // the system isn't in a perpetual state of recrawl.
-  struct crawl_state {
+  struct CrawlState {
     std::unique_ptr<std::promise<void>> promise;
     std::shared_future<void> future;
   };
-  folly::Synchronized<crawl_state> crawlState_;
+  folly::Synchronized<CrawlState> crawlState_;
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};

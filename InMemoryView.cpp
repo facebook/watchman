@@ -195,15 +195,15 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
   return contentSha1_.value();
 }
 
-InMemoryView::view::view(const w_string& root_path)
+InMemoryView::View::View(const w_string& root_path)
     : root_dir(std::make_unique<watchman_dir>(root_path, nullptr)) {}
 
 InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
       config_(root->config),
-      view_(view(root->root_path)),
+      view_(View(root->root_path)),
       rootNumber_(next_root_number++),
-      root_path(root->root_path),
+      rootPath_(root->root_path),
       watcher_(watcher),
       caches_(
           root->root_path,
@@ -219,7 +219,7 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
           config_.getBool("content_hash_warm_wait_before_settle", false)),
       scm_(SCM::scmForPath(root->root_path)) {}
 
-void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
+void InMemoryView::View::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;
   if (file->next) {
     file->next->prev = &file->next;
@@ -255,7 +255,7 @@ const watchman_dir* InMemoryView::resolveDir(
   const char* dir_component;
   const char* dir_end;
 
-  if (dir_name == root_path) {
+  if (dir_name == rootPath_) {
     return view->root_dir.get();
   }
 
@@ -263,7 +263,7 @@ const watchman_dir* InMemoryView::resolveDir(
   dir_end = dir_component + dir_name.size();
 
   dir = view->root_dir.get();
-  dir_component += root_path.size() + 1; // Skip root path prefix
+  dir_component += rootPath_.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
@@ -308,7 +308,7 @@ watchman_dir* InMemoryView::resolveDir(
   const char* dir_component;
   const char* dir_end;
 
-  if (dir_name == root_path) {
+  if (dir_name == rootPath_) {
     return view->root_dir.get();
   }
 
@@ -316,7 +316,7 @@ watchman_dir* InMemoryView::resolveDir(
   dir_end = dir_component + dir_name.size();
 
   dir = view->root_dir.get();
-  dir_component += root_path.size() + 1; // Skip root path prefix
+  dir_component += rootPath_.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
@@ -543,7 +543,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
   if (query->relative_root) {
     relative_root = query->relative_root;
   } else {
-    relative_root = root_path;
+    relative_root = rootPath_;
   }
 
   auto view = view_.rlock();
@@ -557,7 +557,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
     auto full_name = w_string::pathCat({relative_root, path.name});
 
     // special case of root dir itself
-    if (w_string_equal(root_path, full_name)) {
+    if (w_string_equal(rootPath_, full_name)) {
       // dirname on the root is outside the root, which is useless
       dir = resolveDir(view, full_name);
       goto is_dir;
@@ -669,9 +669,9 @@ time_t InMemoryView::getLastAgeOutTimeStamp() const {
 void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
   // Start a thread to call into the watcher API for filesystem notifications
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
-  logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), root_path);
+  logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), rootPath_);
   std::thread notifyThreadInstance([self, root]() {
-    w_set_thread_name("notify ", uintptr_t(self.get()), " ", self->root_path);
+    w_set_thread_name("notify ", uintptr_t(self.get()), " ", self->rootPath_);
     try {
       self->notifyThread(root);
     } catch (const std::exception& e) {
@@ -688,7 +688,7 @@ void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
 
   // And now start the IO thread
   std::thread ioThreadInstance([self, root]() {
-    w_set_thread_name("io ", uintptr_t(self.get()), " ", self->root_path);
+    w_set_thread_name("io ", uintptr_t(self.get()), " ", self->rootPath_);
     try {
       self->ioThread(root);
     } catch (const std::exception& e) {
@@ -701,7 +701,7 @@ void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
 }
 
 void InMemoryView::signalThreads() {
-  logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), root_path);
+  logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), rootPath_);
   stopThreads_ = true;
   watcher_->signalThreads();
   pending_.ping();
@@ -715,7 +715,7 @@ bool InMemoryView::doAnyOfTheseFilesExist(
     const std::vector<w_string>& fileNames) const {
   auto view = view_.rlock();
   for (auto& name : fileNames) {
-    auto fullName = w_string::pathCat({root_path, name});
+    auto fullName = w_string::pathCat({rootPath_, name});
     const auto dir = resolveDir(view, fullName.dirName());
     if (!dir) {
       continue;
