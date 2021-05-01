@@ -124,10 +124,9 @@ class PendingCollectionFixture : public testing::Test {
 
 class WrappedPendingCollection : public PendingCollectionBase {
  public:
-  WrappedPendingCollection() : PendingCollectionBase{cond, pinged} {}
+  WrappedPendingCollection() : PendingCollectionBase{cond} {}
 
   std::condition_variable cond;
-  std::atomic<bool> pinged{false};
 };
 
 /**

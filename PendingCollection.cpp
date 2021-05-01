@@ -270,17 +270,10 @@ void PendingChanges::unlinkItem(std::shared_ptr<watchman_pending_fs>& p) {
   p->prev.reset();
 }
 
-PendingCollectionBase::PendingCollectionBase(
-    std::condition_variable& cond,
-    std::atomic<bool>& pinged)
-    : cond_(cond), pinged_(pinged) {}
+PendingCollectionBase::PendingCollectionBase(std::condition_variable& cond)
+    : cond_(cond) {}
 
 void PendingCollectionBase::ping() {
-  pinged_ = true;
-  cond_.notify_all();
-}
-
-void PendingCollection::ping() {
   pinged_ = true;
   cond_.notify_all();
 }
@@ -294,10 +287,9 @@ bool PendingCollectionBase::checkAndResetPinged() {
 }
 
 PendingCollection::PendingCollection()
-    : folly::Synchronized<
-          PendingCollectionBase,
-          std::mutex>{folly::in_place, cond_, pinged_},
-      pinged_{false} {}
+    : folly::Synchronized<PendingCollectionBase, std::mutex>{
+          folly::in_place,
+          cond_} {}
 
 PendingCollection::LockedPtr PendingCollection::lockAndWait(
     std::chrono::milliseconds timeoutms,

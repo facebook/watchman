@@ -709,11 +709,11 @@ void InMemoryView::signalThreads() {
   logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), rootPath_);
   stopThreads_ = true;
   watcher_->signalThreads();
-  pending_.ping();
+  pending_.lock()->ping();
 }
 
 void InMemoryView::wakeThreads() {
-  pending_.ping();
+  pending_.lock()->ping();
 }
 
 bool InMemoryView::doAnyOfTheseFilesExist(

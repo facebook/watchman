@@ -109,33 +109,43 @@ class PendingChanges {
 
 class PendingCollectionBase : public PendingChanges {
  public:
-  PendingCollectionBase(
-      std::condition_variable& cond,
-      std::atomic<bool>& pinged);
+  explicit PendingCollectionBase(std::condition_variable& cond);
   PendingCollectionBase(PendingCollectionBase&&) = delete;
   PendingCollectionBase& operator=(PendingCollectionBase&&) = delete;
-  ~PendingCollectionBase() = default;
 
+  /**
+   * Sets the pinged flag to true and wakes any waiting threads.
+   */
   void ping();
+
+  /**
+   * Sets the pinged flag to false.
+   * Returns true if previously pinged or PendingChanges is non-empty.
+   */
   bool checkAndResetPinged();
 
  private:
   std::condition_variable& cond_;
-  std::atomic<bool>& pinged_;
+  bool pinged_{false};
 };
 
 class PendingCollection
     : public folly::Synchronized<PendingCollectionBase, std::mutex> {
  public:
   PendingCollection();
+
+  /**
+   * If previously pinged or non-empty, returns a locked PendingCollectionBase.
+   * Otherwise, waits up to timeoutms (or indefinitely if -1 ms) for a ping().
+   *
+   * pinged is set to true if pinged or non-empty. The internal pinged state is
+   * always false after this call.
+   */
   LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
 
-  // Ping without requiring the lock to be held
-  void ping();
-
  private:
+  // Notified on ping().
   std::condition_variable cond_;
-  std::atomic<bool> pinged_;
 };
 
 namespace watchman {
