@@ -8,7 +8,7 @@ void watchman_dir::Deleter::operator()(watchman_file* file) const {
 }
 
 watchman_dir::watchman_dir(w_string name, watchman_dir* parent)
-    : name(name), parent(parent) {}
+    : name(std::move(name)), parent(parent) {}
 
 w_string watchman_dir::getFullPath() const {
   return getFullPathToChild(w_string_piece());

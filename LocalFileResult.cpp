@@ -7,7 +7,7 @@ using folly::Optional;
 namespace watchman {
 
 LocalFileResult::LocalFileResult(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     w_string fullPath,
     w_clock_t clock)
     : root_(root), fullPath_(fullPath), clock_(clock) {}

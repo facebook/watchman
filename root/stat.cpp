@@ -17,7 +17,7 @@ namespace watchman {
  * returns false.
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll,
     struct timeval now,
     const FileInformation& entryStat,
@@ -53,7 +53,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
 }
 
 void InMemoryView::statPath(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,

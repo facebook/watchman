@@ -157,15 +157,15 @@ struct InotifyWatcher : public Watcher {
   char ibuf
       [WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + (NAME_MAX + 1))];
 
-  explicit InotifyWatcher(w_root_t* root);
+  explicit InotifyWatcher(watchman_root* root);
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
@@ -174,7 +174,7 @@ struct InotifyWatcher : public Watcher {
   // needed. Returns true if the root directory was removed and the watch needs
   // to be cancelled.
   bool process_inotify_event(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll,
       struct inotify_event* ine,
       struct timeval now);
@@ -184,7 +184,7 @@ struct InotifyWatcher : public Watcher {
   json_ref getDebugInfo() override;
 };
 
-InotifyWatcher::InotifyWatcher(w_root_t* root)
+InotifyWatcher::InotifyWatcher(watchman_root* root)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
   infd = FileDescriptor(
@@ -212,7 +212,7 @@ InotifyWatcher::InotifyWatcher(w_root_t* root)
 }
 
 std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>&,
+    const std::shared_ptr<watchman_root>&,
     struct watchman_dir*,
     const char* path) {
   // Carry out our very strict opendir first to ensure that we're not
@@ -240,7 +240,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
 }
 
 bool InotifyWatcher::process_inotify_event(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll,
     struct inotify_event* ine,
     struct timeval now) {
@@ -401,7 +401,7 @@ bool InotifyWatcher::process_inotify_event(
 }
 
 Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll) {
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
@@ -513,7 +513,7 @@ json_ref InotifyWatcher::getDebugInfo() {
 }
 
 namespace {
-std::shared_ptr<watchman::QueryableView> detectInotify(w_root_t* root) {
+std::shared_ptr<watchman::QueryableView> detectInotify(watchman_root* root) {
   if (is_edenfs_fs_type(root->fs_type)) {
     // inotify is effectively O(repo) and we know that that access
     // pattern is undesirable when running on top of EdenFS

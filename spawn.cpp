@@ -86,7 +86,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
 }
 
 static void spawn_command(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_trigger_command* cmd,
     w_query_res* res,
     struct ClockSpec* since_spec) {
@@ -240,7 +240,7 @@ static void spawn_command(
 }
 
 bool watchman_trigger_command::maybeSpawn(
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<watchman_root>& root) {
   bool didRun = false;
 
   // If it looks like we're in a repo undergoing a rebase or

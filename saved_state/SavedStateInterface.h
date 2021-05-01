@@ -29,7 +29,7 @@ class SavedStateInterface {
       w_string_piece storageType,
       const json_ref& savedStateConfig,
       const SCM* scm,
-      const std::shared_ptr<w_root_t> root);
+      const std::shared_ptr<watchman_root> root);
 
   // The commit ID of a saved state and a JSON blob of information clients can
   // use to access the saved state.  The contents of the info varies with the

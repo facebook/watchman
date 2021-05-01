@@ -27,13 +27,13 @@ struct watchman_trigger_command {
   std::unique_ptr<watchman::ChildProcess> current_proc;
 
   watchman_trigger_command(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       const json_ref& trig);
   watchman_trigger_command(const watchman_trigger_command&) = delete;
   ~watchman_trigger_command();
 
   void stop();
-  void start(const std::shared_ptr<w_root_t>& root);
+  void start(const std::shared_ptr<watchman_root>& root);
 
  private:
   std::thread triggerThread_;
@@ -41,15 +41,15 @@ struct watchman_trigger_command {
   std::unique_ptr<watchman_event> ping_;
   bool stopTrigger_{false};
 
-  void run(const std::shared_ptr<w_root_t>& root);
-  bool maybeSpawn(const std::shared_ptr<w_root_t>& root);
+  void run(const std::shared_ptr<watchman_root>& root);
+  bool maybeSpawn(const std::shared_ptr<watchman_root>& root);
   bool waitNoIntr();
 };
 
 void w_assess_trigger(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_trigger_command* cmd);
 std::unique_ptr<watchman_trigger_command> w_build_trigger_from_def(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     const json_ref& trig,
     char** errmsg);

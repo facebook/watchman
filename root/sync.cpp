@@ -50,7 +50,7 @@ namespace watchman {
  * a runtime_error if the root has been deleted or rendered
  * inaccessible. */
 void InMemoryView::syncToNow(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     std::chrono::milliseconds timeout) {
   try {
     cookies_.syncToNow(timeout);

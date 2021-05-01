@@ -40,7 +40,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Start up threads or similar.  Called in the context of the
   // notify thread
-  virtual bool start(const std::shared_ptr<w_root_t>& root);
+  virtual bool start(const std::shared_ptr<watchman_root>& root);
 
   // Perform watcher-specific cleanup for a watched root when it is freed
   virtual ~Watcher();
@@ -51,7 +51,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   virtual std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) = 0;
 
@@ -68,7 +68,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // Consume any available notifications.  If there are none pending,
   // does not block.
   virtual ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll) = 0;
 
   // Wait for an inotify event to become available
@@ -96,11 +96,13 @@ class WatcherRegistry {
  public:
   WatcherRegistry(
       const std::string& name,
-      std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init,
+      std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)>
+          init,
       int priority = 0);
 
   /** Locate the appropriate watcher for root and initialize it */
-  static std::shared_ptr<watchman::QueryableView> initWatcher(w_root_t* root);
+  static std::shared_ptr<watchman::QueryableView> initWatcher(
+      watchman_root* root);
 
   const std::string& getName() const {
     return name_;
@@ -108,7 +110,7 @@ class WatcherRegistry {
 
  private:
   std::string name_;
-  std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init_;
+  std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)> init_;
   int pri_;
 
   static std::unordered_map<std::string, WatcherRegistry>& getRegistry();
@@ -124,7 +126,7 @@ class RegisterWatcher : public WatcherRegistry {
   explicit RegisterWatcher(const std::string& name, int priority = 0)
       : WatcherRegistry(
             name,
-            [](w_root_t* root) {
+            [](watchman_root* root) {
               return std::make_shared<watchman::InMemoryView>(
                   root, std::make_shared<WATCHER>(root));
             },

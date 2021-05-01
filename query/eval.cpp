@@ -179,14 +179,14 @@ bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
 
 void time_generator(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct w_query_ctx* ctx) {
   root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct w_query_ctx* ctx) {
   bool generated = false;
 
@@ -292,7 +292,7 @@ static void execute_common(
 
 w_query_ctx::w_query_ctx(
     w_query* q,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     bool disableFreshInstance)
     : created(std::chrono::steady_clock::now()),
       query(q),
@@ -375,7 +375,7 @@ W_CAP_REG("scm-since")
 
 w_query_res w_query_execute(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     w_query_generator generator) {
   w_query_res res;
   std::shared_ptr<w_query> altQuery;
@@ -450,7 +450,7 @@ w_query_res w_query_execute(
         disableFreshInstance = true;
         generator = [root, modifiedMergebase, requestId](
                         w_query* q,
-                        const std::shared_ptr<w_root_t>& r,
+                        const std::shared_ptr<watchman_root>& r,
                         struct w_query_ctx* c) {
           auto changedFiles =
               root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
@@ -501,8 +501,9 @@ w_query_res w_query_execute(
   // indicated to omit those. To do so, lets just make an empty
   // generator.
   if (query->omit_changed_files) {
-    generator =
-        [](w_query*, const std::shared_ptr<w_root_t>&, struct w_query_ctx*) {};
+    generator = [](w_query*,
+                   const std::shared_ptr<watchman_root>&,
+                   struct w_query_ctx*) {};
   }
   w_query_ctx ctx(query, root, disableFreshInstance);
 

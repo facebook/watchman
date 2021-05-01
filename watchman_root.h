@@ -129,7 +129,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     time_t last_cmd_timestamp{0};
     mutable time_t last_reap_timestamp{0};
 
-    void init(w_root_t* root);
+    void init(watchman_root* root);
   } inner;
 
   // For debugging and diagnostic purposes, this set references
@@ -175,9 +175,12 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   void applyIgnoreConfiguration();
 };
 
-std::shared_ptr<w_root_t> w_root_resolve(const char* path, bool auto_watch);
+std::shared_ptr<watchman_root> w_root_resolve(
+    const char* path,
+    bool auto_watch);
 
-std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(const char* filename);
+std::shared_ptr<watchman_root> w_root_resolve_for_client_mode(
+    const char* filename);
 bool findEnclosingRoot(
     const w_string& fileName,
     w_string_piece& prefix,
@@ -193,10 +196,10 @@ bool did_file_change(
 extern std::atomic<long> live_roots;
 
 extern folly::Synchronized<
-    std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
+    std::unordered_map<w_string, std::shared_ptr<watchman_root>>>
     watched_roots;
 
-std::shared_ptr<w_root_t>
+std::shared_ptr<watchman_root>
 root_resolve(const char* filename, bool auto_watch, bool* created);
 
 void set_poison_state(
@@ -206,7 +209,7 @@ void set_poison_state(
     const std::error_code& err);
 
 void handle_open_errno(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,

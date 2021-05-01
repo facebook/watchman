@@ -8,7 +8,8 @@
 
 using namespace watchman;
 
-folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
+folly::Synchronized<
+    std::unordered_map<w_string, std::shared_ptr<watchman_root>>>
     watched_roots;
 std::atomic<long> live_roots{0};
 
@@ -38,7 +39,7 @@ bool findEnclosingRoot(
     const w_string& fileName,
     w_string_piece& prefix,
     w_string_piece& relativePath) {
-  std::shared_ptr<w_root_t> root;
+  std::shared_ptr<watchman_root> root;
   auto name = fileName.piece();
   {
     auto map = watched_roots.rlock();
@@ -63,7 +64,7 @@ bool findEnclosingRoot(
 }
 
 json_ref w_root_stop_watch_all() {
-  std::vector<w_root_t*> roots;
+  std::vector<watchman_root*> roots;
   json_ref stopped = json_array();
 
   // Funky looking loop because root->cancel() needs to acquire the
@@ -71,7 +72,7 @@ json_ref w_root_stop_watch_all() {
   // otherwise have held.  Therefore we just loop until the map is
   // empty.
   while (true) {
-    std::shared_ptr<w_root_t> root;
+    std::shared_ptr<watchman_root> root;
 
     {
       auto map = watched_roots.wlock();
@@ -315,7 +316,7 @@ bool w_root_load_state(const json_ref& state) {
     auto triggers = obj.get_default("triggers");
     filename = json_string_value(json_object_get(obj, "path"));
 
-    std::shared_ptr<w_root_t> root;
+    std::shared_ptr<watchman_root> root;
     try {
       root = root_resolve(filename, true, &created);
     } catch (const std::exception&) {
@@ -375,7 +376,7 @@ bool w_root_load_state(const json_ref& state) {
 void w_root_free_watched_roots() {
   int last, interval;
   time_t started;
-  std::vector<std::shared_ptr<w_root_t>> roots;
+  std::vector<std::shared_ptr<watchman_root>> roots;
 
   // We want to cancel the list of roots, but need to be careful to avoid
   // deadlock; make a copy of the set of roots under the lock...

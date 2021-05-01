@@ -240,7 +240,7 @@ w_string ClockPosition::toClockString() const {
 
 /* Add the current clock value to the response */
 void annotate_with_clock(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     json_ref& resp) {
   resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
 }

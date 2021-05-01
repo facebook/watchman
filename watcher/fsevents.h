@@ -38,23 +38,23 @@ struct FSEventsWatcher : public Watcher {
       std::optional<w_string> dir = std::nullopt);
 
   explicit FSEventsWatcher(
-      w_root_t* root,
+      watchman_root* root,
       std::optional<w_string> dir = std::nullopt);
 
-  bool start(const std::shared_ptr<w_root_t>& root) override;
+  bool start(const std::shared_ptr<watchman_root>& root) override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
-  void FSEventsThread(const std::shared_ptr<w_root_t>& root);
+  void FSEventsThread(const std::shared_ptr<watchman_root>& root);
 };
 
 } // namespace watchman

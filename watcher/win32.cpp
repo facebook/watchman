@@ -38,25 +38,25 @@ struct WinWatcher : public Watcher {
   std::condition_variable cond;
   folly::Synchronized<std::list<Item>, std::mutex> changedItems;
 
-  explicit WinWatcher(w_root_t* root);
+  explicit WinWatcher(watchman_root* root);
   ~WinWatcher();
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  bool start(const std::shared_ptr<w_root_t>& root) override;
+  bool start(const std::shared_ptr<watchman_root>& root) override;
   void signalThreads() override;
-  void readChangesThread(const std::shared_ptr<w_root_t>& root);
+  void readChangesThread(const std::shared_ptr<watchman_root>& root);
 };
 
-WinWatcher::WinWatcher(w_root_t* root)
+WinWatcher::WinWatcher(watchman_root* root)
     : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
   int err;
 
@@ -108,7 +108,7 @@ void WinWatcher::signalThreads() {
   SetEvent(ping);
 }
 
-void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
+void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
   std::vector<uint8_t> buf;
   DWORD err, filter;
   auto olap = OVERLAPPED();
@@ -302,7 +302,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   logf(DBG, "done\n");
 }
 
-bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
+bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
   int err;
 
   // Spin up the changes reading thread; it owns a ref on the root
@@ -356,14 +356,14 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
 }
 
 std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     const char* path) {
   return w_dir_open(path);
 }
 
 Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll) {
   std::list<Item> items;
   struct timeval now;

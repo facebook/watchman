@@ -199,7 +199,9 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 InMemoryView::View::View(const w_string& root_path)
     : root_dir(std::make_unique<watchman_dir>(root_path, nullptr)) {}
 
-InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
+InMemoryView::InMemoryView(
+    watchman_root* root,
+    std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
       config_(root->config),
       view_(View(root->root_path)),
@@ -669,7 +671,7 @@ time_t InMemoryView::getLastAgeOutTimeStamp() const {
   return last_age_out_timestamp;
 }
 
-void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
+void InMemoryView::startThreads(const std::shared_ptr<watchman_root>& root) {
   // Start a thread to call into the watcher API for filesystem notifications
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
   logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), rootPath_);

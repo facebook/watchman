@@ -7,7 +7,7 @@
 namespace watchman {
 
 std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<watchman_root>& root) {
   auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
 
   if (lockPair.second->promise && lockPair.second->future.valid()) {
@@ -29,7 +29,7 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 }
 
 void InMemoryView::fullCrawl(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& pending) {
   struct timeval start;
 
@@ -99,7 +99,7 @@ void InMemoryView::fullCrawl(
 
 // Performs settle-time actions.
 // Returns true if the root was reaped and the io thread should terminate.
-static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
+static bool do_settle_things(const std::shared_ptr<watchman_root>& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
@@ -126,14 +126,15 @@ static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
   return false;
 }
 
-void InMemoryView::clientModeCrawl(const std::shared_ptr<w_root_t>& root) {
+void InMemoryView::clientModeCrawl(const std::shared_ptr<watchman_root>& root) {
   PendingCollection pending;
 
   auto lock = pending.lock();
   fullCrawl(root, lock);
 }
 
-bool InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
+bool InMemoryView::handleShouldRecrawl(
+    const std::shared_ptr<watchman_root>& root) {
   {
     auto info = root->recrawlInfo.rlock();
     if (!info->shouldRecrawl) {
@@ -150,7 +151,7 @@ bool InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
   return true;
 }
 
-void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
+void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   PendingCollection pending;
   auto localPendingLock = pending.lock();
 
@@ -239,7 +240,7 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
 }
 
 void InMemoryView::processPath(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,
@@ -297,7 +298,7 @@ void InMemoryView::processPath(
 }
 
 InMemoryView::ProcessPendingRet InMemoryView::processPending(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {

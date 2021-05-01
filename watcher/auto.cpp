@@ -6,7 +6,8 @@ using namespace watchman;
 
 WatcherRegistry::WatcherRegistry(
     const std::string& name,
-    std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init,
+    std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)>
+        init,
     int priority)
     : name_(name), init_(init), pri_(priority) {
   registerFactory(*this);
@@ -40,7 +41,7 @@ const WatcherRegistry* WatcherRegistry::getWatcherByName(
 // Helper to DRY in the two success paths in the function below
 static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
     const std::string& watcherName,
-    w_root_t* root,
+    watchman_root* root,
     std::shared_ptr<watchman::QueryableView>&& watcher) {
   if (!watcher) {
     throw std::runtime_error(folly::to<std::string>(
@@ -62,7 +63,7 @@ static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
 }
 
 std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
-    w_root_t* root) {
+    watchman_root* root) {
   std::string failureReasons;
   std::string watcherName = root->config.getString("watcher", "auto");
 
@@ -144,7 +145,7 @@ bool Watcher::startWatchFile(struct watchman_file*) {
   return true;
 }
 
-bool Watcher::start(const std::shared_ptr<w_root_t>&) {
+bool Watcher::start(const std::shared_ptr<watchman_root>&) {
   return true;
 }
 

@@ -41,7 +41,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual time_t getLastAgeOutTimeStamp() const;
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
   virtual void syncToNow(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       std::chrono::milliseconds timeout) = 0;
 
   // Specialized query function that is used to test whether
@@ -56,7 +56,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   /**
    * Start up any helper threads.
    */
-  virtual void startThreads(const std::shared_ptr<w_root_t>& /*root*/) {}
+  virtual void startThreads(const std::shared_ptr<watchman_root>& /*root*/) {}
   /**
    * Request that helper threads shutdown (but does not join them).
    */
@@ -69,7 +69,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual const w_string& getName() const = 0;
   virtual json_ref getWatcherDebugInfo() const = 0;
   virtual std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<w_root_t>& root) = 0;
+      const std::shared_ptr<watchman_root>& root) = 0;
 
   // Return the SCM detected for this watched root
   virtual SCM* getSCM() const = 0;

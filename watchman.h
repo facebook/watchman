@@ -16,7 +16,6 @@ struct watchman_file;
 struct watchman_dir;
 struct watchman_root;
 struct watchman_trigger_command;
-typedef struct watchman_root w_root_t;
 
 #include "watchman_dir.h"
 #include "watchman_file.h"

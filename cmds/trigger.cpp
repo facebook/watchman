@@ -17,7 +17,7 @@ bool watchman_trigger_command::waitNoIntr() {
   return false;
 }
 
-void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
+void watchman_trigger_command::run(const std::shared_ptr<watchman_root>& root) {
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
   w_set_thread_name("trigger ", triggername, " ", root->root_path);
 
@@ -135,7 +135,7 @@ static void cmd_trigger_list(
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_ref build_legacy_trigger(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_client* client,
     const json_ref& args) {
   uint32_t next_arg = 0;
@@ -218,7 +218,7 @@ static void parse_redirection(
 }
 
 watchman_trigger_command::watchman_trigger_command(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     const json_ref& trig)
     : definition(trig),
       append_files(false),
@@ -320,7 +320,8 @@ watchman_trigger_command::~watchman_trigger_command() {
   }
 }
 
-void watchman_trigger_command::start(const std::shared_ptr<w_root_t>& root) {
+void watchman_trigger_command::start(
+    const std::shared_ptr<watchman_root>& root) {
   subscriber_ =
       root->unilateralResponses->subscribe([this] { ping_->notify(); });
   triggerThread_ = std::thread([this, root] {

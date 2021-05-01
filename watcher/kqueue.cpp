@@ -48,7 +48,7 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-KQueueWatcher::KQueueWatcher(w_root_t* root, bool recursive)
+KQueueWatcher::KQueueWatcher(watchman_root* root, bool recursive)
     : Watcher("kqueue", 0),
       maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
       recursive_(recursive) {
@@ -145,7 +145,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     const char* path) {
   struct stat st, osdirst;
@@ -213,7 +213,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 }
 
 Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll) {
   int n;
   int i;

@@ -8,7 +8,7 @@
 using namespace watchman;
 
 watchman_client_subscription::watchman_client_subscription(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     std::weak_ptr<watchman_client> client)
     : root(root), weakClient(client) {}
 
@@ -47,7 +47,7 @@ enum class sub_action { no_sync_needed, execute, defer, drop };
 
 static std::tuple<sub_action, w_string> get_subscription_action(
     struct watchman_client_subscription* sub,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     ClockPosition position) {
   auto action = sub_action::execute;
   w_string policy_name;
@@ -205,7 +205,7 @@ void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
 }
 
 json_ref watchman_client_subscription::buildSubscriptionResults(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     ClockSpec& position,
     OnStateTransition onStateTransition) {
   auto since_spec = query->since_spec.get();
@@ -303,7 +303,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
 
 ClockSpec watchman_client_subscription::runSubscriptionRules(
     watchman_user_client* client,
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<watchman_root>& root) {
   ClockSpec position;
 
   auto response =

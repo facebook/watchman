@@ -8,7 +8,7 @@
 using namespace watchman;
 
 void handle_open_errno(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,

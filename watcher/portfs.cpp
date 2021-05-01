@@ -38,19 +38,19 @@ struct PortFSWatcher : public Watcher {
 
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 
-  explicit PortFSWatcher(w_root_t* root);
+  explicit PortFSWatcher(watchman_root* root);
 
-  bool start(const std::shared_ptr<w_root_t>& root) override;
+  bool start(const std::shared_ptr<watchman_root>& root) override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
@@ -88,7 +88,7 @@ static std::unique_ptr<watchman_port_file> make_port_file(
   return f;
 }
 
-PortFSWatcher::PortFSWatcher(w_root_t* root)
+PortFSWatcher::PortFSWatcher(watchman_root* root)
     : Watcher("portfs", 0),
       port_fd(port_create(), "port_create()"),
       port_delete_fd(port_create(), "port_create()"),
@@ -144,7 +144,7 @@ bool PortFSWatcher::do_watch(
  * FILE_ATTRIB event on the root, because just one event can be generated
  * per file_obj the delete event coming afterwards is not seen.
  */
-bool PortFSWatcher::start(const std::shared_ptr<w_root_t>& root) {
+bool PortFSWatcher::start(const std::shared_ptr<watchman_root>& root) {
   struct stat st;
   if (stat(root->root_path.c_str(), &st)) {
     watchman::log(watchman::ERR, "stat failed in PortFS root delete watch");
@@ -181,7 +181,7 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     const char* path) {
   struct stat st;
@@ -207,7 +207,7 @@ std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
 }
 
 Watcher::ConsumeNotifyRet PortFSWatcher::consumeNotify(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll) {
   uint_t i, n;
   struct timeval now;

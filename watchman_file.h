@@ -31,9 +31,9 @@ struct watchman_file {
   watchman::FileInformation stat;
 
   inline w_string_piece getName() const {
-    auto lenPtr = (uint32_t*)(this + 1);
-    auto data = (char*)(lenPtr + 1);
-    return w_string_piece(data, *lenPtr);
+    uint32_t len;
+    memcpy(&len, this + 1, 4);
+    return w_string_piece(reinterpret_cast<const char*>(this + 1) + 4, len);
   }
 
   void removeFromFileList();

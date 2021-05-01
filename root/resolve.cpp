@@ -97,10 +97,10 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
   }
 }
 
-std::shared_ptr<w_root_t>
+std::shared_ptr<watchman_root>
 root_resolve(const char* filename, bool auto_watch, bool* created) {
   std::error_code realpath_err;
-  std::shared_ptr<w_root_t> root;
+  std::shared_ptr<watchman_root> root;
 
   *created = false;
 
@@ -208,8 +208,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
         "and checking out a newer version of the project?");
   }
 
-  // created with 1 ref
-  root = std::make_shared<w_root_t>(root_str, fs_type);
+  root = std::make_shared<watchman_root>(root_str, fs_type);
 
   {
     auto wlock = watched_roots.wlock();
@@ -228,7 +227,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
   return root;
 }
 
-std::shared_ptr<w_root_t> w_root_resolve(
+std::shared_ptr<watchman_root> w_root_resolve(
     const char* filename,
     bool auto_watch) {
   bool created = false;
@@ -250,7 +249,8 @@ std::shared_ptr<w_root_t> w_root_resolve(
   return root;
 }
 
-std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(const char* filename) {
+std::shared_ptr<watchman_root> w_root_resolve_for_client_mode(
+    const char* filename) {
   bool created = false;
   auto root = root_resolve(filename, true, &created);
 

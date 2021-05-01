@@ -25,7 +25,7 @@ enum ClientStateDisposition {
 
 class ClientStateAssertion {
  public:
-  const std::shared_ptr<w_root_t> root; // Holds a ref on the root
+  const std::shared_ptr<watchman_root> root; // Holds a ref on the root
   const w_string name;
   // locking: You must hold root->assertedStates lock to access this member
   ClientStateDisposition disposition{PendingEnter};
@@ -36,7 +36,7 @@ class ClientStateAssertion {
   json_ref enterPayload;
 
   ClientStateAssertion(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       const w_string& name)
       : root(root), name(name) {}
 };
@@ -82,7 +82,7 @@ struct watchman_client_subscription
     json_ref response;
   };
 
-  std::shared_ptr<w_root_t> root;
+  std::shared_ptr<watchman_root> root;
   w_string name;
   /* whether this subscription is paused */
   bool debug_paused = false;
@@ -97,21 +97,21 @@ struct watchman_client_subscription
   std::deque<LoggedResponse> lastResponses;
 
   explicit watchman_client_subscription(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       std::weak_ptr<watchman_client> client);
   ~watchman_client_subscription();
   void processSubscription();
 
   std::shared_ptr<watchman_user_client> lockClient();
   json_ref buildSubscriptionResults(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       ClockSpec& position,
       OnStateTransition onStateTransition);
 
  private:
   ClockSpec runSubscriptionRules(
       watchman_user_client* client,
-      const std::shared_ptr<w_root_t>& root);
+      const std::shared_ptr<watchman_root>& root);
   void updateSubscriptionTicks(w_query_res* res);
   void processSubscriptionImpl();
 };

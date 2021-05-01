@@ -62,7 +62,7 @@ void watchman_root::init() {
   time(&inner.last_cmd_timestamp);
 }
 
-void watchman_root::Inner::init(w_root_t* root) {
+void watchman_root::Inner::init(watchman_root* root) {
   view_ = WatcherRegistry::initWatcher(root);
 }
 

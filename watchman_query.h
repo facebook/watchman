@@ -29,7 +29,7 @@ struct w_query_field_renderer {
 };
 
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
-using w_root_t = struct watchman_root;
+using watchman_root = struct watchman_root;
 
 struct w_query_since {
   bool is_timestamp;
@@ -206,7 +206,7 @@ struct w_query_ctx {
   }
 
   struct w_query* query;
-  std::shared_ptr<w_root_t> root;
+  std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
   w_string wholename;
   struct w_query_since since;
@@ -235,7 +235,7 @@ struct w_query_ctx {
 
   w_query_ctx(
       w_query* q,
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       bool disableFreshInstance);
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
@@ -416,7 +416,7 @@ bool w_query_register_expression_parser(
     w_query_expr_parser parser);
 
 std::shared_ptr<w_query> w_query_parse(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     const json_ref& query);
 
 std::unique_ptr<QueryExpr> w_query_expr_parse(
@@ -434,11 +434,11 @@ void w_query_process_file(
 // generator when used in triggers or subscriptions
 using w_query_generator = std::function<void(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct w_query_ctx* ctx)>;
 void time_generator(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     struct w_query_ctx* ctx);
 
 struct w_query_res {
@@ -453,7 +453,7 @@ struct w_query_res {
 
 w_query_res w_query_execute(
     w_query* query,
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     w_query_generator generator);
 
 // Returns a shared reference to the wholename
@@ -463,7 +463,7 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx);
 
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     const json_ref& args,
     int start,
     uint32_t* next_arg,

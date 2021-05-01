@@ -16,7 +16,7 @@ std::unique_ptr<SavedStateInterface> SavedStateInterface::getInterface(
     w_string_piece storageType,
     const json_ref& savedStateConfig,
     const SCM* scm,
-    const std::shared_ptr<w_root_t> root) {
+    const std::shared_ptr<watchman_root> root) {
   unused_parameter(root);
 #if HAVE_MANIFOLD
   if (storageType == "manifold") {

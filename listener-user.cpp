@@ -20,7 +20,7 @@ W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON | CMD_POISON_IMMUNE, NULL)
 
 void add_root_warnings_to_response(
     json_ref& response,
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<watchman_root>& root) {
   auto info = root->recrawlInfo.rlock();
 
   if (!info->warning) {
@@ -40,7 +40,7 @@ void add_root_warnings_to_response(
           "'`\n")));
 }
 
-std::shared_ptr<w_root_t> doResolveOrCreateRoot(
+std::shared_ptr<watchman_root> doResolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args,
     bool create) {
@@ -62,7 +62,7 @@ std::shared_ptr<w_root_t> doResolveOrCreateRoot(
   }
 
   try {
-    std::shared_ptr<w_root_t> root;
+    std::shared_ptr<watchman_root> root;
     if (client->client_mode) {
       root = w_root_resolve_for_client_mode(root_name);
     } else {
@@ -90,13 +90,13 @@ std::shared_ptr<w_root_t> doResolveOrCreateRoot(
   }
 }
 
-std::shared_ptr<w_root_t> resolveRoot(
+std::shared_ptr<watchman_root> resolveRoot(
     struct watchman_client* client,
     const json_ref& args) {
   return doResolveOrCreateRoot(client, args, false);
 }
 
-std::shared_ptr<w_root_t> resolveOrCreateRoot(
+std::shared_ptr<watchman_root> resolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args) {
   return doResolveOrCreateRoot(client, args, true);

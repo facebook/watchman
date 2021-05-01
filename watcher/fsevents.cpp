@@ -23,7 +23,7 @@ namespace watchman {
 
 struct fse_stream {
   FSEventStreamRef stream{nullptr};
-  std::shared_ptr<w_root_t> root;
+  std::shared_ptr<watchman_root> root;
   FSEventsWatcher* watcher;
   FSEventStreamEventId last_good{0};
   FSEventStreamEventId since{0};
@@ -33,7 +33,7 @@ struct fse_stream {
   CFUUIDRef uuid;
 
   fse_stream(
-      const std::shared_ptr<w_root_t>& root,
+      const std::shared_ptr<watchman_root>& root,
       FSEventsWatcher* watcher,
       FSEventStreamEventId since)
       : root(root), watcher(watcher), since(since) {}
@@ -64,13 +64,13 @@ static const struct flag_map kflags[] = {
 };
 
 static struct fse_stream* fse_stream_make(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     FSEventsWatcher* watcher,
     FSEventStreamEventId since,
     w_string& failure_reason);
 
 std::shared_ptr<FSEventsWatcher> watcherFromRoot(
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<watchman_root>& root) {
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     return nullptr;
@@ -81,7 +81,7 @@ std::shared_ptr<FSEventsWatcher> watcherFromRoot(
 
 /** Generate a perf event for the drop */
 static void log_drop_event(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     bool isKernel) {
   w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
   sample.add_root_meta(root);
@@ -259,7 +259,7 @@ fse_stream::~fse_stream() {
 }
 
 static fse_stream* fse_stream_make(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     FSEventsWatcher* watcher,
     FSEventStreamEventId since,
     w_string& failure_reason) {
@@ -444,7 +444,8 @@ fail:
   goto out;
 }
 
-void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
+void FSEventsWatcher::FSEventsThread(
+    const std::shared_ptr<watchman_root>& root) {
   CFFileDescriptorRef fdref;
   auto fdctx = CFFileDescriptorContext();
 
@@ -521,7 +522,7 @@ bool isRootRemoved(
 } // namespace
 
 Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
-    const std::shared_ptr<w_root_t>& root,
+    const std::shared_ptr<watchman_root>& root,
     PendingCollection::LockedPtr& coll) {
   struct timeval now;
   char flags_label[128];
@@ -625,7 +626,9 @@ FSEventsWatcher::FSEventsWatcher(
       has_file_watching(hasFileWatching),
       subdir(std::move(dir)) {}
 
-FSEventsWatcher::FSEventsWatcher(w_root_t* root, std::optional<w_string> dir)
+FSEventsWatcher::FSEventsWatcher(
+    watchman_root* root,
+    std::optional<w_string> dir)
     : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true), dir) {
 }
 
@@ -633,7 +636,7 @@ void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);
 }
 
-bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
+bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
   // Spin up the fsevents processing thread; it owns a ref on the root
 
   auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
@@ -685,7 +688,7 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
 }
 
 std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>&,
+    const std::shared_ptr<watchman_root>&,
     struct watchman_dir*,
     const char* path) {
   return w_dir_open(path);

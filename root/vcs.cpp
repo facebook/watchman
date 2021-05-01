@@ -4,7 +4,7 @@
 #include "watchman.h"
 #include "InMemoryView.h"
 
-static json_ref config_get_ignore_vcs(w_root_t* root) {
+static json_ref config_get_ignore_vcs(watchman_root* root) {
   json_ref ignores = root->config.get("ignore_vcs");
   if (ignores && !ignores.isArray()) {
     return nullptr;

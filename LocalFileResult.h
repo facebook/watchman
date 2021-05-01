@@ -21,7 +21,7 @@ namespace watchman {
 class LocalFileResult : public FileResult {
  public:
   LocalFileResult(
-      const std::shared_ptr<w_root_t>& root_,
+      const std::shared_ptr<watchman_root>& root_,
       w_string fullPath,
       w_clock_t clock);
 
@@ -62,7 +62,7 @@ class LocalFileResult : public FileResult {
 
   bool exists_{true};
   folly::Optional<FileInformation> info_;
-  std::shared_ptr<w_root_t> root_;
+  std::shared_ptr<watchman_root> root_;
   w_string fullPath_;
   w_clock_t clock_;
   folly::Optional<w_string> symlinkTarget_;
