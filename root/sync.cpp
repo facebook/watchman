@@ -110,8 +110,7 @@ void InMemoryView::syncToNow(
     // dir changing and schedule the IO thread to look at it.
     // If it observes a change it will do the right thing.
     {
-      struct timeval now;
-      gettimeofday(&now, nullptr);
+      auto now = std::chrono::system_clock::now();
 
       auto lock = pending_.lock();
       for (const auto& dir : cookieDirs) {

@@ -35,7 +35,7 @@ namespace watchman {
  */
 struct PendingChange {
   w_string path;
-  struct timeval now;
+  std::chrono::system_clock::time_point now;
   int flags;
 };
 
@@ -46,7 +46,10 @@ struct watchman_pending_fs : watchman::PendingChange {
   // are destroyed.
   std::shared_ptr<watchman_pending_fs> next;
 
-  watchman_pending_fs(w_string path, const struct timeval& now, int flags)
+  watchman_pending_fs(
+      w_string path,
+      std::chrono::system_clock::time_point now,
+      int flags)
       : PendingChange{std::move(path), now, flags} {}
 
  private:
@@ -74,11 +77,14 @@ class PendingChanges {
    * Add a pending entry.  Will consolidate an existing entry with the same
    * name. The caller must own the collection lock.
    */
-  void add(const w_string& path, struct timeval now, int flags);
+  void add(
+      const w_string& path,
+      std::chrono::system_clock::time_point now,
+      int flags);
   void add(
       struct watchman_dir* dir,
       const char* name,
-      struct timeval now,
+      std::chrono::system_clock::time_point now,
       int flags);
 
   /**

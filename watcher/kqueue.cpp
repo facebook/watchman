@@ -218,7 +218,6 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
   int n;
   int i;
   struct timespec ts = {0, 0};
-  struct timeval now;
 
   errno = 0;
   n = kevent(
@@ -238,7 +237,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
     return {0, false};
   }
 
-  gettimeofday(&now, nullptr);
+  auto now = std::chrono::system_clock::now();
   for (i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = keventbuf[i].fflags;
     bool is_dir = is_udata_dir(keventbuf[i].udata);

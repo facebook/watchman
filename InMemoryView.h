@@ -178,7 +178,7 @@ class InMemoryView : public QueryableView {
   void markFileChanged(
       SyncView::LockedPtr& view,
       watchman_file* file,
-      const struct timeval& now);
+      std::chrono::system_clock::time_point now);
 
   /** Mark a directory as being removed from the view.
    * Marks the contained set of files as deleted.
@@ -186,7 +186,7 @@ class InMemoryView : public QueryableView {
   void markDirDeleted(
       SyncView::LockedPtr& view,
       struct watchman_dir* dir,
-      const struct timeval& now,
+      std::chrono::system_clock::time_point now,
       bool recursive);
 
   watchman_dir*
@@ -201,7 +201,7 @@ class InMemoryView : public QueryableView {
       SyncView::LockedPtr& view,
       watchman_dir* dir,
       const w_string& file_name,
-      const struct timeval& now);
+      std::chrono::system_clock::time_point now);
 
   /** Recursively walks files under a specified dir */
   void dirGenerator(
@@ -248,7 +248,7 @@ class InMemoryView : public QueryableView {
   bool propagateToParentDirIfAppropriate(
       const std::shared_ptr<watchman_root>& root,
       PendingChanges& coll,
-      struct timeval now,
+      std::chrono::system_clock::time_point now,
       const FileInformation& entryStat,
       const w_string& dirName,
       const watchman_dir* parentDir,

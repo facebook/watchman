@@ -5,7 +5,7 @@
 
 void set_poison_state(
     const w_string& dir,
-    struct timeval now,
+    std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err) {
   if (!poisoned_reason.rlock()->empty()) {
@@ -15,7 +15,7 @@ void set_poison_state(
   auto why = folly::to<std::string>(
       "A non-recoverable condition has triggered.  Watchman needs your help!\n"
       "The triggering condition was at timestamp=",
-      now.tv_sec,
+      std::chrono::system_clock::to_time_t(now),
       ": ",
       syscall,
       "(",

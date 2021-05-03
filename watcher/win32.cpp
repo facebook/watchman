@@ -366,14 +366,13 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll) {
   std::list<Item> items;
-  struct timeval now;
 
   {
     auto wlock = changedItems.lock();
     std::swap(items, *wlock);
   }
 
-  gettimeofday(&now, nullptr);
+  auto now = std::chrono::system_clock::now();
 
   for (auto& item : items) {
     watchman::log(

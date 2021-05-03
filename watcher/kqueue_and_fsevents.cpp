@@ -203,9 +203,7 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     if (guard->has_value()) {
       const auto& injectedDir = guard->value();
 
-      struct timeval now;
-      gettimeofday(&now, nullptr);
-
+      auto now = std::chrono::system_clock::now();
       coll.add(
           injectedDir,
           now,

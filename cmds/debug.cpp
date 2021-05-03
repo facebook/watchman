@@ -90,11 +90,9 @@ W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 static void cmd_debug_poison(
     struct watchman_client* client,
     const json_ref& args) {
-  struct timeval now;
-
   auto root = resolveRoot(client, args);
 
-  gettimeofday(&now, NULL);
+  auto now = std::chrono::system_clock::now();
 
   set_poison_state(
       root->root_path,

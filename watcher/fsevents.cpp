@@ -524,7 +524,6 @@ bool isRootRemoved(
 Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll) {
-  struct timeval now;
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
   bool cancelSelf = false;
@@ -534,7 +533,7 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     std::swap(items, *wlock);
   }
 
-  gettimeofday(&now, nullptr);
+  auto now = std::chrono::system_clock::now();
 
   for (auto& vec : items) {
     for (auto& item : vec) {

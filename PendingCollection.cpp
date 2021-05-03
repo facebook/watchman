@@ -51,7 +51,10 @@ void PendingChanges::clear() {
   tree_.clear();
 }
 
-void PendingChanges::add(const w_string& path, struct timeval now, int flags) {
+void PendingChanges::add(
+    const w_string& path,
+    std::chrono::system_clock::time_point now,
+    int flags) {
   char flags_label[128];
 
   auto existing = tree_.search(path);
@@ -81,7 +84,7 @@ void PendingChanges::add(const w_string& path, struct timeval now, int flags) {
 void PendingChanges::add(
     struct watchman_dir* dir,
     const char* name,
-    struct timeval now,
+    std::chrono::system_clock::time_point now,
     int flags) {
   return add(dir->getFullPathToChild(name), now, flags);
 }

@@ -237,12 +237,12 @@ void InMemoryView::View::insertAtHeadOfFileList(struct watchman_file* file) {
 void InMemoryView::markFileChanged(
     SyncView::LockedPtr& view,
     watchman_file* file,
-    const struct timeval& now) {
+    std::chrono::system_clock::time_point now) {
   if (file->exists) {
     watcher_->startWatchFile(file);
   }
 
-  file->otime.timestamp = now.tv_sec;
+  file->otime.timestamp = std::chrono::system_clock::to_time_t(now);
   file->otime.ticks = mostRecentTick_;
 
   if (view->latest_file != file) {
@@ -386,7 +386,7 @@ watchman_dir* InMemoryView::resolveDir(
 void InMemoryView::markDirDeleted(
     SyncView::LockedPtr& view,
     struct watchman_dir* dir,
-    const struct timeval& now,
+    std::chrono::system_clock::time_point now,
     bool recursive) {
   if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
@@ -418,7 +418,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
     SyncView::LockedPtr&,
     watchman_dir* dir,
     const w_string& file_name,
-    const struct timeval& now) {
+    std::chrono::system_clock::time_point now) {
   // file_name is typically a baseName slice; let's use it as-is
   // to look up a child...
   auto it = dir->files.find(file_name);
@@ -433,7 +433,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
   file_ptr = std::move(file);
 
   file_ptr->ctime.ticks = mostRecentTick_;
-  file_ptr->ctime.timestamp = now.tv_sec;
+  file_ptr->ctime.timestamp = std::chrono::system_clock::to_time_t(now);
 
   watcher_->startWatchFile(file_ptr.get());
 

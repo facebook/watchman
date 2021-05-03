@@ -10,7 +10,7 @@ using namespace watchman;
 void handle_open_errno(
     const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
-    struct timeval now,
+    std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err) {
   auto dir_name = dir->getFullPath();

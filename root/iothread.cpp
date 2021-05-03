@@ -31,8 +31,6 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 void InMemoryView::fullCrawl(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& pending) {
-  struct timeval start;
-
   {
     auto crawl = root->recrawlInfo.wlock();
     crawl->crawlStart = std::chrono::steady_clock::now();
@@ -45,7 +43,8 @@ void InMemoryView::fullCrawl(
     // otherwise a fresh subscription established immediately after a watch
     // can get stuck with an empty view until another change is observed
     mostRecentTick_++;
-    gettimeofday(&start, NULL);
+
+    auto start = std::chrono::system_clock::now();
     pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
     // There is the potential for a subtle race condition here.  The boolean
     // parameter indicates whether we want to merge in the set of

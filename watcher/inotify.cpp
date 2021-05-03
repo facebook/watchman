@@ -54,10 +54,12 @@ const struct flag_map inflags[] = {
 };
 
 struct pending_move {
-  time_t created;
+  std::chrono::system_clock::time_point created;
   w_string name;
 
-  pending_move(time_t created, const w_string& name)
+  pending_move(
+      std::chrono::system_clock::time_point created,
+      const w_string& name)
       : created(created), name(name) {}
 };
 
@@ -177,7 +179,7 @@ struct InotifyWatcher : public Watcher {
       const std::shared_ptr<watchman_root>& root,
       PendingChanges& coll,
       struct inotify_event* ine,
-      struct timeval now);
+      std::chrono::system_clock::time_point now);
 
   void signalThreads() override;
 
@@ -243,7 +245,7 @@ bool InotifyWatcher::process_inotify_event(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll,
     struct inotify_event* ine,
-    struct timeval now) {
+    std::chrono::system_clock::time_point now) {
   char flags_label[128];
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
 
@@ -298,7 +300,7 @@ bool InotifyWatcher::process_inotify_event(
       // watch the target when we get the other side of it.
       {
         auto wlock = maps.wlock();
-        wlock->move_map.emplace(ine->cookie, pending_move(now.tv_sec, name));
+        wlock->move_map.emplace(ine->cookie, pending_move(now, name));
       }
 
       log(DBG, "recording move_from ", ine->cookie, " ", name, "\n");
@@ -417,8 +419,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
   }
 
   logf(DBG, "inotify read: returned {}.\n", n);
-  struct timeval now;
-  gettimeofday(&now, nullptr);
+  auto now = std::chrono::system_clock::now();
 
   struct inotify_event* ine;
   bool cancel = false;
@@ -446,7 +447,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     auto it = wlock->move_map.begin();
     while (it != wlock->move_map.end()) {
       auto& pending = it->second;
-      if (now.tv_sec - pending.created > 5 /* seconds */) {
+      if (now - pending.created > std::chrono::seconds{5}) {
         logf(
             DBG,
             "deleting pending move {} (moved outside of watch?)\n",
