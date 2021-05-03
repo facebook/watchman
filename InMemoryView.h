@@ -260,9 +260,8 @@ class InMemoryView : public QueryableView {
   SyncView view_;
   // The most recently observed tick value of an item in the view
   std::atomic<uint32_t> mostRecentTick_{1};
-  /* root number */
-  std::atomic<uint32_t> rootNumber_{0};
-  w_string rootPath_;
+  const uint32_t rootNumber_{0};
+  const w_string rootPath_;
 
   // This allows a client to wait for a recrawl to complete.
   // The primary use of this is so that "watch-project" doesn't
