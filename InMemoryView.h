@@ -75,7 +75,7 @@ class InMemoryView : public QueryableView {
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override;
   uint32_t getLastAgeOutTickValue() const override;
-  time_t getLastAgeOutTimeStamp() const override;
+  std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
@@ -276,8 +276,10 @@ class InMemoryView : public QueryableView {
   };
   folly::Synchronized<CrawlState> crawlState_;
 
-  uint32_t last_age_out_tick{0};
-  time_t last_age_out_timestamp{0};
+  uint32_t lastAgeOutTick_{0};
+  // This is system_clock instead of steady_clock because it's compared with a
+  // file's otime.
+  std::chrono::system_clock::time_point lastAgeOutTimestamp_{};
 
   /* queue of items that we need to stat/process */
   PendingCollection pending_;

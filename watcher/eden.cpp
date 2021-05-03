@@ -1090,16 +1090,6 @@ class EdenView : public QueryableView {
     return getMostRecentRootNumberAndTickValue().toClockString();
   }
 
-  uint32_t getLastAgeOutTickValue() const override {
-    return 0;
-  }
-
-  time_t getLastAgeOutTimeStamp() const override {
-    return 0;
-  }
-
-  void ageOut(w_perf_t& /*sample*/, std::chrono::seconds /*minAge*/) override {}
-
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& /*fileNames*/) const override {
     return false;

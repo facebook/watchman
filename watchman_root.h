@@ -84,8 +84,16 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   Configuration config;
 
   const int trigger_settle{0};
-  const int gc_interval{0};
-  const int gc_age{0};
+  /**
+   * Don't GC more often than this.
+   *
+   * If zero, then never age out.
+   */
+  const std::chrono::seconds gc_interval{DEFAULT_GC_INTERVAL};
+  /**
+   * When GCing, age out files older than this.
+   */
+  const std::chrono::seconds gc_age{DEFAULT_GC_AGE};
   const int idle_reap_age{0};
 
   // Stream of broadcast unilateral items emitted by this root
@@ -99,8 +107,8 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     bool shouldRecrawl{true};
     // Last ad-hoc warning message
     w_string warning;
-    std::chrono::time_point<std::chrono::steady_clock> crawlStart;
-    std::chrono::time_point<std::chrono::steady_clock> crawlFinish;
+    std::chrono::steady_clock::time_point crawlStart;
+    std::chrono::steady_clock::time_point crawlFinish;
   };
   folly::Synchronized<RecrawlInfo> recrawlInfo;
 

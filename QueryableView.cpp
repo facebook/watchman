@@ -29,8 +29,9 @@ uint32_t QueryableView::getLastAgeOutTickValue() const {
   return 0;
 }
 
-time_t QueryableView::getLastAgeOutTimeStamp() const {
-  return 0;
+std::chrono::system_clock::time_point QueryableView::getLastAgeOutTimeStamp()
+    const {
+  return std::chrono::system_clock::time_point{};
 }
 
 void QueryableView::ageOut(w_perf_t&, std::chrono::seconds) {}

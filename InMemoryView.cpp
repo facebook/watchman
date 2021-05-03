@@ -4,6 +4,7 @@
 #include "InMemoryView.h"
 #include <folly/ScopeGuard.h>
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <thread>
 #include "ThreadPool.h"
@@ -448,7 +449,7 @@ void InMemoryView::ageOutFile(
   logf(DBG, "age_out file={}\n", full_name);
 
   // Revise tick for fresh instance reporting
-  last_age_out_tick = std::max(last_age_out_tick, file->otime.ticks);
+  lastAgeOutTick_ = std::max(lastAgeOutTick_, file->otime.ticks);
 
   // If we have a corresponding dir, we want to arrange to remove it, but only
   // after we have unlinked all of the associated file nodes.
@@ -462,20 +463,21 @@ void InMemoryView::ageOutFile(
 
 void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   struct watchman_file *file, *prior;
-  time_t now;
   uint32_t num_aged_files = 0;
   uint32_t num_walked = 0;
   std::unordered_set<w_string> dirs_to_erase;
 
-  time(&now);
-  last_age_out_timestamp = now;
+  auto now = std::chrono::system_clock::now();
+  lastAgeOutTimestamp_ = now;
   auto view = view_.wlock();
 
   file = view->latest_file;
   prior = nullptr;
   while (file) {
     ++num_walked;
-    if (file->exists || file->otime.timestamp + minAge.count() > now) {
+    if (file->exists ||
+        std::chrono::system_clock::from_time_t(file->otime.timestamp) + minAge >
+            now) {
       prior = file;
       file = file->next;
       continue;
@@ -664,11 +666,12 @@ w_string InMemoryView::getCurrentClockString() const {
 }
 
 uint32_t InMemoryView::getLastAgeOutTickValue() const {
-  return last_age_out_tick;
+  return lastAgeOutTick_;
 }
 
-time_t InMemoryView::getLastAgeOutTimeStamp() const {
-  return last_age_out_timestamp;
+std::chrono::system_clock::time_point InMemoryView::getLastAgeOutTimeStamp()
+    const {
+  return lastAgeOutTimestamp_;
 }
 
 void InMemoryView::startThreads(const std::shared_ptr<watchman_root>& root) {

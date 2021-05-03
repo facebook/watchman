@@ -4,20 +4,17 @@
 #include "watchman.h"
 
 void watchman_root::considerAgeOut() {
-  time_t now;
-
-  if (gc_interval == 0) {
+  if (gc_interval.count() == 0) {
     return;
   }
 
-  time(&now);
-
+  auto now = std::chrono::system_clock::now();
   if (now <= view()->getLastAgeOutTimeStamp() + gc_interval) {
     // Don't check too often
     return;
   }
 
-  performAgeOut(std::chrono::seconds(gc_age));
+  performAgeOut(gc_age);
 }
 
 void watchman_root::performAgeOut(std::chrono::seconds min_age) {

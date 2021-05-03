@@ -155,7 +155,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   int timeoutms = root->trigger_settle;
 
   // Upper bound on sleep delay.  These options are measured in seconds.
-  int biggest_timeout = root->gc_interval;
+  int biggest_timeout = root->gc_interval.count();
   if (biggest_timeout == 0 ||
       (root->idle_reap_age != 0 && root->idle_reap_age < biggest_timeout)) {
     biggest_timeout = root->idle_reap_age;
