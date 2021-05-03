@@ -66,6 +66,13 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   };
 
   /**
+   * Wait for an inotify event to become available.
+   * Returns true if events are available or false if signalThreads() has been
+   * called or timeout has elapsed.
+   */
+  virtual bool waitNotify(int timeoutms) = 0;
+
+  /**
    * Consume any available notifications.  If there are none pending,
    * does not block.
    *
@@ -74,9 +81,6 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   virtual ConsumeNotifyRet consumeNotify(
       const std::shared_ptr<watchman_root>& root,
       PendingChanges& coll) = 0;
-
-  // Wait for an inotify event to become available
-  virtual bool waitNotify(int timeoutms) = 0;
 
   /**
    * Returns a JSON value containing this watcher's debug state. Intended for

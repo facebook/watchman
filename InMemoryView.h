@@ -281,7 +281,12 @@ class InMemoryView : public QueryableView {
   // file's otime.
   std::chrono::system_clock::time_point lastAgeOutTimestamp_{};
 
-  /* queue of items that we need to stat/process */
+  /*
+   * Queue of items that we need to stat/process.
+   *
+   * Populated by both the IO thread (fullCrawl) and the notify thread (from the
+   * watcher).
+   */
   PendingCollection pending_;
 
   std::atomic<bool> stopThreads_{false};

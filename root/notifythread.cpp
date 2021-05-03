@@ -31,29 +31,30 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
   while (!stopThreads_) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
-    if (watcher_->waitNotify(86400)) {
-      while (true) {
-        auto resultFlags = watcher_->consumeNotify(root, fromWatcher);
+    if (!watcher_->waitNotify(86400)) {
+      continue;
+    }
+    while (true) {
+      auto resultFlags = watcher_->consumeNotify(root, fromWatcher);
 
-        if (resultFlags.cancelSelf) {
-          root->cancel();
-          break;
-        }
-        if (!resultFlags.addedPending) {
-          break;
-        }
-        if (fromWatcher.size() >= WATCHMAN_BATCH_LIMIT) {
-          break;
-        }
-        if (!watcher_->waitNotify(0)) {
-          break;
-        }
+      if (resultFlags.cancelSelf) {
+        root->cancel();
+        break;
       }
-      if (fromWatcher.size() > 0) {
-        auto lock = pending_.lock();
-        lock->append(fromWatcher.stealItems());
-        lock->ping();
+      if (!resultFlags.addedPending) {
+        break;
       }
+      if (fromWatcher.size() >= WATCHMAN_BATCH_LIMIT) {
+        break;
+      }
+      if (!watcher_->waitNotify(0)) {
+        break;
+      }
+    }
+    if (fromWatcher.size() > 0) {
+      auto lock = pending_.lock();
+      lock->append(fromWatcher.stealItems());
+      lock->ping();
     }
   }
 }

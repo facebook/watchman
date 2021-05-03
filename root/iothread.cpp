@@ -167,6 +167,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   biggest_timeout *= 1000;
 
   while (!stopThreads_) {
+    // TODO: audit how this done_initial access is safe
     if (!root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
       fullCrawl(root, localPending);
@@ -236,6 +237,51 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   }
 }
 
+InMemoryView::ProcessPendingRet InMemoryView::processPending(
+    const std::shared_ptr<watchman_root>& root,
+    SyncView::LockedPtr& view,
+    PendingChanges& coll,
+    bool pullFromRoot) {
+  if (pullFromRoot) {
+    coll.append(pending_.lock()->stealItems());
+  }
+
+  if (!coll.size()) {
+    return {
+        ProcessPendingRet::ContinueProcessing::No,
+        ProcessPendingRet::IsDesynced::No};
+  }
+
+  logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
+
+  auto pending = coll.stealItems();
+
+  auto desyncState = ProcessPendingRet::IsDesynced::No;
+  while (pending) {
+    if (!stopThreads_) {
+      if (pending->flags & W_PENDING_IS_DESYNCED) {
+        // The watcher is desynced but some cookies might be written to disk
+        // while the recursive crawl is ongoing. We are going to specifically
+        // ignore these cookies during that recursive crawl to avoid a race
+        // condition where cookies might be seen before some files have been
+        // observed as changed on disk. Due to this, and the fact that cookies
+        // notifications might simply have been dropped by the watcher, we need
+        // to abort the pending cookies to force them to be recreated on disk,
+        // and thus re-seen.
+        if (pending->flags & W_PENDING_CRAWL_ONLY) {
+          desyncState = ProcessPendingRet::IsDesynced::Yes;
+        }
+      }
+
+      processPath(root, view, coll, *pending, nullptr);
+    }
+
+    pending = std::move(pending->next);
+  }
+
+  return {ProcessPendingRet::ContinueProcessing::Yes, desyncState};
+}
+
 void InMemoryView::processPath(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
@@ -292,50 +338,6 @@ void InMemoryView::processPath(
   }
 }
 
-InMemoryView::ProcessPendingRet InMemoryView::processPending(
-    const std::shared_ptr<watchman_root>& root,
-    SyncView::LockedPtr& view,
-    PendingChanges& coll,
-    bool pullFromRoot) {
-  if (pullFromRoot) {
-    coll.append(pending_.lock()->stealItems());
-  }
-
-  if (!coll.size()) {
-    return {
-        ProcessPendingRet::ContinueProcessing::No,
-        ProcessPendingRet::IsDesynced::No};
-  }
-
-  logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
-
-  auto pending = coll.stealItems();
-
-  auto desyncState = ProcessPendingRet::IsDesynced::No;
-  while (pending) {
-    if (!stopThreads_) {
-      if (pending->flags & W_PENDING_IS_DESYNCED) {
-        // The watcher is desynced but some cookies might be written to disk
-        // while the recursive crawl is ongoing. We are going to specifically
-        // ignore these cookies during that recursive crawl to avoid a race
-        // condition where cookies might be seen before some files have been
-        // observed as changed on disk. Due to this, and the fact that cookies
-        // notifications might simply have been dropped by the watcher, we need
-        // to abort the pending cookies to force them to be recreated on disk,
-        // and thus re-seen.
-        if (pending->flags & W_PENDING_CRAWL_ONLY) {
-          desyncState = ProcessPendingRet::IsDesynced::Yes;
-        }
-      }
-
-      processPath(root, view, coll, *pending, nullptr);
-    }
-
-    pending = std::move(pending->next);
-  }
-
-  return {ProcessPendingRet::ContinueProcessing::Yes, desyncState};
-}
 } // namespace watchman
 
 /* vim:ts=2:sw=2:et:
