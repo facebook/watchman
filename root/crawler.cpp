@@ -73,7 +73,7 @@ void InMemoryView::crawler(
       }
     } catch (const std::system_error& err) {
       handle_open_errno(
-          root, dir, pending.now, "getFileInformation", err.code());
+          *root, dir, pending.now, "getFileInformation", err.code());
       markDirDeleted(view, dir, pending.now, true);
       return;
     }
@@ -92,7 +92,7 @@ void InMemoryView::crawler(
   try {
     osdir = watcher_->startWatchDir(root, dir, path);
   } catch (const std::system_error& err) {
-    handle_open_errno(root, dir, pending.now, "opendir", err.code());
+    handle_open_errno(*root, dir, pending.now, "opendir", err.code());
     markDirDeleted(view, dir, pending.now, true);
     return;
   }

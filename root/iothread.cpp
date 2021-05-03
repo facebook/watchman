@@ -31,10 +31,7 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 void InMemoryView::fullCrawl(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& pending) {
-  {
-    auto crawl = root->recrawlInfo.wlock();
-    crawl->crawlStart = std::chrono::steady_clock::now();
-  }
+  root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
   w_perf_t sample("full-crawl");
   {
@@ -42,7 +39,7 @@ void InMemoryView::fullCrawl(
     // Ensure that we observe these files with a new, distinct clock,
     // otherwise a fresh subscription established immediately after a watch
     // can get stuck with an empty view until another change is observed
-    mostRecentTick_++;
+    mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
     auto start = std::chrono::system_clock::now();
     pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
@@ -213,7 +210,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
         continue;
       }
 
-      mostRecentTick_++;
+      mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
       bool needAbortCookies = false;
 
@@ -333,7 +330,7 @@ void InMemoryView::processPath(
       (pending.flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
     crawler(root, view, coll, pending);
   } else {
-    statPath(root, view, coll, pending, pre_stat);
+    statPath(*root, view, coll, pending, pre_stat);
   }
 }
 

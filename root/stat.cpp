@@ -17,7 +17,7 @@ namespace watchman {
  * returns false.
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
-    const std::shared_ptr<watchman_root>& root,
+    const watchman_root& root,
     PendingChanges& coll,
     std::chrono::system_clock::time_point now,
     const FileInformation& entryStat,
@@ -25,7 +25,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
     const watchman_dir* parentDir,
     bool isUnlink) {
   if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
-      dirName != root->root_path && !entryStat.isDir() &&
+      dirName != root.root_path && !entryStat.isDir() &&
       parentDir->last_check_existed) {
     /* We're deliberately not propagating any of the flags through
      * from statPath() (which calls us); we
@@ -53,7 +53,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
 }
 
 void InMemoryView::statPath(
-    const std::shared_ptr<watchman_root>& root,
+    watchman_root& root,
     SyncView::LockedPtr& view,
     PendingChanges& coll,
     const PendingChange& pending,
@@ -62,7 +62,7 @@ void InMemoryView::statPath(
   bool via_notify = pending.flags & W_PENDING_VIA_NOTIFY;
   int desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
 
-  if (root->ignore.isIgnoreDir(pending.path)) {
+  if (root.ignore.isIgnoreDir(pending.path)) {
     logf(DBG, "{} matches ignore_dir rules\n", pending.path);
     return;
   }
@@ -89,7 +89,7 @@ void InMemoryView::statPath(
     st = pre_stat->stat;
   } else {
     try {
-      st = getFileInformation(path, root->case_sensitive);
+      st = getFileInformation(path, root.case_sensitive);
       log(DBG,
           "getFileInformation(",
           path,
@@ -165,8 +165,8 @@ void InMemoryView::statPath(
             dir_name,
             parentDir,
             /* isUnlink= */ true) &&
-        root->case_sensitive == CaseSensitivity::CaseInSensitive &&
-        !w_string_equal(dir_name, root->root_path) &&
+        root.case_sensitive == CaseSensitivity::CaseInSensitive &&
+        !w_string_equal(dir_name, root.root_path) &&
         parentDir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
@@ -229,8 +229,8 @@ void InMemoryView::statPath(
     memcpy(&file->stat, &st, sizeof(file->stat));
 
     // check for symbolic link
-    if (st.isSymlink() && root->config.getBool("watch_symlinks", false)) {
-      root->inner.pending_symlink_targets.lock()->add(
+    if (st.isSymlink() && root.config.getBool("watch_symlinks", false)) {
+      root.inner.pending_symlink_targets.lock()->add(
           pending.path, pending.now, 0);
     }
 
@@ -243,10 +243,10 @@ void InMemoryView::statPath(
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!root->ignore.isIgnoreVCS(dir_name) ||
+      if (!root.ignore.isIgnoreVCS(dir_name) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
-          root->cookies.isCookieDir(pending.path)) {
+          root.cookies.isCookieDir(pending.path)) {
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */

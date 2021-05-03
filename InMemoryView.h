@@ -240,13 +240,13 @@ class InMemoryView : public QueryableView {
       const std::shared_ptr<watchman_root>& root,
       PendingChanges& pending);
   void statPath(
-      const std::shared_ptr<watchman_root>& root,
+      watchman_root& root,
       SyncView::LockedPtr& view,
       PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
   bool propagateToParentDirIfAppropriate(
-      const std::shared_ptr<watchman_root>& root,
+      const watchman_root& root,
       PendingChanges& coll,
       std::chrono::system_clock::time_point now,
       const FileInformation& entryStat,

@@ -8,7 +8,7 @@
 using namespace watchman;
 
 void handle_open_errno(
-    const std::shared_ptr<watchman_root>& root,
+    watchman_root& root,
     struct watchman_dir* dir,
     std::chrono::system_clock::time_point now,
     const char* syscall,
@@ -24,15 +24,15 @@ void handle_open_errno(
     log_warning = true;
   } else if (err == watchman::error_code::system_limits_exceeded) {
     set_poison_state(dir_name, now, syscall, err);
-    if (!root->failure_reason) {
-      root->failure_reason = w_string::build(*poisoned_reason.rlock());
+    if (!root.failure_reason) {
+      root.failure_reason = w_string::build(*poisoned_reason.rlock());
     }
     return;
   } else {
     log_warning = true;
   }
 
-  if (w_string_equal(dir_name, root->root_path)) {
+  if (w_string_equal(dir_name, root.root_path)) {
     auto warn = w_string::build(
         syscall,
         "(",
@@ -41,10 +41,10 @@ void handle_open_errno(
         err.message(),
         ". Root is inaccessible; cancelling watch\n");
     log(ERR, warn);
-    if (!root->failure_reason) {
-      root->failure_reason = warn;
+    if (!root.failure_reason) {
+      root.failure_reason = warn;
     }
-    root->cancel();
+    root.cancel();
     return;
   }
 
@@ -62,7 +62,7 @@ void handle_open_errno(
       warn,
       "\n");
   if (log_warning) {
-    root->recrawlInfo.wlock()->warning = warn;
+    root.recrawlInfo.wlock()->warning = warn;
   }
 }
 
