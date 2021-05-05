@@ -53,19 +53,11 @@ void InMemoryView::fullCrawl(
     // inotify, then the inner loop processes it and any dirs that we pick up
     // from recursive processing.
     pending.append(pending_.lock()->stealItems());
-
-    auto [continueProcessingOuter, _] = processPending(root, view, pending);
-    if (continueProcessingOuter == ProcessPendingRet::ContinueProcessing::No) {
+    if (!pending.size()) {
       break;
     }
 
-    while (true) {
-      auto [continueProcessingInner, _] = processPending(root, view, pending);
-      if (continueProcessingInner ==
-          ProcessPendingRet::ContinueProcessing::No) {
-        break;
-      }
-    }
+    (void)processAllPending(root, view, pending);
   }
 
   auto [recrawlInfo, crawlState] =
@@ -215,20 +207,8 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 
       mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
-      bool needAbortCookies = false;
-
-      while (true) {
-        auto [continueProcessing, isDesynced] =
-            processPending(root, view, localPending);
-
-        needAbortCookies |= (isDesynced == ProcessPendingRet::IsDesynced::Yes);
-
-        if (continueProcessing == ProcessPendingRet::ContinueProcessing::No) {
-          break;
-        }
-      }
-
-      if (needAbortCookies) {
+      auto isDesynced = processAllPending(root, view, localPending);
+      if (isDesynced == IsDesynced::Yes) {
         logf(ERR, "recrawl complete, aborting all pending cookies\n");
         root->cookies.abortAllCookies();
       }
@@ -236,46 +216,47 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   }
 }
 
-InMemoryView::ProcessPendingRet InMemoryView::processPending(
+InMemoryView::IsDesynced InMemoryView::processAllPending(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
     PendingChanges& coll) {
-  if (!coll.size()) {
-    return {
-        ProcessPendingRet::ContinueProcessing::No,
-        ProcessPendingRet::IsDesynced::No};
-  }
+  auto desyncState = IsDesynced::No;
 
-  logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
+  while (coll.size()) {
+    logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
 
-  auto pending = coll.stealItems();
+    auto pending = coll.stealItems();
+    w_check(
+        pending != nullptr,
+        "coll.stealItems() and coll.size() did not agree about its size");
 
-  auto desyncState = ProcessPendingRet::IsDesynced::No;
-  while (pending) {
-    if (!stopThreads_) {
-      if (pending->flags & W_PENDING_IS_DESYNCED) {
-        // The watcher is desynced but some cookies might be written to disk
-        // while the recursive crawl is ongoing. We are going to specifically
-        // ignore these cookies during that recursive crawl to avoid a race
-        // condition where cookies might be seen before some files have been
-        // observed as changed on disk. Due to this, and the fact that cookies
-        // notifications might simply have been dropped by the watcher, we need
-        // to abort the pending cookies to force them to be recreated on disk,
-        // and thus re-seen.
-        if (pending->flags & W_PENDING_CRAWL_ONLY) {
-          desyncState = ProcessPendingRet::IsDesynced::Yes;
+    while (pending) {
+      if (!stopThreads_) {
+        if (pending->flags & W_PENDING_IS_DESYNCED) {
+          // The watcher is desynced but some cookies might be written to disk
+          // while the recursive crawl is ongoing. We are going to specifically
+          // ignore these cookies during that recursive crawl to avoid a race
+          // condition where cookies might be seen before some files have been
+          // observed as changed on disk. Due to this, and the fact that cookies
+          // notifications might simply have been dropped by the watcher, we
+          // need to abort the pending cookies to force them to be recreated on
+          // disk, and thus re-seen.
+          if (pending->flags & W_PENDING_CRAWL_ONLY) {
+            desyncState = IsDesynced::Yes;
+          }
         }
+
+        // processPath may insert new pending items into `coll`,
+        processPath(root, view, coll, *pending, nullptr);
       }
 
-      processPath(root, view, coll, *pending, nullptr);
+      // TODO: Document that continuing to run this loop when stopThreads_ is
+      // true fixes a stack overflow when pending is long.
+      pending = std::move(pending->next);
     }
-
-    // TODO: Document that continuing to run this loop when stopThreads_ is true
-    // fixes a stack overflow when pending is long.
-    pending = std::move(pending->next);
   }
 
-  return {ProcessPendingRet::ContinueProcessing::Yes, desyncState};
+  return desyncState;
 }
 
 void InMemoryView::processPath(
