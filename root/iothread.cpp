@@ -14,7 +14,8 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
     return lockPair.second->future;
   }
 
-  if (root->inner.done_initial && !lockPair.first->shouldRecrawl) {
+  if (root->inner.done_initial.load(std::memory_order_acquire) &&
+      !lockPair.first->shouldRecrawl) {
     // Return an already satisfied future
     std::promise<void> p;
     p.set_value();
@@ -76,7 +77,7 @@ void InMemoryView::fullCrawl(
         lockPair.second->promise->set_value();
         lockPair.second->promise.reset();
       }
-      root->inner.done_initial = true;
+      root->inner.done_initial.store(true, std::memory_order_release);
     }
 
     root->cookies.abortAllCookies();
@@ -101,7 +102,7 @@ static bool do_settle_things(InMemoryView& view, watchman_root& root) {
 
   root.processPendingSymlinkTargets();
 
-  if (!root.inner.done_initial) {
+  if (!root.inner.done_initial.load(std::memory_order_acquire)) {
     // we need to recrawl, stop what we're doing here
     return false;
   }
@@ -135,7 +136,7 @@ bool InMemoryView::handleShouldRecrawl(watchman_root& root) {
   if (!root.inner.cancelled) {
     auto info = root.recrawlInfo.wlock();
     info->recrawlCount++;
-    root.inner.done_initial = false;
+    root.inner.done_initial.store(false, std::memory_order_release);
   }
 
   return true;
@@ -159,8 +160,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
   biggest_timeout *= 1000;
 
   while (!stopThreads_) {
-    // TODO: audit how this done_initial access is safe
-    if (!root->inner.done_initial) {
+    if (!root->inner.done_initial.load(std::memory_order_acquire)) {
       /* first order of business is to find all the files under our root */
       fullCrawl(root, localPending);
 
@@ -200,7 +200,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 
     {
       auto view = view_.wlock();
-      if (!root->inner.done_initial) {
+      if (!root->inner.done_initial.load(std::memory_order_acquire)) {
         // we need to recrawl.  Discard these notifications
         localPending.clear();
         continue;
@@ -300,8 +300,8 @@ void InMemoryView::processPath(
       // The watcher gives us file level notification, thus only consider
       // cookies if this path is coming directly from the watcher, not from a
       // recursive crawl.
-      consider_cookie =
-          pending.flags & W_PENDING_VIA_NOTIFY || !root->inner.done_initial;
+      consider_cookie = pending.flags & W_PENDING_VIA_NOTIFY ||
+          !root->inner.done_initial.load(std::memory_order_acquire);
     } else {
       // If we are de-synced, we shouldn't consider cookies as we are currently
       // walking directories recursively and we need to wait for after the

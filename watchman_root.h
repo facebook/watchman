@@ -123,7 +123,14 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;
 
-    bool done_initial{false};
+    /**
+     * Initially false and set to false by the iothread after scheduleRecrawl.
+     * Set true after fullCrawl is done.
+     *
+     * Primarily used by the iothread but this is atomic because other threads
+     * sometimes read it to produce log messages.
+     */
+    std::atomic<bool> done_initial{false};
     bool cancelled{false};
 
     /* map of cursor name => last observed tick value */
