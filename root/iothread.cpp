@@ -178,12 +178,16 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       localPending.append(targetPendingLock->stealItems());
     }
 
+    // Do we need to recrawl?
     if (handleShouldRecrawl(*root)) {
+      // TODO: can this just continue? handleShouldRecrawl sets done_initial to
+      // false.
       fullCrawl(root, localPending);
       timeoutms = root->trigger_settle;
       continue;
     }
 
+    // Waiting for an event timed out, so consider the root settled.
     if (!pinged && localPending.size() == 0) {
       if (do_settle_things(*this, *root)) {
         break;
@@ -200,11 +204,12 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 
     {
       auto view = view_.wlock();
-      if (!root->inner.done_initial.load(std::memory_order_acquire)) {
-        // we need to recrawl.  Discard these notifications
-        localPending.clear();
-        continue;
-      }
+      // fullCrawl unconditionally sets done_initial to true and if
+      // handleShouldRecrawl set it false, execution wouldn't reach this part of
+      // the loop.
+      w_check(
+          root->inner.done_initial.load(std::memory_order_acquire),
+          "A full crawl should not be pending at this point in the loop.");
 
       mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
