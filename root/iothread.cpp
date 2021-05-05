@@ -285,6 +285,11 @@ void InMemoryView::processPath(
   w_assert(
       pending.path.size() >= rootPath_.size(),
       "full_path must be a descendant of the root directory\n");
+
+  if (processedPaths_) {
+    processedPaths_->write(PendingChangeLogEntry{pending});
+  }
+
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
    * 1. Cookies that this query has created. This marks the end of this query's

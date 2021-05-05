@@ -200,6 +200,22 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 InMemoryView::View::View(const w_string& root_path)
     : root_dir(std::make_unique<watchman_dir>(root_path, nullptr)) {}
 
+InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
+    const PendingChange& pc) noexcept {
+  now = pc.now;
+  flags = pc.flags;
+  storeTruncatedTail(path_tail, pc.path);
+}
+
+json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
+  return json_object({
+      {"now", json_integer(now.time_since_epoch().count())},
+      {"flags", json_integer(flags)},
+      {"path",
+       w_string_to_json(w_string{path_tail, strnlen(path_tail, kPathLength)})},
+  });
+}
+
 InMemoryView::InMemoryView(
     watchman_root* root,
     std::shared_ptr<Watcher> watcher)
@@ -221,7 +237,15 @@ InMemoryView::InMemoryView(
           size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
       syncContentCacheWarming_(
           config_.getBool("content_hash_warm_wait_before_settle", false)),
-      scm_(SCM::scmForPath(root->root_path)) {}
+      scm_(SCM::scmForPath(root->root_path)) {
+  json_int_t in_memory_view_ring_log_size =
+      config_.getInt("in_memory_view_ring_log_size", 0);
+  if (in_memory_view_ring_log_size) {
+    this->processedPaths_ =
+        std::make_unique<folly::LockFreeRingBuffer<PendingChangeLogEntry>>(
+            in_memory_view_ring_log_size);
+  }
+}
 
 InMemoryView::~InMemoryView() = default;
 
@@ -749,7 +773,37 @@ const std::shared_ptr<Watcher>& InMemoryView::getWatcher() const {
 }
 
 json_ref InMemoryView::getWatcherDebugInfo() const {
-  return watcher_->getDebugInfo();
+  return json_object({
+      {"watcher", watcher_->getDebugInfo()},
+      {"view", getViewDebugInfo()},
+  });
+}
+
+json_ref InMemoryView::getViewDebugInfo() const {
+  auto processedPaths = json_null();
+  if (processedPaths_) {
+    std::vector<PendingChangeLogEntry> entries;
+
+    auto head = processedPaths_->currentHead();
+    if (head.moveBackward()) {
+      PendingChangeLogEntry entry;
+      while (processedPaths_->tryRead(entry, head)) {
+        entries.push_back(std::move(entry));
+        if (!head.moveBackward()) {
+          break;
+        }
+      }
+    }
+    std::reverse(entries.begin(), entries.end());
+
+    processedPaths = json_array();
+    for (auto& entry : entries) {
+      json_array_append(processedPaths, entry.asJsonValue());
+    }
+  }
+  return json_object({
+      {"processed_paths", processedPaths},
+  });
 }
 
 SCM* InMemoryView::getSCM() const {

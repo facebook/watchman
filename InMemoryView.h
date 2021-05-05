@@ -4,6 +4,7 @@
 #include "watchman_system.h"
 #include "watchman_string.h"
 #include <folly/Synchronized.h>
+#include <folly/experimental/LockFreeRingBuffer.h>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -106,6 +107,7 @@ class InMemoryView : public QueryableView {
   const w_string& getName() const override;
   const std::shared_ptr<Watcher>& getWatcher() const;
   json_ref getWatcherDebugInfo() const override;
+  json_ref getViewDebugInfo() const;
 
   // If content cache warming is configured, do the warm up now
   void warmContentCache();
@@ -314,5 +316,28 @@ class InMemoryView : public QueryableView {
 
   // The source control system that we detected during initialization
   std::unique_ptr<SCM> scm_;
+
+  struct PendingChangeLogEntry {
+    PendingChangeLogEntry() noexcept {
+      // time_point is not noexcept so this can't be defaulted.
+    }
+    explicit PendingChangeLogEntry(const PendingChange& pc) noexcept;
+
+    json_ref asJsonValue() const;
+
+    // 55 should cover many filenames.
+    static constexpr size_t kPathLength = 55;
+
+    std::chrono::system_clock::time_point now;
+    unsigned char flags;
+    char path_tail[kPathLength];
+  };
+
+  static_assert(64 == sizeof(PendingChangeLogEntry));
+
+  // If set, paths processed by processPending are logged here.
+  std::unique_ptr<folly::LockFreeRingBuffer<PendingChangeLogEntry>>
+      processedPaths_;
 };
+
 } // namespace watchman
