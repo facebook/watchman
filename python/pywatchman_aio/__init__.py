@@ -189,7 +189,7 @@ class AsyncBserCodec(AsyncCodec):
         await self.transport.write(cmd)
 
     def _loads(self, response):
-        """ Parse the BSER packet """
+        """Parse the BSER packet"""
         return bser.loads(
             response,
             True,

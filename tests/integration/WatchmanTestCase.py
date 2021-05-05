@@ -195,12 +195,12 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return result
 
     def dumpLogs(self):
-        """ used in travis CI to show the hopefully relevant log snippets """
+        """used in travis CI to show the hopefully relevant log snippets"""
 
         print(self.getLogSample())
 
     def getLogSample(self):
-        """ used in CI to show the hopefully relevant log snippets """
+        """used in CI to show the hopefully relevant log snippets"""
         inst = WatchmanInstance.getSharedInstance()
 
         def tail(logstr, n):
@@ -345,7 +345,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return sorted(list1) == sorted(list2)
 
     def fileListContains(self, list1, list2):
-        """ return true if list1 contains each unique element in list2 """
+        """return true if list1 contains each unique element in list2"""
         set1 = set([norm_relative_path(f) for f in list1])
         list2 = [norm_relative_path(f) for f in list2]
         return set1.issuperset(list2)

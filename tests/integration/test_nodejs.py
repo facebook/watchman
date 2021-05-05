@@ -82,7 +82,7 @@ class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
     attempt = 0
 
     def setAttemptNumber(self, attempt):
-        """ enable flaky test retry """
+        """enable flaky test retry"""
         self.attempt = attempt
 
     @unittest.skipIf(

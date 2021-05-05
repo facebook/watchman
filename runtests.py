@@ -297,7 +297,7 @@ class Result(unittest.TestResult):
 
 
 def expandFilesList(files):
-    """ expand any dir names into a full list of files """
+    """expand any dir names into a full list of files"""
     res = []
     for g in args.files:
         if os.path.isdir(g):
@@ -315,7 +315,7 @@ if args.files:
 
 
 def shouldIncludeTestFile(filename):
-    """ used by our loader to respect the set of tests to run """
+    """used by our loader to respect the set of tests to run"""
     global args
     fname = os.path.relpath(filename.replace(".pyc", ".py"))
     if args.files:
@@ -333,7 +333,7 @@ def shouldIncludeTestFile(filename):
 
 
 def shouldIncludeTestName(name):
-    """ used by our loader to respect the set of tests to run """
+    """used by our loader to respect the set of tests to run"""
     global args
     if args.method:
         for f in args.method:
@@ -348,7 +348,7 @@ def shouldIncludeTestName(name):
 
 
 class Loader(unittest.TestLoader):
-    """ allows us to control the subset of which tests are run """
+    """allows us to control the subset of which tests are run"""
 
     def __init__(self):
         super(Loader, self).__init__()
@@ -539,7 +539,7 @@ def runner():
 
 
 def expand_suite(suite, target=None):
-    """ recursively expand a TestSuite into a list of TestCase """
+    """recursively expand a TestSuite into a list of TestCase"""
     if target is None:
         target = []
     for test in suite:

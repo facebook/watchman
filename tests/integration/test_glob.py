@@ -169,7 +169,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(res["files"], [])
 
     def test_glob_generator_absolute(self):
-        """ Make it easier to understand buck errors resulting from bad globs """
+        """Make it easier to understand buck errors resulting from bad globs"""
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "mydir"))
