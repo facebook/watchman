@@ -1,8 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#ifndef WATCHMAN_STRING_H
-#define WATCHMAN_STRING_H
+#pragma once
 
 #include "watchman_system.h"
 
@@ -449,7 +448,55 @@ struct formatter<w_string_piece> {
 };
 } // namespace fmt
 
-#endif
+/**
+ * Write as many characters from the beginning of `piece` into `array` as will
+ * fit. If the string is too long, the truncated characters are replaced with
+ * "...".
+ *
+ * This function primarily exists for fixed-size, in-memory logging.
+ *
+ * The resulting array may not be null-terminated. Use strnlen to compute its
+ * length.
+ */
+template <size_t N>
+void storeTruncatedHead(char (&array)[N], w_string_piece piece) {
+  if (piece.size() > N) {
+    memcpy(array, piece.data(), N - 3);
+    array[N - 3] = '.';
+    array[N - 2] = '.';
+    array[N - 1] = '.';
+  } else {
+    memcpy(array, piece.data(), piece.size());
+    if (piece.size() < N) {
+      array[piece.size()] = 0;
+    }
+  }
+}
+
+/**
+ * Write as many characters from the end of `piece` into `array` as will
+ * fit. If the string is too long, the truncated characters are replaced with
+ * "...".
+ *
+ * This function primarily exists for fixed-size, in-memory logging.
+ *
+ * The resulting array may not be null-terminated. Use strnlen to compute its
+ * length.
+ */
+template <size_t N>
+void storeTruncatedTail(char (&array)[N], w_string_piece piece) {
+  if (piece.size() > N) {
+    array[0] = '.';
+    array[1] = '.';
+    array[2] = '.';
+    memcpy(array + 3, piece.data() + piece.size() - (N - 3), N - 3);
+  } else {
+    memcpy(array, piece.data(), piece.size());
+    if (piece.size() < N) {
+      array[piece.size()] = 0;
+    }
+  }
+}
 
 /* vim:ts=2:sw=2:et:
  */

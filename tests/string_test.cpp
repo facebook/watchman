@@ -1,7 +1,6 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman.h"
 #include "watchman_string.h"
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
@@ -384,4 +383,48 @@ TEST(String, path_equal) {
   EXPECT_TRUE(!w_string_piece("c:/Foo/bar").pathIsEqual("C:/foo/bar"))
       << "strict case in the other positions c:/Foo/bar";
 #endif
+}
+
+TEST(String, truncated_head) {
+  char head[8];
+  storeTruncatedHead(head, w_string_piece{"foo"});
+  EXPECT_EQ(
+      w_string_piece{"foo"}, w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedHead(head, w_string_piece{"0123456"});
+  EXPECT_EQ(
+      w_string_piece{"0123456"},
+      w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedHead(head, w_string_piece{"01234567"});
+  EXPECT_EQ(
+      w_string_piece{"01234567"},
+      w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedHead(head, w_string_piece{"012345678"});
+  EXPECT_EQ(
+      w_string_piece{"01234..."},
+      w_string_piece(head, strnlen(head, sizeof(head))));
+}
+
+TEST(String, truncated_tail) {
+  char head[8];
+  storeTruncatedTail(head, w_string_piece{"foo"});
+  EXPECT_EQ(
+      w_string_piece{"foo"}, w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedTail(head, w_string_piece{"0123456"});
+  EXPECT_EQ(
+      w_string_piece{"0123456"},
+      w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedTail(head, w_string_piece{"01234567"});
+  EXPECT_EQ(
+      w_string_piece{"01234567"},
+      w_string_piece(head, strnlen(head, sizeof(head))));
+
+  storeTruncatedTail(head, w_string_piece{"012345678"});
+  EXPECT_EQ(
+      w_string_piece{"...45678"},
+      w_string_piece(head, strnlen(head, sizeof(head))));
 }

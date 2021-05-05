@@ -80,18 +80,8 @@ struct InotifyLogEntry {
     // If evt->len is nonzero, evt->name is a null-terminated string.
     bool has_name = evt->len > 0;
     if (has_name) {
-      size_t namelen = strlen(evt->name);
-      if (namelen > kNameLength) {
-        memcpy(name, evt->name, kNameLength - 3);
-        name[kNameLength - 3] = '.';
-        name[kNameLength - 2] = '.';
-        name[kNameLength - 1] = '.';
-      } else {
-        memcpy(name, evt->name, namelen);
-        if (namelen < kNameLength) {
-          name[namelen] = 0;
-        }
-      }
+      auto piece = w_string_piece{evt->name}; // Evaluate strlen here.
+      storeTruncatedHead(name, piece);
     } else {
       name[0] = 0;
     }
