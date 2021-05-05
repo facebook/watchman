@@ -35,63 +35,65 @@ void InMemoryView::fullCrawl(
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
   w_perf_t sample("full-crawl");
-  {
-    auto view = view_.wlock();
-    // Ensure that we observe these files with a new, distinct clock,
-    // otherwise a fresh subscription established immediately after a watch
-    // can get stuck with an empty view until another change is observed
-    mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
-    auto start = std::chrono::system_clock::now();
-    pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
+  auto view = view_.wlock();
+  // Ensure that we observe these files with a new, distinct clock,
+  // otherwise a fresh subscription established immediately after a watch
+  // can get stuck with an empty view until another change is observed
+  mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
+
+  auto start = std::chrono::system_clock::now();
+  pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
+  while (true) {
+    // There is the potential for a subtle race condition here.  Since we now
+    // coalesce overlaps we must consume our outstanding set before we merge
+    // in any new kernel notification information or we risk missing out on
+    // observing changes that happen during the initial crawl.  This
+    // translates to a two level loop; the outer loop sweeps in data from
+    // inotify, then the inner loop processes it and any dirs that we pick up
+    // from recursive processing.
+    pending.append(pending_.lock()->stealItems());
+
+    auto [continueProcessingOuter, _] = processPending(root, view, pending);
+    if (continueProcessingOuter == ProcessPendingRet::ContinueProcessing::No) {
+      break;
+    }
+
     while (true) {
-      // There is the potential for a subtle race condition here.  Since we now
-      // coalesce overlaps we must consume our outstanding set before we merge
-      // in any new kernel notification information or we risk missing out on
-      // observing changes that happen during the initial crawl.  This
-      // translates to a two level loop; the outer loop sweeps in data from
-      // inotify, then the inner loop processes it and any dirs that we pick up
-      // from recursive processing.
-      pending.append(pending_.lock()->stealItems());
-
-      auto [continueProcessingOuter, _] = processPending(root, view, pending);
-      if (continueProcessingOuter ==
+      auto [continueProcessingInner, _] = processPending(root, view, pending);
+      if (continueProcessingInner ==
           ProcessPendingRet::ContinueProcessing::No) {
         break;
       }
-
-      while (true) {
-        auto [continueProcessingInner, _] = processPending(root, view, pending);
-        if (continueProcessingInner ==
-            ProcessPendingRet::ContinueProcessing::No) {
-          break;
-        }
-      }
     }
-
-    {
-      auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
-      lockPair.first->shouldRecrawl = false;
-      lockPair.first->crawlFinish = std::chrono::steady_clock::now();
-      if (lockPair.second->promise) {
-        lockPair.second->promise->set_value();
-        lockPair.second->promise.reset();
-      }
-      root->inner.done_initial.store(true, std::memory_order_release);
-    }
-
-    root->cookies.abortAllCookies();
   }
+
+  auto [recrawlInfo, crawlState] =
+      acquireLockedPair(root->recrawlInfo, crawlState_);
+  recrawlInfo->shouldRecrawl = false;
+  recrawlInfo->crawlFinish = std::chrono::steady_clock::now();
+  if (crawlState->promise) {
+    crawlState->promise->set_value();
+    crawlState->promise.reset();
+  }
+  root->inner.done_initial.store(true, std::memory_order_release);
+
+  // There is no need to hold locks while logging, and abortAllCookies resolves
+  // a Promise which can run arbitrary code, so locks must be released here.
+  auto recrawlCount = recrawlInfo->recrawlCount;
+  recrawlInfo.unlock();
+  crawlState.unlock();
+  view.unlock();
+
+  root->cookies.abortAllCookies();
+
   sample.add_root_meta(root);
 
   sample.finish();
   sample.force_log();
   sample.log();
 
-  logf(
-      ERR,
-      "{}crawl complete\n",
-      root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
+  logf(ERR, "{}crawl complete\n", recrawlCount ? "re" : "");
 }
 
 // Performs settle-time actions.
