@@ -141,8 +141,12 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
      * thread; this collection is not protected by the root lock. */
     PendingCollection pending_symlink_targets;
 
-    time_t last_cmd_timestamp{0};
-    mutable time_t last_reap_timestamp{0};
+    /// Set by connection threads and read on the iothread.
+    std::atomic<std::chrono::steady_clock::time_point> last_cmd_timestamp{
+        std::chrono::steady_clock::time_point{}};
+
+    /// Only accessed on the iothread.
+    std::chrono::steady_clock::time_point last_reap_timestamp;
 
     void init(watchman_root* root);
   } inner;
@@ -175,7 +179,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   void processPendingSymlinkTargets();
 
   // Returns true if the caller should stop the watch.
-  bool considerReap() const;
+  bool considerReap();
   void init();
   bool removeFromWatched();
   void applyIgnoreVCSConfiguration();

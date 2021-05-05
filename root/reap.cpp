@@ -3,16 +3,15 @@
 
 #include "watchman.h"
 
-bool watchman_root::considerReap() const {
-  time_t now;
-
+bool watchman_root::considerReap() {
   if (idle_reap_age == 0) {
     return false;
   }
 
-  time(&now);
+  auto now = std::chrono::steady_clock::now();
 
-  if (now > inner.last_cmd_timestamp + idle_reap_age &&
+  if (now > inner.last_cmd_timestamp.load(std::memory_order_acquire) +
+              std::chrono::seconds{idle_reap_age} &&
       (triggers.rlock()->empty()) && (now > inner.last_reap_timestamp) &&
       !unilateralResponses->hasSubscribers()) {
     // We haven't had any activity in a while, and there are no registered

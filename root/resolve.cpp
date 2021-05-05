@@ -178,7 +178,8 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
     // lock and the worst case side effect is that we (safely) decide to reap
     // at the same instant that a new command comes in.  The reap intervals
     // are typically on the order of days.
-    time(&root->inner.last_cmd_timestamp);
+    root->inner.last_cmd_timestamp.store(
+        std::chrono::steady_clock::now(), std::memory_order_release);
     return root;
   }
 

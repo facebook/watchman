@@ -59,7 +59,7 @@ void watchman_root::init() {
   // inside the constructor and we'd hit a bad_weak_ptr exception.
   inner.init(this);
 
-  time(&inner.last_cmd_timestamp);
+  inner.last_cmd_timestamp = std::chrono::steady_clock::now();
 }
 
 void watchman_root::Inner::init(watchman_root* root) {
