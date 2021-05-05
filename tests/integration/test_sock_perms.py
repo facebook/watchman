@@ -76,7 +76,7 @@ class TestSockPerms(unittest.TestCase):
             time.sleep(0.03)
         return [False, res]
 
-    def assertWaitFor(self, cond, timeout=20, message=None, get_debug_output=None):
+    def assertWaitFor(self, cond, timeout=60, message=None, get_debug_output=None):
         status, res = self.waitFor(cond, timeout)
         if status:
             return res
