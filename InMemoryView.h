@@ -234,16 +234,23 @@ class InMemoryView : public QueryableView {
       const PendingChange& pending);
   void notifyThread(const std::shared_ptr<watchman_root>& root);
   void ioThread(const std::shared_ptr<watchman_root>& root);
-  bool handleShouldRecrawl(const std::shared_ptr<watchman_root>& root);
+  bool handleShouldRecrawl(watchman_root& root);
   void fullCrawl(
       const std::shared_ptr<watchman_root>& root,
       PendingChanges& pending);
+
+  /**
+   * Called on the IO thread. If `pending` is not in the ignored directory list,
+   * lstat() the file and update the InMemoryView. This may insert work into
+   * `coll` if a directory needs to be rescanned.
+   */
   void statPath(
       watchman_root& root,
       SyncView::LockedPtr& view,
       PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
+
   bool propagateToParentDirIfAppropriate(
       const watchman_root& root,
       PendingChanges& coll,

@@ -123,8 +123,8 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;
 
-    bool done_initial{0};
-    bool cancelled{0};
+    bool done_initial{false};
+    bool cancelled{false};
 
     /* map of cursor name => last observed tick value */
     folly::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;

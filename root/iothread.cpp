@@ -67,6 +67,7 @@ void InMemoryView::fullCrawl(
         }
       }
     }
+
     {
       auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
       lockPair.first->shouldRecrawl = false;
@@ -77,6 +78,7 @@ void InMemoryView::fullCrawl(
       }
       root->inner.done_initial = true;
     }
+
     root->cookies.abortAllCookies();
   }
   sample.add_root_meta(root);
@@ -93,30 +95,27 @@ void InMemoryView::fullCrawl(
 
 // Performs settle-time actions.
 // Returns true if the root was reaped and the io thread should terminate.
-static bool do_settle_things(const std::shared_ptr<watchman_root>& root) {
+static bool do_settle_things(InMemoryView& view, watchman_root& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
-  root->processPendingSymlinkTargets();
+  root.processPendingSymlinkTargets();
 
-  if (!root->inner.done_initial) {
+  if (!root.inner.done_initial) {
     // we need to recrawl, stop what we're doing here
     return false;
   }
 
-  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
-  w_assert(view, "we're called from InMemoryView, wat?");
-  view->warmContentCache();
+  view.warmContentCache();
 
-  auto settledPayload = json_object({{"settled", json_true()}});
-  root->unilateralResponses->enqueue(std::move(settledPayload));
+  root.unilateralResponses->enqueue(json_object({{"settled", json_true()}}));
 
-  if (root->considerReap()) {
-    root->stopWatch();
+  if (root.considerReap()) {
+    root.stopWatch();
     return true;
   }
 
-  root->considerAgeOut();
+  root.considerAgeOut();
   return false;
 }
 
@@ -125,19 +124,18 @@ void InMemoryView::clientModeCrawl(const std::shared_ptr<watchman_root>& root) {
   fullCrawl(root, pending);
 }
 
-bool InMemoryView::handleShouldRecrawl(
-    const std::shared_ptr<watchman_root>& root) {
+bool InMemoryView::handleShouldRecrawl(watchman_root& root) {
   {
-    auto info = root->recrawlInfo.rlock();
+    auto info = root.recrawlInfo.rlock();
     if (!info->shouldRecrawl) {
       return false;
     }
   }
 
-  if (!root->inner.cancelled) {
-    auto info = root->recrawlInfo.wlock();
+  if (!root.inner.cancelled) {
+    auto info = root.recrawlInfo.wlock();
     info->recrawlCount++;
-    root->inner.done_initial = false;
+    root.inner.done_initial = false;
   }
 
   return true;
@@ -180,14 +178,14 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       localPending.append(targetPendingLock->stealItems());
     }
 
-    if (handleShouldRecrawl(root)) {
+    if (handleShouldRecrawl(*root)) {
       fullCrawl(root, localPending);
       timeoutms = root->trigger_settle;
       continue;
     }
 
     if (!pinged && localPending.size() == 0) {
-      if (do_settle_things(root)) {
+      if (do_settle_things(*this, *root)) {
         break;
       }
       timeoutms = std::min(biggest_timeout, timeoutms * 2);
@@ -265,6 +263,8 @@ InMemoryView::ProcessPendingRet InMemoryView::processPending(
       processPath(root, view, coll, *pending, nullptr);
     }
 
+    // TODO: Document that continuing to run this loop when stopThreads_ is true
+    // fixes a stack overflow when pending is long.
     pending = std::move(pending->next);
   }
 
