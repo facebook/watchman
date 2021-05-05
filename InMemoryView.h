@@ -163,8 +163,7 @@ class InMemoryView : public QueryableView {
   ProcessPendingRet processPending(
       const std::shared_ptr<watchman_root>& root,
       SyncView::LockedPtr& view,
-      PendingChanges& pending,
-      bool pullFromRoot = false);
+      PendingChanges& pending);
 
   void processPath(
       const std::shared_ptr<watchman_root>& root,

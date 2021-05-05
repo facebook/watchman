@@ -43,26 +43,24 @@ void InMemoryView::fullCrawl(
 
     auto start = std::chrono::system_clock::now();
     pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
-    // There is the potential for a subtle race condition here.  The boolean
-    // parameter indicates whether we want to merge in the set of
-    // notifications pending from the watcher or not.  Since we now coalesce
-    // overlaps we must consume our outstanding set before we merge in any
-    // new kernel notification information or we risk missing out on
-    // observing changes that happen during the initial crawl.  This
-    // translates to a two level loop; the outer loop sweeps in data from
-    // inotify, then the inner loop processes it and any dirs that we pick up
-    // from recursive processing.
     while (true) {
-      auto [continueProcessingOuter, _] =
-          processPending(root, view, pending, true);
+      // There is the potential for a subtle race condition here.  Since we now
+      // coalesce overlaps we must consume our outstanding set before we merge
+      // in any new kernel notification information or we risk missing out on
+      // observing changes that happen during the initial crawl.  This
+      // translates to a two level loop; the outer loop sweeps in data from
+      // inotify, then the inner loop processes it and any dirs that we pick up
+      // from recursive processing.
+      pending.append(pending_.lock()->stealItems());
+
+      auto [continueProcessingOuter, _] = processPending(root, view, pending);
       if (continueProcessingOuter ==
           ProcessPendingRet::ContinueProcessing::No) {
         break;
       }
 
       while (true) {
-        auto [continueProcessingInner, _] =
-            processPending(root, view, pending, false);
+        auto [continueProcessingInner, _] = processPending(root, view, pending);
         if (continueProcessingInner ==
             ProcessPendingRet::ContinueProcessing::No) {
           break;
@@ -216,7 +214,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 
       while (true) {
         auto [continueProcessing, isDesynced] =
-            processPending(root, view, localPending, false);
+            processPending(root, view, localPending);
 
         needAbortCookies |= (isDesynced == ProcessPendingRet::IsDesynced::Yes);
 
@@ -236,12 +234,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 InMemoryView::ProcessPendingRet InMemoryView::processPending(
     const std::shared_ptr<watchman_root>& root,
     SyncView::LockedPtr& view,
-    PendingChanges& coll,
-    bool pullFromRoot) {
-  if (pullFromRoot) {
-    coll.append(pending_.lock()->stealItems());
-  }
-
+    PendingChanges& coll) {
   if (!coll.size()) {
     return {
         ProcessPendingRet::ContinueProcessing::No,
