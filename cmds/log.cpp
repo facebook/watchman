@@ -72,5 +72,35 @@ static void cmd_log(struct watchman_client* client, const json_ref& args) {
 }
 W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
+// change the server log level for the logs
+static void cmd_global_log_level(
+    struct watchman_client* client,
+    const json_ref& args) {
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments to 'global-log-level'");
+    return;
+  }
+
+  watchman::LogLevel level;
+  try {
+    level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
+  } catch (std::out_of_range&) {
+    send_error_response(client, "invalid log level for 'global-log-level'");
+    return;
+  }
+
+  watchman::getLog().setStdErrLoggingLevel(level);
+
+  auto resp = make_response();
+  resp.set("log_level", json_ref(args.at(1)));
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "global-log-level",
+    cmd_global_log_level,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    nullptr)
+
 /* vim:ts=2:sw=2:et:
  */

@@ -3,6 +3,7 @@
 #pragma once
 #include "watchman_string.h"
 #include "PubSub.h"
+#include "folly/Synchronized.h"
 #include "watchman_preprocessor.h"
 
 namespace watchman {
@@ -84,9 +85,19 @@ class Log {
  private:
   std::shared_ptr<Publisher> errorPub_;
   std::shared_ptr<Publisher> debugPub_;
-  std::shared_ptr<Publisher::Subscriber> errorSub_;
-  std::shared_ptr<Publisher::Subscriber> debugSub_;
-  std::mutex stdErrPrintMutex_;
+
+  struct Subscribers {
+    std::shared_ptr<Publisher::Subscriber> errorSub_;
+    std::shared_ptr<Publisher::Subscriber> debugSub_;
+  };
+  // The lock on the subscribers exists for 2 reasons:
+  // 1. The standard reason: preventing multiple threads from clobbering over
+  //    each other or reading garbage from the subscribers. This lock prevents
+  //    multiple clients from clobbering the subscribers.
+  // 2. Only one thread may print to standard error at a given time. This avoids
+  //    the output logs from becoming scrambled. This lock is acquired before
+  //    writing to stderr.
+  folly::Synchronized<Subscribers, std::mutex> subscribers_;
 
   inline Publisher& levelToPub(LogLevel level) {
     return level == DBG ? *debugPub_ : *errorPub_;

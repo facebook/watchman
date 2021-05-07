@@ -150,23 +150,26 @@ const char* Log::getThreadName() {
 
 void Log::setStdErrLoggingLevel(LogLevel level) {
   auto notify = [this]() { doLogToStdErr(); };
+  auto subs = subscribers_.lock();
+  auto& debugSub = subs->debugSub_;
+  auto& errorSub = subs->errorSub_;
   switch (level) {
     case OFF:
-      errorSub_.reset();
-      debugSub_.reset();
+      errorSub.reset();
+      debugSub.reset();
       return;
     case DBG:
-      if (!debugSub_) {
-        debugSub_ = debugPub_->subscribe(notify);
+      if (!debugSub) {
+        debugSub = debugPub_->subscribe(notify);
       }
-      if (!errorSub_) {
-        errorSub_ = errorPub_->subscribe(notify);
+      if (!errorSub) {
+        errorSub = errorPub_->subscribe(notify);
       }
       return;
     default:
-      debugSub_.reset();
-      if (!errorSub_) {
-        errorSub_ = errorPub_->subscribe(notify);
+      debugSub.reset();
+      if (!errorSub) {
+        errorSub = errorPub_->subscribe(notify);
       }
       return;
   }
@@ -176,8 +179,8 @@ void Log::doLogToStdErr() {
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> items;
 
   {
-    std::lock_guard<std::mutex> lock(stdErrPrintMutex_);
-    getPending(items, errorSub_, debugSub_);
+    auto subs = subscribers_.lock();
+    getPending(items, subs->errorSub_, subs->debugSub_);
   }
 
   bool doFatal = false;
