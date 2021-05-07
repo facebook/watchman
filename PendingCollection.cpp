@@ -151,13 +151,9 @@ void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
 
     auto callback = [&](const w_string& key,
                         std::shared_ptr<watchman_pending_fs>& p) -> int {
-      if (!p) {
-        // It was removed; update the tree to reflect this
-        tree_.erase(key);
-        // Stop iteration: we deleted something and invalidated the
-        // iterators.
-        return 1;
-      }
+      w_check(
+          p,
+          "Pending changes should be removed from both the list and the tree.");
 
       if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > path.size() &&
           is_path_prefix(
