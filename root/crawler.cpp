@@ -22,13 +22,10 @@ void InMemoryView::crawler(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending) {
-  struct watchman_file* file;
-  const watchman_dir_ent* dirent;
-  char path[WATCHMAN_NAME_MAX];
-  bool stat_all = false;
   bool recursive = pending.flags & W_PENDING_RECURSIVE;
   bool is_desynced = pending.flags & W_PENDING_IS_DESYNCED;
 
+  bool stat_all;
   if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
   } else {
@@ -79,6 +76,7 @@ void InMemoryView::crawler(
     }
   }
 
+  char path[WATCHMAN_NAME_MAX];
   memcpy(path, pending.path.data(), pending.path.size());
   path[pending.path.size()] = 0;
 
@@ -127,7 +125,7 @@ void InMemoryView::crawler(
   }
 
   try {
-    while ((dirent = osdir->readDir()) != nullptr) {
+    while (const watchman_dir_ent* dirent = osdir->readDir()) {
       // Don't follow parent/self links
       if (dirent->d_name[0] == '.' &&
           (!strcmp(dirent->d_name, ".") || !strcmp(dirent->d_name, ".."))) {
@@ -136,7 +134,7 @@ void InMemoryView::crawler(
 
       // Queue it up for analysis if the file is newly existing
       w_string name(dirent->d_name, W_STRING_BYTE);
-      file = dir->getChildFile(name);
+      struct watchman_file* file = dir->getChildFile(name);
       if (file) {
         file->maybe_deleted = false;
       }

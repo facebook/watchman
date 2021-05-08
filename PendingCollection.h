@@ -12,14 +12,31 @@ namespace watchman {
 
 /**
  * Set when this change requires a recursive scan of its children.
+ *
+ * If an entry is recursive, then the IO thread will stat its children too.
+ *
+ * PendingCollection uses this to prune unnecessary notifications: if a parent
+ * entry is already flagged as requiring a recursive scan, then children can be
+ * pruned.
  */
 #define W_PENDING_RECURSIVE 1
 /**
  * This change event came from a watcher.
+ *
+ * Crawler uses this to distinguish between crawler-originated events and
+ * watcher-originated events.
+ *
+ * iothread uses this flag to detect whether cookie events were discovered via a
+ * crawl or watcher.
  */
 #define W_PENDING_VIA_NOTIFY 2
 /**
+ * Set by the IO thread when it adds new pending paths while crawling.
  *
+ * Crawl-only paths do not cause PendingCollection pruning. Also affects cookie
+ * discovery.
+ *
+ * Sort of exclusive with VIA_NOTIFY...
  */
 #define W_PENDING_CRAWL_ONLY 4
 /**

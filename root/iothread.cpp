@@ -291,7 +291,7 @@ void InMemoryView::processPath(
       // The watcher gives us file level notification, thus only consider
       // cookies if this path is coming directly from the watcher, not from a
       // recursive crawl.
-      consider_cookie = pending.flags & W_PENDING_VIA_NOTIFY ||
+      consider_cookie = (pending.flags & W_PENDING_VIA_NOTIFY) ||
           !root->inner.done_initial.load(std::memory_order_acquire);
     } else {
       // If we are de-synced, we shouldn't consider cookies as we are currently
@@ -311,7 +311,7 @@ void InMemoryView::processPath(
   }
 
   if (w_string_equal(pending.path, rootPath_) ||
-      (pending.flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
+      (pending.flags & W_PENDING_CRAWL_ONLY)) {
     crawler(root, view, coll, pending);
   } else {
     statPath(*root, view, coll, pending, pre_stat);
