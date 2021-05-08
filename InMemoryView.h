@@ -63,6 +63,74 @@ class InMemoryFileResult : public FileResult {
 };
 
 /**
+ * In-memory data structure representing Watchman's understanding of the watched
+ * root. Files are ordered in a linked recency index as well as hierarchically
+ * from the root.
+ */
+class ViewDatabase {
+ public:
+  explicit ViewDatabase(const w_string& root_path);
+
+  watchman_file* getLatestFile() const {
+    return latestFile_;
+  }
+
+  ino_t getRootInode() const {
+    return rootInode_;
+  }
+
+  void setRootInode(ino_t ino) {
+    rootInode_ = ino;
+  }
+
+  watchman_dir* resolveDir(const w_string& dirname, bool create);
+
+  const watchman_dir* resolveDir(const w_string& dirname) const;
+
+  /**
+   * Returns the direct child file named name if it already exists, else creates
+   * that entry and returns it.
+   */
+  watchman_file* getOrCreateChildFile(
+      Watcher& watcher,
+      watchman_dir* dir,
+      const w_string& file_name,
+      w_clock_t ctime);
+
+  /**
+   * Updates the otime for the file and bubbles it to the front of recency
+   * index.
+   */
+  void markFileChanged(Watcher& watcher, watchman_file* file, w_clock_t otime);
+
+  /**
+   * Mark a directory as being removed from the view. Marks the contained set of
+   * files as deleted. If recursive is true, is recursively invoked on child
+   * dirs.
+   */
+  void markDirDeleted(
+      Watcher& watcher,
+      watchman_dir* dir,
+      w_clock_t otime,
+      bool recursive);
+
+ private:
+  void insertAtHeadOfFileList(struct watchman_file* file);
+
+  const w_string rootPath_;
+
+  /* the most recently changed file */
+  watchman_file* latestFile_ = nullptr;
+
+  std::unique_ptr<watchman_dir> rootDir_;
+
+  // Inode number for the root dir.  This is used to detect what should
+  // be impossible situations, but is needed in practice to workaround
+  // eg: BTRFS not delivering all events for subvolumes
+  ino_t rootInode_{0};
+};
+
+/**
  * Keeps track of the state of the filesystem in-memory and drives a notify
  * thread which consumes events from the watcher.
  */
@@ -78,6 +146,13 @@ class InMemoryView : public QueryableView {
   uint32_t getLastAgeOutTickValue() const override;
   std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
+
+  w_clock_t getClock(std::chrono::system_clock::time_point now) const {
+    return w_clock_t{
+        mostRecentTick_.load(std::memory_order_acquire),
+        std::chrono::system_clock::to_time_t(now),
+    };
+  }
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
   void syncToNow(
@@ -121,24 +196,8 @@ class InMemoryView : public QueryableView {
   SCM* getSCM() const override;
 
  private:
-  struct View {
-    /* the most recently changed file */
-    struct watchman_file* latest_file{0};
-
-    std::unique_ptr<watchman_dir> root_dir;
-
-    // Inode number for the root dir.  This is used to detect what should
-    // be impossible situations, but is needed in practice to workaround
-    // eg: BTRFS not delivering all events for subvolumes
-    ino_t rootInode{0};
-
-    explicit View(const w_string& root_path);
-
-    void insertAtHeadOfFileList(struct watchman_file* file);
-  };
-  using SyncView = folly::Synchronized<View>;
-
-  void ageOutFile(
+  // Returns the erased file's otime.
+  w_clock_t ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
 
@@ -153,45 +212,15 @@ class InMemoryView : public QueryableView {
   // processAllPending returns.
   IsDesynced processAllPending(
       const std::shared_ptr<watchman_root>& root,
-      SyncView::LockedPtr& view,
+      ViewDatabase& view,
       PendingChanges& pending);
 
   void processPath(
       const std::shared_ptr<watchman_root>& root,
-      SyncView::LockedPtr& view,
+      ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
-
-  /** Updates the otime for the file and bubbles it to the front of recency
-   * index */
-  void markFileChanged(
-      SyncView::LockedPtr& view,
-      watchman_file* file,
-      std::chrono::system_clock::time_point now);
-
-  /** Mark a directory as being removed from the view.
-   * Marks the contained set of files as deleted.
-   * If recursive is true, is recursively invoked on child dirs. */
-  void markDirDeleted(
-      SyncView::LockedPtr& view,
-      struct watchman_dir* dir,
-      std::chrono::system_clock::time_point now,
-      bool recursive);
-
-  watchman_dir*
-  resolveDir(SyncView::LockedPtr& view, const w_string& dirname, bool create);
-  const watchman_dir* resolveDir(
-      SyncView::ConstLockedPtr& view,
-      const w_string& dirname) const;
-
-  /** Returns the direct child file named name if it already
-   * exists, else creates that entry and returns it */
-  watchman_file* getOrCreateChildFile(
-      SyncView::LockedPtr& view,
-      watchman_dir* dir,
-      const w_string& file_name,
-      std::chrono::system_clock::time_point now);
 
   /** Recursively walks files under a specified dir */
   void dirGenerator(
@@ -220,7 +249,7 @@ class InMemoryView : public QueryableView {
    */
   void crawler(
       const std::shared_ptr<watchman_root>& root,
-      SyncView::LockedPtr& view,
+      ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending);
   void notifyThread(const std::shared_ptr<watchman_root>& root);
@@ -237,7 +266,7 @@ class InMemoryView : public QueryableView {
    */
   void statPath(
       watchman_root& root,
-      SyncView::LockedPtr& view,
+      ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
       const watchman_dir_ent* pre_stat);
@@ -254,8 +283,9 @@ class InMemoryView : public QueryableView {
   CookieSync& cookies_;
   Configuration& config_;
 
-  SyncView view_;
+  folly::Synchronized<ViewDatabase> view_;
   // The most recently observed tick value of an item in the view
+  // Only incremented by the iothread, but may be read by other threads.
   std::atomic<uint32_t> mostRecentTick_{1};
   const uint32_t rootNumber_{0};
   const w_string rootPath_;

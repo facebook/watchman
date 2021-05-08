@@ -483,7 +483,7 @@ void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
 
   auto view = view_.rlock();
 
-  const auto dir = resolveDir(view, relative_root);
+  const auto dir = view->resolveDir(relative_root);
   if (!dir) {
     throw QueryExecError(folly::to<std::string>(
         "glob_generator could not resolve ",

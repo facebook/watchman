@@ -197,159 +197,24 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
   return contentSha1_.value();
 }
 
-InMemoryView::View::View(const w_string& root_path)
-    : root_dir(std::make_unique<watchman_dir>(root_path, nullptr)) {}
+ViewDatabase::ViewDatabase(const w_string& root_path)
+    : rootPath_{root_path},
+      rootDir_{std::make_unique<watchman_dir>(root_path, nullptr)} {}
 
-InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
-    const PendingChange& pc) noexcept {
-  now = pc.now;
-  flags = pc.flags;
-  storeTruncatedTail(path_tail, pc.path);
-}
-
-json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
-  return json_object({
-      {"now", json_integer(now.time_since_epoch().count())},
-      {"flags", json_integer(flags)},
-      {"path",
-       w_string_to_json(w_string{path_tail, strnlen(path_tail, kPathLength)})},
-  });
-}
-
-InMemoryView::InMemoryView(
-    watchman_root* root,
-    std::shared_ptr<Watcher> watcher)
-    : cookies_(root->cookies),
-      config_(root->config),
-      view_(View(root->root_path)),
-      rootNumber_(next_root_number++),
-      rootPath_(root->root_path),
-      watcher_(watcher),
-      caches_(
-          root->root_path,
-          config_.getInt("content_hash_max_items", 128 * 1024),
-          config_.getInt("symlink_target_max_items", 32 * 1024),
-          std::chrono::milliseconds(
-              config_.getInt("content_hash_negative_cache_ttl_ms", 2000))),
-      enableContentCacheWarming_(
-          config_.getBool("content_hash_warming", false)),
-      maxFilesToWarmInContentCache_(
-          size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
-      syncContentCacheWarming_(
-          config_.getBool("content_hash_warm_wait_before_settle", false)),
-      scm_(SCM::scmForPath(root->root_path)) {
-  json_int_t in_memory_view_ring_log_size =
-      config_.getInt("in_memory_view_ring_log_size", 0);
-  if (in_memory_view_ring_log_size) {
-    this->processedPaths_ =
-        std::make_unique<folly::LockFreeRingBuffer<PendingChangeLogEntry>>(
-            in_memory_view_ring_log_size);
-  }
-}
-
-InMemoryView::~InMemoryView() = default;
-
-void InMemoryView::View::insertAtHeadOfFileList(struct watchman_file* file) {
-  file->next = latest_file;
-  if (file->next) {
-    file->next->prev = &file->next;
-  }
-  latest_file = file;
-  file->prev = &latest_file;
-}
-
-void InMemoryView::markFileChanged(
-    SyncView::LockedPtr& view,
-    watchman_file* file,
-    std::chrono::system_clock::time_point now) {
-  if (file->exists) {
-    watcher_->startWatchFile(file);
-  }
-
-  file->otime.timestamp = std::chrono::system_clock::to_time_t(now);
-  file->otime.ticks = mostRecentTick_;
-
-  if (view->latest_file != file) {
-    // unlink from list
-    file->removeFromFileList();
-
-    // and move to the head
-    view->insertAtHeadOfFileList(file);
-  }
-}
-
-const watchman_dir* InMemoryView::resolveDir(
-    SyncView::ConstLockedPtr& view,
-    const w_string& dir_name) const {
-  watchman_dir* dir;
-  const char* dir_component;
-  const char* dir_end;
-
+watchman_dir* ViewDatabase::resolveDir(const w_string& dir_name, bool create) {
   if (dir_name == rootPath_) {
-    return view->root_dir.get();
+    return rootDir_.get();
   }
 
-  dir_component = dir_name.data();
-  dir_end = dir_component + dir_name.size();
+  const char* dir_component = dir_name.data();
+  const char* dir_end = dir_component + dir_name.size();
 
-  dir = view->root_dir.get();
+  watchman_dir* dir = rootDir_.get();
   dir_component += rootPath_.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
-  while (true) {
-    auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
-    // Note: if sep is NULL it means that we're looking at the basename
-    // component of the input directory name, which is the terminal
-    // iteration of this search.
-
-    w_string_piece component(
-        dir_component, sep ? (sep - dir_component) : (dir_end - dir_component));
-
-    auto child = dir->getChildDir(component);
-    if (!child) {
-      return nullptr;
-    }
-
-    dir = child;
-
-    if (!sep) {
-      // We reached the end of the string
-      if (dir) {
-        // We found the dir
-        return dir;
-      }
-      // Does not exist
-      return nullptr;
-    }
-
-    // Skip to the next component for the next iteration
-    dir_component = sep + 1;
-  }
-
-  return nullptr;
-}
-
-watchman_dir* InMemoryView::resolveDir(
-    SyncView::LockedPtr& view,
-    const w_string& dir_name,
-    bool create) {
-  watchman_dir *dir, *parent;
-  const char* dir_component;
-  const char* dir_end;
-
-  if (dir_name == rootPath_) {
-    return view->root_dir.get();
-  }
-
-  dir_component = dir_name.data();
-  dir_end = dir_component + dir_name.size();
-
-  dir = view->root_dir.get();
-  dir_component += rootPath_.size() + 1; // Skip root path prefix
-
-  w_assert(dir_component <= dir_end, "impossible file name");
-
+  watchman_dir* parent;
   while (true) {
     auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
     // Note: if sep is NULL it means that we're looking at the basename
@@ -407,10 +272,100 @@ watchman_dir* InMemoryView::resolveDir(
   return new_child.get();
 }
 
-void InMemoryView::markDirDeleted(
-    SyncView::LockedPtr& view,
-    struct watchman_dir* dir,
-    std::chrono::system_clock::time_point now,
+const watchman_dir* ViewDatabase::resolveDir(const w_string& dir_name) const {
+  if (dir_name == rootPath_) {
+    return rootDir_.get();
+  }
+
+  const char* dir_component = dir_name.data();
+  const char* dir_end = dir_component + dir_name.size();
+
+  watchman_dir* dir = rootDir_.get();
+  dir_component += rootPath_.size() + 1; // Skip root path prefix
+
+  w_assert(dir_component <= dir_end, "impossible file name");
+
+  while (true) {
+    auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
+    // Note: if sep is NULL it means that we're looking at the basename
+    // component of the input directory name, which is the terminal
+    // iteration of this search.
+
+    w_string_piece component(
+        dir_component, sep ? (sep - dir_component) : (dir_end - dir_component));
+
+    auto child = dir->getChildDir(component);
+    if (!child) {
+      return nullptr;
+    }
+
+    dir = child;
+
+    if (!sep) {
+      // We reached the end of the string
+      if (dir) {
+        // We found the dir
+        return dir;
+      }
+      // Does not exist
+      return nullptr;
+    }
+
+    // Skip to the next component for the next iteration
+    dir_component = sep + 1;
+  }
+
+  return nullptr;
+}
+
+watchman_file* ViewDatabase::getOrCreateChildFile(
+    Watcher& watcher,
+    watchman_dir* dir,
+    const w_string& file_name,
+    w_clock_t ctime) {
+  // file_name is typically a baseName slice; let's use it as-is
+  // to look up a child...
+  auto it = dir->files.find(file_name);
+  if (it != dir->files.end()) {
+    return it->second.get();
+  }
+
+  // ... but take the shorter string from inside the file that
+  // we create as the key.
+  auto file = watchman_file::make(file_name, dir);
+  auto& file_ptr = dir->files[file->getName()];
+  file_ptr = std::move(file);
+
+  file_ptr->ctime = ctime;
+
+  watcher.startWatchFile(file_ptr.get());
+
+  return file_ptr.get();
+}
+
+void ViewDatabase::markFileChanged(
+    Watcher& watcher,
+    watchman_file* file,
+    w_clock_t otime) {
+  if (file->exists) {
+    watcher.startWatchFile(file);
+  }
+
+  file->otime = otime;
+
+  if (latestFile_ != file) {
+    // unlink from list
+    file->removeFromFileList();
+
+    // and move to the head
+    insertAtHeadOfFileList(file);
+  }
+}
+
+void ViewDatabase::markDirDeleted(
+    Watcher& watcher,
+    watchman_dir* dir,
+    w_clock_t otime,
     bool recursive) {
   if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
@@ -425,7 +380,7 @@ void InMemoryView::markDirDeleted(
       auto full_name = dir->getFullPathToChild(file->getName());
       logf(DBG, "mark_deleted: {}\n", full_name);
       file->exists = false;
-      markFileChanged(view, file, now);
+      markFileChanged(watcher, file, otime);
     }
   }
 
@@ -433,38 +388,70 @@ void InMemoryView::markDirDeleted(
     for (auto& it : dir->dirs) {
       auto child = it.second.get();
 
-      markDirDeleted(view, child, now, true);
+      markDirDeleted(watcher, child, otime, true);
     }
   }
 }
 
-watchman_file* InMemoryView::getOrCreateChildFile(
-    SyncView::LockedPtr&,
-    watchman_dir* dir,
-    const w_string& file_name,
-    std::chrono::system_clock::time_point now) {
-  // file_name is typically a baseName slice; let's use it as-is
-  // to look up a child...
-  auto it = dir->files.find(file_name);
-  if (it != dir->files.end()) {
-    return it->second.get();
+void ViewDatabase::insertAtHeadOfFileList(struct watchman_file* file) {
+  file->next = latestFile_;
+  if (file->next) {
+    file->next->prev = &file->next;
   }
-
-  // ... but take the shorter string from inside the file that
-  // we create as the key.
-  auto file = watchman_file::make(file_name, dir);
-  auto& file_ptr = dir->files[file->getName()];
-  file_ptr = std::move(file);
-
-  file_ptr->ctime.ticks = mostRecentTick_;
-  file_ptr->ctime.timestamp = std::chrono::system_clock::to_time_t(now);
-
-  watcher_->startWatchFile(file_ptr.get());
-
-  return file_ptr.get();
+  latestFile_ = file;
+  file->prev = &latestFile_;
 }
 
-void InMemoryView::ageOutFile(
+InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
+    const PendingChange& pc) noexcept {
+  now = pc.now;
+  flags = pc.flags;
+  storeTruncatedTail(path_tail, pc.path);
+}
+
+json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
+  return json_object({
+      {"now", json_integer(now.time_since_epoch().count())},
+      {"flags", json_integer(flags)},
+      {"path",
+       w_string_to_json(w_string{path_tail, strnlen(path_tail, kPathLength)})},
+  });
+}
+
+InMemoryView::InMemoryView(
+    watchman_root* root,
+    std::shared_ptr<Watcher> watcher)
+    : cookies_(root->cookies),
+      config_(root->config),
+      view_(folly::in_place, root->root_path),
+      rootNumber_(next_root_number++),
+      rootPath_(root->root_path),
+      watcher_(watcher),
+      caches_(
+          root->root_path,
+          config_.getInt("content_hash_max_items", 128 * 1024),
+          config_.getInt("symlink_target_max_items", 32 * 1024),
+          std::chrono::milliseconds(
+              config_.getInt("content_hash_negative_cache_ttl_ms", 2000))),
+      enableContentCacheWarming_(
+          config_.getBool("content_hash_warming", false)),
+      maxFilesToWarmInContentCache_(
+          size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
+      syncContentCacheWarming_(
+          config_.getBool("content_hash_warm_wait_before_settle", false)),
+      scm_(SCM::scmForPath(root->root_path)) {
+  json_int_t in_memory_view_ring_log_size =
+      config_.getInt("in_memory_view_ring_log_size", 0);
+  if (in_memory_view_ring_log_size) {
+    this->processedPaths_ =
+        std::make_unique<folly::LockFreeRingBuffer<PendingChangeLogEntry>>(
+            in_memory_view_ring_log_size);
+  }
+}
+
+InMemoryView::~InMemoryView() = default;
+
+w_clock_t InMemoryView::ageOutFile(
     std::unordered_set<w_string>& dirs_to_erase,
     watchman_file* file) {
   auto parent = file->parent;
@@ -472,8 +459,7 @@ void InMemoryView::ageOutFile(
   auto full_name = parent->getFullPathToChild(file->getName());
   logf(DBG, "age_out file={}\n", full_name);
 
-  // Revise tick for fresh instance reporting
-  lastAgeOutTick_ = std::max(lastAgeOutTick_, file->otime.ticks);
+  auto ageOutOtime = file->otime;
 
   // If we have a corresponding dir, we want to arrange to remove it, but only
   // after we have unlinked all of the associated file nodes.
@@ -483,10 +469,11 @@ void InMemoryView::ageOutFile(
   // We don't need to stop watching it, because we already stopped watching it
   // when we marked it as !exists.
   parent->files.erase(file->getName());
+
+  return ageOutOtime;
 }
 
 void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
-  struct watchman_file *file, *prior;
   uint32_t num_aged_files = 0;
   uint32_t num_walked = 0;
   std::unordered_set<w_string> dirs_to_erase;
@@ -495,8 +482,8 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   lastAgeOutTimestamp_ = now;
   auto view = view_.wlock();
 
-  file = view->latest_file;
-  prior = nullptr;
+  watchman_file* file = view->getLatestFile();
+  watchman_file* prior = nullptr;
   while (file) {
     ++num_walked;
     if (file->exists ||
@@ -507,7 +494,11 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
       continue;
     }
 
-    ageOutFile(dirs_to_erase, file);
+    auto agedOtime = ageOutFile(dirs_to_erase, file);
+
+    // Revise tick for fresh instance reporting
+    lastAgeOutTick_ = std::max(lastAgeOutTick_, agedOtime.ticks);
+
     num_aged_files++;
 
     // Go back to last good file node; we can't trust that the
@@ -518,7 +509,7 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   }
 
   for (auto& name : dirs_to_erase) {
-    auto parent = resolveDir(view, name.dirName(), false);
+    auto parent = view->resolveDir(name.dirName(), false);
     if (parent) {
       parent->dirs.erase(name.baseName());
     }
@@ -543,7 +534,7 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
   auto view = view_.rlock();
   ctx->generationStarted();
 
-  for (f = view->latest_file; f; f = f->next) {
+  for (f = view->getLatestFile(); f; f = f->next) {
     ctx->bumpNumWalked();
     // Note that we use <= for the time comparisons in here so that we
     // report the things that changed inclusive of the boundary presented.
@@ -590,7 +581,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
     // special case of root dir itself
     if (w_string_equal(rootPath_, full_name)) {
       // dirname on the root is outside the root, which is useless
-      dir = resolveDir(view, full_name);
+      dir = view->resolveDir(full_name);
       goto is_dir;
     }
 
@@ -603,7 +594,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
       continue;
     }
 
-    dir = resolveDir(view, dir_name);
+    dir = view->resolveDir(dir_name);
 
     if (!dir) {
       // Doesn't exist, and never has
@@ -665,7 +656,7 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
   auto view = view_.rlock();
   ctx->generationStarted();
 
-  for (f = view->latest_file; f; f = f->next) {
+  for (f = view->getLatestFile(); f; f = f->next) {
     ctx->bumpNumWalked();
     if (!ctx->fileMatchesRelativeRoot(f)) {
       continue;
@@ -748,7 +739,7 @@ bool InMemoryView::doAnyOfTheseFilesExist(
   auto view = view_.rlock();
   for (auto& name : fileNames) {
     auto fullName = w_string::pathCat({rootPath_, name});
-    const auto dir = resolveDir(view, fullName.dirName());
+    const auto dir = view->resolveDir(fullName.dirName());
     if (!dir) {
       continue;
     }
@@ -827,7 +818,7 @@ void InMemoryView::warmContentCache() {
     // on the number of files we should warm up.
     auto view = view_.rlock();
     struct watchman_file* f;
-    for (f = view->latest_file; f && n < maxFilesToWarmInContentCache_;
+    for (f = view->getLatestFile(); f && n < maxFilesToWarmInContentCache_;
          f = f->next) {
       if (f->otime.ticks <= lastWarmedTick_) {
         watchman::log(

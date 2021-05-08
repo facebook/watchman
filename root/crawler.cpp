@@ -19,7 +19,7 @@ apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
 namespace watchman {
 void InMemoryView::crawler(
     const std::shared_ptr<watchman_root>& root,
-    SyncView::LockedPtr& view,
+    ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending) {
   struct watchman_file* file;
@@ -42,7 +42,7 @@ void InMemoryView::crawler(
         watcher_->flags & WATCHER_ONLY_DIRECTORY_NOTIFICATIONS;
   }
 
-  auto dir = resolveDir(view, pending.path, true);
+  auto dir = view.resolveDir(pending.path, true);
 
   // Detect root directory replacement.
   // The inode number check is handled more generally by the sister code
@@ -57,24 +57,24 @@ void InMemoryView::crawler(
   if (pending.path == root->root_path) {
     try {
       auto st = getFileInformation(pending.path.c_str(), root->case_sensitive);
-      if (st.ino != view->rootInode) {
+      if (st.ino != view.getRootInode()) {
         // If it still exists and the inode doesn't match, then we need
         // to force recrawl to make sure we're in sync.
         // We're lazily initializing the rootInode to 0 here, so we don't
         // need to do this the first time through (we're already crawling
         // everything in that case).
-        if (view->rootInode != 0) {
+        if (view.getRootInode() != 0) {
           root->scheduleRecrawl(
               "root was replaced and we didn't get notified by the kernel");
           return;
         }
         recursive = true;
-        view->rootInode = st.ino;
+        view.setRootInode(st.ino);
       }
     } catch (const std::system_error& err) {
       handle_open_errno(
           *root, dir, pending.now, "getFileInformation", err.code());
-      markDirDeleted(view, dir, pending.now, true);
+      view.markDirDeleted(*watcher_, dir, getClock(pending.now), true);
       return;
     }
   }
@@ -93,7 +93,7 @@ void InMemoryView::crawler(
     osdir = watcher_->startWatchDir(root, dir, path);
   } catch (const std::system_error& err) {
     handle_open_errno(*root, dir, pending.now, "opendir", err.code());
-    markDirDeleted(view, dir, pending.now, true);
+    view.markDirDeleted(*watcher_, dir, getClock(pending.now), true);
     return;
   }
 

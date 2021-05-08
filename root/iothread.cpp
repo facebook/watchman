@@ -57,7 +57,7 @@ void InMemoryView::fullCrawl(
       break;
     }
 
-    (void)processAllPending(root, view, pending);
+    (void)processAllPending(root, *view, pending);
   }
 
   auto [recrawlInfo, crawlState] =
@@ -196,29 +196,27 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
     // to the settle duration ready for the next loop through
     timeoutms = root->trigger_settle;
 
-    {
-      auto view = view_.wlock();
-      // fullCrawl unconditionally sets done_initial to true and if
-      // handleShouldRecrawl set it false, execution wouldn't reach this part of
-      // the loop.
-      w_check(
-          root->inner.done_initial.load(std::memory_order_acquire),
-          "A full crawl should not be pending at this point in the loop.");
+    auto view = view_.wlock();
+    // fullCrawl unconditionally sets done_initial to true and if
+    // handleShouldRecrawl set it false, execution wouldn't reach this part of
+    // the loop.
+    w_check(
+        root->inner.done_initial.load(std::memory_order_acquire),
+        "A full crawl should not be pending at this point in the loop.");
 
-      mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
+    mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
-      auto isDesynced = processAllPending(root, view, localPending);
-      if (isDesynced == IsDesynced::Yes) {
-        logf(ERR, "recrawl complete, aborting all pending cookies\n");
-        root->cookies.abortAllCookies();
-      }
+    auto isDesynced = processAllPending(root, *view, localPending);
+    if (isDesynced == IsDesynced::Yes) {
+      logf(ERR, "recrawl complete, aborting all pending cookies\n");
+      root->cookies.abortAllCookies();
     }
   }
 }
 
 InMemoryView::IsDesynced InMemoryView::processAllPending(
     const std::shared_ptr<watchman_root>& root,
-    SyncView::LockedPtr& view,
+    ViewDatabase& view,
     PendingChanges& coll) {
   auto desyncState = IsDesynced::No;
 
@@ -261,7 +259,7 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
 
 void InMemoryView::processPath(
     const std::shared_ptr<watchman_root>& root,
-    SyncView::LockedPtr& view,
+    ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
