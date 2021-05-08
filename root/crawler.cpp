@@ -145,7 +145,7 @@ void InMemoryView::crawler(
         logf(DBG, "in crawler calling process_path on {}\n", full_path);
 
         int newFlags = 0;
-        if (recursive || !(file && file->exists)) {
+        if (recursive || !file || !file->exists) {
           newFlags |= W_PENDING_RECURSIVE;
         }
 

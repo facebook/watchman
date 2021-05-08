@@ -138,6 +138,15 @@ class NaivePendingCollection {
       std::chrono::system_clock::time_point now,
       int flags) {
     for (std::shared_ptr<watchman_pending_fs> p = head_; p; p = p->next) {
+      if (w_string_startswith(path, p->path) &&
+          watchman::is_path_prefix(path, p->path)) {
+        if (p->flags & W_PENDING_RECURSIVE) {
+          return;
+        }
+      }
+    }
+
+    for (std::shared_ptr<watchman_pending_fs> p = head_; p; p = p->next) {
       if (p->path == path) {
         // consolidateItem
         p->flags |= flags &
@@ -185,7 +194,7 @@ class NaivePendingCollection {
   std::shared_ptr<watchman_pending_fs> head_;
 };
 
-using PCTypes = ::testing::Types<NaivePendingCollection, PendingChanges>;
+using PCTypes = ::testing::Types<PendingChanges, NaivePendingCollection>;
 
 } // namespace
 
@@ -236,9 +245,36 @@ TYPED_TEST(PendingCollectionFixture, same_item_consolidates) {
 }
 
 TYPED_TEST(PendingCollectionFixture, prune_obsoleted_children) {
-  int flags = 0;
-  this->coll.add(w_string{"foo/bar"}, this->now, flags);
+  this->coll.add(w_string{"foo/bar"}, this->now, 0);
   this->coll.add(w_string{"foo"}, this->now, W_PENDING_RECURSIVE);
+
+  auto item = this->coll.stealItems();
+  ASSERT_NE(nullptr, item);
+  EXPECT_EQ(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo"}, item->path);
+  EXPECT_EQ(W_PENDING_RECURSIVE, item->flags);
+}
+
+TYPED_TEST(
+    PendingCollectionFixture,
+    recursive_parents_prevent_children_from_being_added) {
+  this->coll.add(w_string{"foo"}, this->now, W_PENDING_RECURSIVE);
+  this->coll.add(w_string{"foo/bar"}, this->now, 0);
+
+  auto item = this->coll.stealItems();
+  ASSERT_NE(nullptr, item);
+  EXPECT_EQ(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo"}, item->path);
+  EXPECT_EQ(W_PENDING_RECURSIVE, item->flags);
+}
+
+TYPED_TEST(
+    PendingCollectionFixture,
+    mixed_addition_is_cleared_by_recursive_parents) {
+  this->coll.add(w_string{"foo/bar"}, this->now, 0);
+  this->coll.add(w_string{"foo/bar/baz"}, this->now, 0);
+  this->coll.add(w_string{"foo"}, this->now, W_PENDING_RECURSIVE);
+  this->coll.add(w_string{"foo/bar/baz/qux"}, this->now, 0);
 
   auto item = this->coll.stealItems();
   ASSERT_NE(nullptr, item);
