@@ -113,6 +113,10 @@ void InMemoryView::statPath(
     }
   }
 
+  if (processedPaths_) {
+    processedPaths_->write(PendingChangeLogEntry{pending, errcode, st});
+  }
+
   if (errcode == watchman::error_code::no_such_file_or_directory ||
       errcode == watchman::error_code::not_a_directory) {
     /* it's not there, update our state */

@@ -403,18 +403,29 @@ void ViewDatabase::insertAtHeadOfFileList(struct watchman_file* file) {
 }
 
 InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
-    const PendingChange& pc) noexcept {
-  now = pc.now;
-  flags = pc.flags;
-  storeTruncatedTail(path_tail, pc.path);
+    const PendingChange& pc,
+    std::error_code errcode,
+    const FileInformation& st) noexcept {
+  this->now = pc.now;
+  this->pending_flags = pc.flags;
+  storeTruncatedTail(this->path_tail, pc.path);
+
+  this->errcode = errcode.value();
+  this->mode = st.mode;
+  this->size = st.size;
+  this->mtime = st.mtime.tv_sec;
 }
 
 json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
   return json_object({
       {"now", json_integer(now.time_since_epoch().count())},
-      {"flags", json_integer(flags)},
+      {"pending_flags", json_integer(pending_flags)},
       {"path",
        w_string_to_json(w_string{path_tail, strnlen(path_tail, kPathLength)})},
+      {"errcode", json_integer(errcode)},
+      {"mode", json_integer(mode)},
+      {"size", json_integer(size)},
+      {"mtime", json_integer(mtime)},
   });
 }
 

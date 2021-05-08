@@ -340,19 +340,29 @@ class InMemoryView : public QueryableView {
     PendingChangeLogEntry() noexcept {
       // time_point is not noexcept so this can't be defaulted.
     }
-    explicit PendingChangeLogEntry(const PendingChange& pc) noexcept;
+    explicit PendingChangeLogEntry(
+        const PendingChange& pc,
+        std::error_code errcode,
+        const FileInformation& st) noexcept;
 
     json_ref asJsonValue() const;
 
     // 55 should cover many filenames.
     static constexpr size_t kPathLength = 55;
 
+    // fields from PendingChange
     std::chrono::system_clock::time_point now;
-    unsigned char flags;
+    unsigned char pending_flags;
     char path_tail[kPathLength];
+
+    // results of calling getFileInformation
+    int32_t errcode;
+    mode_t mode;
+    off_t size;
+    time_t mtime;
   };
 
-  static_assert(64 == sizeof(PendingChangeLogEntry));
+  static_assert(88 == sizeof(PendingChangeLogEntry));
 
   // If set, paths processed by processPending are logged here.
   std::unique_ptr<folly::LockFreeRingBuffer<PendingChangeLogEntry>>
