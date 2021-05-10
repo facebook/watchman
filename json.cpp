@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/Range.h>
 #include <folly/String.h>
 
 using namespace watchman;
@@ -249,6 +250,16 @@ json_ref watchman_json_buffer::readBserPdu(
   }
 
   obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
+  if (!obj) {
+    // obj is a nullptr because deserialization failed. Log the message that
+    // failed to deserialize to stderr
+    logf(
+        ERR,
+        "decoding BSER failed. The first KB of the hex representation of "
+        "message follows:\n{:.1024}\n",
+        folly::hexlify(folly::ByteRange{
+            reinterpret_cast<const unsigned char*>(buf + rpos), wpos - rpos}));
+  }
 
   // Ensure that we move the read position to the wpos; we consumed it all
   rpos = wpos;
