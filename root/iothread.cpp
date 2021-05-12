@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <chrono>
 #include "InMemoryView.h"
 
 namespace watchman {
@@ -196,7 +197,20 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
     // to the settle duration ready for the next loop through
     timeoutms = root->trigger_settle;
 
+    // Some Linux 5.6 kernels will report inotify events before the file has
+    // been evicted from the cache, causing Watchman to incorrectly think the
+    // file is still on disk after it's unlinked. If configured, allow a brief
+    // sleep to mitigate.
+    //
+    // Careful with this knob: it adds latency to every query by delaying cookie
+    // processing.
+    auto notify_sleep_ms = config_.getInt("notify_sleep_ms", 0);
+    if (notify_sleep_ms) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(notify_sleep_ms));
+    }
+
     auto view = view_.wlock();
+
     // fullCrawl unconditionally sets done_initial to true and if
     // handleShouldRecrawl set it false, execution wouldn't reach this part of
     // the loop.
