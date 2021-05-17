@@ -15,6 +15,7 @@
 #endif
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/system/Pid.h>
 
 #if defined(_WIN32) || defined(O_PATH)
 #define CAN_OPEN_SYMLINKS 1
@@ -453,9 +454,19 @@ w_string FileDescriptor::getOpenedPath() const {
 #elif defined(__linux__) || defined(__sun)
   char procpath[1024];
 #if defined(__linux__)
-  snprintf(procpath, sizeof(procpath), "/proc/%d/fd/%d", getpid(), fd_);
+  snprintf(
+      procpath,
+      sizeof(procpath),
+      "/proc/%d/fd/%d",
+      folly::get_cached_pid(),
+      fd_);
 #elif defined(__sun)
-  snprintf(procpath, sizeof(procpath), "/proc/%d/path/%d", getpid(), fd_);
+  snprintf(
+      procpath,
+      sizeof(procpath),
+      "/proc/%d/path/%d",
+      folly::get_cached_pid(),
+      fd_);
 #endif
 
   // Avoid an extra stat by speculatively attempting to read into
