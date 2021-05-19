@@ -1,4 +1,3 @@
-use bytes::buf::BufExt;
 use maplit::hashmap;
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -68,7 +67,7 @@ fn test_basic_array() {
     let decoded = from_slice::<BytestringArray<'_>>(bser_v2).unwrap();
     assert_eq!(decoded.0, vec![&b"Tom"[..], &b"Jerry"[..]]);
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: Vec<String> = from_reader(reader).unwrap();
     let expected = vec!["Tom", "Jerry"];
     assert_eq!(decoded, expected);
@@ -84,7 +83,7 @@ fn test_basic_object() {
     };
     assert_eq!(decoded.0, expected);
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: HashMap<String, String> = from_reader(reader).unwrap();
     let expected = hashmap! {
         "abc".into() => "def".into()
@@ -100,7 +99,7 @@ fn test_basic_tuple() {
     assert_eq!(decoded.0, &b"Tom"[..]);
     assert_eq!(decoded.1, &b"Jerry"[..]);
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: (String, String) = from_reader(reader).unwrap();
     let expected: (String, String) = ("Tom".into(), "Jerry".into());
     assert_eq!(decoded, expected);
@@ -113,7 +112,7 @@ fn test_bare_variant() {
     let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: StringVariant = from_reader(reader).unwrap();
     assert_eq!(decoded, StringVariant::TestUnit);
 }
@@ -125,7 +124,7 @@ fn test_unit_variant() {
     let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: StringVariant = from_reader(reader).unwrap();
     assert_eq!(decoded, StringVariant::TestUnit);
 }
@@ -142,7 +141,7 @@ fn test_newtype_variant() {
         BytestringVariant::TestNewtype((&b"foobar"[..]).into())
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: StringVariant = from_reader(reader).unwrap();
     assert_eq!(decoded, StringVariant::TestNewtype("foobar".into()));
 }
@@ -158,7 +157,7 @@ fn test_tuple_variant() {
         BytestringVariant::TestTuple((&b"foo"[..]).into(), (&b"bar"[..]).into())
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: StringVariant = from_reader(reader).unwrap();
     assert_eq!(
         decoded,
@@ -180,7 +179,7 @@ fn test_struct_variant() {
         }
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: StringVariant = from_reader(reader).unwrap();
     assert_eq!(
         decoded,
@@ -235,7 +234,7 @@ fn test_template() {
         ]
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: Vec<TemplateObject> = from_reader(reader).unwrap();
     assert_eq!(
         decoded,
@@ -332,7 +331,7 @@ fn test_compact_arrays() {
         }
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: Files = from_reader(reader).unwrap();
 
     assert_eq!(
@@ -377,7 +376,7 @@ fn test_compact_arrays_untagged_enum() {
         })
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
 
     let decoded: RequestResult<Files, RequestError> = from_reader(reader).unwrap();
 
@@ -434,7 +433,7 @@ fn test_arrays() {
         }
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: Files = from_reader(reader).unwrap();
 
     assert_eq!(
@@ -479,7 +478,7 @@ fn test_arrays_untagged_enum() {
         })
     );
 
-    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let reader = Cursor::new(bser_v2.to_vec());
     let decoded: RequestResult<Files, RequestError> = from_reader(reader).unwrap();
 
     assert_eq!(
