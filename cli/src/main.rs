@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use structopt::{clap::AppSettings, StructOpt};
 
 mod audit;

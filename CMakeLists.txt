@@ -705,6 +705,8 @@ endif()
 
 install(TARGETS watchman RUNTIME DESTINATION bin)
 
+add_subdirectory(cli)
+
 set(tests)
 # Helper function to define a unit test executable
 function(t_test NAME)
