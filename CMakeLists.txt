@@ -124,6 +124,7 @@ include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckStructHasMember)
 include(CheckSymbolExists)
+include(RustStaticLibrary)
 
 # configure_file wants us to define a separate file.  I'd rather not
 # have boilerplate for the same thing in two difference files, so we
