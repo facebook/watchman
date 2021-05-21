@@ -508,8 +508,8 @@ struct TreeInodeEntryDebugInfo {
    */
   6: BinaryHash hash;
   /**
-   * Size of the file in bytes, won't be set for directories
-  */
+   * Size of the file in bytes. It won't be set for directories.
+   */
   7: optional i64 fileSize;
 }
 
@@ -519,6 +519,7 @@ struct GetFetchedFilesResult {
 
 struct WorkingDirectoryParents {
   1: BinaryHash parent1;
+  // This field is never used by EdenFS.
   2: optional BinaryHash parent2;
 }
 
