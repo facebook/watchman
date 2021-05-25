@@ -269,6 +269,16 @@ original strategy of recrawling the watched directory tree is used instead.
 The default changed to `true`.  In addition, this resync strategy is now
 also applied to `kFSEventStreamEventFlagKernelDropped` events.
 
+### prefer_split_fsevents_watcher
+
+This is macOS specific.
+
+Defaults to `false`. If set to `true`, Watchman will use several FSEvents streams
+to watch a directory hierarchy instead of a single stream. This has been shown
+to significantly reduce the number of `kFSEventStreamEventFlagUserDropped`
+events for workflows issuing heavy writes to a top-level directory that is
+listed in [ignore_dirs](#ignore_dirs).
+
 ### idle_reap_age_seconds
 
 *Since 3.7.*
