@@ -394,6 +394,10 @@ w_query_res w_query_execute(
   if (query->since_spec && query->since_spec->hasScmParams()) {
     auto scm = root->view()->getSCM();
 
+    if (!scm) {
+      throw QueryExecError("This root does not support SCM-aware queries.");
+    }
+
     // Populate transition counter at start of query. This allows us to
     // determine if SCM operations ocurred concurrent with query execution.
     res.stateTransCountAtStartOfQuery = root->stateTransCount.load();

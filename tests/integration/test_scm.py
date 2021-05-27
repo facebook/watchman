@@ -26,6 +26,25 @@ def is_ubuntu():
 
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
+    def test_not_supported(self):
+        root = self.mkdtemp()
+        self.watchmanCommand("watch", root)
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand(
+                "query",
+                root,
+                {
+                    "expression": ["allof", ["type", "f"], ["match", "*.sh"]],
+                    "fields": ["name"],
+                    "since": {
+                        "scm": {"mergebase-with": "remote/master"},
+                        "clock": "c:0:0",
+                    },
+                },
+            )
+        self.assertIn("root does not support SCM-aware queries", str(ctx.exception))
+
     @unittest.skipIf(is_ubuntu(), "Test is flaky. See Facebook task T36574087.")
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
