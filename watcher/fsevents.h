@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/experimental/LockFreeRingBuffer.h>
 #include <optional>
 
 #if HAVE_FSEVENTS
@@ -9,6 +10,7 @@
 namespace watchman {
 
 struct fse_stream;
+struct FSEventsLogEntry;
 
 struct watchman_fsevent {
   w_string path;
@@ -33,6 +35,14 @@ struct FSEventsWatcher : public Watcher {
   bool has_file_watching{false};
   std::optional<w_string> subdir{std::nullopt};
 
+  // Incremented in fse_callback
+  std::atomic<size_t> totalEventsSeen_{0};
+  /**
+   * If not null, holds a fixed-size ring of the last `fsevents_ring_log_size`
+   * FSEvents events.
+   */
+  std::unique_ptr<folly::LockFreeRingBuffer<FSEventsLogEntry>> ringBuffer_;
+
   explicit FSEventsWatcher(
       bool hasFileWatching,
       std::optional<w_string> dir = std::nullopt);
@@ -40,6 +50,7 @@ struct FSEventsWatcher : public Watcher {
   explicit FSEventsWatcher(
       watchman_root* root,
       std::optional<w_string> dir = std::nullopt);
+  ~FSEventsWatcher();
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
 
@@ -55,6 +66,8 @@ struct FSEventsWatcher : public Watcher {
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
   void FSEventsThread(const std::shared_ptr<watchman_root>& root);
+
+  json_ref getDebugInfo() override;
 };
 
 } // namespace watchman

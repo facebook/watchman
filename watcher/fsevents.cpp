@@ -40,7 +40,7 @@ struct fse_stream {
   ~fse_stream();
 };
 
-static const struct flag_map kflags[] = {
+static const flag_map kflags[] = {
     {kFSEventStreamEventFlagMustScanSubDirs, "MustScanSubDirs"},
     {kFSEventStreamEventFlagUserDropped, "UserDropped"},
     {kFSEventStreamEventFlagKernelDropped, "KernelDropped"},
@@ -63,7 +63,34 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-static struct fse_stream* fse_stream_make(
+struct FSEventsLogEntry {
+  // 60 should cover many filenames.
+  static constexpr size_t kNameLength = 60;
+
+  FSEventsLogEntry() = default;
+
+  explicit FSEventsLogEntry(uint32_t flags, const char* name) noexcept {
+    this->flags = flags;
+    auto piece = w_string_piece{name}; // Evaluate strlen here.
+    storeTruncatedTail(this->name, piece);
+  }
+
+  json_ref asJsonValue() {
+    size_t length = strnlen(name, kNameLength);
+    auto namePiece = w_string_piece{name, length};
+
+    return json_object({
+        {"flags", json_integer(flags)},
+        {"name", typed_string_to_json(namePiece.asWString())},
+    });
+  }
+
+  uint32_t flags;
+  char name[kNameLength];
+};
+static_assert(64 == sizeof(FSEventsLogEntry));
+
+static fse_stream* fse_stream_make(
     const std::shared_ptr<watchman_root>& root,
     FSEventsWatcher* watcher,
     FSEventStreamEventId since,
@@ -103,6 +130,16 @@ static void fse_callback(
   auto root = stream->root;
   std::vector<watchman_fsevent> items;
   auto watcher = stream->watcher;
+
+  stream->watcher->totalEventsSeen_.fetch_add(
+      numEvents, std::memory_order_relaxed);
+  if (stream->watcher->ringBuffer_) {
+    for (i = 0; i < numEvents; i++) {
+      uint32_t flags = eventFlags[i];
+      const char* path = paths[i];
+      stream->watcher->ringBuffer_->write(FSEventsLogEntry{flags, path});
+    }
+  }
 
   if (!stream->lost_sync) {
     // This is to facilitate testing via debug-fsevents-inject-drop.
@@ -148,7 +185,7 @@ static void fse_callback(
             // to the consumer thread which has existing logic to schedule
             // a recrawl.
             w_string failure_reason;
-            struct fse_stream* replacement = fse_stream_make(
+            fse_stream* replacement = fse_stream_make(
                 root, watcher, stream->last_good, failure_reason);
 
             if (!replacement) {
@@ -200,7 +237,6 @@ propagate:
 
   items.reserve(numEvents);
   for (i = 0; i < numEvents; i++) {
-    uint32_t len;
     const char* path = paths[i];
 
     if (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) {
@@ -220,7 +256,7 @@ propagate:
       stream->event_id_wrapped = true;
     }
 
-    len = strlen(path);
+    uint32_t len = strlen(path);
     while (path[len - 1] == '/') {
       len--;
     }
@@ -271,7 +307,7 @@ static fse_stream* fse_stream_make(
   FSEventStreamCreateFlags flags;
   w_string path;
 
-  struct fse_stream* fse_stream = new struct fse_stream(root, watcher, since);
+  fse_stream* fse_stream = new struct fse_stream(root, watcher, since);
 
   // Each device has an optional journal maintained by fseventsd that keeps
   // track of the change events.  The journal may not be available if the
@@ -623,13 +659,24 @@ FSEventsWatcher::FSEventsWatcher(
               ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
               : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
       has_file_watching(hasFileWatching),
-      subdir(std::move(dir)) {}
+      subdir(std::move(dir)) {
+  // TODO: Add ring buffer logging for events in the shared kqueue+fsevents
+  // logger.
+}
 
 FSEventsWatcher::FSEventsWatcher(
     watchman_root* root,
     std::optional<w_string> dir)
     : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true), dir) {
+  json_int_t fsevents_ring_log_size =
+      root->config.getInt("fsevents_ring_log_size", 0);
+  if (fsevents_ring_log_size) {
+    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<FSEventsLogEntry>>(
+        fsevents_ring_log_size);
+  }
 }
+
+FSEventsWatcher::~FSEventsWatcher() = default;
 
 void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);
@@ -688,9 +735,37 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
 
 std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
     const std::shared_ptr<watchman_root>&,
-    struct watchman_dir*,
+    watchman_dir*,
     const char* path) {
   return w_dir_open(path);
+}
+
+json_ref FSEventsWatcher::getDebugInfo() {
+  json_ref events = json_null();
+  if (ringBuffer_) {
+    std::vector<FSEventsLogEntry> entries;
+
+    auto head = ringBuffer_->currentHead();
+    if (head.moveBackward()) {
+      FSEventsLogEntry entry;
+      while (ringBuffer_->tryRead(entry, head)) {
+        entries.push_back(std::move(entry));
+        if (!head.moveBackward()) {
+          break;
+        }
+      }
+    }
+    std::reverse(entries.begin(), entries.end());
+
+    events = json_array();
+    for (auto& entry : entries) {
+      json_array_append(events, entry.asJsonValue());
+    }
+  }
+  return json_object({
+      {"events", events},
+      {"total_event_count", json_integer(totalEventsSeen_.load())},
+  });
 }
 
 static RegisterWatcher<FSEventsWatcher> reg("fsevents");
@@ -698,7 +773,7 @@ static RegisterWatcher<FSEventsWatcher> reg("fsevents");
 // A helper command to facilitate testing that we can successfully
 // resync the stream.
 static void cmd_debug_fsevents_inject_drop(
-    struct watchman_client* client,
+    watchman_client* client,
     const json_ref& args) {
   FSEventStreamEventId last_good;
 
