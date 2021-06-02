@@ -3,16 +3,26 @@
 
 #include "WatchmanConnection.h"
 
+#include <cstdlib>
+
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
-#include <folly/Subprocess.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/experimental/bser/Bser.h>
+
+#ifdef _WIN32
+#include <eden/fs/utils/SpawnedProcess.h>
+#else
+#include <folly/Subprocess.h>
+#endif
 
 namespace watchman {
 
 using namespace folly::bser;
 using namespace folly;
+#ifdef _WIN32
+using facebook::eden::SpawnedProcess;
+#endif
 
 // Ordered with the most likely kind first
 static const std::vector<dynamic> kUnilateralLabels{"subscription", "log"};
@@ -50,29 +60,42 @@ folly::Future<std::string> WatchmanConnection::getSockPath() {
 
   // Else use the environmental variable used by watchman to report
   // the active socket path
-  auto var = getenv("WATCHMAN_SOCK");
+  auto var = std::getenv("WATCHMAN_SOCK");
   if (var && *var) {
     return makeFuture(std::string(var));
   }
 
   return via(cpuExecutor_, [] {
-    // Else discover it from the CLI
-    folly::Subprocess proc(
+  // Else discover it from the CLI
+#ifdef _WIN32
+    SpawnedProcess::Options options;
+    options.pipeStdout();
+    options.pipeStderr();
+
+    SpawnedProcess proc{
         {"watchman", "--output-encoding=bser", "get-sockname"},
-        folly::Subprocess::Options().pipeStdout().pipeStderr().usePath());
+        std::move(options)};
+#else
+  folly::Subprocess proc(
+      {"watchman", "--output-encoding=bser", "get-sockname"},
+      folly::Subprocess::Options().pipeStdout().pipeStderr().usePath());
+#endif
+
     auto out_pair = proc.communicate();
     auto returnCode = proc.wait();
     if (returnCode.exitStatus() != 0) {
       throw WatchmanError{folly::to<std::string>(
           "`watchman get-sockname` returned error code ",
           returnCode.exitStatus(),
+#ifndef _WIN32
           " when called as user ",
           geteuid(),
+#endif
           ". Error: ",
           out_pair.second)};
     }
     auto result = parseBser(out_pair.first);
-    return result["sockname"].asString();
+    return result["unix_domain"].asString();
   });
 }
 

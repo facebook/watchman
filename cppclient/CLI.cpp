@@ -14,7 +14,7 @@
   thoroughly.
 */
 
-#include <watchman/WatchmanConnection.h>
+#include <watchman/cppclient/WatchmanConnection.h>
 
 #include <iostream>
 #include <memory>
