@@ -1,12 +1,13 @@
 use ahash::AHashMap;
+use jwalk::WalkDir;
 use serde::Deserialize;
+use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 use structopt::StructOpt;
-use walkdir::WalkDir;
 use watchman_client::prelude::*;
 
 #[derive(StructOpt, Debug)]
@@ -31,7 +32,8 @@ query_result_type! {
 fn is_cookie<T: AsRef<Path>>(name: T) -> bool {
     return name
         .as_ref()
-        .to_str()
+        .file_name()
+        .and_then(|s| s.to_str())
         .map_or(false, |s| s.starts_with(".watchman-cookie-"));
 }
 
@@ -67,27 +69,31 @@ impl AuditCmd {
                 let start_crawl = Instant::now();
 
                 // Allocate outside the loop to save time.
-                let resolved_path = resolved.path();
+                let resolved_path = Arc::new(resolved.path());
 
-                for entry in WalkDir::new(&resolved_path)
-                    .into_iter()
-                    .filter_entry(|entry| {
-                        // It sucks we have to do this here and in the loop body below. It would be nice if traversal and filtering were folded into the same callback.
-                        let from_root = match entry.path().strip_prefix(&resolved_path) {
+                let resolved_path_copy = resolved_path.clone();
+                let walk_dir = WalkDir::new(&*resolved_path)
+                    .skip_hidden(false)
+                    .process_read_dir(move |_depth, path, _read_dir_state, children| {
+                        let resolved_path: &Path = resolved_path_copy.as_ref();
+                        let from_root = match path.strip_prefix(resolved_path) {
                             Ok(from_root) => from_root,
-                            Err(_) => return true,
-                        };
-                        let join_storage;
-                        let path_from_root = match resolved.project_relative_path() {
-                            Some(relpath) => {
-                                join_storage = relpath.join(&from_root);
-                                join_storage.as_ref()
+                            Err(_) => {
+                                return;
                             }
-                            None => from_root,
                         };
-                        !ignore_dirs.iter().any(|i| i == path_from_root)
-                    })
-                {
+
+                        if from_root == Path::new("") {
+                            children.retain(|child| match child {
+                                Ok(child) => {
+                                    ignore_dirs.iter().all(|i| i.as_os_str() != child.file_name)
+                                }
+                                Err(_) => true,
+                            });
+                        }
+                    });
+
+                for entry in walk_dir {
                     let entry = match entry {
                         Ok(entry) => entry,
                         Err(err) => {
@@ -96,13 +102,14 @@ impl AuditCmd {
                         }
                     };
 
-                    let relpath = match entry.path().strip_prefix(&resolved_path) {
+                    let entry_path = entry.path();
+                    let relpath = match entry_path.strip_prefix(&*resolved_path) {
                         Ok(relpath) => relpath,
                         Err(err) => {
                             eprintln!(
                                 "unable to form relative path from {} to {}: {}",
                                 resolved_path.display(),
-                                entry.path().display(),
+                                entry_path.display(),
                                 err
                             );
                             continue;
@@ -112,11 +119,14 @@ impl AuditCmd {
                     let metadata = match entry.metadata() {
                         Ok(metadata) => metadata,
                         Err(err) => {
-                            eprintln!(
-                                "error fetching metadata for {}: {}",
-                                entry.path().display(),
-                                err
-                            );
+                            if err.io_error().map(|e| e.kind() == ErrorKind::NotFound) != Some(true)
+                            {
+                                eprintln!(
+                                    "error fetching metadata for {}: {}",
+                                    entry_path.display(),
+                                    err
+                                );
+                            }
                             continue;
                         }
                     };

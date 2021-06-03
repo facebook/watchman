@@ -8,5 +8,5 @@ structopt = "0.3"
 watchman_client = { path = "../rust/watchman_client" }
 ahash = "0.3"
 serde = "1.0"
-walkdir = "2.3"
+jwalk = "0.6"
 tokio = { version = "1.5", features = ["rt-multi-thread"] }
