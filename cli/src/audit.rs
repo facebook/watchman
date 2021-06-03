@@ -27,6 +27,14 @@ query_result_type! {
     }
 }
 
+// Skip cookies when diffing.
+fn is_cookie<T: AsRef<Path>>(name: T) -> bool {
+    return name
+        .as_ref()
+        .to_str()
+        .map_or(false, |s| s.starts_with(".watchman-cookie-"));
+}
+
 impl AuditCmd {
     pub(crate) async fn run(&self) -> crate::Result<()> {
         let client = Connector::new().connect().await?;
@@ -188,6 +196,10 @@ impl AuditCmd {
             AHashMap::with_capacity(watchman_files.len());
         for watchman_file in &watchman_files {
             let filename = &*watchman_file.name;
+            // Skip cookies when diffing.
+            if is_cookie(filename) {
+                continue;
+            }
             watchman_state.insert(filename, watchman_file);
 
             let metadata = match filesystem_state.get(filename) {
@@ -246,6 +258,9 @@ impl AuditCmd {
         }
 
         for (path, val) in &filesystem_state {
+            if is_cookie(path) {
+                continue;
+            }
             if !watchman_state.contains_key(&path.as_path()) {
                 missing.push((path, val));
             }
