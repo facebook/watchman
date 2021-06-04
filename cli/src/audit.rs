@@ -259,10 +259,10 @@ impl AuditCmd {
                     "Conflicting information for {}:",
                     watchman_file.name.display()
                 );
-                println!("  oclock is {:#?}", *watchman_file.oclock);
                 for diff in diffs {
                     println!("  {}", diff);
                 }
+                println!("  oclock is {:?}", *watchman_file.oclock);
                 any_differences = true;
             }
         }
