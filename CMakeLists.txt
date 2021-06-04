@@ -515,6 +515,8 @@ opendir.cpp
 time.cpp
 stream.cpp
 stream_unix.cpp
+root/dir.cpp
+root/file.cpp
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

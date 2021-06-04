@@ -1,10 +1,13 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman_string.h"
 #include <stdarg.h>
 #include <new>
+#include <ostream>
 #include <stdexcept>
+#include "thirdparty/jansson/utf.h"
+#include "watchman_hash.h"
 
 static void w_string_addref(w_string_t* str);
 static void w_string_delref(w_string_t* str);
@@ -638,43 +641,6 @@ w_string_piece w_string_canon_path(w_string_t* str) {
     return w_string_piece(str->buf, str->len - trim);
   }
   return w_string_piece(str);
-}
-
-w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
-  uint32_t length = 0;
-  w_string_t* s;
-  char *buf, *end;
-
-  if (extra.size()) {
-    length = extra.size() + 1 /* separator */;
-  }
-  for (const watchman_dir* d = this; d; d = d->parent) {
-    length += d->name.size() + 1 /* separator OR final NUL terminator */;
-  }
-
-  s = (w_string_t*)(new char[sizeof(*s) + length]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = length - 1;
-  buf = const_cast<char*>(s->buf);
-  end = buf + s->len;
-
-  *end = 0;
-  if (extra.size()) {
-    end -= extra.size();
-    memcpy(end, extra.data(), extra.size());
-  }
-  for (const watchman_dir* d = this; d; d = d->parent) {
-    if (d != this || (extra.size())) {
-      --end;
-      *end = '/';
-    }
-    end -= d->name.size();
-    memcpy(end, d->name.data(), d->name.size());
-  }
-
-  return w_string(s, false);
 }
 
 bool w_string_is_known_unicode(w_string_t* str) {

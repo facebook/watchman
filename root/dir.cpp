@@ -30,5 +30,42 @@ watchman_dir* watchman_dir::getChildDir(w_string_piece name) const {
   return it->second.get();
 }
 
+w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
+  uint32_t length = 0;
+  w_string_t* s;
+  char *buf, *end;
+
+  if (extra.size()) {
+    length = extra.size() + 1 /* separator */;
+  }
+  for (const watchman_dir* d = this; d; d = d->parent) {
+    length += d->name.size() + 1 /* separator OR final NUL terminator */;
+  }
+
+  s = (w_string_t*)(new char[sizeof(*s) + length]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  s->len = length - 1;
+  buf = const_cast<char*>(s->buf);
+  end = buf + s->len;
+
+  *end = 0;
+  if (extra.size()) {
+    end -= extra.size();
+    memcpy(end, extra.data(), extra.size());
+  }
+  for (const watchman_dir* d = this; d; d = d->parent) {
+    if (d != this || (extra.size())) {
+      --end;
+      *end = '/';
+    }
+    end -= d->name.size();
+    memcpy(end, d->name.data(), d->name.size());
+  }
+
+  return w_string(s, false);
+}
+
 /* vim:ts=2:sw=2:et:
  */
