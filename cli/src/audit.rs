@@ -134,7 +134,7 @@ impl AuditCmd {
                 }
                 // Watchman doesn't return information about the root, so remove it here.
                 filesystem_state.remove(&PathBuf::new());
-                eprintln!("Crawled filesystem in {:#?}", start_crawl.elapsed());
+                eprintln!("Crawled filesystem in {:?}", start_crawl.elapsed());
 
                 filesystem_state
             })
@@ -142,7 +142,9 @@ impl AuditCmd {
 
         let start_query = Instant::now();
 
-        // TODO: should we ignore fresh instance results?
+        // Do not ignore fresh instance results: the goal is to validate the
+        // correctness of query results against the filesystem state, no
+        // matter what happened in the crawler.
 
         use Expr::*;
         let result = client
@@ -183,7 +185,12 @@ impl AuditCmd {
             )
             .await?;
 
-        eprintln!("Queried Watchman in {:#?}", start_query.elapsed());
+        eprintln!(
+            "Queried Watchman in {:?} (is_fresh_instance = {}, clock = {:?})",
+            start_query.elapsed(),
+            result.is_fresh_instance,
+            result.clock
+        );
 
         let filesystem_state = filesystem_state_handle.await.unwrap();
 
