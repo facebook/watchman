@@ -28,6 +28,19 @@ unsigned64
 typedef i32 pid_t
 
 /**
+ * A backing-store-specific identifier for the root tree. For Mercurial or
+ * Git, this is a 20-byte binary hash or a 40-byte hexadecimal hash.
+ *
+ * For other backing stores, this string may have variable length and its
+ * meaning is defined by the backing-store. If possible, prefer human-readable
+ * strings so they can be read in log files and error messages.
+ *
+ * This is named ThriftRootId to not conflict with the RootId class, but
+ * perhaps this Thrift module should be placed in its own namespace.
+ */
+typedef binary ThriftRootId
+
+/**
  * A source control hash.
  *
  * This should normally be a 20-byte binary value, however the edenfs server
@@ -242,7 +255,7 @@ struct JournalPosition {
   2: unsigned64 sequenceNumber;
 
   /** Records the snapshot hash at the appropriate point in the journal */
-  3: BinaryHash snapshotHash;
+  3: ThriftRootId snapshotHash;
 }
 
 /**
@@ -299,7 +312,7 @@ struct FileDelta {
    *
    * Subsumes fromPosition.snapshotHash and toPosition.snapshotHash.
    */
-  7: list<BinaryHash> snapshotTransitions;
+  7: list<ThriftRootId> snapshotTransitions;
 }
 
 struct DebugGetRawJournalParams {
@@ -518,9 +531,9 @@ struct GetFetchedFilesResult {
 }
 
 struct WorkingDirectoryParents {
-  1: BinaryHash parent1;
+  1: ThriftRootId parent1;
   // This field is never used by EdenFS.
-  2: optional BinaryHash parent2;
+  2: optional ThriftRootId parent2;
 }
 
 struct TreeInodeDebugInfo {
@@ -684,7 +697,7 @@ struct GlobParams {
   // There should be no duplicates in this list. If there are then
   // there maybe duplicate machingFile and originHash pairs in the coresponding
   // output Glob.
-  7: list<BinaryHash> revisions;
+  7: list<ThriftRootId> revisions;
   // If false we will not prefetch metadata while evaluating this glob. In
   // in general we want to prefetch metadata, but some large globs can
   // trigger too many metadata prefetches, so we allow skipping this.
@@ -808,7 +821,7 @@ struct GetScmStatusParams {
    * own external synchronization around access to the current parent commit,
    * like Mercurial.
    */
-  2: BinaryHash commit;
+  2: ThriftRootId commit;
 
   /**
    * Whether ignored files should be reported in the results.
@@ -848,7 +861,7 @@ service EdenService extends fb303_core.BaseService {
    */
   list<CheckoutConflict> checkOutRevision(
     1: PathString mountPoint,
-    2: BinaryHash snapshotHash,
+    2: ThriftRootId snapshotHash,
     3: CheckoutMode checkoutMode,
   ) throws (1: EdenError ex);
 
@@ -1019,7 +1032,7 @@ service EdenService extends fb303_core.BaseService {
   ScmStatus getScmStatus(
     1: PathString mountPoint,
     2: bool listIgnored,
-    3: BinaryHash commit,
+    3: ThriftRootId commit,
   ) throws (1: EdenError ex);
 
   /**
@@ -1030,8 +1043,8 @@ service EdenService extends fb303_core.BaseService {
    */
   ScmStatus getScmStatusBetweenRevisions(
     1: PathString mountPoint,
-    2: BinaryHash oldHash,
-    3: BinaryHash newHash,
+    2: ThriftRootId oldHash,
+    3: ThriftRootId newHash,
   ) throws (1: EdenError ex);
 
   //////// Administrative APIs ////////
