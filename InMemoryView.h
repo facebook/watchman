@@ -196,6 +196,10 @@ class InMemoryView : public QueryableView {
   SCM* getSCM() const override;
 
  private:
+  void syncToNowCookies(
+      const std::shared_ptr<watchman_root>& root,
+      std::chrono::milliseconds timeout);
+
   // Returns the erased file's otime.
   w_clock_t ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,

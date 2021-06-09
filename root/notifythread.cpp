@@ -51,9 +51,9 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
         break;
       }
     }
-    if (fromWatcher.size() > 0) {
+    if (!fromWatcher.empty()) {
       auto lock = pending_.lock();
-      lock->append(fromWatcher.stealItems());
+      lock->append(fromWatcher.stealItems(), fromWatcher.stealSyncs());
       lock->ping();
     }
   }

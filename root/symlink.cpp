@@ -144,7 +144,7 @@ void watchman_root::processPendingSymlinkTargets() {
 
   auto pendingLock = inner.pending_symlink_targets.lock();
 
-  if (!pendingLock->size()) {
+  if (pendingLock->empty()) {
     return;
   }
 

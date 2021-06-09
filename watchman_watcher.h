@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/futures/Future.h>
 #include <stdexcept>
 #include "PendingCollection.h"
 #include "watchman_opendir.h"
@@ -44,6 +45,23 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Perform watcher-specific cleanup for a watched root when it is freed
   virtual ~Watcher();
+
+  /**
+   * If the returned SemiFuture is valid(), then this watcher requires
+   * flushing any queued events. A Promise has been placed in the
+   * PendingCollection and will be completed when InMemoryView processes the
+   * event.
+   *
+   * In particular, FSEvents may return pending events out of order, so the
+   * observation of a cookie file does not guarantee all prior changes have been
+   * seen.
+   *
+   * Otherwise, this watcher does not require flushing, and a cookie file event
+   * is considered sufficient synchronization.
+   */
+  virtual folly::SemiFuture<folly::Unit> flushPendingEvents() {
+    return folly::SemiFuture<folly::Unit>::makeEmpty();
+  }
 
   // Initiate an OS-level watch on the provided file
   virtual bool startWatchFile(struct watchman_file* file);

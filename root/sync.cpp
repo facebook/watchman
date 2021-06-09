@@ -52,6 +52,27 @@ namespace watchman {
 void InMemoryView::syncToNow(
     const std::shared_ptr<watchman_root>& root,
     std::chrono::milliseconds timeout) {
+  syncToNowCookies(root, timeout);
+
+  // Some watcher implementations (notably, FSEvents) reorder change events
+  // before they're reported, and cookie files are not sufficient. Instead, the
+  // watcher supports direct synchronization. Once a cookie file has been
+  // observed, ensure that all pending events have been flushed and wait until
+  // the pending event queue is fully crawled.
+  auto result = watcher_->flushPendingEvents();
+  if (result.valid()) {
+    // The watcher has made all pending events available and inserted a promise
+    // into its PendingCollection. Wait for InMemoryView to observe it and
+    // everything prior.
+    //
+    // Would be nice to use a deadline rather than a timeout here.
+    std::move(result).get(timeout);
+  }
+}
+
+void InMemoryView::syncToNowCookies(
+    const std::shared_ptr<watchman_root>& root,
+    std::chrono::milliseconds timeout) {
   try {
     cookies_.syncToNow(timeout);
   } catch (const std::system_error& exc) {

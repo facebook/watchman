@@ -49,6 +49,7 @@ bool is_path_prefix(
 void PendingChanges::clear() {
   pending_.reset();
   tree_.clear();
+  syncs_.clear();
 }
 
 void PendingChanges::add(
@@ -89,7 +90,13 @@ void PendingChanges::add(
   return add(dir->getFullPathToChild(name), now, flags);
 }
 
-void PendingChanges::append(std::shared_ptr<watchman_pending_fs> chain) {
+void PendingChanges::addSync(folly::Promise<folly::Unit> promise) {
+  syncs_.push_back(std::move(promise));
+}
+
+void PendingChanges::append(
+    std::shared_ptr<watchman_pending_fs> chain,
+    std::vector<folly::Promise<folly::Unit>> syncs) {
   auto p = std::move(chain);
   while (p) {
     auto target_p =
@@ -113,6 +120,11 @@ void PendingChanges::append(std::shared_ptr<watchman_pending_fs> chain) {
 
     p = std::move(next);
   }
+
+  syncs_.insert(
+      syncs_.end(),
+      std::make_move_iterator(syncs.begin()),
+      std::make_move_iterator(syncs.end()));
 }
 
 std::shared_ptr<watchman_pending_fs> PendingChanges::stealItems() {
@@ -120,7 +132,16 @@ std::shared_ptr<watchman_pending_fs> PendingChanges::stealItems() {
   return std::move(pending_);
 }
 
-/* Returns the number of unique pending items in the collection */
+std::vector<folly::Promise<folly::Unit>> PendingChanges::stealSyncs() {
+  std::vector<folly::Promise<folly::Unit>> syncs;
+  std::swap(syncs, syncs_);
+  return syncs;
+}
+
+bool PendingChanges::empty() const {
+  return 0 == tree_.size() && syncs_.empty();
+}
+
 uint32_t PendingChanges::size() const {
   return tree_.size();
 }

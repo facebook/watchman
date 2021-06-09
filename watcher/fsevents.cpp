@@ -273,7 +273,7 @@ propagate:
 
   if (!items.empty()) {
     auto wlock = watcher->items_.lock();
-    wlock->push_back(std::move(items));
+    wlock->items.push_back(std::move(items));
     watcher->fse_cond.notify_one();
   }
 }
@@ -545,6 +545,96 @@ done:
   logf(DBG, "fse_thread done\n");
 }
 
+FSEventsWatcher::FSEventsWatcher(
+    bool hasFileWatching,
+    std::optional<w_string> dir)
+    : Watcher(
+          hasFileWatching ? "fsevents" : "dirfsevents",
+          hasFileWatching
+              ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
+              : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
+      has_file_watching(hasFileWatching),
+      subdir(std::move(dir)) {
+  // TODO: Add ring buffer logging for events in the shared kqueue+fsevents
+  // logger.
+}
+
+FSEventsWatcher::FSEventsWatcher(
+    watchman_root* root,
+    std::optional<w_string> dir)
+    : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true), dir) {
+  json_int_t fsevents_ring_log_size =
+      root->config.getInt("fsevents_ring_log_size", 0);
+  if (fsevents_ring_log_size) {
+    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<FSEventsLogEntry>>(
+        fsevents_ring_log_size);
+  }
+}
+
+FSEventsWatcher::~FSEventsWatcher() = default;
+
+bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
+  // Spin up the fsevents processing thread; it owns a ref on the root
+
+  auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
+  try {
+    // Acquire the mutex so thread initialization waits until we release it
+    auto wlock = items_.lock();
+
+    std::thread thread([self, root]() {
+      try {
+        self->FSEventsThread(root);
+      } catch (const std::exception& e) {
+        watchman::log(watchman::ERR, "uncaught exception: ", e.what());
+        if (!self->subdir) {
+          root->cancel();
+        }
+      }
+
+      // Ensure that we signal the condition variable before we
+      // finish this thread.  That ensures that don't get stuck
+      // waiting in FSEventsWatcher::start if something unexpected happens.
+      self->fse_cond.notify_one();
+    });
+    // We have to detach because the readChangesThread may wind up
+    // being the last thread to reference the watcher state and
+    // cannot join itself.
+    thread.detach();
+
+    // Allow thread init to proceed; wait for its signal
+    fse_cond.wait(wlock.getUniqueLock());
+
+    if (root->failure_reason) {
+      logf(ERR, "failed to start fsevents thread: {}\n", root->failure_reason);
+      return false;
+    }
+
+    return true;
+  } catch (const std::exception& e) {
+    watchman::log(
+        watchman::ERR, "failed to start fsevents thread: ", e.what(), "\n");
+    return false;
+  }
+}
+
+folly::SemiFuture<folly::Unit> FSEventsWatcher::flushPendingEvents() {
+  auto [p, f] = folly::makePromiseContract<folly::Unit>();
+
+  FSEventStreamFlushSync(stream->stream);
+
+  auto wlock = items_.lock();
+  wlock->syncs.push_back(std::move(p));
+  fse_cond.notify_one();
+  return std::move(f);
+}
+
+bool FSEventsWatcher::waitNotify(int timeoutms) {
+  auto wlock = items_.lock();
+  fse_cond.wait_for(
+      wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
+  return !wlock->items.empty() || !wlock->syncs.empty();
+}
+
 namespace {
 bool isRootRemoved(
     const w_string& path,
@@ -562,11 +652,13 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     PendingChanges& coll) {
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
+  std::vector<folly::Promise<folly::Unit>> syncs;
   bool cancelSelf = false;
 
   {
     auto wlock = items_.lock();
-    std::swap(items, *wlock);
+    std::swap(items, wlock->items);
+    std::swap(syncs, wlock->syncs);
   }
 
   auto now = std::chrono::system_clock::now();
@@ -647,90 +739,15 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
     }
   }
 
+  for (auto& sync : syncs) {
+    coll.addSync(std::move(sync));
+  }
+
   return {!items.empty(), cancelSelf};
 }
 
-FSEventsWatcher::FSEventsWatcher(
-    bool hasFileWatching,
-    std::optional<w_string> dir)
-    : Watcher(
-          hasFileWatching ? "fsevents" : "dirfsevents",
-          hasFileWatching
-              ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
-              : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
-      has_file_watching(hasFileWatching),
-      subdir(std::move(dir)) {
-  // TODO: Add ring buffer logging for events in the shared kqueue+fsevents
-  // logger.
-}
-
-FSEventsWatcher::FSEventsWatcher(
-    watchman_root* root,
-    std::optional<w_string> dir)
-    : FSEventsWatcher(root->config.getBool("fsevents_watch_files", true), dir) {
-  json_int_t fsevents_ring_log_size =
-      root->config.getInt("fsevents_ring_log_size", 0);
-  if (fsevents_ring_log_size) {
-    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<FSEventsLogEntry>>(
-        fsevents_ring_log_size);
-  }
-}
-
-FSEventsWatcher::~FSEventsWatcher() = default;
-
 void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);
-}
-
-bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
-  // Spin up the fsevents processing thread; it owns a ref on the root
-
-  auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
-  try {
-    // Acquire the mutex so thread initialization waits until we release it
-    auto wlock = items_.lock();
-
-    std::thread thread([self, root]() {
-      try {
-        self->FSEventsThread(root);
-      } catch (const std::exception& e) {
-        watchman::log(watchman::ERR, "uncaught exception: ", e.what());
-        if (!self->subdir) {
-          root->cancel();
-        }
-      }
-
-      // Ensure that we signal the condition variable before we
-      // finish this thread.  That ensures that don't get stuck
-      // waiting in FSEventsWatcher::start if something unexpected happens.
-      self->fse_cond.notify_one();
-    });
-    // We have to detach because the readChangesThread may wind up
-    // being the last thread to reference the watcher state and
-    // cannot join itself.
-    thread.detach();
-
-    // Allow thread init to proceed; wait for its signal
-    fse_cond.wait(wlock.getUniqueLock());
-
-    if (root->failure_reason) {
-      logf(ERR, "failed to start fsevents thread: {}\n", root->failure_reason);
-      return false;
-    }
-
-    return true;
-  } catch (const std::exception& e) {
-    watchman::log(
-        watchman::ERR, "failed to start fsevents thread: ", e.what(), "\n");
-    return false;
-  }
-}
-
-bool FSEventsWatcher::waitNotify(int timeoutms) {
-  auto wlock = items_.lock();
-  fse_cond.wait_for(
-      wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
-  return !wlock->empty();
 }
 
 std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(

@@ -53,8 +53,11 @@ void InMemoryView::fullCrawl(
     // translates to a two level loop; the outer loop sweeps in data from
     // inotify, then the inner loop processes it and any dirs that we pick up
     // from recursive processing.
-    pending.append(pending_.lock()->stealItems());
-    if (!pending.size()) {
+    {
+      auto lock = pending_.lock();
+      pending.append(lock->stealItems(), lock->stealSyncs());
+    }
+    if (pending.empty()) {
       break;
     }
 
@@ -170,7 +173,8 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
       auto targetPendingLock =
           pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
       logf(DBG, " ... wake up (pinged={})\n", pinged);
-      localPending.append(targetPendingLock->stealItems());
+      localPending.append(
+          targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
     }
 
     // Do we need to recrawl?
@@ -183,7 +187,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
     }
 
     // Waiting for an event timed out, so consider the root settled.
-    if (!pinged && localPending.size() == 0) {
+    if (!pinged && localPending.empty()) {
       if (do_settle_things(*this, *root)) {
         break;
       }
@@ -234,13 +238,21 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
     PendingChanges& coll) {
   auto desyncState = IsDesynced::No;
 
-  while (coll.size()) {
+  // Don't resolve any of these until any recursive crawls are done.
+  std::vector<std::vector<folly::Promise<folly::Unit>>> allSyncs;
+
+  while (!coll.empty()) {
     logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
 
     auto pending = coll.stealItems();
-    w_check(
-        pending != nullptr,
-        "coll.stealItems() and coll.size() did not agree about its size");
+    auto syncs = coll.stealSyncs();
+    if (syncs.empty()) {
+      w_check(
+          pending != nullptr,
+          "coll.stealItems() and coll.size() did not agree about its size");
+    } else {
+      allSyncs.push_back(std::move(syncs));
+    }
 
     while (pending) {
       if (!stopThreads_) {
@@ -265,6 +277,12 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
       // TODO: Document that continuing to run this loop when stopThreads_ is
       // true fixes a stack overflow when pending is long.
       pending = std::move(pending->next);
+    }
+  }
+
+  for (auto& outer : allSyncs) {
+    for (auto& sync : outer) {
+      sync.setValue();
     }
   }
 

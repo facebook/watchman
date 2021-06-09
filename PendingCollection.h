@@ -4,6 +4,7 @@
 
 #include "watchman_string.h"
 #include <folly/Synchronized.h>
+#include <folly/futures/Promise.h>
 #include <chrono>
 #include <condition_variable>
 #include "thirdparty/libart/src/art.h"
@@ -87,6 +88,8 @@ class PendingChanges {
 
   /**
    * Erase all elements from the collection.
+   *
+   * Any pending syncs will be fulfilled with a BrokenPromise error.
    */
   void clear();
 
@@ -105,22 +108,42 @@ class PendingChanges {
       int flags);
 
   /**
+   * Add a sync request. The consumer of this sync should fulfill it after
+   * processing all of the pending items.
+   */
+  void addSync(folly::Promise<folly::Unit> promise);
+
+  /**
    * Merge the full contents of `chain` into this collection. They are usually
    * from a stealItems() call.
    *
    * `chain` is consumed -- the links are broken.
    */
-  void append(std::shared_ptr<watchman_pending_fs> chain);
+  void append(
+      std::shared_ptr<watchman_pending_fs> chain,
+      std::vector<folly::Promise<folly::Unit>> syncs);
 
   /* Moves the head of the chain of items to the caller.
    * The tree is cleared and the caller owns the whole chain */
   std::shared_ptr<watchman_pending_fs> stealItems();
 
+  std::vector<folly::Promise<folly::Unit>> stealSyncs();
+
+  /**
+   * Returns true if there are no items or syncs.
+   */
+  bool empty() const;
+
+  /**
+   * Returns the number of unique pending items in the collection. Does not
+   * include sync requests.
+   */
   uint32_t size() const;
 
  protected:
   art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
   std::shared_ptr<watchman_pending_fs> pending_;
+  std::vector<folly::Promise<folly::Unit>> syncs_;
 
  private:
   void maybePruneObsoletedChildren(w_string path, int flags);

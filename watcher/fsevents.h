@@ -24,11 +24,15 @@ struct FSEventsWatcher : public Watcher {
   watchman::Pipe fse_pipe;
 
   std::condition_variable fse_cond;
-  // Unflattened queue of pending events. The fse_callback function will push
-  // exactly one vector to the end of this one, flattening the vector would
-  // require extra copying and allocations.
-  folly::Synchronized<std::vector<std::vector<watchman_fsevent>>, std::mutex>
-      items_;
+  struct Items {
+    // Unflattened queue of pending events. The fse_callback function will push
+    // exactly one vector to the end of this one, flattening the vector would
+    // require extra copying and allocations.
+    std::vector<std::vector<watchman_fsevent>> items;
+    // Sync requests to be inserted into PendingCollection.
+    std::vector<folly::Promise<folly::Unit>> syncs;
+  };
+  folly::Synchronized<Items, std::mutex> items_;
 
   struct fse_stream* stream{nullptr};
   bool attempt_resync_on_drop{false};
@@ -53,6 +57,8 @@ struct FSEventsWatcher : public Watcher {
   ~FSEventsWatcher();
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
+
+  virtual folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
