@@ -620,8 +620,42 @@ bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
 folly::SemiFuture<folly::Unit> FSEventsWatcher::flushPendingEvents() {
   auto [p, f] = folly::makePromiseContract<folly::Unit>();
 
+  /*
+   * Here is our understanding of the FSEvents data flow as of June 2021:
+   *
+   * /dev/fsevents is the interface from the kernel to userspace where change
+   * events are made available.
+   *
+   * fseventsd reads /dev/fsevents and builds an internal queue/tree that it
+   * publishes to anyone using FSEvents. FSEvents holds onto that information
+   * for a bit (with the configurable delay), coalesces when it can, and then
+   * calls your callback. Importantly, while /dev/fsevents is presumed to
+   * provide some sort of sequencing, fseventsd does not offer sequencing
+   * guarantees to your callback.
+   *
+   * All FSEventStreamFlushSync is documented to do is flush any pending events
+   * inside FSEvents/fseventsd. It will call your callback repeatedly until no
+   * more events remain. It does not guarantee /dev/fsevents has been fully
+   * drained.
+   *
+   * Indeed, FSEventFlushStream alone is not sufficient. A prior attempt to
+   * avoid cookie synchronization entirely on macOS did not work.
+   *
+   * My assumption here is that /dev/fsevents is ordered, and so if we've
+   * observed a cookie _at all_ in FSEvents, FSEvents has observed every event
+   * prior to the cookie. But that does not mean all of those events have been
+   * reported to watchman's fse_callback function.
+   *
+   * Calling FSEventStreamFlushSync after the cookie and then waiting for all
+   * queued items to be processed by InMemoryView ensures the InMemoryView is up
+   * to date at least with all changes made prior to the cookie being created.
+   */
+
+  // Ensure all events queued by FSEvents are pushed into wlock->items.
   FSEventStreamFlushSync(stream->stream);
 
+  // Now return a Future that is fulfilled when all of the items have been
+  // processed by InMemoryView.
   auto wlock = items_.lock();
   wlock->syncs.push_back(std::move(p));
   fse_cond.notify_one();
