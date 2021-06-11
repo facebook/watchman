@@ -80,6 +80,8 @@ class KQueueAndFSEventsWatcher : public Watcher {
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
 
+  folly::SemiFuture<folly::Unit> flushPendingEvents() override;
+
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
@@ -148,6 +150,28 @@ bool KQueueAndFSEventsWatcher::start(
     const std::shared_ptr<watchman_root>& root) {
   root->cookies.addCookieDir(root->root_path);
   return startThread(root, kqueueWatcher_, pendingCondition_);
+}
+
+folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
+  // Flush the kqueue watcher outside of the lock, because it may need to
+  // change the set of watchers.
+  auto kqueueFlush = kqueueWatcher_->flushPendingEvents();
+  // But we know KQueueWatcher doesn't implement flushPendingEvents, so to
+  // avoid having to chain the futures here, just assert.
+  w_check(
+      !kqueueFlush.valid(),
+      "This code needs to be updated to handle KQueueWatcher implementing flushPendingEvents");
+
+  auto fseventsWatchers = *fseventWatchers_.rlock();
+
+  std::vector<folly::SemiFuture<folly::Unit>> futures;
+  futures.reserve(fseventsWatchers.size());
+  for (auto& [name, watcher] : fseventsWatchers) {
+    auto future = watcher->flushPendingEvents();
+    w_check(future.valid(), "FSEvents did not return valid flush future");
+    futures.push_back(std::move(future));
+  }
+  return folly::collect(futures).unit();
 }
 
 std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(

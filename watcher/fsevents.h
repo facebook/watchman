@@ -58,7 +58,7 @@ struct FSEventsWatcher : public Watcher {
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
 
-  virtual folly::SemiFuture<folly::Unit> flushPendingEvents() override;
+  folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
