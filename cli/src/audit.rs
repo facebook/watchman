@@ -6,7 +6,7 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 
@@ -15,6 +15,13 @@ use watchman_client::prelude::*;
 pub(crate) struct AuditCmd {
     #[structopt(name = "path", parse(from_os_str))]
     path: PathBuf,
+
+    #[structopt(
+        long = "timeout",
+        about = "seconds to wait for Watchman query result",
+        default_value = "120"
+    )]
+    timeout_secs: u64,
 }
 
 query_result_type! {
@@ -180,10 +187,20 @@ impl AuditCmd {
                             }),
                         ]))),
                     ])),
+                    sync_timeout: SyncTimeout::Duration(Duration::new(self.timeout_secs, 0)),
                     ..Default::default()
                 },
             )
-            .await?;
+            .await;
+
+        let result = match result {
+            Ok(result) => result,
+            Err(err) => {
+                eprintln!("Error during Watchman query: {}", err);
+                // Use a different error code for Watchman query errors, including timeouts, so they can be differentiated by audit logging.
+                std::process::exit(2);
+            }
+        };
 
         eprintln!(
             "Queried Watchman in {:?} (is_fresh_instance = {}, clock = {:?})",
