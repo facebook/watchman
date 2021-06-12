@@ -203,10 +203,11 @@ impl AuditCmd {
         };
 
         eprintln!(
-            "Queried Watchman in {:?} (is_fresh_instance = {}, clock = {:?})",
+            "Queried Watchman in {:?} (is_fresh_instance = {}, clock = {:?}, version = {})",
             start_query.elapsed(),
             result.is_fresh_instance,
-            result.clock
+            result.clock,
+            result.version
         );
 
         let filesystem_state = filesystem_state_handle.await.unwrap();
