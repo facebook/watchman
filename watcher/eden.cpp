@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include <cpptoml.h> // @manual=fbsource//third-party/cpptoml:cpptoml
+#include <cpptoml.h>
 #include <folly/String.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -10,6 +10,8 @@
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
+#include <thrift/lib/cpp2/async/PooledRequestChannel.h>
+#include <thrift/lib/cpp2/async/ReconnectingRequestChannel.h>
 #include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <algorithm>
 #include <chrono>
@@ -150,13 +152,8 @@ folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
 /** Create a thrift client that will connect to the eden server associated
  * with the current user. */
 std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
-    w_string_piece rootPath,
-    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  auto addr = getEdenSocketAddress(rootPath);
-
-  return make_unique<StreamingEdenServiceAsyncClient>(
-      apache::thrift::HeaderClientChannel::newChannel(
-          AsyncSocket::newSocket(eb, addr)));
+    std::shared_ptr<apache::thrift::PooledRequestChannel> channel) {
+  return make_unique<StreamingEdenServiceAsyncClient>(std::move(channel));
 }
 
 /** Create a thrift client that will connect to the eden server associated
@@ -177,11 +174,15 @@ class EdenFileResult : public FileResult {
  public:
   EdenFileResult(
       const w_string& rootPath,
+      std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel,
       const w_string& fullName,
       JournalPosition* position = nullptr,
       bool isNew = false,
       DType dtype = DType::Unknown)
-      : root_path_(rootPath), fullName_(fullName), dtype_(dtype) {
+      : root_path_(rootPath),
+        thriftChannel_{std::move(thriftChannel)},
+        fullName_(fullName),
+        dtype_(dtype) {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
@@ -393,7 +394,7 @@ class EdenFileResult : public FileResult {
       edenFile.clearNeededProperties();
     }
 
-    auto client = getEdenClient(root_path_);
+    auto client = getEdenClient(thriftChannel_);
     loadFileInformation(
         client.get(),
         root_path_,
@@ -427,6 +428,7 @@ class EdenFileResult : public FileResult {
 
  private:
   w_string root_path_;
+  std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
   w_string fullName_;
   Optional<FileInformation> stat_;
   Optional<bool> exists_;
@@ -698,8 +700,28 @@ std::vector<NameAndDType> globNameAndDType(
   }
 }
 
+namespace {
+
+std::shared_ptr<apache::thrift::PooledRequestChannel> makeThriftChannel(
+    w_string rootPath) {
+  auto channel = apache::thrift::PooledRequestChannel::newChannel(
+      folly::EventBaseManager::get()->getEventBase(),
+      folly::getUnsafeMutableGlobalIOExecutor(),
+      [rootPath = std::move(rootPath)](folly::EventBase& eb) {
+        return apache::thrift::ReconnectingRequestChannel::newChannel(
+            eb, [rootPath](folly::EventBase& eb) {
+              return apache::thrift::HeaderClientChannel::newChannel(
+                  AsyncSocket::newSocket(&eb, getEdenSocketAddress(rootPath)));
+            });
+      });
+  return channel;
+}
+
+} // namespace
+
 class EdenView : public QueryableView {
   w_string root_path_;
+  std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
   // The source control system that we detected during initialization
   mutable std::unique_ptr<EdenWrappedSCM> scm_;
   folly::EventBase subscriberEventBase_;
@@ -712,6 +734,7 @@ class EdenView : public QueryableView {
  public:
   explicit EdenView(watchman_root* root)
       : root_path_(root->root_path),
+        thriftChannel_(makeThriftChannel(root_path_)),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         mountPoint_(to<std::string>(root->root_path)),
         subscribeReadyFuture_(subscribeReadyPromise_.get_future()),
@@ -719,7 +742,7 @@ class EdenView : public QueryableView {
             root->config.getBool("eden_split_glob_pattern", false)) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
-    auto client = getEdenClient(root_path_);
+    auto client = getEdenClient(thriftChannel_);
     client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
     // We don't run an iothread so we never need to crawl and
     // thus should be considered to have "completed" the initial
@@ -733,7 +756,7 @@ class EdenView : public QueryableView {
 
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     ctx->generationStarted();
-    auto client = getEdenClient(root_path_);
+    auto client = getEdenClient(thriftChannel_);
 
     FileDelta delta;
     JournalPosition resultPosition;
@@ -940,6 +963,7 @@ class EdenView : public QueryableView {
 
       auto file = make_unique<EdenFileResult>(
           root_path_,
+          thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
           &resultPosition,
           isNew,
@@ -967,7 +991,7 @@ class EdenView : public QueryableView {
       const std::vector<std::string>& globStrings,
       w_query* query,
       struct w_query_ctx* ctx) const {
-    auto client = getEdenClient(ctx->root->root_path);
+    auto client = getEdenClient(thriftChannel_);
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
     auto fileInfo = globNameAndDType(
@@ -983,6 +1007,7 @@ class EdenView : public QueryableView {
     for (auto& item : fileInfo) {
       auto file = make_unique<EdenFileResult>(
           root_path_,
+          thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
           /* position=*/nullptr,
           /*isNew=*/false,
@@ -1079,7 +1104,7 @@ class EdenView : public QueryableView {
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
-    auto client = getEdenClient(root_path_);
+    auto client = getEdenClient(thriftChannel_);
     JournalPosition position;
     client->sync_getCurrentJournalPosition(position, mountPoint_);
     return ClockPosition(
@@ -1122,7 +1147,7 @@ class EdenView : public QueryableView {
     // construction).
     try {
       FileDelta delta;
-      auto client = getEdenClient(root_path_);
+      auto client = getEdenClient(thriftChannel_);
       client->sync_getFilesChangedSince(
           delta, mountPoint_, lastCookiePosition_);
 
