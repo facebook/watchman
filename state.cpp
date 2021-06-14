@@ -42,7 +42,7 @@ static void state_saver() noexcept {
     {
       auto state = saveState.lock();
       if (!state->needsSave) {
-        stateCond.wait(state.getUniqueLock());
+        stateCond.wait(state.as_lock());
       }
       do_save = state->needsSave;
       state->needsSave = false;

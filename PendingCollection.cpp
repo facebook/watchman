@@ -322,9 +322,9 @@ PendingCollection::LockedPtr PendingCollection::lockAndWait(
   }
 
   if (timeoutms.count() == -1) {
-    cond_.wait(lock.getUniqueLock());
+    cond_.wait(lock.as_lock());
   } else {
-    cond_.wait_for(lock.getUniqueLock(), timeoutms);
+    cond_.wait_for(lock.as_lock(), timeoutms);
   }
 
   pinged = lock->checkAndResetPinged();

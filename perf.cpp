@@ -221,7 +221,7 @@ void PerfLogThread::loop() noexcept {
           // No samples remaining, and we have been asked to quit.
           return;
         }
-        cond_.wait(state.getUniqueLock());
+        cond_.wait(state.as_lock());
       }
 
       samples = nullptr;

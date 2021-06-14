@@ -602,7 +602,7 @@ bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
     thread.detach();
 
     // Allow thread init to proceed; wait for its signal
-    fse_cond.wait(wlock.getUniqueLock());
+    fse_cond.wait(wlock.as_lock());
 
     if (root->failure_reason) {
       logf(ERR, "failed to start fsevents thread: {}\n", root->failure_reason);
@@ -664,8 +664,7 @@ folly::SemiFuture<folly::Unit> FSEventsWatcher::flushPendingEvents() {
 
 bool FSEventsWatcher::waitNotify(int timeoutms) {
   auto wlock = items_.lock();
-  fse_cond.wait_for(
-      wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
+  fse_cond.wait_for(wlock.as_lock(), std::chrono::milliseconds(timeoutms));
   return !wlock->items.empty() || !wlock->syncs.empty();
 }
 

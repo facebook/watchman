@@ -333,7 +333,7 @@ bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
     thread.detach();
 
     // Allow thread init to proceed; wait for its signal
-    if (cond.wait_for(wlock.getUniqueLock(), std::chrono::seconds(10)) ==
+    if (cond.wait_for(wlock.as_lock(), std::chrono::seconds(10)) ==
         std::cv_status::timeout) {
       watchman::log(
           watchman::ERR, "timedout waiting for readChangesThread to start\n");
@@ -391,7 +391,7 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
 
 bool WinWatcher::waitNotify(int timeoutms) {
   auto wlock = changedItems.lock();
-  cond.wait_for(wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
+  cond.wait_for(wlock.as_lock(), std::chrono::milliseconds(timeoutms));
   return !wlock->empty();
 }
 
