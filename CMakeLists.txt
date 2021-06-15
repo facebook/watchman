@@ -23,6 +23,11 @@ option(BUILD_SHARED_LIBS
 # is generally discouraged.
 mark_as_advanced(BUILD_SHARED_LIBS)
 
+option(USE_SYS_PYTHON
+  "If enabled, prefers to use the system python"
+  ON
+)
+
 enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -357,53 +362,87 @@ else()
   find_program(YARN yarn)
 endif()
 
-if(NOT WIN32)
-  # Sometimes the environment has a Python installation earlier in the
-  # PATH that is not suitable for building extensions. Prefer the
-  # primary system installation.
-  set(Python3_ROOT_DIR /usr/bin)
-endif()
 
-find_package(Python3 COMPONENTS Interpreter Development)
+if(USE_SYS_PYTHON)
+  if(NOT WIN32)
+    # Sometimes the environment has a Python installation earlier in the
+    # PATH that is not suitable for building extensions. Prefer the
+    # primary system installation.
+    set(Python3_ROOT_DIR /usr/bin)
+  endif()
 
-if(NOT Python3_Interpreter_FOUND)
-  unset(Python3_ROOT_DIR)
   find_package(Python3 COMPONENTS Interpreter Development)
+
+  if(NOT Python3_Interpreter_FOUND)
+    unset(Python3_ROOT_DIR)
+    find_package(Python3 COMPONENTS Interpreter Development)
+  endif()
+else()
+  # Why not `find_package(Python3)`?  On a system that has
+  # python3, python3.6 and python3.7 that will select 3.7,
+  # even though python3 -> python3.6.  On such a system we
+  # want the python3/python3.6 selection, not the 3.7 selection
+  find_program(PYTHON3 python3 PATHS /usr/bin)
 endif()
 
-if(Python3_Development_FOUND)
+if(Python3_Development_FOUND OR PYTHON3)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
   set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
   file(GLOB PYWATCHMAN_PY_SRCS "python/pywatchman/*.py")
-  add_custom_command(
-    COMMENT "Building pywatchman"
-    OUTPUT ${PYOUT}
-    DEPENDS ${PYWATCHMAN_PY_SRCS} "python/pywatchman/bser.c"
-    COMMAND ${CMAKE_COMMAND} -E env
-      CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-      CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
-      ${Python3_EXECUTABLE} ${SETUP_PY} build
-    COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
-  )
-  add_custom_target(pybuild ALL DEPENDS ${PYOUT})
-  install(CODE "
-    execute_process(COMMAND
-      ${CMAKE_COMMAND} -E env
+  if(Python3_Development_FOUND)
+    add_custom_command(
+      COMMENT "Building pywatchman"
+      OUTPUT ${PYOUT}
+      DEPENDS ${PYWATCHMAN_PY_SRCS} "python/pywatchman/bser.c"
+      COMMAND ${CMAKE_COMMAND} -E env
         CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        ${Python3_EXECUTABLE} ${SETUP_PY} install
-        --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
-      RESULT_VARIABLE STATUS)
-    if (NOT STATUS STREQUAL 0)
-      message(FATAL_ERROR \"pywatchman install failed\")
-    endif()
-  ")
+        CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+        ${Python3_EXECUTABLE} ${SETUP_PY} build
+      COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
+    )
+    add_custom_target(pybuild ALL DEPENDS ${PYOUT})
+    install(CODE "
+      execute_process(COMMAND
+        ${CMAKE_COMMAND} -E env
+          CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+          ${Python3_EXECUTABLE} ${SETUP_PY} install
+          --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
+        RESULT_VARIABLE STATUS)
+      if (NOT STATUS STREQUAL 0)
+        message(FATAL_ERROR \"pywatchman install failed\")
+      endif()
+    ")
+  else()
+    add_custom_command(
+      COMMENT "Building pywatchman"
+      OUTPUT ${PYOUT}
+      DEPENDS ${PYWATCHMAN_PY_SRCS} "python/pywatchman/bser.c"
+      COMMAND ${CMAKE_COMMAND} -E env
+        CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+        ${PYTHON3} ${SETUP_PY} build
+      COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
+    )
+    add_custom_target(pybuild ALL DEPENDS ${PYOUT})
+    install(CODE "
+      execute_process(COMMAND
+        ${CMAKE_COMMAND} -E env
+          CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+          ${PYTHON3} ${SETUP_PY} install
+          --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
+        RESULT_VARIABLE STATUS)
+      if (NOT STATUS STREQUAL 0)
+        message(FATAL_ERROR \"pywatchman install failed\")
+      endif()
+    ")
+  endif()
   include(FBPythonBinary)
   add_subdirectory(python)
   add_subdirectory(tests/integration)
-endif()
 
-if(Python3_Interpreter_FOUND AND NODE AND YARN)
-  add_subdirectory(node/bser)
+  if(NODE AND YARN)
+    add_subdirectory(node/bser)
+  endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -730,19 +769,28 @@ add_custom_target(check
   DEPENDS ${tests}
   COMMAND ${CMAKE_CTEST_COMMAND})
 
-if(Python3_Interpreter_FOUND)
+if(Python3_Interpreter_FOUND OR PYTHON3)
   if (WIN32)
     add_executable(susres winbuild/susres.cpp)
     add_custom_target(make_susres ALL DEPENDS susres)
   endif()
 
-  # The `integration` target runs the unit tests and integration tests
-  add_custom_target(integration
+  if(Python3_Interpreter_FOUND)
+    # The `integration` target runs the unit tests and integration tests
+    add_custom_target(integration
+      DEPENDS pybuild check
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
+        --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
+        --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/python
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  else()
+    add_custom_target(integration
     DEPENDS pybuild check
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
+    COMMAND ${PYTHON3} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
       --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
       --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/python
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
 endif()
 
 t_test(art tests/art_test.cpp)

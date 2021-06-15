@@ -14,6 +14,7 @@ from shell_quoting import ShellQuoted, path_join
 
 def fbcode_builder_spec(builder):
     builder.add_option("watchman/_build:cmake_defines", {"BUILD_SHARED_LIBS": "OFF"})
+    builder.add_option("watchman/_build:cmake_defines", {"USE_SYS_PYTHON": "ON"})
 
     projects = builder.option("projects_dir")
 
