@@ -1,13 +1,13 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <folly/Conv.h>
 #include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 

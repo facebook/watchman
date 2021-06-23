@@ -1,7 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec* deadline) {
   struct timeval now, delta, target;

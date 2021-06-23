@@ -1,12 +1,12 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "ChildProcess.h"
+#include "watchman/ChildProcess.h"
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <memory>
 #include <system_error>
 #include <thread>
-#include "Logging.h"
+#include "watchman/Logging.h"
 
 namespace watchman {
 

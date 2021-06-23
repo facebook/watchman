@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <system_error>
+#include "watchman/watchman.h"
 #ifndef _WIN32
 #include <dirent.h>
 #endif
@@ -12,7 +12,7 @@
 #include <sys/vnode.h>
 #endif
 #include <folly/String.h>
-#include "FileDescriptor.h"
+#include "watchman/FileDescriptor.h"
 
 using namespace watchman;
 using watchman::FileDescriptor;

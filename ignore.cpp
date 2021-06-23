@@ -1,7 +1,7 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 // The path and everything below it is ignored.
 #define FULL_IGNORE 0x1

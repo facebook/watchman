@@ -1,7 +1,7 @@
 #pragma once
-#include "watchman.h"
-#include "watchman_string.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_string.h"
 #include "watchman_query.h"
 
 namespace watchman {

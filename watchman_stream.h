@@ -3,7 +3,7 @@
 #ifndef WATCHMAN_STREAM_H
 #define WATCHMAN_STREAM_H
 
-#include "FileDescriptor.h"
+#include "watchman/FileDescriptor.h"
 
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.

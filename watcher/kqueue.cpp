@@ -1,14 +1,14 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include "kqueue.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <array>
-#include "FileDescriptor.h"
-#include "InMemoryView.h"
-#include "Pipe.h"
+#include "watchman/FileDescriptor.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/Pipe.h"
+#include "watchman/watchman.h"
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)

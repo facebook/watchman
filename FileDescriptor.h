@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
 #include <system_error>
 #include "Result.h"
+#include "watchman/watchman_system.h"
 
 class w_string;
 

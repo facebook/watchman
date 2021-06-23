@@ -1,13 +1,13 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <mutex>
-#include "InMemoryView.h"
 #include "fsevents.h"
 #include "kqueue.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)
 namespace watchman {

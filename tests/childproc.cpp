@@ -1,10 +1,10 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
-#include "watchman_system.h"
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <list>
-#include "ChildProcess.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/watchman_system.h"
 
 using watchman::ChildProcess;
 using Options = ChildProcess::Options;

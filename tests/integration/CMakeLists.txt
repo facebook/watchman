@@ -47,5 +47,5 @@ add_fb_python_unittest(test_py
     "WATCHMAN_NO_SPAWN=1"
     "WATCHMAN_BINARY=$<TARGET_FILE:watchman>"
     "WATCHMAN_WAIT_PATH=$<TARGET_PROPERTY:watchman-wait.GEN_PY_EXE,EXECUTABLE>"
-    "WATCHMAN_SRC_DIR=${CMAKE_SOURCE_DIR}"
+    "WATCHMAN_SRC_DIR=${CMAKE_SOURCE_DIR}/watchman"
 )

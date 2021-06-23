@@ -1,11 +1,11 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/ScopeGuard.h>
 #include <memory>
-#include "InMemoryView.h"
-#include "thirdparty/wildmatch/wildmatch.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/thirdparty/wildmatch/wildmatch.h"
+#include "watchman/watchman.h"
 
 using std::make_unique;
 

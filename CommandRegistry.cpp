@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #include "CommandRegistry.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
 
 using folly::StringPiece;
 

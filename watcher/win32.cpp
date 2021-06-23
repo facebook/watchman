@@ -1,10 +1,10 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/Synchronized.h>
-#include "FileDescriptor.h"
-#include "InMemoryView.h"
+#include "watchman/FileDescriptor.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
 
 #include <algorithm>
 #include <condition_variable>

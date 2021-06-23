@@ -1,13 +1,13 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman_system.h"
 #include <folly/executors/ManualExecutor.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 #include <deque>
 #include <stdexcept>
 #include <string>
-#include "LRUCache.h"
+#include "watchman/LRUCache.h"
+#include "watchman/watchman_system.h"
 
 using namespace watchman;
 

@@ -1,6 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 using watchman::FileDescriptor;
 using namespace watchman;

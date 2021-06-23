@@ -1,13 +1,13 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h" // to avoid system header ordering issue on win32
 #include <folly/Executor.h>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "watchman/watchman_system.h" // to avoid system header ordering issue on win32
 
 namespace watchman {
 

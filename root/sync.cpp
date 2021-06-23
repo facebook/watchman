@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-#include "InMemoryView.h"
-#include "watchman_error_category.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_error_category.h"
 
 using folly::to;
 using watchman::w_perf_t;

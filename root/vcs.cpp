@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-#include "InMemoryView.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
 
 static json_ref config_get_ignore_vcs(watchman_root* root) {
   json_ref ignores = root->config.get("ignore_vcs");

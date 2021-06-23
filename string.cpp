@@ -1,12 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_string.h"
 #include <stdarg.h>
 #include <new>
 #include <ostream>
 #include <stdexcept>
 #include "thirdparty/jansson/utf.h"
+#include "watchman/watchman_string.h"
 #include "watchman_hash.h"
 
 static void w_string_addref(w_string_t* str);

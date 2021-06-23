@@ -1,10 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
-#include "InMemoryView.h"
-#include "watchman_error_category.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_error_category.h"
+#include "watchman/watchman_system.h"
 
 static void
 apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {

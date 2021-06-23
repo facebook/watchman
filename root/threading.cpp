@@ -1,7 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 std::shared_ptr<watchman::QueryableView> watchman_root::view() {
   // We grab a read lock on the recrawl info to ensure that we

@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-#include "watchman.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman.h"
 
 namespace watchman {
 

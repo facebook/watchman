@@ -1,10 +1,10 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <folly/Synchronized.h>
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 #include <deque>
 #include <functional>

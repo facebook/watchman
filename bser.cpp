@@ -1,8 +1,8 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-#include "thirdparty/jansson/jansson_private.h"
+#include "watchman/thirdparty/jansson/jansson_private.h"
+#include "watchman/watchman.h"
 
 /*
  * This defines a binary serialization of the JSON data objects in this

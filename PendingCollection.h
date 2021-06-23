@@ -2,12 +2,12 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-#include "watchman_string.h"
 #include <folly/Synchronized.h>
 #include <folly/futures/Promise.h>
 #include <chrono>
 #include <condition_variable>
 #include "thirdparty/libart/src/art.h"
+#include "watchman/watchman_string.h"
 
 namespace watchman {
 

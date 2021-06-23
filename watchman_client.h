@@ -5,10 +5,10 @@
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
-#include "Clock.h"
-#include "Logging.h"
+#include "watchman/Clock.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman_perf.h"
 #include "watchman_pdu.h"
-#include "watchman_perf.h"
 
 struct w_query;
 struct w_query_res;

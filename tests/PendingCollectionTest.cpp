@@ -1,8 +1,8 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "PendingCollection.h"
-#include "Logging.h"
+#include "watchman/PendingCollection.h"
+#include "watchman/Logging.h"
 
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>

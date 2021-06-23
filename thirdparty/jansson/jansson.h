@@ -7,7 +7,7 @@
 #ifndef JANSSON_H
 #define JANSSON_H
 
-#include "watchman_string.h" // Needed for w_string_t
+#include "watchman/watchman_string.h" // Needed for w_string_t
 
 #include <stdarg.h>
 #include <stdio.h>

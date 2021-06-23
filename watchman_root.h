@@ -6,9 +6,9 @@
 #include <condition_variable>
 #include <unordered_map>
 #include "CookieSync.h"
-#include "FileSystem.h"
 #include "PubSub.h"
 #include "QueryableView.h"
+#include "watchman/FileSystem.h"
 #include "watchman_config.h"
 
 #define HINT_NUM_DIRS 128 * 1024

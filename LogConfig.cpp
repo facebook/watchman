@@ -1,7 +1,7 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
-#include "LogConfig.h"
-#include "Logging.h"
+#include "watchman/LogConfig.h"
+#include "watchman/Logging.h"
 
 using namespace watchman;
 

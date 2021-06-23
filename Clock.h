@@ -3,7 +3,7 @@
 #pragma once
 #include <folly/Synchronized.h>
 #include <unordered_map>
-#include "Logging.h"
+#include "watchman/Logging.h"
 
 struct w_clock_t {
   uint32_t ticks;

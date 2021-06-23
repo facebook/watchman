@@ -1,15 +1,15 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
+#include "watchman/watchman_system.h"
 
 #include <folly/Synchronized.h>
 #include <string>
 #include <unordered_map>
-#include "ChildProcess.h"
-#include "FileInformation.h"
-#include "LRUCache.h"
-#include "SCM.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/FileInformation.h"
+#include "watchman/LRUCache.h"
+#include "watchman/scm/SCM.h"
 
 namespace watchman {
 

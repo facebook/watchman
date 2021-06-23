@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
 #include <chrono>
+#include "watchman/watchman_system.h"
 
 /* Return a timespec holding the equivalent of the supplied duration */
 template <class Rep, class Period>

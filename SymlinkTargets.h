@@ -1,10 +1,10 @@
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <string>
-#include "Clock.h"
 #include "LRUCache.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/Clock.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 struct SymlinkTargetCacheKey {

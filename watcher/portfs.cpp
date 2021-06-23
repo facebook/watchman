@@ -4,11 +4,11 @@
 /* TODO:
  * This watcher fails with the scm tests */
 
-#include "watchman.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <memory>
-#include "InMemoryView.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/watchman.h"
 
 #ifdef HAVE_PORT_CREATE
 

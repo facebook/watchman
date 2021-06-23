@@ -1,14 +1,14 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
-#include "InMemoryView.h"
+#include "watchman/InMemoryView.h"
 #include <folly/ScopeGuard.h>
 #include <algorithm>
 #include <chrono>
 #include <memory>
 #include <thread>
-#include "ThreadPool.h"
 #include "scm/SCM.h"
+#include "watchman/ThreadPool.h"
+#include "watchman/watchman.h"
 
 using folly::Optional;
 

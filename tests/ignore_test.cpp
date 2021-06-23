@@ -1,9 +1,9 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman.h"
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
+#include "watchman/watchman.h"
 
 // A list that looks similar to one used in one of our repos
 const char* ignore_dirs[] = {
@@ -111,12 +111,25 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
 
 #ifdef WATCHMAN_TEST_SRC_DIR
   if (!f) {
-    f = fopen(WATCHMAN_TEST_SRC_DIR "/thirdparty/libart/tests/words.txt", "r");
+    f = fopen(
+        WATCHMAN_TEST_SRC_DIR "/watchman/thirdparty/libart/tests/words.txt",
+        "r");
   }
 #endif
 
   if (!f) {
     f = fopen("watchman/thirdparty/libart/tests/words.txt", "r");
+  }
+
+  if (!f) {
+    char cwd[4096];
+    if (getcwd(cwd, sizeof(cwd))) {
+      throw std::runtime_error{
+          std::string{"Could not load words.txt when run from "} + cwd};
+    } else {
+      throw std::runtime_error{
+          "Could not load words.txt, unknown working directory"};
+    }
   }
 
   while (fgets(buf, sizeof buf, f)) {

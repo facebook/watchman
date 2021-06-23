@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <thread>
-#include "ChildProcess.h"
+#include "watchman/ChildProcess.h"
 
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
 

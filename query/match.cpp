@@ -1,11 +1,11 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 #include <memory>
 #include <string>
-#include "thirdparty/wildmatch/wildmatch.h"
+#include "watchman/thirdparty/wildmatch/wildmatch.h"
 using watchman::CaseSensitivity;
 
 class WildMatchExpr : public QueryExpr {

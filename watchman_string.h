@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "watchman_system.h"
+#include "watchman/watchman_system.h"
 
 #include <stdbool.h>
 #include <stdint.h>

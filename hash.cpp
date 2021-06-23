@@ -1,7 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 // By Bob Jenkins, 2006.  bob_jenkins@burtleburtle.net.  You may use this
 // code any way you wish, private, educational, or commercial.  It's free.

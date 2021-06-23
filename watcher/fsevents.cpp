@@ -1,7 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include "fsevents.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
@@ -9,9 +8,10 @@
 #include <iterator>
 #include <mutex>
 #include <vector>
-#include "InMemoryView.h"
-#include "LogConfig.h"
-#include "Pipe.h"
+#include "watchman/InMemoryView.h"
+#include "watchman/LogConfig.h"
+#include "watchman/Pipe.h"
+#include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS
 

@@ -1,7 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 #ifdef HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
@@ -19,7 +19,7 @@
 #endif
 #include <folly/FileUtil.h>
 #include <folly/String.h>
-#include "FileDescriptor.h"
+#include "watchman/FileDescriptor.h"
 
 // This function is used to return the fstype for a given path
 // based on the linux style /proc/mounts data provided.

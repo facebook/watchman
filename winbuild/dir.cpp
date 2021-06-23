@@ -1,10 +1,10 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
 #include <folly/ScopeGuard.h>
-#include "FileDescriptor.h"
+#include "watchman/FileDescriptor.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_system.h"
 
 using watchman::FileDescriptor;
 using watchman::FileInformation;

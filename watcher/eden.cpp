@@ -1,7 +1,6 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <cpptoml.h> // @manual=fbsource//third-party/cpptoml:cpptoml
 #include <folly/String.h>
 #include <folly/futures/Future.h>
@@ -15,13 +14,14 @@
 #include <chrono>
 #include <iterator>
 #include <thread>
-#include "ChildProcess.h"
-#include "QueryableView.h"
-#include "ThreadPool.h"
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
-#include "scm/SCM.h"
-#include "thirdparty/wildmatch/wildmatch.h"
-#include "watchman_error_category.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/QueryableView.h"
+#include "watchman/ThreadPool.h"
+#include "watchman/scm/SCM.h"
+#include "watchman/thirdparty/wildmatch/wildmatch.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_error_category.h"
 
 using apache::thrift::TApplicationException;
 using facebook::eden::EdenError;

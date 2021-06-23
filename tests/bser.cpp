@@ -1,11 +1,11 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/ScopeGuard.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
-#include "thirdparty/jansson/jansson_private.h"
+#include "watchman/thirdparty/jansson/jansson_private.h"
+#include "watchman/watchman.h"
 
 #define UTF8_PILE_OF_POO "\xf0\x9f\x92\xa9"
 

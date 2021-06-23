@@ -1,12 +1,12 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman.h"
-#include "watchman_string.h"
-#include "MapUtil.h"
+#include "watchman/MapUtil.h"
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <string>
+#include "watchman/watchman.h"
+#include "watchman/watchman_string.h"
 
 using watchman::mapContainsAny;
 using watchman::mapContainsAnyOf;

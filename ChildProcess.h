@@ -1,16 +1,16 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <folly/futures/Future.h>
 #include <spawn.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "Pipe.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/Pipe.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 

@@ -1,10 +1,10 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <array>
 #include "LRUCache.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 struct ContentHashCacheKey {

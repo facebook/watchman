@@ -1,10 +1,10 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman_string.h"
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <string>
+#include "watchman/watchman_string.h"
 
 TEST(String, fmt) {
   EXPECT_EQ(w_string::format("hello {}", "world"), w_string("hello world"));

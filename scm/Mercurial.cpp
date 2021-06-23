@@ -1,13 +1,13 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
 #include "Mercurial.h"
 #include <folly/String.h>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
-#include "ChildProcess.h"
-#include "Logging.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman.h"
 
 // Capability indicating support for the mercurial SCM
 W_CAP_REG("scm-hg")

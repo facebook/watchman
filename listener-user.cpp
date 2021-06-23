@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/ScopeGuard.h>
+#include "watchman/watchman.h"
 
 // Functions relating to the per-user service
 

@@ -2,15 +2,15 @@
  * Licensed under the Apache License, Version 2.0.
  * Derived from thirdparty/libart/tests/test_art.c which is
  * Copyright 2012 Armon Dadgar. See thirdparty/libart/LICENSE. */
-#include "watchman_system.h"
 #include <fcntl.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include "watchman/watchman_system.h"
 
-#include "thirdparty/libart/src/art.h"
+#include "watchman/thirdparty/libart/src/art.h"
 
 static FILE* open_test_file(const char* name) {
   FILE* f = fopen(name, "r");
@@ -41,7 +41,7 @@ TEST(Art, insert) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("watchman/thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {
@@ -112,7 +112,7 @@ TEST(Art, insert_search) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("watchman/thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {
@@ -152,7 +152,7 @@ TEST(Art, insert_delete) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("watchman/thirdparty/libart/tests/words.txt");
 
   uintptr_t line = 1, nlines;
   while (fgets(buf, sizeof buf, f)) {
@@ -199,7 +199,7 @@ TEST(Art, insert_iter) {
 
   int len;
   char buf[512];
-  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("watchman/thirdparty/libart/tests/words.txt");
 
   uint64_t xor_mask = 0;
   uintptr_t lineno = 1, nlines;
@@ -369,7 +369,7 @@ TEST(Art, insert_search_uuid) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE* f = open_test_file("thirdparty/libart/tests/uuid.txt");
+  FILE* f = open_test_file("watchman/thirdparty/libart/tests/uuid.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {

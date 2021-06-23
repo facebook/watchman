@@ -1,11 +1,11 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
 #include <folly/String.h>
 #include <exception>
 #include <optional>
+#include "watchman/watchman.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 

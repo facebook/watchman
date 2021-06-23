@@ -1,12 +1,12 @@
 /* Copyright (c) Facebook, Inc. and its affiliates.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman_perf.h"
+#include "watchman/watchman_perf.h"
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
-#include "thirdparty/jansson/jansson.h"
-#include "watchman_config.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_config.h"
 
 using namespace watchman;
 

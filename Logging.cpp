@@ -12,7 +12,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/system/ThreadName.h>
-#include "Logging.h"
+#include "watchman/Logging.h"
 
 using namespace watchman;
 

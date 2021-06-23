@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
 
 struct watchman_root;
 

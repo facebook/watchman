@@ -2,10 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-#include "watchman_string.h"
 #include <future>
 #include <vector>
-#include "watchman_perf.h"
+#include "watchman/watchman_perf.h"
+#include "watchman/watchman_string.h"
 #include "watchman_query.h"
 
 struct watchman_file;

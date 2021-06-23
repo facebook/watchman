@@ -1,8 +1,8 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
 #include <sys/stat.h>
+#include "watchman/watchman_system.h"
 #ifndef _WIN32
 #include <dirent.h>
 #endif

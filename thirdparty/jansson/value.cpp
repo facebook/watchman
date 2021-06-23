@@ -15,7 +15,7 @@
 #include <cmath>
 #include <string>
 
-#include "watchman_string.h"
+#include "watchman/watchman_string.h"
 #include "utf.h"
 
 json_ref::json_ref() : ref_(nullptr) {}

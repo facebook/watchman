@@ -1,6 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
@@ -12,11 +12,11 @@
 #include <stdio.h>
 #include <variant>
 
-#include "ChildProcess.h"
-#include "LogConfig.h"
-#include "Logging.h"
 #include "ProcessLock.h"
-#include "ThreadPool.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/LogConfig.h"
+#include "watchman/Logging.h"
+#include "watchman/ThreadPool.h"
 
 #ifdef _WIN32
 #include <Lmcons.h>

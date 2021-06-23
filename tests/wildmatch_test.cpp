@@ -1,15 +1,15 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
+#include "watchman/watchman_system.h"
 
 #include <folly/Conv.h>
 #include <folly/String.h>
 #include <folly/portability/GTest.h>
-#include "thirdparty/jansson/jansson.h"
-#include "thirdparty/wildmatch/wildmatch.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/wildmatch/wildmatch.h"
 
-#define WILDMATCH_TEST_JSON_FILE "tests/wildmatch_test.json"
+#define WILDMATCH_TEST_JSON_FILE "watchman/tests/wildmatch_test.json"
 
 static void run_test(const json_ref& test_case_data) {
   auto wildmatch_should_succeed = test_case_data.at(0).asBool();

@@ -4,10 +4,10 @@
 #ifndef WATCHMAN_H
 #define WATCHMAN_H
 
-#include "watchman_system.h"
+#include "watchman/watchman_system.h"
 
-#include "watchman_string.h"
-#include "thirdparty/jansson/jansson.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_string.h"
 #include "watchman_hash.h"
 #include "watchman_ignore.h"
 #include "watchman_stream.h"
@@ -25,13 +25,13 @@ struct watchman_trigger_command;
 #define WATCHMAN_IO_BUF_SIZE 1048576
 #define WATCHMAN_BATCH_LIMIT (16 * 1024)
 
+#include "watchman/watchman_perf.h"
 #include "watchman_client.h"
 #include "watchman_pdu.h"
-#include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_root.h"
 
-#include "watchman_cmd.h"
+#include "watchman/watchman_cmd.h"
 #include "watchman_config.h"
 #include "watchman_trigger.h"
 
@@ -67,7 +67,7 @@ bool w_root_save_state(json_ref& state);
 bool w_root_load_state(const json_ref& state);
 json_ref w_root_watch_list_to_json();
 
-#include "FileDescriptor.h"
+#include "watchman/FileDescriptor.h"
 
 #ifdef __APPLE__
 watchman::FileDescriptor w_get_listener_socket_from_launchd();

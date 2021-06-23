@@ -1,12 +1,12 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 #include <folly/ScopeGuard.h>
-#include "LocalFileResult.h"
-#include "saved_state/SavedStateInterface.h"
-#include "scm/SCM.h"
+#include "watchman/LocalFileResult.h"
+#include "watchman/saved_state/SavedStateInterface.h"
+#include "watchman/scm/SCM.h"
 
 using namespace watchman;
 

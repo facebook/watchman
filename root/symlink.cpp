@@ -1,13 +1,13 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
 #include <folly/ScopeGuard.h>
 #include <memory>
-#include "FileSystem.h"
-#include "LogConfig.h"
-#include "watchman_error_category.h"
+#include "watchman/FileSystem.h"
+#include "watchman/LogConfig.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_error_category.h"
+#include "watchman/watchman_system.h"
 
 using watchman::readSymbolicLink;
 using watchman::realPath;

@@ -19,7 +19,7 @@ if watchman_src_dir is None:
 # in the setuptools machinery does the wrong thing and produces a
 # path like `Z:blah` which on windows resolves ambiguously depending
 # on the cwd.
-py_dir = os.path.join(watchman_src_dir, "python")
+py_dir = os.path.join(watchman_src_dir, "watchman", "python")
 if os.name == "nt":
     py_dir = os.path.relpath(py_dir)
 

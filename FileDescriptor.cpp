@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-#include "FileDescriptor.h"
-#include "FileSystem.h"
+#include "watchman/FileDescriptor.h"
+#include "watchman/FileSystem.h"
+#include "watchman/watchman.h"
 #ifdef __APPLE__
 #include <sys/attr.h>
 #include <sys/utsname.h>

@@ -1,7 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include <folly/Exception.h>
 #include <folly/MapUtil.h>
 #include <folly/Optional.h>
@@ -13,6 +12,7 @@
 #include <chrono>
 #include <thread>
 #include "SignalHandler.h"
+#include "watchman/watchman.h"
 
 using namespace watchman;
 

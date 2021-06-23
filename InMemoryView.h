@@ -1,8 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "watchman_system.h"
-#include "watchman_string.h"
 #include <folly/Synchronized.h>
 #include <folly/experimental/LockFreeRingBuffer.h>
 #include <memory>
@@ -14,9 +12,11 @@
 #include "PendingCollection.h"
 #include "QueryableView.h"
 #include "SymlinkTargets.h"
+#include "watchman/watchman_perf.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 #include "watchman_config.h"
 #include "watchman_opendir.h"
-#include "watchman_perf.h"
 #include "watchman_query.h"
 
 class Watcher;

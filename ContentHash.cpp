@@ -1,7 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "ContentHash.h"
-#include "ThreadPool.h"
+#include "watchman/ThreadPool.h"
 #include "watchman_hash.h"
 #include "watchman_stream.h"
 #ifdef __APPLE__
@@ -14,8 +14,8 @@
 #endif
 #include <folly/ScopeGuard.h>
 #include <string>
-#include "FileSystem.h"
-#include "Logging.h"
+#include "watchman/FileSystem.h"
+#include "watchman/Logging.h"
 
 using folly::to;
 

@@ -1,10 +1,10 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
-#include "MapUtil.h"
-#include "ThreadPool.h"
+#include "watchman/MapUtil.h"
+#include "watchman/ThreadPool.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_system.h"
 
 using namespace watchman;
 using ms = std::chrono::milliseconds;

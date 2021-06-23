@@ -1,9 +1,9 @@
 #include "SymlinkTargets.h"
 #include <folly/ScopeGuard.h>
 #include <string>
-#include "FileSystem.h"
-#include "Logging.h"
-#include "ThreadPool.h"
+#include "watchman/FileSystem.h"
+#include "watchman/Logging.h"
+#include "watchman/ThreadPool.h"
 #include "watchman_hash.h"
 
 namespace watchman {

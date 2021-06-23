@@ -1,7 +1,7 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman/watchman.h"
 
 /* Given a flag map in `fmap`, and a set of flags in `flags`,
  * expand the flag bits that are set in `flags` into the corresponding

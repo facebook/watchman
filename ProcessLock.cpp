@@ -4,7 +4,7 @@
 
 #include <folly/String.h>
 
-#include "Logging.h"
+#include "watchman/Logging.h"
 
 #ifndef _WIN32
 #include <sys/file.h>

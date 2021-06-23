@@ -1,11 +1,11 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
-#include "SavedStateInterface.h"
+#include "watchman/saved_state/SavedStateInterface.h"
 #include <memory>
-#include "LocalSavedStateInterface.h"
+#include "watchman/saved_state/LocalSavedStateInterface.h"
+#include "watchman/watchman.h"
 #if HAVE_MANIFOLD
-#include "facebook/saved_state/ManifoldSavedStateInterface.h"
+#include "watchman/facebook/saved_state/ManifoldSavedStateInterface.h"
 #endif
 
 namespace watchman {

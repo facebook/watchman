@@ -1,14 +1,14 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman_system.h"
-#include "watchman.h"
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <thread>
-#include "ChildProcess.h"
-#include "Logging.h"
-#include "watchman_perf.h"
+#include "watchman/ChildProcess.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman.h"
+#include "watchman/watchman_perf.h"
+#include "watchman/watchman_system.h"
 
 namespace watchman {
 namespace {
