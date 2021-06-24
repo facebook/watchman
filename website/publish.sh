@@ -13,7 +13,7 @@ git checkout -- .
 git clean -dfx
 git fetch
 git rebase origin/gh-pages
-cd $WATCHMAN/website
+cd $WATCHMAN/oss/website
 bundle exec jekyll build -d /tmp/watchman-gh-pages
 cd /tmp/watchman-gh-pages
 
