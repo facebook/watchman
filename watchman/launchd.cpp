@@ -4,7 +4,7 @@
 #include "watchman/watchman.h"
 
 #ifdef __APPLE__
-#include <launch.h>
+#include <launch.h> // @manual
 
 using watchman::FileDescriptor;
 using namespace watchman;

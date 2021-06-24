@@ -5,7 +5,7 @@
 #define WATCHMAN_IGNORE_H
 
 #include <unordered_set>
-#include "thirdparty/libart/src/art.h"
+#include "watchman/thirdparty/libart/src/art.h"
 
 #ifdef __cplusplus
 extern "C" {

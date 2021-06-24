@@ -3,7 +3,7 @@
 
 #include "watchman/watchman.h"
 #ifdef __APPLE__
-#include <sys/attr.h>
+#include <sys/attr.h> // @manual
 #endif
 
 bool did_file_change(

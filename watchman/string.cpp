@@ -5,9 +5,9 @@
 #include <new>
 #include <ostream>
 #include <stdexcept>
-#include "thirdparty/jansson/utf.h"
+#include "watchman/thirdparty/jansson/utf.h"
+#include "watchman/watchman_hash.h"
 #include "watchman/watchman_string.h"
-#include "watchman_hash.h"
 
 static void w_string_addref(w_string_t* str);
 static void w_string_delref(w_string_t* str);

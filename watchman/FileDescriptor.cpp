@@ -5,13 +5,13 @@
 #include "watchman/FileSystem.h"
 #include "watchman/watchman.h"
 #ifdef __APPLE__
-#include <sys/attr.h>
-#include <sys/utsname.h>
-#include <sys/vnode.h>
+#include <sys/attr.h> // @manual
+#include <sys/utsname.h> // @manual
+#include <sys/vnode.h> // @manual
 #endif
 #include <system_error>
 #ifdef _WIN32
-#include "WinIoCtl.h"
+#include "WinIoCtl.h" // @manual
 #endif
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>

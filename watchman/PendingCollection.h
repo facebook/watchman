@@ -6,7 +6,7 @@
 #include <folly/futures/Promise.h>
 #include <chrono>
 #include <condition_variable>
-#include "thirdparty/libart/src/art.h"
+#include "watchman/thirdparty/libart/src/art.h"
 #include "watchman/watchman_string.h"
 
 namespace watchman {

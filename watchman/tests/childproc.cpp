@@ -1,6 +1,5 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
-#include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <list>
 #include "watchman/ChildProcess.h"

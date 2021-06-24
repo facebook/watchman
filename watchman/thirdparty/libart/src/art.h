@@ -1,6 +1,6 @@
 #ifndef ART_H
 #define ART_H
-#include "config.h"
+#include "config.h" // @manual
 #include <array>
 #include <cstdint>
 #include <functional>

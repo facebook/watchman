@@ -16,7 +16,7 @@
 #include <string>
 #include <atomic>
 #include <vector>
-#include "jansson_config.h"
+#include "jansson_config.h" // @manual
 #include "utf.h"
 
 /* version */

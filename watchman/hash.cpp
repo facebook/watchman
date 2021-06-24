@@ -80,7 +80,7 @@
   }
 
 #if HAVE_VALGRIND_VALGRIND_H
-#include <valgrind/valgrind.h>
+#include <valgrind/valgrind.h> // @manual
 #define VALGRIND 1
 
 static int under_valgrind = -1;

@@ -332,7 +332,7 @@ static void wakeme(int) {}
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
-#include <sys/siginfo.h>
+#include <sys/siginfo.h> // @manual
 #endif
 #include <sys/param.h>
 #include <sys/resource.h>

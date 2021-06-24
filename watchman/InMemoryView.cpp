@@ -6,8 +6,8 @@
 #include <chrono>
 #include <memory>
 #include <thread>
-#include "scm/SCM.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/scm/SCM.h"
 #include "watchman/watchman.h"
 
 using folly::Optional;

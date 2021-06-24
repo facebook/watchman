@@ -7,9 +7,9 @@
 #include <dirent.h>
 #endif
 #ifdef __APPLE__
-#include <sys/attr.h>
-#include <sys/utsname.h>
-#include <sys/vnode.h>
+#include <sys/attr.h> // @manual
+#include <sys/utsname.h> // @manual
+#include <sys/vnode.h> // @manual
 #endif
 #include <folly/String.h>
 #include "watchman/FileDescriptor.h"

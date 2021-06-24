@@ -19,13 +19,13 @@
 #include "watchman/ThreadPool.h"
 
 #ifdef _WIN32
-#include <Lmcons.h>
-#include <Shlobj.h>
-#include <deelevate.h>
+#include <Lmcons.h> // @manual
+#include <Shlobj.h> // @manual
+#include <deelevate.h> // @manual
 #endif
 
 #ifndef _WIN32
-#include <poll.h>
+#include <poll.h> // @manual
 #endif
 
 using watchman::ChildProcess;
@@ -59,7 +59,7 @@ static struct sockaddr_un un;
 static int json_input_arg = 0;
 
 #ifdef __APPLE__
-#include <mach-o/dyld.h>
+#include <mach-o/dyld.h> // @manual
 #endif
 
 static std::string compute_user_name();

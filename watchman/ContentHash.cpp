@@ -6,9 +6,9 @@
 #include "watchman_stream.h"
 #ifdef __APPLE__
 #define COMMON_DIGEST_FOR_OPENSSL
-#include "CommonCrypto/CommonDigest.h"
+#include "CommonCrypto/CommonDigest.h" // @manual
 #elif defined(_WIN32)
-#include <Wincrypt.h>
+#include <Wincrypt.h> // @manual
 #else
 #include <openssl/sha.h>
 #endif

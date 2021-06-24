@@ -3,13 +3,13 @@
 
 #include "watchman/watchman.h"
 #ifdef HAVE_UCRED_H
-#include <ucred.h>
+#include <ucred.h> // @manual
 #endif
 #ifdef HAVE_SYS_UCRED_H
-#include <sys/ucred.h>
+#include <sys/ucred.h> // @manual
 #endif
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#include <sys/socket.h> // @manual
 #endif
 #include <folly/SocketAddress.h>
 #include <folly/net/NetworkSocket.h>

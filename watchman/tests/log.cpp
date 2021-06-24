@@ -1,10 +1,8 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include "watchman/Logging.h"
-#include "watchman/watchman.h"
 
 using namespace watchman;
 

@@ -1,7 +1,6 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman/Result.h"
-#include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 #include <string>
