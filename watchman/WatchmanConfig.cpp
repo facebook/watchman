@@ -1,34 +1,24 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/WatchmanConfig.h"
 #include <folly/Synchronized.h>
+#include <optional>
 #include "watchman/watchman.h"
 #include "watchman/watchman_error_category.h"
 
 using namespace watchman;
 
 namespace {
-struct config_state {
+
+struct ConfigState {
   json_ref global_cfg;
   w_string global_config_file_path;
   json_ref arg_cfg;
 };
-folly::Synchronized<config_state> configState;
-} // namespace
+folly::Synchronized<ConfigState> configState;
 
-/* Called during shutdown to free things so that we run cleanly
- * under valgrind */
-void cfg_shutdown() {
-  auto state = configState.wlock();
-  state->global_cfg.reset();
-  state->arg_cfg.reset();
-}
-
-w_string cfg_get_global_config_file_path() {
-  return configState.rlock()->global_config_file_path;
-}
-
-void cfg_load_global_config_file() {
+std::optional<std::pair<json_ref, w_string>> loadSystemConfig() {
   const char* cfg_file = getenv("WATCHMAN_CONFIG_FILE");
 #ifdef WATCHMAN_CONFIG_FILE
   if (!cfg_file) {
@@ -36,7 +26,7 @@ void cfg_load_global_config_file() {
   }
 #endif
   if (!cfg_file || cfg_file[0] == '\0') {
-    return;
+    return std::nullopt;
   }
 
   std::string cfg_file_default = std::string{cfg_file} + ".default";
@@ -59,7 +49,7 @@ void cfg_load_global_config_file() {
           // If there is no default configuration either, just return
           if (default_exc.code() ==
               watchman::error_code::no_such_file_or_directory) {
-            return;
+            return std::nullopt;
           } else {
             throw;
           }
@@ -74,19 +64,89 @@ void cfg_load_global_config_file() {
         "Failed to load config file {}: {}\n",
         current_cfg_file,
         folly::exceptionStr(exc).toStdString());
-    return;
+    return std::nullopt;
   } catch (const std::exception& exc) {
     logf(
         ERR,
         "Failed to parse config file {}: {}\n",
         current_cfg_file,
         folly::exceptionStr(exc).toStdString());
-    return;
+    return std::nullopt;
   }
 
+  if (!config.isObject()) {
+    logf(ERR, "config {} must be a JSON object\n", current_cfg_file);
+    return std::nullopt;
+  }
+
+  return {{config, current_cfg_file}};
+}
+
+std::optional<json_ref> loadUserConfig() {
+  const char* home = getenv("HOME");
+  if (!home) {
+    return std::nullopt;
+  }
+  auto path = std::string{home} + "/.watchman.json";
+  try {
+    json_ref config = json_load_file(path.c_str(), 0);
+    if (!config.isObject()) {
+      logf(ERR, "config {} must be a JSON object\n", path);
+      return std::nullopt;
+    }
+    return config;
+  } catch (const std::system_error& exc) {
+    if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+      return std::nullopt;
+    }
+    logf(
+        ERR,
+        "Failed to load config file {}: {}\n",
+        path,
+        folly::exceptionStr(exc).toStdString());
+    return std::nullopt;
+  } catch (const std::exception& exc) {
+    logf(
+        ERR,
+        "Failed to parse config file {}: {}\n",
+        path,
+        folly::exceptionStr(exc).toStdString());
+    return std::nullopt;
+  }
+}
+
+} // namespace
+
+/* Called during shutdown to free things so that we run cleanly
+ * under valgrind */
+void cfg_shutdown() {
+  auto state = configState.wlock();
+  state->global_cfg.reset();
+  state->arg_cfg.reset();
+}
+
+w_string cfg_get_global_config_file_path() {
+  return configState.rlock()->global_config_file_path;
+}
+
+void cfg_load_global_config_file() {
+  auto systemConfig = loadSystemConfig();
+  auto userConfig = loadUserConfig();
+
   auto lockedState = configState.wlock();
-  lockedState->global_cfg = config;
-  lockedState->global_config_file_path = current_cfg_file;
+  if (systemConfig) {
+    lockedState->global_cfg = systemConfig->first;
+    lockedState->global_config_file_path = systemConfig->second;
+  }
+
+  if (userConfig) {
+    if (!lockedState->global_cfg) {
+      lockedState->global_cfg = json_object();
+    }
+    for (auto& [key, value] : userConfig->object()) {
+      lockedState->global_cfg.object()[key] = value;
+    }
+  }
 }
 
 void cfg_set_arg(const char* name, const json_ref& val) {
