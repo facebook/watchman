@@ -42,9 +42,7 @@ class BserTestCase(unittest.TestCase):
 
             # build the node module with yarn
             node_dir = os.path.join(env["TMPDIR"], "fb-watchman")
-            shutil.copytree(
-                os.path.join(WATCHMAN_SRC_DIR, "node"), node_dir
-            )
+            shutil.copytree(os.path.join(WATCHMAN_SRC_DIR, "node"), node_dir)
             bser_dir = os.path.join(node_dir, "bser")
 
             # install pre-reqs
