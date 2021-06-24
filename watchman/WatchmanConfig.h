@@ -1,7 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman/thirdparty/jansson/jansson.h"
 #pragma once
+
+#include "watchman/thirdparty/jansson/jansson.h"
 
 class w_string;
 
@@ -23,9 +24,9 @@ json_ref cfg_compute_root_files(bool* enforcing);
 // Convert root files to comma delimited string for error message
 std::string cfg_pretty_print_root_files(const json_ref& root_files);
 
-class Configuration {
-  json_ref local_;
+namespace watchman {
 
+class Configuration {
  public:
   Configuration() = default;
   explicit Configuration(const json_ref& local);
@@ -35,4 +36,9 @@ class Configuration {
   json_int_t getInt(const char* name, json_int_t defval) const;
   bool getBool(const char* name, bool defval) const;
   double getDouble(const char* name, double defval) const;
+
+ private:
+  json_ref local_;
 };
+
+} // namespace watchman

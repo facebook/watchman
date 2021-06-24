@@ -12,10 +12,10 @@
 #include "PendingCollection.h"
 #include "QueryableView.h"
 #include "SymlinkTargets.h"
+#include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_perf.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
-#include "watchman_config.h"
 #include "watchman_opendir.h"
 #include "watchman_query.h"
 

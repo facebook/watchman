@@ -7,7 +7,7 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
-#include "watchman_config.h"
+#include "watchman/WatchmanConfig.h"
 
 namespace watchman {
 

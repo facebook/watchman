@@ -3,6 +3,7 @@
 #ifndef WATCHMAN_STREAM_H
 #define WATCHMAN_STREAM_H
 
+#include <memory>
 #include "watchman/FileDescriptor.h"
 
 // Very limited stream abstraction to make it easier to

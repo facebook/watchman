@@ -356,6 +356,8 @@ const char* cfg_get_trouble_url() {
       "https://facebook.github.io/watchman/docs/troubleshooting.html");
 }
 
+namespace watchman {
+
 Configuration::Configuration(const json_ref& local) : local_(local) {}
 
 json_ref Configuration::get(const char* name) const {
@@ -436,6 +438,8 @@ double Configuration::getDouble(const char* name, double defval) const {
 
   return defval;
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

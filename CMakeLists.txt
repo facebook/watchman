@@ -546,8 +546,8 @@ watchman/FileInformation.cpp
 watchman/PendingCollection.cpp
 watchman/Pipe.cpp
 watchman/ThreadPool.cpp
+watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/cfg.cpp
 watchman/expflags.cpp
 watchman/ignore.cpp
 watchman/opendir.cpp
@@ -615,8 +615,8 @@ watchman/QueryableView.cpp
 watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/ThreadPool.cpp
+watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/cfg.cpp
 watchman/checksock.cpp
 watchman/clientmode.cpp
 watchman/error_category.cpp

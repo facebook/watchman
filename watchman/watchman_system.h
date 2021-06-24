@@ -10,15 +10,12 @@
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
 #include <folly/portability/SysTypes.h>
-#include "config.h"
+#include "config.h" // @manual=//watchman:config_h
 
 // This header plays tricks with posix IO functions and
 // can result in ambiguous overloads on Windows if io.h
 // is included before this header, so we pull it in early.
 #include <folly/portability/Unistd.h>
-
-#include <folly/portability/SysTypes.h>
-#include "config.h"
 
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS 1
@@ -38,7 +35,7 @@
 #endif
 #define EX_USAGE 1
 #include <errno.h>
-#include <process.h>
+#include <process.h> // @manual
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -48,7 +45,7 @@
 #include <windows.h>
 
 #if _MSC_VER >= 1400
-#include <sal.h>
+#include <sal.h> // @manual
 #if _MSC_VER > 1400
 #define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
 #else
@@ -110,10 +107,10 @@ size_t backtrace_from_exception(
 #include <sys/inotify.h>
 #endif
 #if HAVE_SYS_EVENT_H
-#include <sys/event.h>
+#include <sys/event.h> // @manual
 #endif
 #if HAVE_PORT_H
-#include <port.h>
+#include <port.h> // @manual
 #endif
 #include <errno.h>
 #include <signal.h>
@@ -186,7 +183,7 @@ size_t backtrace_from_exception(
 #endif
 
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
-#include <CoreServices/CoreServices.h>
+#include <CoreServices/CoreServices.h> // @manual
 #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070
 #define HAVE_FSEVENTS 0
 #else

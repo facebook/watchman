@@ -5,11 +5,11 @@
 #include <atomic>
 #include <condition_variable>
 #include <unordered_map>
-#include "CookieSync.h"
-#include "PubSub.h"
-#include "QueryableView.h"
+#include "watchman/CookieSync.h"
 #include "watchman/FileSystem.h"
-#include "watchman_config.h"
+#include "watchman/PubSub.h"
+#include "watchman/QueryableView.h"
+#include "watchman/WatchmanConfig.h"
 
 #define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -81,7 +81,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   /* config options loaded via json file */
   json_ref config_file;
-  Configuration config;
+  watchman::Configuration config;
 
   const int trigger_settle{0};
   /**

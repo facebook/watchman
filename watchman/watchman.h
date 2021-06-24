@@ -32,7 +32,6 @@ struct watchman_trigger_command;
 #include "watchman_root.h"
 
 #include "watchman/watchman_cmd.h"
-#include "watchman_config.h"
 #include "watchman_trigger.h"
 
 // Returns the name of the filesystem for the specified path

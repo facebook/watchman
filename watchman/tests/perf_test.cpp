@@ -5,8 +5,8 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
+#include "watchman/WatchmanConfig.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman_config.h"
 
 using namespace watchman;
 
