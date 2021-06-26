@@ -106,7 +106,7 @@ class json_ref {
     return ref_;
   }
 
-  /* implicit */ operator bool() const {
+  explicit operator bool() const {
     return ref_ != nullptr;
   }
 
