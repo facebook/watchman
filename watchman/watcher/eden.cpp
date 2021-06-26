@@ -698,7 +698,7 @@ std::vector<NameAndDType> globNameAndDType(
   }
 }
 
-class EdenView : public QueryableView {
+class EdenView final : public QueryableView {
   w_string root_path_;
   // The source control system that we detected during initialization
   mutable std::unique_ptr<EdenWrappedSCM> scm_;
@@ -1112,6 +1112,8 @@ class EdenView : public QueryableView {
   json_ref getWatcherDebugInfo() const override {
     return json_null();
   }
+
+  void clearWatcherDebugInfo() override {}
 
   // Called by the subscriberThread to scan for cookie file creation
   // events.  These are used to manage sequencing for state-enter and

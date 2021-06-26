@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include <folly/experimental/LockFreeRingBuffer.h>
 #include <optional>
+#include "watchman/RingBuffer.h"
 #include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS
@@ -45,7 +45,7 @@ struct FSEventsWatcher : public Watcher {
    * If not null, holds a fixed-size ring of the last `fsevents_ring_log_size`
    * FSEvents events.
    */
-  std::unique_ptr<folly::LockFreeRingBuffer<FSEventsLogEntry>> ringBuffer_;
+  std::unique_ptr<RingBuffer<FSEventsLogEntry>> ringBuffer_;
 
   explicit FSEventsWatcher(
       bool hasFileWatching,
@@ -74,6 +74,7 @@ struct FSEventsWatcher : public Watcher {
   void FSEventsThread(const std::shared_ptr<watchman_root>& root);
 
   json_ref getDebugInfo() override;
+  void clearDebugInfo() override;
 };
 
 } // namespace watchman

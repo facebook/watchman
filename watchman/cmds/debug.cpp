@@ -258,7 +258,7 @@ W_CMD_REG(
 static void cmd_debug_watcher_info(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  auto client = (watchman_user_client*)clientbase;
+  auto* client = static_cast<watchman_user_client*>(clientbase);
 
   auto root = resolveRoot(client, args);
   auto response = make_response();
@@ -266,6 +266,22 @@ static void cmd_debug_watcher_info(
   send_and_dispose_response(client, std::move(response));
 }
 W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
+
+static void cmd_debug_watcher_info_clear(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
+  auto* client = static_cast<watchman_user_client*>(clientbase);
+
+  auto root = resolveRoot(client, args);
+  auto response = make_response();
+  root->view()->clearWatcherDebugInfo();
+  send_and_dispose_response(client, std::move(response));
+}
+W_CMD_REG(
+    "debug-watcher-info-clear",
+    cmd_debug_watcher_info_clear,
+    CMD_DAEMON,
+    NULL)
 
 /* vim:ts=2:sw=2:et:
  */

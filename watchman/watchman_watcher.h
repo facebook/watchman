@@ -74,7 +74,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
       const char* path) = 0;
 
   // Signal any threads to terminate.  Do not join them here.
-  virtual void signalThreads();
+  virtual void signalThreads() {}
 
   struct ConsumeNotifyRet {
     // Were events added to the collection?
@@ -104,7 +104,14 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
    * Returns a JSON value containing this watcher's debug state. Intended for
    * inclusion in diagnostics.
    */
-  virtual json_ref getDebugInfo();
+  virtual json_ref getDebugInfo() {
+    return json_null();
+  }
+
+  /**
+   * Clear any accumulated debug state.
+   */
+  virtual void clearDebugInfo() {}
 };
 
 /** Maintains the list of available watchers.

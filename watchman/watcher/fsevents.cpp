@@ -566,8 +566,8 @@ FSEventsWatcher::FSEventsWatcher(
   json_int_t fsevents_ring_log_size =
       root->config.getInt("fsevents_ring_log_size", 0);
   if (fsevents_ring_log_size) {
-    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<FSEventsLogEntry>>(
-        fsevents_ring_log_size);
+    ringBuffer_ =
+        std::make_unique<RingBuffer<FSEventsLogEntry>>(fsevents_ring_log_size);
   }
 }
 
@@ -799,22 +799,8 @@ std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
 json_ref FSEventsWatcher::getDebugInfo() {
   json_ref events = json_null();
   if (ringBuffer_) {
-    std::vector<FSEventsLogEntry> entries;
-
-    auto head = ringBuffer_->currentHead();
-    if (head.moveBackward()) {
-      FSEventsLogEntry entry;
-      while (ringBuffer_->tryRead(entry, head)) {
-        entries.push_back(std::move(entry));
-        if (!head.moveBackward()) {
-          break;
-        }
-      }
-    }
-    std::reverse(entries.begin(), entries.end());
-
     events = json_array();
-    for (auto& entry : entries) {
+    for (auto& entry : ringBuffer_->readAll()) {
       json_array_append(events, entry.asJsonValue());
     }
   }
@@ -822,6 +808,16 @@ json_ref FSEventsWatcher::getDebugInfo() {
       {"events", events},
       {"total_event_count", json_integer(totalEventsSeen_.load())},
   });
+}
+
+void FSEventsWatcher::clearDebugInfo() {
+  // This is just debug info so small races are not problematic. To avoid races,
+  // totalEventsSeen_ could be stored directly if ringBuffer_ is null, or as the
+  // difference between currentHead() - lastClear_ if not null.
+  totalEventsSeen_.store(0, std::memory_order_release);
+  if (ringBuffer_) {
+    ringBuffer_->clear();
+  }
 }
 
 static RegisterWatcher<FSEventsWatcher> reg("fsevents");

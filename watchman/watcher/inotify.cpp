@@ -3,11 +3,11 @@
 
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/LockFreeRingBuffer.h>
 #include <atomic>
 #include "watchman/FileDescriptor.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
+#include "watchman/RingBuffer.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_error_category.h"
 
@@ -123,17 +123,12 @@ struct InotifyWatcher : public Watcher {
    * If not null, holds a fixed-size ring of the last `inotify_ring_log_size`
    * inotify events.
    */
-  std::unique_ptr<folly::LockFreeRingBuffer<InotifyLogEntry>> ringBuffer_;
-
-  /**
-   * Incremented by consumeNotify, which only runs on one thread.
-   */
-  uint64_t totalEventsSeen_ = 0;
+  std::unique_ptr<RingBuffer<InotifyLogEntry>> ringBuffer_;
 
   /**
    * Published from consumeNotify so getDebugInfo can read a recent value.
    */
-  std::atomic<uint64_t> totalEventsSeenAtomic_ = 0;
+  std::atomic<uint64_t> totalEventsSeen_ = 0;
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
@@ -174,6 +169,7 @@ struct InotifyWatcher : public Watcher {
   void signalThreads() override;
 
   json_ref getDebugInfo() override;
+  void clearDebugInfo() override;
 };
 
 InotifyWatcher::InotifyWatcher(watchman_root* root)
@@ -198,8 +194,8 @@ InotifyWatcher::InotifyWatcher(watchman_root* root)
   json_int_t inotify_ring_log_size =
       root->config.getInt("inotify_ring_log_size", 0);
   if (inotify_ring_log_size) {
-    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<InotifyLogEntry>>(
-        inotify_ring_log_size);
+    ringBuffer_ =
+        std::make_unique<RingBuffer<InotifyLogEntry>>(inotify_ring_log_size);
   }
 }
 
@@ -413,15 +409,16 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
 
   struct inotify_event* ine;
   bool cancel = false;
+  size_t eventsSeen = 0;
   for (char* iptr = ibuf; iptr < ibuf + n; iptr += sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
     cancel |= process_inotify_event(root, coll, ine, now);
-    ++totalEventsSeen_;
+    ++eventsSeen;
   }
 
   // Relaxed because we don't really care exactly when the value is visible.
-  totalEventsSeenAtomic_.store(totalEventsSeen_, std::memory_order_relaxed);
+  totalEventsSeen_.fetch_add(eventsSeen, std::memory_order_relaxed);
 
   // It is possible that we can accumulate a set of pending_move
   // structs in move_map.  This happens when a directory is moved
@@ -478,29 +475,25 @@ void InotifyWatcher::signalThreads() {
 json_ref InotifyWatcher::getDebugInfo() {
   json_ref events = json_null();
   if (ringBuffer_) {
-    std::vector<InotifyLogEntry> entries;
-
-    auto head = ringBuffer_->currentHead();
-    if (head.moveBackward()) {
-      InotifyLogEntry entry;
-      while (ringBuffer_->tryRead(entry, head)) {
-        entries.push_back(std::move(entry));
-        if (!head.moveBackward()) {
-          break;
-        }
-      }
-    }
-    std::reverse(entries.begin(), entries.end());
-
     events = json_array();
-    for (auto& entry : entries) {
+    for (auto& entry : ringBuffer_->readAll()) {
       json_array_append(events, entry.asJsonValue());
     }
   }
   return json_object({
       {"events", events},
-      {"total_event_count", json_integer(totalEventsSeenAtomic_.load())},
+      {"total_event_count", json_integer(totalEventsSeen_.load())},
   });
+}
+
+void InotifyWatcher::clearDebugInfo() {
+  // This is just debug info so small races are not problematic. To avoid races,
+  // totalEventsSeen_ could be stored directly if ringBuffer_ is null, or as the
+  // difference between currentHead() - lastClear_ if not null.
+  totalEventsSeen_.store(0, std::memory_order_release);
+  if (ringBuffer_) {
+    ringBuffer_->clear();
+  }
 }
 
 namespace {

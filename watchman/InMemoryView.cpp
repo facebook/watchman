@@ -454,9 +454,8 @@ InMemoryView::InMemoryView(
   json_int_t in_memory_view_ring_log_size =
       config_.getInt("in_memory_view_ring_log_size", 0);
   if (in_memory_view_ring_log_size) {
-    this->processedPaths_ =
-        std::make_unique<folly::LockFreeRingBuffer<PendingChangeLogEntry>>(
-            in_memory_view_ring_log_size);
+    this->processedPaths_ = std::make_unique<RingBuffer<PendingChangeLogEntry>>(
+        in_memory_view_ring_log_size);
   }
 }
 
@@ -781,31 +780,28 @@ json_ref InMemoryView::getWatcherDebugInfo() const {
   });
 }
 
+void InMemoryView::clearWatcherDebugInfo() {
+  watcher_->clearDebugInfo();
+  clearViewDebugInfo();
+}
+
 json_ref InMemoryView::getViewDebugInfo() const {
-  auto processedPaths = json_null();
+  auto processedPathsResult = json_null();
   if (processedPaths_) {
-    std::vector<PendingChangeLogEntry> entries;
-
-    auto head = processedPaths_->currentHead();
-    if (head.moveBackward()) {
-      PendingChangeLogEntry entry;
-      while (processedPaths_->tryRead(entry, head)) {
-        entries.push_back(std::move(entry));
-        if (!head.moveBackward()) {
-          break;
-        }
-      }
-    }
-    std::reverse(entries.begin(), entries.end());
-
-    processedPaths = json_array();
-    for (auto& entry : entries) {
-      json_array_append(processedPaths, entry.asJsonValue());
+    processedPathsResult = json_array();
+    for (auto& entry : processedPaths_->readAll()) {
+      json_array_append(processedPathsResult, entry.asJsonValue());
     }
   }
   return json_object({
-      {"processed_paths", processedPaths},
+      {"processed_paths", processedPathsResult},
   });
+}
+
+void InMemoryView::clearViewDebugInfo() {
+  if (processedPaths_) {
+    processedPaths_->clear();
+  }
 }
 
 SCM* InMemoryView::getSCM() const {

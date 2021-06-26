@@ -68,6 +68,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
 
   virtual const w_string& getName() const = 0;
   virtual json_ref getWatcherDebugInfo() const = 0;
+  virtual void clearWatcherDebugInfo() = 0;
   virtual std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<watchman_root>& root) = 0;
 

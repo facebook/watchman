@@ -149,11 +149,5 @@ bool Watcher::start(const std::shared_ptr<watchman_root>&) {
   return true;
 }
 
-void Watcher::signalThreads() {}
-
-json_ref Watcher::getDebugInfo() {
-  return json_null();
-}
-
 /* vim:ts=2:sw=2:et:
  */
