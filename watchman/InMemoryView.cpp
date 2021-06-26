@@ -8,6 +8,7 @@
 #include <thread>
 #include "watchman/ThreadPool.h"
 #include "watchman/scm/SCM.h"
+#include "watchman/watcher/Watcher.h"
 #include "watchman/watchman.h"
 
 using folly::Optional;

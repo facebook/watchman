@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/InMemoryView.h"
+#include "watchman/watcher/Watcher.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_error_category.h"
 

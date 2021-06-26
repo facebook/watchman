@@ -7,6 +7,7 @@
 #include "fsevents.h"
 #include "kqueue.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)

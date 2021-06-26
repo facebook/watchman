@@ -3,6 +3,7 @@
 
 #include "watchman/FileDescriptor.h"
 #include "watchman/Pipe.h"
+#include "watchman/watcher/Watcher.h"
 #include "watchman/watchman.h"
 
 #ifdef HAVE_KQUEUE

@@ -689,7 +689,8 @@ watchman/saved_state/LocalSavedStateInterface.cpp
 watchman/saved_state/SavedStateInterface.cpp
 watchman/scm/Mercurial.cpp
 watchman/scm/SCM.cpp
-watchman/watcher/auto.cpp
+watchman/watcher/Watcher.cpp
+watchman/watcher/WatcherRegistry.cpp
 watchman/watcher/fsevents.cpp
 watchman/watcher/inotify.cpp
 watchman/watcher/kqueue.cpp

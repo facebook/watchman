@@ -3,6 +3,8 @@
 #pragma once
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
+#include "watchman/watchman_string.h"
+
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 
 namespace watchman {

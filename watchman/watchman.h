@@ -20,7 +20,6 @@ struct watchman_trigger_command;
 #include "watchman_dir.h"
 #include "watchman_file.h"
 #include "watchman_opendir.h"
-#include "watchman_watcher.h"
 
 #define WATCHMAN_IO_BUF_SIZE 1048576
 #define WATCHMAN_BATCH_LIMIT (16 * 1024)

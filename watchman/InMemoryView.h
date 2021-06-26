@@ -19,10 +19,11 @@
 #include "watchman_opendir.h"
 #include "watchman_query.h"
 
-class Watcher;
 struct watchman_client;
 
 namespace watchman {
+
+class Watcher;
 
 // Helper struct to hold caches used by the InMemoryView
 struct InMemoryViewCaches {

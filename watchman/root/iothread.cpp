@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include "watchman/InMemoryView.h"
+#include "watchman/watcher/Watcher.h"
 #include "watchman/watchman.h"
 
 namespace watchman {

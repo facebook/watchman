@@ -11,6 +11,7 @@
 #include "watchman/InMemoryView.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Pipe.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS

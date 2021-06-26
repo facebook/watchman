@@ -8,6 +8,8 @@
 #include "watchman/FileDescriptor.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
 
 #ifdef HAVE_KQUEUE

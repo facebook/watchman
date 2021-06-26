@@ -20,6 +20,8 @@
 #include "watchman/ThreadPool.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_error_category.h"
 

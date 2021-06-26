@@ -5,6 +5,7 @@
 
 #include <folly/String.h>
 #include "watchman/InMemoryView.h"
+#include "watchman/watcher/WatcherRegistry.h"
 
 using namespace watchman;
 

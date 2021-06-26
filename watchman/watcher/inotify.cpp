@@ -8,6 +8,8 @@
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
 #include "watchman/RingBuffer.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_error_category.h"
 

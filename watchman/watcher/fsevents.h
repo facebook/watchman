@@ -3,6 +3,7 @@
 
 #include <optional>
 #include "watchman/RingBuffer.h"
+#include "watchman/watcher/Watcher.h"
 #include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS
