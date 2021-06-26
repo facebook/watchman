@@ -45,6 +45,9 @@ class PendingEventsCond {
     if (lock->shouldStop) {
       return false;
     }
+    if (lock->hasPending) {
+      return true;
+    }
     cond_.wait_for(lock.as_lock(), std::chrono::milliseconds(timeoutms));
     return lock->hasPending;
   }

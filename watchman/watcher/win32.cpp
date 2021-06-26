@@ -391,6 +391,9 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
 
 bool WinWatcher::waitNotify(int timeoutms) {
   auto wlock = changedItems.lock();
+  if (!wlock->empty()) {
+    return true;
+  }
   cond.wait_for(wlock.as_lock(), std::chrono::milliseconds(timeoutms));
   return !wlock->empty();
 }
