@@ -172,8 +172,9 @@ folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
   futures.reserve(fseventsWatchers.size());
   for (auto& [name, watcher] : fseventsWatchers) {
     auto future = watcher->flushPendingEvents();
-    w_check(future.valid(), "FSEvents did not return valid flush future");
-    futures.push_back(std::move(future));
+    if (future.valid()) {
+      futures.push_back(std::move(future));
+    }
   }
   return folly::collect(futures).unit();
 }
@@ -197,7 +198,8 @@ std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(
       root->cookies.addCookieDir(fullPath);
       auto [it, _] = wlock->emplace(
           fullPath,
-          std::make_shared<FSEventsWatcher>(false, std::optional(fullPath)));
+          std::make_shared<FSEventsWatcher>(
+              false, root->config, std::optional(fullPath)));
       const auto& watcher = it->second;
       if (!watcher->start(root)) {
         throw std::runtime_error("couldn't start fsEvent");

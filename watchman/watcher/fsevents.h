@@ -1,15 +1,20 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#pragma once
+
 #include <optional>
+#include "watchman/Pipe.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
 
 #if HAVE_FSEVENTS
 
+struct watchman_client;
+
 namespace watchman {
 
+class Configuration;
 struct fse_stream;
 struct FSEventsLogEntry;
 
@@ -21,35 +26,11 @@ struct watchman_fsevent {
       : path(std::move(path)), flags(flags) {}
 };
 
-struct FSEventsWatcher : public Watcher {
-  watchman::Pipe fse_pipe;
-
-  std::condition_variable fse_cond;
-  struct Items {
-    // Unflattened queue of pending events. The fse_callback function will push
-    // exactly one vector to the end of this one, flattening the vector would
-    // require extra copying and allocations.
-    std::vector<std::vector<watchman_fsevent>> items;
-    // Sync requests to be inserted into PendingCollection.
-    std::vector<folly::Promise<folly::Unit>> syncs;
-  };
-  folly::Synchronized<Items, std::mutex> items_;
-
-  struct fse_stream* stream{nullptr};
-  bool attempt_resync_on_drop{false};
-  bool has_file_watching{false};
-  std::optional<w_string> subdir{std::nullopt};
-
-  // Incremented in fse_callback
-  std::atomic<size_t> totalEventsSeen_{0};
-  /**
-   * If not null, holds a fixed-size ring of the last `fsevents_ring_log_size`
-   * FSEvents events.
-   */
-  std::unique_ptr<RingBuffer<FSEventsLogEntry>> ringBuffer_;
-
+class FSEventsWatcher : public Watcher {
+ public:
   explicit FSEventsWatcher(
       bool hasFileWatching,
+      Configuration& config,
       std::optional<w_string> dir = std::nullopt);
 
   explicit FSEventsWatcher(
@@ -76,6 +57,51 @@ struct FSEventsWatcher : public Watcher {
 
   json_ref getDebugInfo() override;
   void clearDebugInfo() override;
+
+  static void cmd_debug_fsevents_inject_drop(
+      watchman_client* client,
+      const json_ref& args);
+
+ private:
+  static fse_stream* fse_stream_make(
+      const std::shared_ptr<watchman_root>& root,
+      FSEventsWatcher* watcher,
+      FSEventStreamEventId since,
+      w_string& failure_reason);
+  static void fse_callback(
+      ConstFSEventStreamRef,
+      void* clientCallBackInfo,
+      size_t numEvents,
+      void* eventPaths,
+      const FSEventStreamEventFlags eventFlags[],
+      const FSEventStreamEventId eventIds[]);
+
+  watchman::Pipe fsePipe_;
+
+  std::condition_variable fseCond_;
+  struct Items {
+    // Unflattened queue of pending events. The fse_callback function will push
+    // exactly one vector to the end of this one, flattening the vector would
+    // require extra copying and allocations.
+    std::vector<std::vector<watchman_fsevent>> items;
+    // Sync requests to be inserted into PendingCollection.
+    std::vector<folly::Promise<folly::Unit>> syncs;
+  };
+  folly::Synchronized<Items, std::mutex> items_;
+
+  fse_stream* stream_{nullptr};
+  bool attemptResyncOnDrop_{false};
+  const bool hasFileWatching_{false};
+  const bool enableStreamFlush_{true};
+  std::optional<w_string> subdir{std::nullopt};
+
+  // Incremented in fse_callback
+  std::atomic<size_t> totalEventsSeen_{0};
+  /**
+   * If not null, holds a fixed-size ring of the last `fsevents_ring_log_size`
+   * FSEvents events.
+   */
+  std::unique_ptr<RingBuffer<FSEventsLogEntry>> ringBuffer_;
 };
 
 } // namespace watchman
