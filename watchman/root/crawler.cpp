@@ -141,7 +141,6 @@ void InMemoryView::crawler(
       }
       if (!file || !file->exists || stat_all || recursive) {
         auto full_path = dir->getFullPathToChild(name);
-        logf(DBG, "in crawler calling process_path on {}\n", full_path);
 
         int newFlags = 0;
         if (recursive || !file || !file->exists) {
@@ -151,6 +150,13 @@ void InMemoryView::crawler(
         if (is_desynced) {
           newFlags |= W_PENDING_IS_DESYNCED;
         }
+
+        logf(
+            DBG,
+            "in crawler calling processPath on {} oldflags={} newflags={}\n",
+            full_path,
+            pending.flags,
+            newFlags);
 
         processPath(
             root,
