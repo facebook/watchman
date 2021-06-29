@@ -50,10 +50,11 @@ namespace watchman {
  */
 #define W_PENDING_CRAWL_ONLY 8
 /**
- * Set this flag when the watcher is desynced and may have missed filesystem
- * events. The W_PENDING_RECURSIVE flag should also be set alongside it to
- * force an recrawl of the passed in directory. Cookies will not be considered
- * when this flag is set.
+ * Set when the watcher is desynced and may have missed filesystem events. The
+ * watcher is no longer guaranteed to report every file or directory, which
+ * could prevent cookies from being observed. W_PENDING_RECURSIVE flag should
+ * also be set alongside it to force an recrawl of the passed in directory.
+ * Cookies will not be considered when this flag is set.
  */
 #define W_PENDING_IS_DESYNCED 16
 
