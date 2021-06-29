@@ -251,7 +251,7 @@ class InMemoryView final : public QueryableView {
    * Allowed flags:
    *  - W_PENDING_RECURSIVE: the directory will be recursively crawled,
    *  - W_PENDING_VIA_NOTIFY when the watcher only supports directory
-   *    notification (WATCHER_ONLY_DIRECTORY_NOTIFICATIONS), this will stat all
+   *    notification (W_PENDING_NONRECURSIVE_SCAN), this will stat all
    *    the files and directories contained in the passed in directory and stop.
    */
   void crawler(

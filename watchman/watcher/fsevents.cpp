@@ -548,7 +548,7 @@ FSEventsWatcher::FSEventsWatcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
           hasFileWatching
               ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
-              : WATCHER_ONLY_DIRECTORY_NOTIFICATIONS),
+              : 0),
       hasFileWatching_{hasFileWatching},
       enableStreamFlush_{config.getBool("fsevents_enable_stream_flush", true)},
       subdir{std::move(dir)} {
@@ -770,6 +770,8 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
           (kFSEventStreamEventFlagMustScanSubDirs |
            kFSEventStreamEventFlagItemRenamed)) {
         flags |= W_PENDING_RECURSIVE;
+      } else if (!hasFileWatching_) {
+        flags |= W_PENDING_NONRECURSIVE_SCAN;
       }
 
       if (item.flags &

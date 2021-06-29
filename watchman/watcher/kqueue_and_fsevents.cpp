@@ -115,9 +115,7 @@ class KQueueAndFSEventsWatcher : public Watcher {
 };
 
 KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(watchman_root* root)
-    : Watcher(
-          "kqueue+fsevents",
-          WATCHER_ONLY_DIRECTORY_NOTIFICATIONS | WATCHER_HAS_SPLIT_WATCH),
+    : Watcher("kqueue+fsevents", WATCHER_HAS_SPLIT_WATCH),
       kqueueWatcher_(std::make_shared<KQueueWatcher>(root, false)),
       pendingCondition_(std::make_shared<PendingEventsCond>()) {}
 

@@ -22,6 +22,15 @@ namespace watchman {
  */
 #define W_PENDING_RECURSIVE 1
 /**
+ * Set when this change requires a non-recursive scan of its children.
+ *
+ * Some watchers, notably FSEvents in its default mode, only report changes to
+ * directories and expect Watchman to enumerate and stat their children.
+ *
+ * This flag indicates to the IO thread that it must do such a scan.
+ */
+#define W_PENDING_NONRECURSIVE_SCAN 2
+/**
  * This change event came from a watcher.
  *
  * Crawler uses this to distinguish between crawler-originated events and
@@ -30,7 +39,7 @@ namespace watchman {
  * iothread uses this flag to detect whether cookie events were discovered via a
  * crawl or watcher.
  */
-#define W_PENDING_VIA_NOTIFY 2
+#define W_PENDING_VIA_NOTIFY 4
 /**
  * Set by the IO thread when it adds new pending paths while crawling.
  *
@@ -39,14 +48,14 @@ namespace watchman {
  *
  * Sort of exclusive with VIA_NOTIFY...
  */
-#define W_PENDING_CRAWL_ONLY 4
+#define W_PENDING_CRAWL_ONLY 8
 /**
  * Set this flag when the watcher is desynced and may have missed filesystem
  * events. The W_PENDING_RECURSIVE flag should also be set alongside it to
  * force an recrawl of the passed in directory. Cookies will not be considered
  * when this flag is set.
  */
-#define W_PENDING_IS_DESYNCED 8
+#define W_PENDING_IS_DESYNCED 16
 
 /**
  * Represents a change notification from the Watcher.

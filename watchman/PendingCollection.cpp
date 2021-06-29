@@ -12,6 +12,7 @@ namespace {
 constexpr flag_map kFlags[] = {
     {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
     {W_PENDING_RECURSIVE, "RECURSIVE"},
+    {W_PENDING_NONRECURSIVE_SCAN, "NONRECURSIVE_SCAN"},
     {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
     {W_PENDING_IS_DESYNCED, "IS_DESYNCED"},
     {0, NULL},
@@ -227,7 +228,8 @@ void PendingChanges::consolidateItem(watchman_pending_fs* p, int flags) {
   // we've recently just performed the stat and we want to avoid
   // infinitely trying to stat-and-crawl
   p->flags |= flags &
-      (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE | W_PENDING_IS_DESYNCED);
+      (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE |
+       W_PENDING_NONRECURSIVE_SCAN | W_PENDING_IS_DESYNCED);
 
   maybePruneObsoletedChildren(p->path, p->flags);
 }

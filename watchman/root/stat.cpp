@@ -60,8 +60,8 @@ void InMemoryView::statPath(
     const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
   bool recursive = pending.flags & W_PENDING_RECURSIVE;
-  bool via_notify = pending.flags & W_PENDING_VIA_NOTIFY;
-  int desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
+  const bool via_notify = pending.flags & W_PENDING_VIA_NOTIFY;
+  const int desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
 
   if (root.ignore.isIgnoreDir(pending.path)) {
     logf(DBG, "{} matches ignore_dir rules\n", pending.path);
@@ -261,20 +261,19 @@ void InMemoryView::statPath(
               pending.path,
               pending.now,
               desynced_flag | W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
+        } else if (pending.flags & W_PENDING_NONRECURSIVE_SCAN) {
+          /* on file changes, we receive a notification on the directory and
+           * thus we just need to crawl this one directory to consider all
+           * the pending files. */
+          coll.add(
+              pending.path,
+              pending.now,
+              desynced_flag | W_PENDING_NONRECURSIVE_SCAN |
+                  W_PENDING_CRAWL_ONLY);
         } else {
           if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
             /* we get told about changes on the child, so we don't need to do
              * anything */
-          } else if (watcher_->flags & WATCHER_ONLY_DIRECTORY_NOTIFICATIONS) {
-            /* on file changes, we receive a notification on the directory and
-             * thus we just need to crawl this one directory to consider all
-             * the pending files. To avoid recursing into the path recursively,
-             * the flags are passed as is and the crawler will only recurse
-             * down if W_PENDING_VIA_NOTIFY is set. */
-            coll.add(
-                pending.path,
-                pending.now,
-                pending.flags | W_PENDING_CRAWL_ONLY);
           } else {
             /* in all the other cases, crawl */
             coll.add(

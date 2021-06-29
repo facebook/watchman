@@ -217,12 +217,10 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll) {
-  int n;
-  int i;
   struct timespec ts = {0, 0};
 
   errno = 0;
-  n = kevent(
+  int n = kevent(
       kq_fd.fd(),
       nullptr,
       0,
@@ -240,7 +238,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
   }
 
   auto now = std::chrono::system_clock::now();
-  for (i = 0; n > 0 && i < n; i++) {
+  for (int i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = keventbuf[i].fflags;
     bool is_dir = is_udata_dir(keventbuf[i].udata);
     char flags_label[128];
@@ -283,6 +281,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
       wlock->fd_to_name.erase(fd);
     }
 
+    // TODO: W_PENDING_VIA_NOTIFY should always be set
     coll.add(
         path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
   }
