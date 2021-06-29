@@ -41,16 +41,13 @@ class PendingEventsCond {
    * Wait for a change from a nested watcher. Return true if some events are
    * pending.
    */
-  bool wait(int timeoutms) {
+  bool waitAndClear(int timeoutms) {
     auto lock = stop_.lock();
-    if (lock->shouldStop) {
-      return false;
-    }
-    if (lock->hasPending) {
-      return true;
-    }
-    cond_.wait_for(lock.as_lock(), std::chrono::milliseconds(timeoutms));
-    return lock->hasPending;
+    cond_.wait_until(
+        lock.as_lock(),
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutms),
+        [&] { return lock->hasPending || lock->shouldStop; });
+    return std::exchange(lock->hasPending, false);
   }
 
   /**
@@ -261,7 +258,7 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
 }
 
 bool KQueueAndFSEventsWatcher::waitNotify(int timeoutms) {
-  return pendingCondition_->wait(timeoutms);
+  return pendingCondition_->waitAndClear(timeoutms);
 }
 
 void KQueueAndFSEventsWatcher::signalThreads() {
