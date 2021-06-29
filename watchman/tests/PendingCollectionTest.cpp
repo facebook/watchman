@@ -140,7 +140,8 @@ class NaivePendingCollection {
     for (std::shared_ptr<watchman_pending_fs> p = head_; p; p = p->next) {
       if (w_string_startswith(path, p->path) &&
           watchman::is_path_prefix(path, p->path)) {
-        if (p->flags & W_PENDING_RECURSIVE) {
+        if ((p->flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
+            W_PENDING_RECURSIVE) {
           return;
         }
       }
@@ -299,6 +300,42 @@ TYPED_TEST(PendingCollectionFixture, unrelated_prefixes_dont_prune) {
   EXPECT_EQ(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/bar"}, item->path);
   EXPECT_EQ(0, item->flags);
+}
+
+TYPED_TEST(PendingCollectionFixture, queue_crawl_then_notify) {
+  this->coll.add(
+      w_string{"foo"}, this->now, W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE);
+  this->coll.add(w_string{"foo/bar"}, this->now, W_PENDING_VIA_NOTIFY);
+
+  // TODO: Why are these paths not returned bottom-up?
+
+  auto item = this->coll.stealItems();
+  ASSERT_NE(nullptr, item);
+  EXPECT_NE(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo/bar"}, item->path);
+  EXPECT_EQ(W_PENDING_VIA_NOTIFY, item->flags);
+
+  item = item->next;
+  EXPECT_EQ(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo"}, item->path);
+  EXPECT_EQ(W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE, item->flags);
+}
+
+TYPED_TEST(PendingCollectionFixture, queue_notify_then_crawl) {
+  this->coll.add(w_string{"foo/bar"}, this->now, W_PENDING_VIA_NOTIFY);
+  this->coll.add(
+      w_string{"foo"}, this->now, W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE);
+
+  auto item = this->coll.stealItems();
+  ASSERT_NE(nullptr, item);
+  EXPECT_NE(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo"}, item->path);
+  EXPECT_EQ(W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE, item->flags);
+
+  item = item->next;
+  EXPECT_EQ(nullptr, item->next);
+  EXPECT_EQ(w_string{"foo/bar"}, item->path);
+  EXPECT_EQ(W_PENDING_VIA_NOTIFY, item->flags);
 }
 
 TYPED_TEST(PendingCollectionFixture, real_example) {

@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/PendingCollection.h"
 #include <folly/Synchronized.h>
 #include "watchman/watchman.h"
 
@@ -245,7 +246,8 @@ bool PendingChanges::isObsoletedByContainingDir(const w_string& path) {
   }
   auto p = leaf->value;
 
-  if ((p->flags & W_PENDING_RECURSIVE) &&
+  if ((p->flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
+          W_PENDING_RECURSIVE &&
       is_path_prefix(
           path.data(),
           path.size(),
