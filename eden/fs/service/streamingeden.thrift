@@ -48,9 +48,10 @@ struct FsEvent {
   // See fuseRequest or prjfsRequest for the request opcode name.
   4: string arguments;
 
-  // Always defined on Linux and macOS, but marked optional to support Windows.
-  5: eden.FuseCall fuseRequest;
-  // To add Windows support, mark fuseRequest optional, and add:
+  // At most one of the *Request fields will be set, depending on the filesystem implementation.
+  5: optional eden.FuseCall fuseRequest;
+  10: optional eden.NfsCall nfsRequest;
+  // To add Windows support:
   // 6: optional eden.PrjfsCall prjfsRequest;
 
   8: RequestInfo requestInfo;

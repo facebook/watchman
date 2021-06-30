@@ -645,6 +645,12 @@ struct FuseCall {
   9: optional string processName;
 }
 
+struct NfsCall {
+  1: i32 xid;
+  2: i32 procNumber;
+  3: string procName;
+}
+
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
@@ -1160,6 +1166,13 @@ service EdenService extends fb303_core.BaseService {
    * fuse_in_header.
    */
   list<FuseCall> debugOutstandingFuseCalls(1: PathString mountPoint);
+
+  /**
+   * Get the list of outstanding NFS requests
+   *
+   * This will return the list of NfsCall structure containing the data from the RPC request.
+   */
+  list<NfsCall> debugOutstandingNfsCalls(1: PathString mountPoint);
 
   /**
    * Get the InodePathDebugInfo for the inode that corresponds to the given
