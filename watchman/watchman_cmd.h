@@ -4,7 +4,7 @@
 #pragma once
 
 #include <stdexcept>
-#include "CommandRegistry.h"
+#include "watchman/CommandRegistry.h"
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
