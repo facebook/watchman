@@ -1,7 +1,7 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "WatchmanClient.h"
+#include "watchman/cppclient/WatchmanClient.h"
 
 #include <atomic>
 #include <chrono>
