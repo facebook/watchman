@@ -143,7 +143,7 @@ size_t backtrace_from_exception(
 #include <sys/wait.h>
 #endif
 #ifdef HAVE_PCRE_H
-#include <pcre.h>
+#include <pcre.h> // @manual
 #endif
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
