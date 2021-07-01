@@ -3,8 +3,8 @@
 #pragma once
 #include "PubSub.h"
 #include "folly/Synchronized.h"
+#include "watchman/watchman_preprocessor.h"
 #include "watchman/watchman_string.h"
-#include "watchman_preprocessor.h"
 
 namespace watchman {
 
