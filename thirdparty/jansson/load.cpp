@@ -92,6 +92,8 @@ static void error_set(json_error_t *error, const lex_t *lex,
     msg_text[JSON_ERROR_TEXT_LENGTH - 1] = '\0';
     va_end(ap);
 
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+    
     if(lex)
     {
         const char *saved_text = strbuffer_value(&lex->saved_text);
@@ -124,6 +126,8 @@ static void error_set(json_error_t *error, const lex_t *lex,
         }
     }
 
+#pragma GCC diagnostic pop
+    
     jsonp_error_set(error, line, col, pos, "%s", result);
 }
 
