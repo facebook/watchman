@@ -3,8 +3,10 @@
 
 #include "watchman/PendingCollection.h"
 #include <folly/Synchronized.h>
+#include "watchman/Cookie.h"
 #include "watchman/FlagMap.h"
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman_dir.h"
 
 using namespace watchman;
 
