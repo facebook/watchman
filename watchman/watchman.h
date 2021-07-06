@@ -41,14 +41,6 @@ w_string find_fstype_in_linux_proc_mounts(
 
 extern folly::Synchronized<std::string> poisoned_reason;
 
-#ifndef _WIN32
-static inline bool w_path_exists(const char* path) {
-  return access(path, F_OK) == 0;
-}
-#else
-bool w_path_exists(const char* path);
-#endif
-
 bool w_is_stopping();
 
 void w_request_shutdown();
