@@ -3,7 +3,8 @@
 #pragma once
 
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman.h"
+
+struct watchman_root;
 
 namespace watchman {
 
@@ -19,17 +20,6 @@ class SCM;
 class SavedStateInterface {
  public:
   virtual ~SavedStateInterface();
-
-  // Returns an appropriate SavedStateInterface implementation for the
-  // specified storage type. Returns a managed pointer to the saved state
-  // interface if successful. Throws if the storage type is not recognized, or
-  // if the saved state interface does not successfully parse the saved state
-  // config.
-  static std::unique_ptr<SavedStateInterface> getInterface(
-      w_string_piece storageType,
-      const json_ref& savedStateConfig,
-      const SCM* scm,
-      const std::shared_ptr<watchman_root> root);
 
   // The commit ID of a saved state and a JSON blob of information clients can
   // use to access the saved state.  The contents of the info varies with the

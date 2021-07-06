@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-#include "SavedStateInterface.h"
+#include "watchman/saved_state/SavedStateInterface.h"
 
 namespace watchman {
 
