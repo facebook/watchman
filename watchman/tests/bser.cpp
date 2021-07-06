@@ -1,6 +1,7 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/bser.h"
 #include <folly/ScopeGuard.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>

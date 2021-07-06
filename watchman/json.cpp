@@ -3,6 +3,7 @@
 
 #include <folly/Range.h>
 #include <folly/String.h>
+#include "watchman/bser.h"
 #include "watchman/watchman.h"
 
 using namespace watchman;
