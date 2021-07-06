@@ -9,7 +9,6 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman_hash.h"
-#include "watchman_ignore.h"
 #include "watchman_stream.h"
 
 struct watchman_file;
