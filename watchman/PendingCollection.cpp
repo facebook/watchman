@@ -182,7 +182,7 @@ void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
       if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > path.size() &&
           is_path_prefix(
               (const char*)key.data(), key.size(), path.data(), path.size()) &&
-          !watchman::CookieSync::isPossiblyACookie(p->path)) {
+          !watchman::isPossiblyACookie(p->path)) {
         logf(
             DBG,
             "delete_kids: removing ({}) {} from pending because it is "
@@ -254,7 +254,7 @@ bool PendingChanges::isObsoletedByContainingDir(const w_string& path) {
           path.size(),
           (const char*)leaf->key.data(),
           leaf->key.size())) {
-    if (watchman::CookieSync::isPossiblyACookie(path)) {
+    if (watchman::isPossiblyACookie(path)) {
       return false;
     }
 
