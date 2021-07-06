@@ -1,7 +1,10 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/Errors.h"
+
+#ifdef _WIN32
+#include <winerror.h> // @manual
+#endif
 
 using std::generic_category;
 

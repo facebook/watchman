@@ -1,12 +1,15 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 #include <memory>
 #include <string>
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
+
 using watchman::CaseSensitivity;
+using watchman::QueryParseError;
 
 class WildMatchExpr : public QueryExpr {
   std::string pattern;

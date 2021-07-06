@@ -1,9 +1,12 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 #include <memory>
+
+using namespace watchman;
 
 // Helper functions for integer comparisons in query expressions
 

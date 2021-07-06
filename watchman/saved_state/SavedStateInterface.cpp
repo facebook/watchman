@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman/saved_state/SavedStateInterface.h"
 #include <memory>
+#include "watchman/Errors.h"
 #include "watchman/saved_state/LocalSavedStateInterface.h"
 #include "watchman/watchman.h"
 #if HAVE_MANIFOLD

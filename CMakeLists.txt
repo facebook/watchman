@@ -603,6 +603,7 @@ watchman/Clock.cpp
 watchman/CommandRegistry.cpp
 watchman/ContentHash.cpp
 watchman/CookieSync.cpp
+watchman/Errors.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
 watchman/FlagMap.cpp
@@ -620,7 +621,6 @@ watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/checksock.cpp
 watchman/clientmode.cpp
-watchman/error_category.cpp
 watchman/fstype.cpp
 watchman/groups.cpp
 # hash.cpp (in libhash)

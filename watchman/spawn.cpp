@@ -3,6 +3,7 @@
 
 #include <folly/String.h>
 #include <memory>
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_system.h"
 

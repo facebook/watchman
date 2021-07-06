@@ -16,6 +16,7 @@
 #include <thread>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman/ChildProcess.h"
+#include "watchman/Errors.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/scm/SCM.h"
@@ -23,7 +24,6 @@
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
 
 using apache::thrift::TApplicationException;
 using facebook::eden::EdenError;

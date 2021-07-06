@@ -1,6 +1,6 @@
 #include "watchman/LocalFileResult.h"
 #include "ContentHash.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/Errors.h"
 
 using folly::Optional;
 

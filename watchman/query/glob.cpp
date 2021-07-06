@@ -3,11 +3,13 @@
 
 #include <folly/ScopeGuard.h>
 #include <memory>
+#include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman.h"
 
 using std::make_unique;
+using watchman::QueryParseError;
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes

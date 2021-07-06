@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "QueryableView.h"
+#include "watchman/Errors.h"
 
 namespace watchman {
 QueryableView::~QueryableView() {}

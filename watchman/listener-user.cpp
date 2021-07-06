@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include <folly/ScopeGuard.h>
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 // Functions relating to the per-user service

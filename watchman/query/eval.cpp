@@ -4,6 +4,7 @@
 #include "watchman/watchman.h"
 
 #include <folly/ScopeGuard.h>
+#include "watchman/Errors.h"
 #include "watchman/LocalFileResult.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 #include "watchman/scm/SCM.h"

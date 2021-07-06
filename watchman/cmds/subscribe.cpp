@@ -1,9 +1,9 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/MapUtil.h"
 #include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
 
 using namespace watchman;
 

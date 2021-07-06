@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "LocalSavedStateInterface.h"
+#include "watchman/Errors.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_cmd.h"

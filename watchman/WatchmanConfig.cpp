@@ -4,8 +4,8 @@
 #include "watchman/WatchmanConfig.h"
 #include <folly/Synchronized.h>
 #include <optional>
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
 
 using namespace watchman;
 
