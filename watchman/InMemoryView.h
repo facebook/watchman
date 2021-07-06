@@ -13,11 +13,11 @@
 #include "watchman/RingBuffer.h"
 #include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/watchman_opendir.h"
 #include "watchman/watchman_perf.h"
+#include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
-#include "watchman_opendir.h"
-#include "watchman_query.h"
 
 struct watchman_client;
 

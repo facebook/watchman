@@ -2,7 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include <system_error>
-#include "watchman/watchman.h"
 #ifndef _WIN32
 #include <dirent.h>
 #endif
@@ -13,6 +12,10 @@
 #endif
 #include <folly/String.h>
 #include "watchman/FileDescriptor.h"
+#include "watchman/FileSystem.h"
+#include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/watchman_opendir.h"
 
 using namespace watchman;
 using watchman::FileDescriptor;
