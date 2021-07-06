@@ -53,7 +53,7 @@ bool w_is_stopping();
 
 void w_request_shutdown();
 
-#include "watchman_time.h"
+#include "watchman/watchman_time.h"
 
 extern std::string watchman_tmp_dir;
 extern std::string watchman_state_file;
