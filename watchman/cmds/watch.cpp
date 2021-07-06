@@ -32,6 +32,13 @@ void w_cmd_realpath_root(json_ref& args) {
 }
 W_CAP_REG("clock-sync-timeout")
 
+/* Add the current clock value to the response */
+static void annotate_with_clock(
+    const std::shared_ptr<watchman_root>& root,
+    json_ref& resp) {
+  resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
+}
+
 /* clock /root [options]
  * Returns the current clock value for a watched root
  * If the options contain a sync_timeout, we ensure that the repo

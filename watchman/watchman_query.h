@@ -31,18 +31,7 @@ struct w_query_field_renderer {
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
 using watchman_root = struct watchman_root;
 
-struct w_query_since {
-  bool is_timestamp;
-  union {
-    time_t timestamp;
-    struct {
-      bool is_fresh_instance;
-      uint32_t ticks;
-    } clock;
-  };
-
-  w_query_since() : is_timestamp(false), clock{true, 0} {}
-};
+using w_query_since = watchman::QuerySince;
 
 // A View-independent way of accessing file properties in the
 // query engine.  A FileResult is not intended to be accessed
@@ -209,7 +198,7 @@ struct w_query_ctx {
   std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
   w_string wholename;
-  struct w_query_since since;
+  w_query_since since;
   // root number, ticks at start of query execution
   ClockSpec clockAtStartOfQuery;
   uint32_t lastAgeOutTickValueAtStartOfQuery;

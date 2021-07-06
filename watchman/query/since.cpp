@@ -5,6 +5,8 @@
 
 #include <memory>
 
+using namespace watchman;
+
 enum since_what { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
 
 static struct {
