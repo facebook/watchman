@@ -115,16 +115,6 @@ const std::string& get_named_pipe_sock_path();
 const struct group* w_get_group(const char* group_name);
 #endif // ndef WIN32
 
-struct flag_map {
-  uint32_t value;
-  const char* label;
-};
-void w_expand_flags(
-    const struct flag_map* fmap,
-    uint32_t flags,
-    char* buf,
-    size_t len);
-
 #endif
 
 /* vim:ts=2:sw=2:et:

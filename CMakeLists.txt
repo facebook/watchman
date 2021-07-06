@@ -543,12 +543,12 @@ list(APPEND testsupport_sources
 watchman/ChildProcess.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
+watchman/FlagMap.cpp
 watchman/PendingCollection.cpp
 watchman/Pipe.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/expflags.cpp
 watchman/ignore.cpp
 watchman/opendir.cpp
 watchman/time.cpp
@@ -605,6 +605,7 @@ watchman/ContentHash.cpp
 watchman/CookieSync.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
+watchman/FlagMap.cpp
 watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/PendingCollection.cpp
@@ -620,7 +621,6 @@ watchman/bser.cpp
 watchman/checksock.cpp
 watchman/clientmode.cpp
 watchman/error_category.cpp
-watchman/expflags.cpp
 watchman/fstype.cpp
 watchman/groups.cpp
 # hash.cpp (in libhash)

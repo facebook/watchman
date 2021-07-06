@@ -5,6 +5,7 @@
 #include <folly/Synchronized.h>
 #include <atomic>
 #include "watchman/FileDescriptor.h"
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
 #include "watchman/RingBuffer.h"

@@ -3,6 +3,7 @@
 
 #include "watchman/PendingCollection.h"
 #include <folly/Synchronized.h>
+#include "watchman/FlagMap.h"
 #include "watchman/watchman.h"
 
 using namespace watchman;

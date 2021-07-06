@@ -1,12 +1,10 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/FlagMap.h"
+#include <string.h>
+#include <algorithm>
 
-/* Given a flag map in `fmap`, and a set of flags in `flags`,
- * expand the flag bits that are set in `flags` into the corresponding
- * labels in `fmap` and print the result into the caller provided
- * buffer `buf` of size `len` bytes. */
 void w_expand_flags(
     const struct flag_map* fmap,
     uint32_t flags,
