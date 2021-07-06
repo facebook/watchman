@@ -2,8 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-#include "FileInformation.h"
 #include "watchman/Clock.h"
+#include "watchman/FileInformation.h"
+#include "watchman/watchman_dir.h"
 
 struct watchman_file {
   /* the parent dir */

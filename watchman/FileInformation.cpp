@@ -1,7 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "FileInformation.h"
-#include "watchman_time.h"
+#include "watchman/FileInformation.h"
+#include "watchman/watchman_time.h"
 
 namespace watchman {
 

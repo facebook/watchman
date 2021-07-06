@@ -17,8 +17,8 @@ struct watchman_dir;
 struct watchman_root;
 struct watchman_trigger_command;
 
-#include "watchman_dir.h"
-#include "watchman_file.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 #include "watchman_opendir.h"
 
 #define WATCHMAN_IO_BUF_SIZE 1048576
