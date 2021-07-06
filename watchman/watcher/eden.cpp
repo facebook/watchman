@@ -17,6 +17,7 @@
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman/ChildProcess.h"
 #include "watchman/Errors.h"
+#include "watchman/FSDetect.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/scm/SCM.h"

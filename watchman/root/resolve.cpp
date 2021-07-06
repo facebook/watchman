@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/Errors.h"
+#include "watchman/FSDetect.h"
 #include "watchman/FileSystem.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watchman.h"

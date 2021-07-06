@@ -237,7 +237,3 @@ void handle_open_errno(
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err);
-
-inline bool is_edenfs_fs_type(w_string_piece fs_type) {
-  return fs_type == "edenfs" || fs_type.startsWith("edenfs:");
-}
