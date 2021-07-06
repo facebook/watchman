@@ -2,10 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/WatchmanConfig.h"
+#include <folly/ExceptionString.h>
 #include <folly/Synchronized.h>
 #include <optional>
 #include "watchman/Errors.h"
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
 
 using namespace watchman;
 
