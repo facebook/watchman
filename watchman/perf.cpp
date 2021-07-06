@@ -6,9 +6,12 @@
 #include <thread>
 #include "watchman/ChildProcess.h"
 #include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_perf.h"
+#include "watchman/watchman_root.h"
 #include "watchman/watchman_system.h"
+#include "watchman/watchman_time.h"
 
 namespace watchman {
 namespace {

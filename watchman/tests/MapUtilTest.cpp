@@ -4,7 +4,8 @@
 #include "watchman/MapUtil.h"
 #include <folly/portability/GTest.h>
 #include <string>
-#include "watchman/watchman.h"
+#include <unordered_map>
+#include <unordered_set>
 #include "watchman/watchman_string.h"
 
 using watchman::mapContainsAny;
