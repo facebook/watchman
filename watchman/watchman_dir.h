@@ -2,6 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <unordered_map>
+#include "watchman/watchman_string.h"
+
+struct watchman_file;
 
 struct watchman_dir {
   /* the name of this dir, relative to its parent */

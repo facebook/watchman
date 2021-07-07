@@ -141,4 +141,13 @@ struct FileInformation {
   // files that were deleted between two revisions.
   static FileInformation makeDeletedFileInformation();
 };
+
 } // namespace watchman
+
+#ifndef _WIN32
+static inline bool w_path_exists(const char* path) {
+  return access(path, F_OK) == 0;
+}
+#else
+bool w_path_exists(const char* path);
+#endif

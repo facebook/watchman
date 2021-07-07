@@ -1,7 +1,10 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "LocalSavedStateInterface.h"
+#include "watchman/saved_state/LocalSavedStateInterface.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_cmd.h"

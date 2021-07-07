@@ -6,6 +6,7 @@
 
 #include <unordered_set>
 #include "watchman/thirdparty/libart/src/art.h"
+#include "watchman/watchman_string.h"
 
 #ifdef __cplusplus
 extern "C" {

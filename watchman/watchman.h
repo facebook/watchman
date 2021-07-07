@@ -9,7 +9,6 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman_hash.h"
-#include "watchman_ignore.h"
 #include "watchman_stream.h"
 
 struct watchman_file;
@@ -17,9 +16,8 @@ struct watchman_dir;
 struct watchman_root;
 struct watchman_trigger_command;
 
-#include "watchman_dir.h"
-#include "watchman_file.h"
-#include "watchman_opendir.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 
 #define WATCHMAN_IO_BUF_SIZE 1048576
 #define WATCHMAN_BATCH_LIMIT (16 * 1024)
@@ -33,27 +31,13 @@ struct watchman_trigger_command;
 #include "watchman/watchman_cmd.h"
 #include "watchman_trigger.h"
 
-// Returns the name of the filesystem for the specified path
-w_string w_fstype(const char* path);
-w_string find_fstype_in_linux_proc_mounts(
-    folly::StringPiece path,
-    folly::StringPiece procMountsData);
-
 extern folly::Synchronized<std::string> poisoned_reason;
-
-#ifndef _WIN32
-static inline bool w_path_exists(const char* path) {
-  return access(path, F_OK) == 0;
-}
-#else
-bool w_path_exists(const char* path);
-#endif
 
 bool w_is_stopping();
 
 void w_request_shutdown();
 
-#include "watchman_time.h"
+#include "watchman/watchman_time.h"
 
 extern std::string watchman_tmp_dir;
 extern std::string watchman_state_file;
@@ -114,16 +98,6 @@ const std::string& get_named_pipe_sock_path();
  */
 const struct group* w_get_group(const char* group_name);
 #endif // ndef WIN32
-
-struct flag_map {
-  uint32_t value;
-  const char* label;
-};
-void w_expand_flags(
-    const struct flag_map* fmap,
-    uint32_t flags,
-    char* buf,
-    size_t len);
 
 #endif
 

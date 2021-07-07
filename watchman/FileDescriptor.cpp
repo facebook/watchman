@@ -2,20 +2,22 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/FileDescriptor.h"
+#include <folly/ScopeGuard.h>
+#include <folly/String.h>
+#include <folly/system/Pid.h>
+#include <system_error>
 #include "watchman/FileSystem.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_string.h"
+
 #ifdef __APPLE__
 #include <sys/attr.h> // @manual
 #include <sys/utsname.h> // @manual
 #include <sys/vnode.h> // @manual
 #endif
-#include <system_error>
+
 #ifdef _WIN32
 #include "WinIoCtl.h" // @manual
 #endif
-#include <folly/ScopeGuard.h>
-#include <folly/String.h>
-#include <folly/system/Pid.h>
 
 #if defined(_WIN32) || defined(O_PATH)
 #define CAN_OPEN_SYMLINKS 1

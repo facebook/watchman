@@ -543,12 +543,12 @@ list(APPEND testsupport_sources
 watchman/ChildProcess.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
+watchman/FlagMap.cpp
 watchman/PendingCollection.cpp
 watchman/Pipe.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/expflags.cpp
 watchman/ignore.cpp
 watchman/opendir.cpp
 watchman/time.cpp
@@ -603,8 +603,11 @@ watchman/Clock.cpp
 watchman/CommandRegistry.cpp
 watchman/ContentHash.cpp
 watchman/CookieSync.cpp
+watchman/Errors.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
+watchman/FlagMap.cpp
+watchman/FSDetect.cpp
 watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/PendingCollection.cpp
@@ -619,9 +622,6 @@ watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/checksock.cpp
 watchman/clientmode.cpp
-watchman/error_category.cpp
-watchman/expflags.cpp
-watchman/fstype.cpp
 watchman/groups.cpp
 # hash.cpp (in libhash)
 watchman/ignore.cpp
@@ -686,6 +686,7 @@ watchman/root/vcs.cpp
 # root/warnerr.cpp (in liberr)
 watchman/root/watchlist.cpp
 watchman/saved_state/LocalSavedStateInterface.cpp
+watchman/saved_state/SavedStateFactory.cpp
 watchman/saved_state/SavedStateInterface.cpp
 watchman/scm/Mercurial.cpp
 watchman/scm/SCM.cpp

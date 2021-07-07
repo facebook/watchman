@@ -4,14 +4,16 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <atomic>
+#include "watchman/Errors.h"
+#include "watchman/FSDetect.h"
 #include "watchman/FileDescriptor.h"
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
 
 #ifdef HAVE_INOTIFY_INIT
 

@@ -3,10 +3,10 @@
 
 #include <folly/ScopeGuard.h>
 #include <memory>
+#include "watchman/Errors.h"
 #include "watchman/FileSystem.h"
 #include "watchman/LogConfig.h"
 #include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
 #include "watchman/watchman_system.h"
 
 using watchman::readSymbolicLink;

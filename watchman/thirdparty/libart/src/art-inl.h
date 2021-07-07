@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <new>
 #include <cassert>
+#include <string.h>
 
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)

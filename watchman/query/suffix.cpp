@@ -1,9 +1,12 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 #include <memory>
+
+using namespace watchman;
 
 class SuffixExpr : public QueryExpr {
   std::unordered_set<w_string> suffixSet_;

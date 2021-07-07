@@ -1,6 +1,8 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+
+#include <folly/Conv.h>
 #include <string>
 #include <system_error>
 
@@ -88,6 +90,42 @@ class inotify_category : public std::error_category {
 
 // Obtain a ref to the above error category
 const std::error_category& inotify_category();
+
+/**
+ * Represents an error parsing a query.
+ */
+class QueryParseError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit QueryParseError(Args&&... args)
+      : std::runtime_error(folly::to<std::string>(
+            "failed to parse query: ",
+            std::forward<Args>(args)...)) {}
+};
+
+/**
+ * Represents an error executing a query.
+ */
+class QueryExecError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit QueryExecError(Args&&... args)
+      : std::runtime_error(folly::to<std::string>(
+            "query failed: ",
+            std::forward<Args>(args)...)) {}
+};
+
+/**
+ * Represents an error resolving a root.
+ */
+class RootResolveError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit RootResolveError(Args&&... args)
+      : std::runtime_error(folly::to<std::string>(
+            "RootResolveError: ",
+            std::forward<Args>(args)...)) {}
+};
 
 } // namespace watchman
 

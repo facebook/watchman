@@ -1,11 +1,13 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 #include <memory>
 
 using watchman::DType;
+using watchman::QueryParseError;
 
 class TypeExpr : public QueryExpr {
   char arg;

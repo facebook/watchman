@@ -31,18 +31,7 @@ struct w_query_field_renderer {
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
 using watchman_root = struct watchman_root;
 
-struct w_query_since {
-  bool is_timestamp;
-  union {
-    time_t timestamp;
-    struct {
-      bool is_fresh_instance;
-      uint32_t ticks;
-    } clock;
-  };
-
-  w_query_since() : is_timestamp(false), clock{true, 0} {}
-};
+using w_query_since = watchman::QuerySince;
 
 // A View-independent way of accessing file properties in the
 // query engine.  A FileResult is not intended to be accessed
@@ -209,7 +198,7 @@ struct w_query_ctx {
   std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
   w_string wholename;
-  struct w_query_since since;
+  w_query_since since;
   // root number, ticks at start of query execution
   ClockSpec clockAtStartOfQuery;
   uint32_t lastAgeOutTickValueAtStartOfQuery;
@@ -333,36 +322,6 @@ class QueryExpr {
 };
 
 struct watchman_glob_tree;
-
-// represents an error parsing a query
-class QueryParseError : public std::runtime_error {
- public:
-  template <typename... Args>
-  explicit QueryParseError(Args&&... args)
-      : std::runtime_error(folly::to<std::string>(
-            "failed to parse query: ",
-            std::forward<Args>(args)...)) {}
-};
-
-// represents an error executing a query
-class QueryExecError : public std::runtime_error {
- public:
-  template <typename... Args>
-  explicit QueryExecError(Args&&... args)
-      : std::runtime_error(folly::to<std::string>(
-            "query failed: ",
-            std::forward<Args>(args)...)) {}
-};
-
-// represents an error resolving the root
-class RootResolveError : public std::runtime_error {
- public:
-  template <typename... Args>
-  explicit RootResolveError(Args&&... args)
-      : std::runtime_error(folly::to<std::string>(
-            "RootResolveError: ",
-            std::forward<Args>(args)...)) {}
-};
 
 struct w_query {
   watchman::CaseSensitivity case_sensitive{

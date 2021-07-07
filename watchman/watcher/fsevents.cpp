@@ -8,6 +8,7 @@
 #include <iterator>
 #include <mutex>
 #include <vector>
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Pipe.h"

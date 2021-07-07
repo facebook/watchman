@@ -1,9 +1,9 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-#include "FileInformation.h"
-#include "Result.h"
 #include "watchman/FileDescriptor.h"
+#include "watchman/FileInformation.h"
+#include "watchman/Result.h"
 
 /** This header defines platform independent helper functions for
  * operating on the filesystem at a low level.

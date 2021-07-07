@@ -3,9 +3,8 @@
 #pragma once
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
+#include "watchman/Cookie.h"
 #include "watchman/watchman_string.h"
-
-#define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 
 namespace watchman {
 
@@ -52,18 +51,6 @@ class CookieSync {
   /* Cause all pending cookie sync promises to complete immediately
    * with a CookieSyncAborted exception */
   void abortAllCookies();
-
-  // We need to guarantee that we never collapse a cookie notification
-  // out of the pending list, because we absolutely must observe it coming
-  // in via the kernel notification mechanism in order for synchronization
-  // to be correct.
-  // Since we don't have a watchman_root available, we can't tell what the
-  // precise cookie prefix is for the current pending list here, so
-  // we do a substring match.  Not the most elegant thing in the world.
-  static inline bool isPossiblyACookie(const w_string_t* path) {
-    return w_string_contains_cstr_len(
-        path, WATCHMAN_COOKIE_PREFIX, sizeof(WATCHMAN_COOKIE_PREFIX) - 1);
-  }
 
   // Check if this path matches an actual cookie.
   bool isCookiePrefix(const w_string& path);

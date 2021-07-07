@@ -11,9 +11,9 @@
 #include <folly/experimental/bser/Bser.h>
 
 #ifdef _WIN32
-#include <eden/fs/utils/SpawnedProcess.h>
+#include <eden/fs/utils/SpawnedProcess.h> // @manual
 #else
-#include <folly/Subprocess.h>
+#include <folly/Subprocess.h> // @manual
 #endif
 
 namespace watchman {

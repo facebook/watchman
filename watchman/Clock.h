@@ -10,7 +10,20 @@ struct w_clock_t {
   time_t timestamp;
 };
 
-struct w_query_since;
+namespace watchman {
+
+struct QuerySince {
+  bool is_timestamp;
+  union {
+    time_t timestamp;
+    struct {
+      bool is_fresh_instance;
+      uint32_t ticks;
+    } clock;
+  };
+
+  QuerySince() : is_timestamp(false), clock{true, 0} {}
+};
 
 struct ClockPosition {
   uint32_t rootNumber{0};
@@ -61,7 +74,7 @@ struct ClockSpec {
    * the effective since parameter.
    * If cursorMap is passed in, it MUST be unlocked, as this method
    * will acquire a lock to evaluate a named cursor. */
-  w_query_since evaluate(
+  QuerySince evaluate(
       const ClockPosition& position,
       const uint32_t lastAgeOutTick,
       folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap =
@@ -83,3 +96,10 @@ struct ClockSpec {
    * constructor of this class */
   json_ref toJson() const;
 };
+
+} // namespace watchman
+
+// Legacy exports into global namespace.
+// TODO: remove these.
+using w_query_since = watchman::QuerySince;
+using ClockSpec = watchman::ClockSpec;

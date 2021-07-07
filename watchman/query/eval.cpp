@@ -4,7 +4,9 @@
 #include "watchman/watchman.h"
 
 #include <folly/ScopeGuard.h>
+#include "watchman/Errors.h"
 #include "watchman/LocalFileResult.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 #include "watchman/scm/SCM.h"
 
@@ -423,7 +425,7 @@ w_query_res w_query_execute(
       if (query->since_spec->hasSavedStateParams()) {
         // Find the most recent saved state to the new mergebase and return
         // changed files since that saved state, if available.
-        auto savedStateInterface = SavedStateInterface::getInterface(
+        auto savedStateInterface = getInterface(
             query->since_spec->savedStateStorageType,
             query->since_spec->savedStateConfig,
             scm,

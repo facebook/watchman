@@ -1,10 +1,10 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman/Pipe.h"
-#include "watchman/watchman.h"
 #ifdef _WIN32
 #include <event2/util.h> // @manual
 #endif
+#include <folly/Exception.h>
 #include <folly/String.h>
 #include <system_error>
 

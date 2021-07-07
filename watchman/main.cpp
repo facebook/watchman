@@ -12,11 +12,12 @@
 #include <stdio.h>
 #include <variant>
 
-#include "ProcessLock.h"
 #include "watchman/ChildProcess.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
+#include "watchman/ProcessLock.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/watchman_opendir.h"
 
 #ifdef _WIN32
 #include <Lmcons.h> // @manual

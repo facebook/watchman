@@ -1,9 +1,9 @@
 /* Copyright 2020-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
+#include "watchman/FSDetect.h"
 #include <folly/portability/GTest.h>
 #include <string>
-#include "watchman/watchman.h"
 
 TEST(FSType, fstype) {
   auto mount_data =

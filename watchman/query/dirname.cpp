@@ -1,11 +1,12 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 
 #include <memory>
 
-using watchman::CaseSensitivity;
+using namespace watchman;
 
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';

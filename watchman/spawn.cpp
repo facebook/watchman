@@ -3,6 +3,7 @@
 
 #include <folly/String.h>
 #include <memory>
+#include "watchman/Errors.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_system.h"
 
@@ -89,7 +90,7 @@ static void spawn_command(
     const std::shared_ptr<watchman_root>& root,
     struct watchman_trigger_command* cmd,
     w_query_res* res,
-    struct ClockSpec* since_spec) {
+    ClockSpec* since_spec) {
   bool file_overflow = false;
 
   size_t arg_max = ChildProcess::getArgMax();

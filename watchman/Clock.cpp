@@ -1,10 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Clock.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <memory>
-#include "watchman/watchman.h"
 
 using namespace watchman;
 
@@ -135,12 +135,12 @@ ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}
 ClockSpec::ClockSpec(const ClockPosition& position)
     : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
 
-w_query_since ClockSpec::evaluate(
+QuerySince ClockSpec::evaluate(
     const ClockPosition& position,
     const uint32_t lastAgeOutTick,
     folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
     const {
-  w_query_since since;
+  QuerySince since;
 
   switch (tag) {
     case w_cs_timestamp:
@@ -236,13 +236,6 @@ w_string ClockPosition::toClockString() const {
     throw std::runtime_error("clock is too big for clockbuf");
   }
   return w_string(clockbuf, W_STRING_UNICODE);
-}
-
-/* Add the current clock value to the response */
-void annotate_with_clock(
-    const std::shared_ptr<watchman_root>& root,
-    json_ref& resp) {
-  resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
 }
 
 json_ref ClockSpec::toJson() const {

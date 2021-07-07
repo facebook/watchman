@@ -1,7 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 
 void watchman_dir::Deleter::operator()(watchman_file* file) const {
   free_file_node(file);

@@ -6,6 +6,7 @@
 #include <folly/Synchronized.h>
 #include <array>
 #include "watchman/FileDescriptor.h"
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
 #include "watchman/watcher/Watcher.h"

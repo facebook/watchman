@@ -16,8 +16,7 @@ CookieSync::CookieSync(const w_string& dir) {
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname) - 1] = '\0';
 
-  auto prefix =
-      w_string::build(WATCHMAN_COOKIE_PREFIX, hostname, "-", ::getpid(), "-");
+  auto prefix = w_string::build(kCookiePrefix, hostname, "-", ::getpid(), "-");
 
   auto guard = cookieDirs_.wlock();
   guard->cookiePrefix_ = prefix;
