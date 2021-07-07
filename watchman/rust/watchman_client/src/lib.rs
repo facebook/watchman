@@ -209,7 +209,7 @@ impl Connector {
     /// If the connector was configured to perform discovery (which is
     /// the default configuration), then this will attempt to start
     /// the watchman server.
-    pub async fn connect(self) -> Result<Client, Error> {
+    pub async fn connect(&self) -> Result<Client, Error> {
         let sock_path = self.resolve_unix_domain_path().await?;
 
         #[cfg(unix)]
