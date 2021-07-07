@@ -1,24 +1,19 @@
 #![cfg(windows)]
 use crate::Error;
-use std::io::prelude::*;
 use std::io::Error as IoError;
 use std::os::windows::ffi::OsStrExt;
-use std::os::windows::io::FromRawHandle;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::io::PollEvented;
-use tokio::prelude::*;
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::net::windows::named_pipe::NamedPipeClient;
 use winapi::um::fileapi::*;
 use winapi::um::winbase::*;
 use winapi::um::winnt::*;
 
-/// Spiritually similar in intent to the tokio-named-pipes crate
-/// equivalent, but this implementation works with pipe clients
-/// rather than servers, and works with the new async/await
-/// futures impl
+/// Wrapper around a tokio [`NamedPipeClient`]
 pub struct NamedPipe {
-    io: PollEvented<mio_named_pipes::NamedPipe>,
+    io: NamedPipeClient,
 }
 
 impl NamedPipe {
@@ -48,8 +43,7 @@ impl NamedPipe {
             });
         }
 
-        let pipe = unsafe { mio_named_pipes::NamedPipe::from_raw_handle(handle) };
-        let io = PollEvented::new(pipe)?;
+        let io = unsafe { NamedPipeClient::from_raw_handle(handle)? };
         Ok(Self { io })
     }
 }
@@ -58,21 +52,9 @@ impl AsyncRead for NamedPipe {
     fn poll_read(
         self: Pin<&mut Self>,
         ctx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<Result<usize, IoError>> {
-        match self.io.poll_read_ready(ctx, mio::Ready::readable()) {
-            Poll::Ready(res) => res?,
-            Poll::Pending => return Poll::Pending,
-        };
-
-        match self.io.get_ref().read(buf) {
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                self.io.clear_read_ready(ctx, mio::Ready::readable())?;
-                Poll::Pending
-            }
-
-            x => Poll::Ready(x),
-        }
+        buf: &mut ReadBuf,
+    ) -> Poll<Result<(), IoError>> {
+        AsyncRead::poll_read(Pin::new(&mut self.get_mut().io), ctx, buf)
     }
 }
 
@@ -82,27 +64,15 @@ impl AsyncWrite for NamedPipe {
         ctx: &mut Context,
         buf: &[u8],
     ) -> Poll<Result<usize, IoError>> {
-        match self.io.poll_write_ready(ctx) {
-            Poll::Ready(res) => res?,
-            Poll::Pending => return Poll::Pending,
-        };
-
-        match self.io.get_ref().write(buf) {
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                self.io.clear_write_ready(ctx)?;
-                Poll::Pending
-            }
-
-            x => Poll::Ready(x),
-        }
+        AsyncWrite::poll_write(Pin::new(&mut self.get_mut().io), ctx, buf)
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Context) -> Poll<Result<(), IoError>> {
-        Poll::Ready(Ok(()))
+    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Result<(), IoError>> {
+        AsyncWrite::poll_flush(Pin::new(&mut self.get_mut().io), ctx)
     }
 
-    fn poll_shutdown(self: Pin<&mut Self>, _ctx: &mut Context) -> Poll<Result<(), IoError>> {
-        Poll::Ready(Ok(()))
+    fn poll_shutdown(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Result<(), IoError>> {
+        AsyncWrite::poll_shutdown(Pin::new(&mut self.get_mut().io), ctx)
     }
 }
 
