@@ -244,7 +244,7 @@ impl Connector {
 }
 
 /// Represents a canonical path in the filesystem.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CanonicalPath(PathBuf);
 
 impl CanonicalPath {
