@@ -26,6 +26,8 @@
 //!   Ok(())
 //! }
 //! ```
+#![deny(warnings)]
+
 pub mod expr;
 pub mod fields;
 mod named_pipe;
@@ -64,9 +66,22 @@ pub mod prelude {
 use prelude::*;
 
 #[derive(Error, Debug)]
+pub enum ConnectionLost {
+    #[error("Client task exited")]
+    ClientTaskExited,
+
+    #[error("Client task failed: {0}")]
+    Error(String),
+}
+
+#[derive(Error, Debug)]
 pub enum Error {
-    #[error("IO Error: {0}")]
-    Tokio(#[from] tokio::io::Error),
+    #[error("Failed to connect to Watchman: {0}")]
+    ConnectionError(tokio::io::Error),
+
+    #[error("Lost connection to watchman")]
+    ConnectionLost(#[from] ConnectionLost),
+
     #[error(
         "While invoking the {watchman_path} CLI to discover the server connection details: {reason}, stderr=`{stderr}`"
     )]
@@ -85,8 +100,6 @@ pub enum Error {
         command: String,
         response: String,
     },
-    #[error("Unexpected EOF from server")]
-    Eof,
 
     #[error("Deserialization error (data: {data:x?})")]
     Deserialize {
@@ -107,15 +120,28 @@ pub enum Error {
         #[source]
         source: anyhow::Error,
     },
-
-    #[error("{0}")]
-    Generic(String),
 }
 
-impl Error {
-    fn generic<T: std::fmt::Display>(error: T) -> Self {
-        Self::Generic(format!("{}", error))
-    }
+#[derive(Error, Debug)]
+enum TaskError {
+    #[error("IO Error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Task is shutting down")]
+    Shutdown,
+
+    #[error("EOF on Watchman socket")]
+    Eof,
+
+    #[error("Received a unilateral PDU from the server")]
+    UnilateralPdu,
+
+    #[error("Deserialization error (data: {data:x?})")]
+    Deserialize {
+        #[source]
+        source: anyhow::Error,
+        data: Vec<u8>,
+    },
 }
 
 /// The Connector defines how to connect to the watchman server.
@@ -216,11 +242,12 @@ impl Connector {
         let sock_path = self.resolve_unix_domain_path().await?;
 
         #[cfg(unix)]
-        let stream: Box<dyn ReadWriteStream> = Box::new(UnixStream::connect(sock_path).await?);
+        let stream = UnixStream::connect(sock_path).await;
 
         #[cfg(windows)]
-        let stream: Box<dyn ReadWriteStream> =
-            Box::new(named_pipe::NamedPipe::connect(sock_path).await?);
+        let stream = named_pipe::NamedPipe::connect(sock_path).await;
+
+        let stream: Box<dyn ReadWriteStream> = Box::new(stream.map_err(Error::ConnectionError)?);
 
         let (reader, writer) = tokio::io::split(stream);
 
@@ -367,7 +394,7 @@ struct BserSplitter;
 
 impl Decoder for BserSplitter {
     type Item = Bytes;
-    type Error = Error;
+    type Error = TaskError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let mut bunser = Bunser::new(SliceRead::new(buf.as_ref()));
@@ -388,7 +415,7 @@ impl Decoder for BserSplitter {
 
                 // We should have succeded in reading some data here, but we didn't. Return an
                 // error.
-                return Err(Error::Deserialize {
+                return Err(TaskError::Deserialize {
                     source: source.into(),
                     data: buf.to_vec(),
                 });
@@ -427,12 +454,12 @@ struct ClientTask {
 
 impl Drop for ClientTask {
     fn drop(&mut self) {
-        self.fail_all(&Error::generic("the client task terminated"));
+        self.fail_all(&TaskError::Shutdown)
     }
 }
 
 impl ClientTask {
-    async fn run(&mut self) -> Result<(), Error> {
+    async fn run(&mut self) -> Result<(), TaskError> {
         // process things, and if we encounter an error, ensure that
         // we fail all outstanding requests
         match self.run_loop().await {
@@ -444,13 +471,13 @@ impl ClientTask {
         }
     }
 
-    async fn run_loop(&mut self) -> Result<(), Error> {
+    async fn run_loop(&mut self) -> Result<(), TaskError> {
         loop {
             futures::select_biased! {
                 pdu = self.reader.next().fuse() => {
                     match pdu {
                         Some(pdu) => self.process_pdu(pdu?).await?,
-                        None => return Err(Error::Eof),
+                        None => return Err(TaskError::Eof),
                     }
                 }
                 task = self.request_rx.recv().fuse() => {
@@ -475,7 +502,7 @@ impl ClientTask {
     /// Generate an error for each queued request.
     /// This is called in situations where the state of the connection
     /// to the serve is non-recoverable.
-    fn fail_all(&mut self, err: &Error) {
+    fn fail_all(&mut self, err: &TaskError) {
         while let Some(request) = self.request_queue.pop_front() {
             request.respond(Err(err.to_string()));
         }
@@ -483,7 +510,7 @@ impl ClientTask {
 
     /// If we're not waiting for the response to a request,
     /// then send the next one!
-    async fn send_next_request(&mut self) -> Result<(), Error> {
+    async fn send_next_request(&mut self) -> Result<(), TaskError> {
         if !self.waiting_response && !self.request_queue.is_empty() {
             match self
                 .writer
@@ -503,14 +530,14 @@ impl ClientTask {
 
     /// Queue up a new request from the client code, and then
     /// check to see if we can send a queued request to the server.
-    async fn queue_request(&mut self, request: SendRequest) -> Result<(), Error> {
+    async fn queue_request(&mut self, request: SendRequest) -> Result<(), TaskError> {
         self.request_queue.push_back(request);
         self.send_next_request().await?;
         Ok(())
     }
 
     /// Dispatch a PDU that we just read to the appropriate client code.
-    async fn process_pdu(&mut self, pdu: Bytes) -> Result<(), Error> {
+    async fn process_pdu(&mut self, pdu: Bytes) -> Result<(), TaskError> {
         use serde::Deserialize;
         #[derive(Deserialize, Debug)]
         pub struct Unilateral {
@@ -537,7 +564,7 @@ impl ClientTask {
             request.respond(Ok(pdu));
         } else {
             // This should never happen as we're not doing any subscription stuff
-            return Err(Error::generic("received a unilateral PDU from the server"));
+            return Err(TaskError::UnilateralPdu);
         }
 
         self.send_next_request().await?;
@@ -590,10 +617,13 @@ impl ClientInner {
                 tx,
             }))
             .await
-            .map_err(Error::generic)?;
+            .map_err(|_| ConnectionLost::ClientTaskExited)?;
 
         // Step 3: wait for the client task to give us the response
-        let pdu_data = rx.await.map_err(Error::generic)?.map_err(Error::generic)?;
+        let pdu_data = rx
+            .await
+            .map_err(|_| ConnectionLost::ClientTaskExited)?
+            .map_err(ConnectionLost::Error)?;
 
         // Step 4: sniff for an error response in the deserialized data
         use serde::Deserialize;
@@ -704,7 +734,7 @@ where
             .responses
             .recv()
             .await
-            .ok_or_else(|| Error::generic("client was torn down"))?;
+            .ok_or(ConnectionLost::ClientTaskExited)?;
 
         let response: QueryResult<F> = bunser(&pdu)?;
 
@@ -920,7 +950,7 @@ impl Client {
                 .request_tx
                 .send(TaskItem::RegisterSubscription(name.clone(), tx))
                 .await
-                .map_err(Error::generic)?;
+                .map_err(|_| ConnectionLost::ClientTaskExited)?;
         }
 
         let subscription = Subscription::<F> {
@@ -1027,7 +1057,7 @@ mod tests {
             let reader = StreamReader::new(stream::iter(chunks));
 
             let decoded = FramedRead::new(reader, BserSplitter)
-                .map_err(Error::from)
+                .map_err(TaskError::from)
                 .and_then(|bytes| async move {
                     // We unwrap this since a) this is a test and b) serde_bser's errors aren't
                     // easily propagated into en error type like anyhow::Error without losing the
@@ -1080,5 +1110,6 @@ mod tests {
     fn test_bounds() {
         fn assert_bounds<T: std::error::Error + Sync + Send + 'static>() {}
         assert_bounds::<Error>();
+        assert_bounds::<TaskError>();
     }
 }
