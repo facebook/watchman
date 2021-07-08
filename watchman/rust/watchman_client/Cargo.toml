@@ -15,6 +15,7 @@ exclude = [
 structopt = "0.3"
 
 [dependencies]
+anyhow = "1.0"
 maplit = "1.0"
 futures = { version = "0.3.13", features = ["async-await", "compat"] }
 bytes = { version = "1.0", features = ["serde"] }

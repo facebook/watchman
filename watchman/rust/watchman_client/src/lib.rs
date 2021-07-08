@@ -88,21 +88,24 @@ pub enum Error {
     #[error("Unexpected EOF from server")]
     Eof,
 
-    #[error("{source} (data: {data:x?})")]
+    #[error("Deserialization error (data: {data:x?})")]
     Deserialize {
-        source: Box<dyn std::error::Error + Send + 'static>,
         data: Vec<u8>,
+        #[source]
+        source: anyhow::Error,
     },
 
-    #[error("{source}")]
+    #[error("Seriaization error")]
     Serialize {
-        source: Box<dyn std::error::Error + Send + 'static>,
+        #[source]
+        source: anyhow::Error,
     },
 
-    #[error("while attempting to connect to {endpoint}: {source}")]
+    #[error("Failed to connect to {endpoint}")]
     Connect {
         endpoint: PathBuf,
-        source: Box<dyn std::error::Error + Send + Sync>,
+        #[source]
+        source: anyhow::Error,
     },
 
     #[error("{0}")]
@@ -386,7 +389,7 @@ impl Decoder for BserSplitter {
                 // We should have succeded in reading some data here, but we didn't. Return an
                 // error.
                 return Err(Error::Deserialize {
-                    source: Box::new(source),
+                    source: source.into(),
                     data: buf.to_vec(),
                 });
             }
@@ -547,7 +550,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
-        source: Box::new(source),
+        source: source.into(),
         data: buf.to_vec(),
     })?;
     Ok(response)
@@ -575,7 +578,7 @@ impl ClientInner {
         let mut request_data = vec![];
         serde_bser::ser::serialize(&mut request_data, &request).map_err(|source| {
             Error::Serialize {
-                source: Box::new(source),
+                source: source.into(),
             }
         })?;
 
@@ -1071,5 +1074,11 @@ mod tests {
         bytes.extend_from_slice(&[0; 10]);
         let r1 = BserSplitter.decode(&mut bytes);
         assert!(r1.is_err());
+    }
+
+    #[test]
+    fn test_bounds() {
+        fn assert_bounds<T: std::error::Error + Sync + Send + 'static>() {}
+        assert_bounds::<Error>();
     }
 }
