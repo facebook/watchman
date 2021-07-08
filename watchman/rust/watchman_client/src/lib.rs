@@ -349,10 +349,8 @@ struct SendRequest {
 }
 
 impl SendRequest {
-    fn respond(self, result: Result<Bytes, String>) -> Result<(), Error> {
-        self.tx
-            .send(result)
-            .map_err(|_| Error::generic("requestor has dropped its receiver"))
+    fn respond(self, result: Result<Bytes, String>) {
+        let _ = self.tx.send(result);
     }
 }
 
@@ -476,7 +474,7 @@ impl ClientTask {
     /// to the serve is non-recoverable.
     fn fail_all(&mut self, err: &Error) {
         while let Some(request) = self.request_queue.pop_front() {
-            request.respond(Err(err.to_string())).ok();
+            request.respond(Err(err.to_string()));
         }
     }
 
@@ -533,7 +531,7 @@ impl ClientTask {
                 .expect("waiting_response is only true when request_queue is not empty");
             self.waiting_response = false;
 
-            request.respond(Ok(pdu))?;
+            request.respond(Ok(pdu));
         } else {
             // This should never happen as we're not doing any subscription stuff
             return Err(Error::generic("received a unilateral PDU from the server"));
