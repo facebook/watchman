@@ -45,7 +45,7 @@ fn is_cookie<T: AsRef<Path>>(name: T) -> bool {
 }
 
 impl AuditCmd {
-    pub(crate) async fn run(&self) -> crate::Result<()> {
+    pub(crate) async fn run(&self) -> anyhow::Result<()> {
         let client = Connector::new().connect().await?;
         let resolved = Arc::new(
             client
@@ -54,10 +54,10 @@ impl AuditCmd {
         );
 
         if resolved.watcher() == "eden" {
-            return Err(watchman_client::Error::Generic(format!(
+            return Err(anyhow::anyhow!(
                 "{} is an EdenFS mount - no need to audit",
                 resolved.project_root().display()
-            )));
+            ));
         }
 
         let config = client.get_config(&resolved).await?;
@@ -217,9 +217,7 @@ impl AuditCmd {
         let watchman_files = match result.files {
             Some(files) => files,
             None => {
-                return Err(watchman_client::Error::Generic(
-                    "No files set in result {}".into(),
-                ));
+                return Err(anyhow::anyhow!("No files set in result"));
             }
         };
 

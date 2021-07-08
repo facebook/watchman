@@ -2,9 +2,6 @@ use structopt::{clap::AppSettings, StructOpt};
 
 mod audit;
 
-/// I'd like to replace this with anyhow, but we need to replace error-chain's use in watchman-client first. https://github.com/rust-lang-nursery/error-chain/pull/241
-pub type Result<T> = std::result::Result<T, watchman_client::Error>;
-
 #[derive(StructOpt, Debug)]
 #[structopt(setting = AppSettings::DisableVersion,
     setting = AppSettings::VersionlessSubcommands)]
@@ -19,7 +16,7 @@ enum TopLevelSubcommand {
 }
 
 impl TopLevelSubcommand {
-    async fn run(&self) -> Result<()> {
+    async fn run(&self) -> anyhow::Result<()> {
         use TopLevelSubcommand::*;
         match self {
             Audit(cmd) => cmd.run().await,

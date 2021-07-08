@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+anyhow = "1.0"
 structopt = "0.3"
 watchman_client = { path = "../rust/watchman_client" }
 ahash = "0.3"
