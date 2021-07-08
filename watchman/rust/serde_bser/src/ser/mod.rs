@@ -230,7 +230,7 @@ where
         // maybe_put_int! doesn't work for u64 because it converts to i64
         // internally.
         if v > (i64::max_value() as u64) {
-            Err(ErrorKind::SerU64TooBig(v).into())
+            Err(Error::SerU64TooBig { v })
         } else {
             self.serialize_i64(v as i64)
         }
@@ -339,7 +339,7 @@ where
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         match len {
-            None => Err(ErrorKind::SerNeedSize("sequence").into()),
+            None => Err(Error::SerNeedSize { kind: "sequence" }),
             Some(len) => self.serialize_tuple(len),
         }
     }
@@ -382,7 +382,7 @@ where
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         match len {
-            None => Err(ErrorKind::SerNeedSize("map").into()),
+            None => Err(Error::SerNeedSize { kind: "map" }),
             Some(len) => self.serialize_struct("", len),
         }
     }

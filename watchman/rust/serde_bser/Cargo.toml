@@ -1,6 +1,6 @@
 [package]
 name = "serde_bser"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Rain <rain1@fb.com>", "Wez Furlong"]
 edition = "2018"
 repository = "https://github.com/facebook/watchman/"
@@ -9,9 +9,10 @@ license = "Apache-2.0"
 documentation = "https://docs.rs/serde_bser"
 
 [dependencies]
+anyhow = "1.0"
 byteorder = "1.0"
 bytes = "0.4"
-error-chain = "0.12"
+thiserror = "1.0"
 serde = { version = "1.0.102", features = ["derive"] }
 serde_bytes = "0.11"
 

@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 pub mod bytestring;
 pub mod de;
 mod errors;

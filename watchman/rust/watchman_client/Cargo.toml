@@ -19,7 +19,7 @@ maplit = "1.0"
 futures = { version = "0.3.13", features = ["async-await", "compat"] }
 bytes = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0.102", features = ["derive"] }
-serde_bser = { version = "0.2", path = "../serde_bser" }
+serde_bser = { version = "0.3", path = "../serde_bser" }
 thiserror = ">=1.0.6"
 tokio = { version = "1.5", features = ["full", "test-util"] }
 tokio-util = { version = "0.6", features = ["full"] }

@@ -1,9 +1,8 @@
 use std::io;
 use std::result;
 
-use crate::errors::*;
+use anyhow::{bail, Context as _};
 use byteorder::{ByteOrder, NativeEndian};
-use error_chain::bail;
 
 #[cfg(feature = "debug_bytes")]
 use std::fmt;
@@ -43,9 +42,9 @@ impl<'a> fmt::LowerHex for ByteBuf<'a> {
 
 pub trait DeRead<'de> {
     /// read next byte (if peeked byte not discarded return it)
-    fn next(&mut self) -> Result<u8>;
+    fn next(&mut self) -> anyhow::Result<u8>;
     /// peek next byte (peeked byte should come in next and next_bytes unless discarded)
-    fn peek(&mut self) -> Result<u8>;
+    fn peek(&mut self) -> anyhow::Result<u8>;
     /// how many bytes have been read so far.
     /// this doesn't include the peeked byte
     fn read_count(&self) -> usize;
@@ -56,12 +55,12 @@ pub trait DeRead<'de> {
         &'s mut self,
         len: usize,
         scratch: &'s mut Vec<u8>,
-    ) -> Result<Reference<'de, 's, [u8]>>;
+    ) -> anyhow::Result<Reference<'de, 's, [u8]>>;
     /// read u32 as native endian
-    fn next_u32(&mut self, scratch: &mut Vec<u8>) -> Result<u32> {
+    fn next_u32(&mut self, scratch: &mut Vec<u8>) -> anyhow::Result<u32> {
         let bytes = self
             .next_bytes(4, scratch)
-            .chain_err(|| "error while parsing u32")?
+            .context("error while parsing u32")?
             .get_ref();
         Ok(NativeEndian::read_u32(bytes))
     }
@@ -112,7 +111,7 @@ where
 }
 
 impl<'a> DeRead<'a> for SliceRead<'a> {
-    fn next(&mut self) -> Result<u8> {
+    fn next(&mut self) -> anyhow::Result<u8> {
         if self.index >= self.slice.len() {
             bail!("eof while reading next byte");
         }
@@ -121,7 +120,7 @@ impl<'a> DeRead<'a> for SliceRead<'a> {
         Ok(ch)
     }
 
-    fn peek(&mut self) -> Result<u8> {
+    fn peek(&mut self) -> anyhow::Result<u8> {
         if self.index >= self.slice.len() {
             bail!("eof while peeking next byte");
         }
@@ -142,7 +141,7 @@ impl<'a> DeRead<'a> for SliceRead<'a> {
         &'s mut self,
         len: usize,
         _scratch: &'s mut Vec<u8>,
-    ) -> Result<Reference<'a, 's, [u8]>> {
+    ) -> anyhow::Result<Reference<'a, 's, [u8]>> {
         // BSER has no escaping or anything similar, so just go ahead and return
         // a reference to the bytes.
         if self.index + len > self.slice.len() {
@@ -158,7 +157,7 @@ impl<'de, R> DeRead<'de> for IoRead<R>
 where
     R: io::Read,
 {
-    fn next(&mut self) -> Result<u8> {
+    fn next(&mut self) -> anyhow::Result<u8> {
         match self.peeked.take() {
             Some(peeked) => Ok(peeked),
             None => {
@@ -171,7 +170,7 @@ where
         }
     }
 
-    fn peek(&mut self) -> Result<u8> {
+    fn peek(&mut self) -> anyhow::Result<u8> {
         match self.peeked {
             Some(peeked) => Ok(peeked),
             None => {
@@ -202,7 +201,7 @@ where
         &'s mut self,
         len: usize,
         scratch: &'s mut Vec<u8>,
-    ) -> Result<Reference<'de, 's, [u8]>> {
+    ) -> anyhow::Result<Reference<'de, 's, [u8]>> {
         scratch.resize(len, 0);
         let mut idx = 0;
         if self.peeked.is_some() {
@@ -233,10 +232,10 @@ impl<'b, 'c, T> Reference<'b, 'c, T>
 where
     T: ?Sized + 'b + 'c,
 {
-    pub fn map_result<F, U, E>(self, f: F) -> Result<Reference<'b, 'c, U>>
+    pub fn map_result<F, U, E>(self, f: F) -> anyhow::Result<Reference<'b, 'c, U>>
     where
         F: FnOnce(&T) -> result::Result<&U, E>,
-        Error: From<E>,
+        E: std::error::Error + Send + Sync + 'static,
         U: ?Sized + 'b + 'c,
     {
         match self {

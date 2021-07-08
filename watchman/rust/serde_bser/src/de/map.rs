@@ -1,4 +1,3 @@
-use error_chain::bail;
 use serde::{de, forward_to_deserialize_any};
 
 use crate::errors::*;
@@ -76,7 +75,10 @@ where
             // Both bytestrings and UTF-8 strings are treated as Unicode strings, since field
             // identifiers must be Unicode strings.
             BSER_BYTESTRING | BSER_UTF8STRING => self.de.visit_utf8string(visitor),
-            other => bail!(ErrorKind::DeInvalidStartByte("map key".into(), other)),
+            other => Err(Error::DeInvalidStartByte {
+                kind: "map key".into(),
+                byte: other,
+            }),
         }
     }
 
