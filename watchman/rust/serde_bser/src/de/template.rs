@@ -179,7 +179,7 @@ where
     }
 }
 
-struct KeyDeserializer<'a, 'de: 'a> {
+struct KeyDeserializer<'a, 'de> {
     key: &'a Key<'de>,
 }
 

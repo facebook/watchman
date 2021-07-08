@@ -220,17 +220,14 @@ where
 }
 
 #[derive(Debug)]
-pub enum Reference<'b, 'c, T>
-where
-    T: ?Sized + 'b + 'c,
-{
+pub enum Reference<'b, 'c, T: ?Sized> {
     Borrowed(&'b T),
     Copied(&'c T),
 }
 
 impl<'b, 'c, T> Reference<'b, 'c, T>
 where
-    T: ?Sized + 'b + 'c,
+    T: ?Sized,
 {
     pub fn map_result<F, U, E>(self, f: F) -> anyhow::Result<Reference<'b, 'c, U>>
     where

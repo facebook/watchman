@@ -26,14 +26,14 @@ use std::path::PathBuf;
 pub struct ByteString(Vec<u8>);
 
 impl std::fmt::Debug for ByteString {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let escaped = self.as_escaped_string();
         write!(fmt, "\"{}\"", escaped.escape_debug())
     }
 }
 
 impl std::fmt::Display for ByteString {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let escaped = self.as_escaped_string();
         write!(fmt, "\"{}\"", escaped.escape_default())
     }

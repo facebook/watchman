@@ -91,7 +91,7 @@ impl<'de> Deserialize<'de> for Value {
         impl<'de> Visitor<'de> for ValueVisitor {
             type Value = Value;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("any valid BSER value")
             }
 
