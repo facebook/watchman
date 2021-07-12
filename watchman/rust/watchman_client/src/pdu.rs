@@ -352,14 +352,6 @@ where
     /// The clock value at the time that these results were generated
     pub clock: Clock,
 
-    /// in the context of a subscription, this is set to true if
-    /// the subscription was canceled, perhaps by an unsubscribe request,
-    /// or perhaps because the watch was deleted.  The server logs
-    /// will explain the reason.
-    #[serde(rename = "canceled", default)]
-    #[doc(hidden)]
-    pub subscription_canceled: bool,
-
     #[serde(rename = "state-enter")]
     #[doc(hidden)]
     pub state_enter: Option<String>,

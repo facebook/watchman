@@ -384,9 +384,14 @@ impl SendRequest {
     }
 }
 
+enum SubscriptionNotification {
+    Pdu(Bytes),
+    Canceled,
+}
+
 enum TaskItem {
     QueueRequest(SendRequest),
-    RegisterSubscription(String, UnboundedSender<Bytes>),
+    RegisterSubscription(String, UnboundedSender<SubscriptionNotification>),
 }
 
 /// Splits BSER mesages out of a stream. Does not attempt to actually decode them.
@@ -449,7 +454,7 @@ struct ClientTask {
     request_rx: Receiver<TaskItem>,
     request_queue: VecDeque<SendRequest>,
     waiting_response: bool,
-    subscriptions: HashMap<String, UnboundedSender<Bytes>>,
+    subscriptions: HashMap<String, UnboundedSender<SubscriptionNotification>>,
 }
 
 impl Drop for ClientTask {
@@ -495,7 +500,11 @@ impl ClientTask {
         Ok(())
     }
 
-    fn register_subscription(&mut self, name: String, tx: UnboundedSender<Bytes>) {
+    fn register_subscription(
+        &mut self,
+        name: String,
+        tx: UnboundedSender<SubscriptionNotification>,
+    ) {
         self.subscriptions.insert(name, tx);
     }
 
@@ -543,11 +552,19 @@ impl ClientTask {
         pub struct Unilateral {
             pub unilateral: bool,
             pub subscription: String,
+            #[serde(default)]
+            pub canceled: bool,
         }
 
         if let Ok(unilateral) = bunser::<Unilateral>(&pdu) {
             if let Some(subscription) = self.subscriptions.get_mut(&unilateral.subscription) {
-                if subscription.send(pdu).is_err() {
+                let msg = if unilateral.canceled {
+                    SubscriptionNotification::Canceled
+                } else {
+                    SubscriptionNotification::Pdu(pdu)
+                };
+
+                if subscription.send(msg).is_err() || unilateral.canceled {
                     // The `Subscription` was dropped; we don't need to
                     // treat this as terminal for this client session,
                     // so just de-register the handler
@@ -712,7 +729,7 @@ where
     name: String,
     inner: Arc<Mutex<ClientInner>>,
     root: ResolvedRoot,
-    responses: UnboundedReceiver<Bytes>,
+    responses: UnboundedReceiver<SubscriptionNotification>,
     _phantom: PhantomData<F>,
 }
 
@@ -730,29 +747,34 @@ where
     /// from the server.
     #[allow(clippy::should_implement_trait)]
     pub async fn next(&mut self) -> Result<SubscriptionData<F>, Error> {
-        let pdu = self
+        let msg = self
             .responses
             .recv()
             .await
             .ok_or(ConnectionLost::ClientTaskExited)?;
 
-        let response: QueryResult<F> = bunser(&pdu)?;
+        match msg {
+            SubscriptionNotification::Pdu(pdu) => {
+                let response: QueryResult<F> = bunser(&pdu)?;
 
-        if response.subscription_canceled {
-            self.responses.close();
-            Ok(SubscriptionData::Canceled)
-        } else if let Some(state_name) = response.state_enter {
-            Ok(SubscriptionData::StateEnter {
-                state_name,
-                metadata: response.state_metadata,
-            })
-        } else if let Some(state_name) = response.state_leave {
-            Ok(SubscriptionData::StateLeave {
-                state_name,
-                metadata: response.state_metadata,
-            })
-        } else {
-            Ok(SubscriptionData::FilesChanged(response))
+                if let Some(state_name) = response.state_enter {
+                    Ok(SubscriptionData::StateEnter {
+                        state_name,
+                        metadata: response.state_metadata,
+                    })
+                } else if let Some(state_name) = response.state_leave {
+                    Ok(SubscriptionData::StateLeave {
+                        state_name,
+                        metadata: response.state_metadata,
+                    })
+                } else {
+                    Ok(SubscriptionData::FilesChanged(response))
+                }
+            }
+            SubscriptionNotification::Canceled => {
+                self.responses.close();
+                Ok(SubscriptionData::Canceled)
+            }
         }
     }
 
