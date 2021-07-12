@@ -6,7 +6,6 @@
 #include "watchman/RingBuffer.h"
 
 using namespace watchman;
-using namespace ::testing;
 
 TEST(RingBufferTest, writes_can_be_read) {
   RingBuffer<int> rb{2};
