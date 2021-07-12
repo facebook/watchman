@@ -126,6 +126,13 @@ struct DaemonInfo {
 }
 
 /**
+* Information about the privhelper process
+*/
+struct PrivHelperInfo {
+  1: bool connected;
+}
+
+/**
  * The current running state of an EdenMount.
  */
 enum MountState {
@@ -1060,6 +1067,11 @@ service EdenService extends fb303_core.BaseService {
    * line.
    */
   DaemonInfo getDaemonInfo() throws (1: EdenError ex);
+
+  /**
+  * Returns information about the privhelper process, including accesibility.
+  */
+  PrivHelperInfo checkPrivHelper() throws (1: EdenError ex);
 
   /**
    * DEPRECATED
