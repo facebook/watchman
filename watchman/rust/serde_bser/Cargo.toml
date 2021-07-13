@@ -14,7 +14,6 @@ byteorder = "1.0"
 bytes = "0.4"
 thiserror = "1.0"
 serde = { version = "1.0.102", features = ["derive"] }
-serde_bytes = "0.11"
 
 [features]
 default = []
@@ -22,3 +21,4 @@ debug_bytes = []
 
 [dev-dependencies]
 maplit = "1.0"
+serde_bytes = "0.11"
