@@ -3,16 +3,11 @@ name = "watchman_client"
 version = "0.7.1"
 authors = ["Wez Furlong"]
 edition = "2018"
-repository = "https://github.com/facebook/watchman/"
 description = "a client for the Watchman file watching service"
-license = "Apache-2.0"
 documentation = "https://docs.rs/watchman_client"
-exclude = [
-    "examples/*",
-]
-
-[dev-dependencies]
-structopt = "0.3"
+repository = "https://github.com/facebook/watchman/"
+license = "Apache-2.0"
+exclude = ["examples/*"]
 
 [dependencies]
 anyhow = "1.0"
@@ -25,8 +20,8 @@ thiserror = ">=1.0.6"
 tokio = { version = "1.5", features = ["full", "test-util"] }
 tokio-util = { version = "0.6", features = ["full"] }
 
-[target."cfg(windows)".dependencies]
-winapi = { version = "0.3", features = [
-    "handleapi",
-    "winuser",
-]}
+[dev-dependencies]
+structopt = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["handleapi", "winuser"] }
