@@ -118,7 +118,7 @@ pub enum Error {
     Connect {
         endpoint: PathBuf,
         #[source]
-        source: anyhow::Error,
+        source: Box<std::io::Error>,
     },
 }
 
@@ -242,12 +242,14 @@ impl Connector {
         let sock_path = self.resolve_unix_domain_path().await?;
 
         #[cfg(unix)]
-        let stream = UnixStream::connect(sock_path).await;
+        let stream = UnixStream::connect(sock_path)
+            .await
+            .map_err(Error::ConnectionError)?;
 
         #[cfg(windows)]
-        let stream = named_pipe::NamedPipe::connect(sock_path).await;
+        let stream = named_pipe::NamedPipe::connect(sock_path).await?;
 
-        let stream: Box<dyn ReadWriteStream> = Box::new(stream.map_err(Error::ConnectionError)?);
+        let stream: Box<dyn ReadWriteStream> = Box::new(stream);
 
         let (reader, writer) = tokio::io::split(stream);
 

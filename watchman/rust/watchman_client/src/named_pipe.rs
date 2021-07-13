@@ -7,9 +7,9 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::windows::named_pipe::NamedPipeClient;
-use winapi::um::fileapi::*;
-use winapi::um::winbase::*;
-use winapi::um::winnt::*;
+use winapi::um::fileapi::{CreateFileW, OPEN_EXISTING};
+use winapi::um::winbase::FILE_FLAG_OVERLAPPED;
+use winapi::um::winnt::{GENERIC_READ, GENERIC_WRITE};
 
 /// Wrapper around a tokio [`NamedPipeClient`]
 pub struct NamedPipe {
@@ -43,7 +43,12 @@ impl NamedPipe {
             });
         }
 
-        let io = unsafe { NamedPipeClient::from_raw_handle(handle)? };
+        let io = unsafe {
+            NamedPipeClient::from_raw_handle(handle).map_err(|err| Error::Connect {
+                endpoint: path,
+                source: Box::new(err),
+            })?
+        };
         Ok(Self { io })
     }
 }
