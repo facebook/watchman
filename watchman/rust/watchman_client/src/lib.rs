@@ -11,7 +11,7 @@
 //! This example shows how to connect and expand a glob from the
 //! current working directory:
 //!
-//! ```norun
+//! ```no_run
 //! use watchman_client::prelude::*;
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
