@@ -688,6 +688,7 @@ watchman/root/watchlist.cpp
 watchman/saved_state/LocalSavedStateInterface.cpp
 watchman/saved_state/SavedStateFactory.cpp
 watchman/saved_state/SavedStateInterface.cpp
+watchman/scm/Git.cpp
 watchman/scm/Mercurial.cpp
 watchman/scm/SCM.cpp
 watchman/watcher/Watcher.cpp

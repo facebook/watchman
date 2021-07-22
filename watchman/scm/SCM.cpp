@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "SCM.h"
 #include <memory>
+#include "Git.h"
 #include "Mercurial.h"
 #include "watchman/watchman.h"
 
@@ -62,6 +63,7 @@ std::unique_ptr<SCM> SCM::scmForPath(w_string_piece rootPath) {
   }
 
   if (base == kGit) {
+    return std::make_unique<Git>(rootPath, scmRoot.piece().dirName());
   }
 
   return nullptr;
