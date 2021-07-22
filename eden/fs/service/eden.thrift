@@ -744,6 +744,8 @@ struct AccessCounts {
   3: i64 fsChannelWrites;
   4: i64 fsChannelBackingStoreImports;
   5: i64 fsChannelDurationNs;
+  6: i64 fsChannelMemoryCacheImports;
+  7: i64 fsChannelDiskCacheImports;
 }
 
 struct MountAccesses {
