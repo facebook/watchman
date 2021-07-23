@@ -558,6 +558,14 @@ struct InodePathDebugInfo {
   3: bool linked;
 }
 
+struct ActivityRecorderResult {
+  // 0 if the operation has failed. For example,
+  // fail to start recording due to file permission issue
+  // or fail to stop recording due to no active subscriber.
+  1: i64 unique;
+  2: optional PathString path;
+}
+
 struct SetLogLevelResult {
   1: bool categoryCreated;
 }
@@ -1208,6 +1216,27 @@ service EdenService extends fb303_core.BaseService {
    * This will return the list of NfsCall structure containing the data from the RPC request.
    */
   list<NfsCall> debugOutstandingNfsCalls(1: PathString mountPoint);
+
+  /**
+   * Start recording performance metrics such as files read
+   *
+   * This will return a structure containing unique id identifying this recording.
+   */
+  ActivityRecorderResult debugStartRecordingActivity(
+    1: PathString mountPoint,
+    2: PathString outputDir,
+  );
+
+  /**
+   * Stop the recording identified by unique
+   *
+   * This will return a structure containing unique id identifying this recording
+   * and, if the recording is successfully stopped, the output file path.
+   */
+  ActivityRecorderResult debugStopRecordingActivity(
+    1: PathString mountPoint,
+    2: i64 unique,
+  );
 
   /**
    * Get the InodePathDebugInfo for the inode that corresponds to the given
