@@ -5,6 +5,8 @@
 #include <chrono>
 #include <folly/String.h>
 #include <vector>
+#include "watchman/ChildProcess.h"
+#include "watchman/LRUCache.h"
 #include "watchman/scm/SCM.h"
 
 namespace watchman {
@@ -27,6 +29,17 @@ class Git : public SCM {
       w_string_piece commitId,
       int numCommits,
       w_string requestId = nullptr) const override;
+
+ private:
+  std::string indexPath_;
+  mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
+  mutable LRUCache<std::string, w_string> mergeBases_;
+  mutable LRUCache<std::string, w_string> filesChangedBetweenCommits_;
+  mutable LRUCache<std::string, std::vector<w_string>>
+      filesChangedSinceMergeBaseWith_;
+
+  ChildProcess::Options makeGitOptions(w_string requestId) const;
+  struct timespec getIndexMtime() const;
 };
 
 } // namespace watchman
