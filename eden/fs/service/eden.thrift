@@ -876,6 +876,34 @@ struct SetPathRootIdResult {
   1: list<CheckoutConflict> conflicts
 }
 
+struct CheckOutRevisionParams {
+  /**
+   * The hg root manifest that corresponds to the commit (if known).
+   *
+   * When a commit is newly created, EdenFS won't know the commit
+   * to root-manifest mapping for the commit, and won't be able to find
+   * out from the import helper until the import helper re-opens the
+   * repo.  To speed this up, Mercurial clients may optionally provide
+   * the hash of the root manifest directly, so that EdenFS doesn't
+   * need to look it up.
+   */
+  1: optional BinaryHash hgRootManifest;
+}
+
+struct ResetParentCommitsParams {
+  /**
+   * The hg root manifest that corresponds to the commit (if known).
+   *
+   * When a commit is newly created, EdenFS won't know the commit
+   * to root-manifest mapping for the commit, and won't be able to find
+   * out from the import helper until the import helper re-opens the
+   * repo.  To speed this up, Mercurial clients may optionally provide
+   * the hash of the root manifest directly, so that EdenFS doesn't
+   * need to look it up.
+   */
+  1: optional BinaryHash hgRootManifest;
+}
+
 service EdenService extends fb303_core.BaseService {
   list<MountInfo> listMounts() throws (1: EdenError ex);
   void mount(1: MountArgument info) throws (1: EdenError ex);
@@ -907,6 +935,7 @@ service EdenService extends fb303_core.BaseService {
     1: PathString mountPoint,
     2: ThriftRootId snapshotHash,
     3: CheckoutMode checkoutMode,
+    4: CheckOutRevisionParams params,
   ) throws (1: EdenError ex);
 
   /**
@@ -918,6 +947,7 @@ service EdenService extends fb303_core.BaseService {
   void resetParentCommits(
     1: PathString mountPoint,
     2: WorkingDirectoryParents parents,
+    3: ResetParentCommitsParams params,
   ) throws (1: EdenError ex);
 
   /**
