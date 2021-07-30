@@ -57,7 +57,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: SDKROOT=$(xcrun --show-sdk-path --sdk macosx11.1) python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. watchman _artifacts/mac  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
     - name: Test watchman
