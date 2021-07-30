@@ -14,13 +14,14 @@ watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
 if watchman_src_dir is None:
     watchman_src_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
-# The python source dir.
-# On Windows, this has to be relative to the cwd otherwise something
-# in the setuptools machinery does the wrong thing and produces a
-# path like `Z:blah` which on windows resolves ambiguously depending
-# on the cwd.
+# Setuptools is very picky about the path on Windows. They have to be relative
+# paths, and on Windows that means we have to be on the same drive as the source
+# files. Otherwise it is impossible to obtain a relative path across different
+# drives. However this has an implication that we will not be able to build this
+# package outside the repository. Not great but it works.
 py_dir = os.path.join(watchman_src_dir, "watchman", "python")
 if os.name == "nt":
+    os.chdir(py_dir)
     py_dir = os.path.relpath(py_dir)
 
 
