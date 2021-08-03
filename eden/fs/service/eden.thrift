@@ -566,6 +566,10 @@ struct ActivityRecorderResult {
   2: optional PathString path;
 }
 
+struct ListActivityRecordingsResult {
+  1: list<ActivityRecorderResult> recordings;
+}
+
 struct SetLogLevelResult {
   1: bool categoryCreated;
 }
@@ -855,7 +859,7 @@ struct GetScmStatusParams {
   3: bool listIgnored = false;
 }
 
- /**
+/**
   * BackingStore object type. Caller will response to verify the type of the content
   * matching the parameters passed. Exception will be thrown if type mismatch.
   */
@@ -865,15 +869,15 @@ enum RootType {
 }
 
 struct SetPathRootIdParams {
-  1: PathString mountPoint,
-  2: PathString path,
-  3: BinaryHash rootId,
+  1: PathString mountPoint;
+  2: PathString path;
+  3: BinaryHash rootId;
   4: RootType type;
   5: CheckoutMode mode;
 }
 
 struct SetPathRootIdResult {
-  1: list<CheckoutConflict> conflicts
+  1: list<CheckoutConflict> conflicts;
 }
 
 struct CheckOutRevisionParams {
@@ -1269,6 +1273,16 @@ service EdenService extends fb303_core.BaseService {
   );
 
   /**
+   * Get the list of ongoing activity recordings
+   *
+   * This will return the list of ActivityRecorderResult structure
+   * containing the id and output file path.
+   */
+  ListActivityRecordingsResult debugListActivityRecordings(
+    1: PathString mountPoint,
+  );
+
+  /**
    * Get the InodePathDebugInfo for the inode that corresponds to the given
    * inode number. This provides the path for the inode and also indicates
    * whether the inode is currently loaded or not. Requires that the Eden
@@ -1411,8 +1425,7 @@ service EdenService extends fb303_core.BaseService {
    * If any file or directory name conflict, the behavior is same with Checkout
    * This method is thread safe.
    */
-  SetPathRootIdResult setPathRootId(
-    1: SetPathRootIdParams params,
-  ) throws (1: EdenError ex);
-
+  SetPathRootIdResult setPathRootId(1: SetPathRootIdParams params) throws (
+    1: EdenError ex,
+  );
 }
