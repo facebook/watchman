@@ -600,50 +600,73 @@ struct CacheStats {
   6: i64 dropCount;
 }
 
+/*
+ * Bits that control the stats returned from  getStatInfo
+ */
+const i64 STATS_MOUNTS_STATS = 0x1;
+const i64 STATS_COUNTERS = 0x2;
+const i64 STATS_SMAPS = 0x4;
+const i64 STATS_PRIVATE_BYTES = 0x8;
+const i64 STATS_RSS_BYTES = 0x10;
+const i64 STATS_CACHE_STATS = 0x20;
+const i64 STATS_ALL = 0xFFFF;
+
 /**
  * Struct to store fb303 counters from ServiceData.getCounters() and inode
  * information of all the mount points.
  */
 struct InternalStats {
-  1: i64 periodicUnloadCount;
+  /**
+  * fbf303 counter of inodes unloaded by periodic job.
+  * Populated if STATS_COUNTERS is set.
+  */
+  1: optional i64 periodicUnloadCount;
   /**
    * counters is the list of fb303 counters, key is the counter name, value is the
    * counter value.
+   * Populated if STATS_COUNTERS is set.
    */
-  2: map<string, i64> counters;
+  2: optional map<string, i64> counters;
   /**
    * mountPointInfo is a map whose key is the path of the mount point and value
    * is the details like number of loaded inodes,unloaded inodes in that mount
    * and number of materialized inodes in that mountpoint.
+   * Populated if STATS_MOUNTS_STATS is set.
    */
-  3: map<PathString, MountInodeInfo> mountPointInfo;
+  3: optional map<PathString, MountInodeInfo> mountPointInfo;
   /**
    * Linux-only: the contents of /proc/self/smaps, to be parsed by the caller.
+   * Populated if STATS_SMAPS is set.
    */
-  4: binary smaps;
+  4: optional binary smaps;
   /**
    * Linux-only: privateBytes populated from contents of /proc/self/smaps.
    * Populated with current value (the fb303 counters value is an average).
+   * Populated if STATS_PRIVATE_BYTES is set.
    */
-  5: i64 privateBytes;
+  5: optional i64 privateBytes;
   /**
    * Linux-only: vmRSS bytes is populated from contents of /proc/self/stats.
    * Populated with current value (the fb303 counters value is an average).
+   * Populated if STATS_RSS_BYTES is set.
    */
-  6: i64 vmRSSBytes;
+  6: optional i64 vmRSSBytes;
   /**
    * Statistics about the in-memory blob cache.
+   * Populated if STATS_CACHE_STATS is set.
    */
-  7: CacheStats blobCacheStats;
+  7: optional CacheStats blobCacheStats;
   /**
    * mountPointJournalInfo is a map whose key is the path of the mount point
    * and whose value is information about the journal on that mount
+   * Populated if STATS_MOUNTS_STATS is set.
    */
-  8: map<PathString, JournalInfo> mountPointJournalInfo;
+  8: optional map<PathString, JournalInfo> mountPointJournalInfo;
   /**
    * Statistics about the in-memory tree cache.
+   * Populated if STATS_CACHE_STATS is set.
    */
-  9: CacheStats treeCacheStats;
+  9: optional CacheStats treeCacheStats;
 }
 
 struct FuseCall {
@@ -673,6 +696,11 @@ struct NfsCall {
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
+}
+
+struct GetStatInfoParams {
+  // a bitset that indicates the requested stats. 0 indicates all stats are requested.
+  1: i64 statsMask;
 }
 
 /**
@@ -1390,7 +1418,9 @@ service EdenService extends fb303_core.BaseService {
   /**
    * Gets the number of inodes unloaded by periodic job on an EdenMount.
    */
-  InternalStats getStatInfo() throws (1: EdenError ex);
+  InternalStats getStatInfo(1: GetStatInfoParams params) throws (
+    1: EdenError ex,
+  );
 
   void enableTracing();
   void disableTracing();
