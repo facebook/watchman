@@ -731,6 +731,10 @@ enum Dtype {
   WHITEOUT = 14, // DT_WHT
 }
 
+struct PredictiveFetch {
+  // number of directories to glob
+  1: unsigned64 numTopDirectories;
+}
 /** Params for globFiles(). */
 struct GlobParams {
   1: PathString mountPoint;
@@ -760,6 +764,9 @@ struct GlobParams {
   9: PathString searchRoot;
   // If set, will run the prefetch but will not wait for the result.
   10: bool background = false;
+  // When set, the globs list must be empty and the globbing pattern will be obtained
+  // from an online service.
+  11: optional PredictiveFetch predictiveGlob;
 }
 
 struct Glob {
@@ -1114,6 +1121,14 @@ service EdenService extends fb303_core.BaseService {
    * There are no duplicate values in the result.
    */
   Glob globFiles(1: GlobParams params) throws (1: EdenError ex);
+
+  /**
+   * Gets a list of a user's most accessed directories, performs
+   * prefetching as specified by PredictiveGlobParams, and returns
+   * a list of files matching the glob patterns.
+   * There are no duplicate values in the result.
+   */
+  Glob predictiveGlobFiles(1: GlobParams params) throws (1: EdenError ex);
 
   /**
    * Chowns all files in the requested mount to the requested uid and gid
