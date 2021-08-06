@@ -13,8 +13,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-18.04
+    env:
+      GITHUB_ACTION_ARTIFACT_CACHE: /tmp/getdeps-cache
     steps:
     - uses: actions/checkout@v1
+    - name: Cache multiple paths
+      uses: actions/cache@v2
+      with:
+        path: |
+          /tmp/getdeps-cache
+        key: ${{ runner.os }}-${{ hashFiles('build/fbcode_builder/manifests/*') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ hashFiles('build/fbcode_builder/manifests/*') }}-1
+          ${{ runner.os }}-
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch ninja
@@ -68,59 +79,59 @@ jobs:
     - name: Fetch fb303
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests boost
     - name: Build ninja
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests ninja
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests ninja
     - name: Build cmake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests cmake
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests cmake
     - name: Build cpptoml
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests cpptoml
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests cpptoml
     - name: Build googletest
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests googletest
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests googletest
     - name: Build pcre
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests pcre
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests pcre
     - name: Build fmt
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fmt
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests fmt
     - name: Build python-six
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests python-six
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests python-six
     - name: Build zstd
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests zstd
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests zstd
     - name: Build double-conversion
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests double-conversion
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests double-conversion
     - name: Build gflags
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests gflags
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests gflags
     - name: Build glog
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests glog
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests glog
     - name: Build libevent
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libevent
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests libevent
     - name: Build lz4
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests lz4
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests lz4
     - name: Build snappy
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests snappy
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests snappy
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests folly
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests folly
     - name: Build autoconf
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests autoconf
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests autoconf
     - name: Build automake
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests automake
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests automake
     - name: Build libtool
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libtool
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests libtool
     - name: Build bison
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests bison
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests bison
     - name: Build libsodium
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests libsodium
     - name: Build fizz
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fizz
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests fizz
     - name: Build flex
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests flex
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests flex
     - name: Build wangle
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests wangle
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests wangle
     - name: Build fbthrift
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fbthrift
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests fbthrift
     - name: Build fb303
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests fb303
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --no-tests fb303
     - name: Build watchman
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
+      run: python3 build/fbcode_builder/getdeps.py build --schedule-type continuous --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
       run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --strip --src-dir=. watchman _artifacts/linux  --project-install-prefix watchman:/usr/local --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master

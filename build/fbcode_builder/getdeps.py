@@ -19,6 +19,7 @@ import tempfile
 # specific import below may monkey patch it, and we want to
 # observe the patched version of this function!
 import getdeps.cache as cache_module
+import getdeps.github_cache
 from getdeps.buildopts import setup_build_options
 from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
