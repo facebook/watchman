@@ -210,7 +210,7 @@ static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
     throw CommandValidationError(
         "resolve_projpath: error computing root_files configuration value, "
         "consult your log file at ",
-        log_name,
+        logging::log_name,
         " for more details");
   }
 

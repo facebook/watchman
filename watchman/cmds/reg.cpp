@@ -12,6 +12,8 @@ using namespace watchman;
  * that we have done so and provide some advice on how the user can cure us. */
 folly::Synchronized<std::string> poisoned_reason;
 
+namespace watchman {
+
 void print_command_list_for_help(FILE* where) {
   auto defs = get_all_commands();
   std::sort(
@@ -26,6 +28,8 @@ void print_command_list_for_help(FILE* where) {
     fprintf(where, "      %s\n", def->name);
   }
 }
+
+} // namespace watchman
 
 command_handler_def* lookup(const json_ref& args, int mode) {
   const char* cmd_name;

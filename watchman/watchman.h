@@ -40,8 +40,6 @@ void w_request_shutdown();
 #include "watchman/watchman_time.h"
 
 extern std::string watchman_tmp_dir;
-extern std::string watchman_state_file;
-extern int dont_save_state;
 void w_state_shutdown();
 void w_state_save();
 bool w_state_load();
@@ -60,16 +58,12 @@ namespace watchman {
 void startSanityCheckThread();
 }
 
-#include "watchman_getopt.h"
-
 #ifdef HAVE_SYS_SIGLIST
 #define w_strsignal(val) sys_siglist[(val)]
 #else
 #define w_strsignal(val) strsignal((val))
 #endif
 
-extern std::string unix_sock_name;
-extern std::string named_pipe_path;
 extern bool disable_unix_socket;
 extern bool disable_named_pipe;
 

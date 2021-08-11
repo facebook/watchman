@@ -1,16 +1,217 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Options.h"
 #include <getopt.h>
-#include "watchman/watchman.h"
-
-using namespace watchman;
+#include <string.h>
+#include "watchman/LogConfig.h"
+#include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
 
 #define IS_REQUIRED(x) (x) == REQ_STRING
 
+namespace watchman {
+
+Flags flags;
+
+namespace {
+const OptDesc opts[] = {
+    {"help",
+     'h',
+     "Show this help",
+     OPT_NONE,
+     &flags.show_help,
+     NULL,
+     NOT_DAEMON},
+#ifndef _WIN32
+    {"inetd",
+     0,
+     "Spawning from an inetd style supervisor",
+     OPT_NONE,
+     &flags.inetd_style,
+     NULL,
+     IS_DAEMON},
+#endif
+    {"no-site-spawner",
+     'S',
+     "Don't use the site or system spawner",
+     OPT_NONE,
+     &flags.no_site_spawner,
+     NULL,
+     IS_DAEMON},
+    {"version",
+     'v',
+     "Show version number",
+     OPT_NONE,
+     &flags.show_version,
+     NULL,
+     NOT_DAEMON},
+/* -U / --sockname  have legacy meaning; unix domain on unix,
+ * named pipe path on windows.  After we chose this assignment,
+ * Windows evolved unix domain support which muddies this.
+ * We need to preserve the sockname/U option here for backwards
+ * compatibility */
+#ifdef _WIN32
+    {"sockname",
+     'U',
+     "DEPRECATED: Specify alternate named pipe path (specifying this will"
+     " disable unix domain sockets unless `--unix-listener-path` is"
+     " specified)",
+     REQ_STRING,
+     &flags.named_pipe_path,
+     "PATH",
+     IS_DAEMON},
+#else
+    {"sockname",
+     'U',
+     "DEPRECATED: Specify alternate sockname. Use `--unix-listener-path` instead.",
+     REQ_STRING,
+     &flags.unix_sock_name,
+     "PATH",
+     IS_DAEMON},
+#endif
+    {"named-pipe-path",
+     0,
+     "Specify alternate named pipe path",
+     REQ_STRING,
+     &flags.named_pipe_path,
+     "PATH",
+     IS_DAEMON},
+    {"unix-listener-path",
+     'u',
+#ifdef _WIN32
+     "Specify alternate unix domain socket path (specifying this will disable"
+     " named pipes unless `--named-pipe-path` is specified)",
+#else
+     "Specify alternate unix domain socket path",
+#endif
+     REQ_STRING,
+     &flags.unix_sock_name,
+     "PATH",
+     IS_DAEMON},
+    {"tcp-listener-enable",
+     't',
+     "Enable listening on TCP; see also tcp-listener-address and tcp-listener-port",
+     OPT_NONE,
+     &flags.enable_tcp,
+     nullptr,
+     IS_DAEMON},
+    {"tcp-listener-address",
+     0,
+     "Specify in <address>:<port> the address to bind to and listen on when tcp-listener-enable is true",
+     REQ_STRING,
+     &flags.tcp_host,
+     "ADDRESS",
+     IS_DAEMON},
+    {"logfile",
+     'o',
+     "Specify path to logfile",
+     REQ_STRING,
+     &watchman::logging::log_name,
+     "PATH",
+     IS_DAEMON},
+    {"log-level",
+     0,
+     "set the log level (0 = off, default is 1, verbose = 2)",
+     REQ_INT,
+     &watchman::logging::log_level,
+     NULL,
+     IS_DAEMON},
+    {"pidfile",
+     0,
+     "Specify path to pidfile",
+     REQ_STRING,
+     &flags.pid_file,
+     "PATH",
+     IS_DAEMON},
+    {"persistent",
+     'p',
+     "Persist and wait for further responses",
+     OPT_NONE,
+     &flags.persistent,
+     NULL,
+     NOT_DAEMON},
+    {"no-save-state",
+     'n',
+     "Don't save state between invocations",
+     OPT_NONE,
+     &flags.dont_save_state,
+     NULL,
+     IS_DAEMON},
+    {"statefile",
+     0,
+     "Specify path to file to hold watch and trigger state",
+     REQ_STRING,
+     &flags.watchman_state_file,
+     "PATH",
+     IS_DAEMON},
+    {"json-command",
+     'j',
+     "Instead of parsing CLI arguments, take a single "
+     "json object from stdin",
+     OPT_NONE,
+     &flags.json_input_arg,
+     NULL,
+     NOT_DAEMON},
+    {"output-encoding",
+     0,
+     "CLI output encoding. json (default) or bser",
+     REQ_STRING,
+     &flags.output_encoding,
+     NULL,
+     NOT_DAEMON},
+    {"server-encoding",
+     0,
+     "CLI<->server encoding. bser (default) or json",
+     REQ_STRING,
+     &flags.server_encoding,
+     NULL,
+     NOT_DAEMON},
+    {"foreground",
+     'f',
+     "Run the service in the foreground",
+     OPT_NONE,
+     &flags.foreground,
+     NULL,
+     NOT_DAEMON},
+    {"no-pretty",
+     0,
+     "Don't pretty print JSON",
+     OPT_NONE,
+     &flags.no_pretty,
+     NULL,
+     NOT_DAEMON},
+    {"no-spawn",
+     0,
+     "Don't try to start the service if it is not available",
+     OPT_NONE,
+     &flags.no_spawn,
+     NULL,
+     NOT_DAEMON},
+    {"no-local",
+     0,
+     "When no-spawn is enabled, don't try to handle request"
+     " in client mode if service is unavailable",
+     OPT_NONE,
+     &flags.no_local,
+     NULL,
+     NOT_DAEMON},
+    // test-state-dir is for testing only and should not be used in production:
+    // instead, use the compile-time WATCHMAN_STATE_DIR option
+    {"test-state-dir",
+     0,
+     NULL,
+     REQ_STRING,
+     &flags.test_state_dir,
+     "DIR",
+     NOT_DAEMON},
+    {0, 0, 0, OPT_NONE, 0, 0, 0},
+};
+} // namespace
+
 /* One does not simply use getopt_long() */
 
-[[noreturn]] void usage(struct watchman_getopt* opts, FILE* where) {
+[[noreturn]] void usage(const OptDesc* opts, FILE* where) {
   int i;
   size_t len;
   size_t longest = 0;
@@ -87,7 +288,7 @@ using namespace watchman;
 }
 
 bool w_getopt(
-    struct watchman_getopt* opts,
+    const OptDesc* opts,
     int* argcp,
     char*** argvp,
     char*** daemon_argvp) {
@@ -155,7 +356,7 @@ bool w_getopt(
 
   while ((res = getopt_long(argc, argv, shortopts, long_opts, &long_pos)) !=
          -1) {
-    struct watchman_getopt* o;
+    const OptDesc* o;
 
     switch (res) {
       case ':':
@@ -238,6 +439,19 @@ bool w_getopt(
   *argvp = argv + optind;
   return true;
 }
+
+void parseOptions(int* argcp, char*** argvp, char*** daemon_argv) {
+  w_getopt(opts, argcp, argvp, daemon_argv);
+  if (flags.show_help) {
+    usage(opts, stdout);
+  }
+  if (flags.show_version) {
+    printf("%s\n", PACKAGE_VERSION);
+    exit(0);
+  }
+}
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

@@ -6,6 +6,7 @@
 #include <thread>
 #include "watchman/ChildProcess.h"
 #include "watchman/Logging.h"
+#include "watchman/Options.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman.h"
 #include "watchman/watchman_perf.h"
@@ -198,7 +199,8 @@ void PerfLogThread::loop() noexcept {
 
   w_set_thread_name("perflog");
 
-  auto stateDir = w_string_piece(watchman_state_file).dirName().asWString();
+  auto stateDir =
+      w_string_piece(flags.watchman_state_file).dirName().asWString();
 
   perf_cmd = cfg_get_json("perf_logger_command");
   if (perf_cmd.isString()) {

@@ -5,12 +5,10 @@
 #include <folly/Synchronized.h>
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
+#include "watchman/Options.h"
 #include "watchman/watchman.h"
 
 using namespace watchman;
-
-std::string watchman_state_file;
-int dont_save_state = 0;
 
 /** The state saving thread is responsible for writing out the
  * persistent information about the users watches.
@@ -55,7 +53,7 @@ static void state_saver() noexcept {
 }
 
 void w_state_shutdown() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return;
   }
 
@@ -64,7 +62,7 @@ void w_state_shutdown() {
 }
 
 bool w_state_load() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return true;
   }
 
@@ -72,7 +70,7 @@ bool w_state_load() {
 
   json_ref state;
   try {
-    state = json_load_file(watchman_state_file.c_str(), 0);
+    state = json_load_file(flags.watchman_state_file.c_str(), 0);
   } catch (const std::system_error& exc) {
     if (exc.code() == watchman::error_code::no_such_file_or_directory) {
       // No need to alarm anyone if we've never written a state file
@@ -81,14 +79,14 @@ bool w_state_load() {
     logf(
         ERR,
         "failed to load json from {}: {}\n",
-        watchman_state_file,
+        flags.watchman_state_file,
         folly::exceptionStr(exc).toStdString());
     return false;
   } catch (const std::exception& exc) {
     logf(
         ERR,
         "failed to parse json from {}: {}\n",
-        watchman_state_file,
+        flags.watchman_state_file,
         folly::exceptionStr(exc).toStdString());
     return false;
   }
@@ -151,11 +149,11 @@ static bool do_state_save() {
   auto state = json_object();
 
   auto file = w_stm_open(
-      watchman_state_file.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0600);
+      flags.watchman_state_file.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0600);
   if (!file) {
     log(ERR,
         "save_state: unable to open ",
-        watchman_state_file,
+        flags.watchman_state_file,
         " for write: ",
         folly::errnoStr(errno),
         "\n");
@@ -177,7 +175,7 @@ static bool do_state_save() {
 /** Arranges for the state to be saved.
  * Does not immediately save the state. */
 void w_state_save() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return;
   }
 

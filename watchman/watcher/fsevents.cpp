@@ -516,7 +516,7 @@ void FSEventsWatcher::FSEventsThread(
     if (!FSEventStreamStart(stream_->stream)) {
       root->failure_reason = w_string::build(
           "FSEventStreamStart failed, look at your log file ",
-          log_name,
+          logging::log_name,
           " for lines mentioning FSEvents and see ",
           cfg_get_trouble_url(),
           "#fsevents for more information\n");

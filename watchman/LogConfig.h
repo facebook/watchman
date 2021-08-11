@@ -5,5 +5,9 @@
 
 #include <string>
 
+namespace watchman::logging {
+
 extern int log_level;
 extern std::string log_name;
+
+} // namespace watchman::logging

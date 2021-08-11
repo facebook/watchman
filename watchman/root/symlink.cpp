@@ -9,8 +9,7 @@
 #include "watchman/watchman.h"
 #include "watchman/watchman_system.h"
 
-using watchman::readSymbolicLink;
-using watchman::realPath;
+using namespace watchman;
 
 // Given a target of the form "absolute_path/filename", return
 // realpath(absolute_path) + filename, where realpath(absolute_path) resolves
@@ -154,7 +153,7 @@ void watchman_root::processPendingSymlinkTargets() {
         watchman::ERR,
         "watch_symlink_target: error computing root_files configuration "
         "value, consult your log file at ",
-        log_name,
+        logging::log_name,
         " for more details\n");
     return;
   }

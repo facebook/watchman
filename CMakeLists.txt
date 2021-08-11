@@ -610,6 +610,7 @@ watchman/FlagMap.cpp
 watchman/FSDetect.cpp
 watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
+watchman/Options.cpp
 watchman/PendingCollection.cpp
 watchman/Pipe.cpp
 watchman/ProcessLock.cpp
@@ -631,7 +632,6 @@ watchman/listener-user.cpp
 watchman/listener.cpp
 watchman/main.cpp
 watchman/opendir.cpp
-watchman/opt.cpp
 watchman/perf.cpp
 watchman/sockname.cpp
 watchman/spawn.cpp
