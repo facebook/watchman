@@ -427,3 +427,13 @@ TEST(String, truncated_tail) {
       w_string_piece{"...45678"},
       w_string_piece(head, strnlen(head, sizeof(head))));
 }
+
+TEST(String, contains) {
+  w_string data{"watchman"};
+  w_string_piece haystack{data};
+  EXPECT_TRUE(haystack.contains("atch"));
+  EXPECT_FALSE(haystack.contains("maan"));
+  EXPECT_TRUE(haystack.contains(""));
+  EXPECT_TRUE(haystack.contains("watchman"));
+  EXPECT_FALSE(haystack.contains("watchman2"));
+}

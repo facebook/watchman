@@ -601,32 +601,14 @@ bool w_string_startswith_caseless(w_string_t* str, w_string_t* prefix) {
   return true;
 }
 
-bool w_string_contains_cstr_len(
-    const w_string_t* str,
-    const char* needle,
-    uint32_t nlen) {
+bool w_string_piece::contains(w_string_piece needle) const {
 #if HAVE_MEMMEM
-  return memmem(str->buf, str->len, needle, nlen) != NULL;
+  if (needle.empty()) {
+    return true;
+  }
+  return memmem(data(), size(), needle.data(), needle.size()) != nullptr;
 #else
-  // Most likely only for Windows.
-  // Inspired by http://stackoverflow.com/a/24000056/149111
-  const char* haystack = str->buf;
-  uint32_t hlen = str->len;
-  const char* limit;
-
-  if (nlen == 0 || hlen < nlen) {
-    return false;
-  }
-
-  limit = haystack + hlen - nlen + 1;
-  while ((haystack = (const char*)memchr(
-              haystack, needle[0], limit - haystack)) != NULL) {
-    if (memcmp(haystack, needle, nlen) == 0) {
-      return true;
-    }
-    haystack++;
-  }
-  return false;
+  return view().find(needle.view()) != std::string_view::npos;
 #endif
 }
 

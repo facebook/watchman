@@ -19,9 +19,8 @@ inline constexpr std::string_view kCookiePrefix = ".watchman-cookie-";
  * precise cookie prefix is for the current pending list here, so
  * we do a substring match.  Not the most elegant thing in the world.
  */
-inline bool isPossiblyACookie(const w_string_t* path) {
-  return w_string_contains_cstr_len(
-      path, kCookiePrefix.data(), kCookiePrefix.size());
+inline bool isPossiblyACookie(w_string_piece path) {
+  return path.contains(kCookiePrefix);
 }
 
 } // namespace watchman

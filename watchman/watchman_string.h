@@ -19,6 +19,7 @@
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
 struct watchman_string;
@@ -59,10 +60,6 @@ static inline uint32_t w_string_hval(w_string_t* str) {
 
 w_string_piece w_string_canon_path(w_string_t* str);
 int w_string_compare(const w_string_t* a, const w_string_t* b);
-bool w_string_contains_cstr_len(
-    const w_string_t* str,
-    const char* needle,
-    uint32_t nlen);
 
 bool w_string_equal(const w_string_t* a, const w_string_t* b);
 bool w_string_equal_cstring(const w_string_t* a, const char* b);
@@ -100,7 +97,7 @@ class w_string_piece {
   w_string_piece();
   /* implicit */ w_string_piece(std::nullptr_t);
 
-  inline /* implicit */ w_string_piece(w_string_t* str)
+  /* implicit */ w_string_piece(w_string_t* str)
       : s_(str->buf), e_(str->buf + str->len) {}
 
   /** Construct from a string-like object */
@@ -120,7 +117,7 @@ class w_string_piece {
       typename String,
       typename std::enable_if<std::is_same<String, w_string>::value, int>::
           type = 0>
-  inline /* implicit */ w_string_piece(const String& str) {
+  /* implicit */ w_string_piece(const String& str) {
     if (!str) {
       s_ = nullptr;
       e_ = nullptr;
@@ -130,11 +127,13 @@ class w_string_piece {
     }
   }
 
-  inline /* implicit */ w_string_piece(const char* cstr)
+  /* implicit */ w_string_piece(const char* cstr)
       : s_(cstr), e_(cstr + strlen(cstr)) {}
 
-  /* implicit */ inline w_string_piece(const char* cstr, size_t len)
-      : s_(cstr), e_(cstr + len) {}
+  w_string_piece(const char* cstr, size_t len) : s_(cstr), e_(cstr + len) {}
+
+  /* implicit */ w_string_piece(std::string_view sv)
+      : w_string_piece{sv.data(), sv.size()} {}
 
   w_string_piece(const w_string_piece& other) = default;
   w_string_piece& operator=(const w_string_piece& other) = default;
@@ -210,10 +209,16 @@ class w_string_piece {
     return folly::StringPiece(s_, e_);
   }
 
+  std::string_view view() const {
+    std::size_t count = e_ - s_;
+    return std::string_view{s_, count};
+  }
+
   bool operator==(w_string_piece other) const;
   bool operator!=(w_string_piece other) const;
   bool operator<(w_string_piece other) const;
 
+  bool contains(w_string_piece needle) const;
   bool startsWith(w_string_piece prefix) const;
   bool startsWithCaseInsensitive(w_string_piece prefix) const;
 
