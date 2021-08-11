@@ -4,6 +4,7 @@
 #include "watchman/Options.h"
 #include <getopt.h>
 #include <string.h>
+#include "watchman/CommandRegistry.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
 #include "watchman/WatchmanConfig.h"
@@ -448,6 +449,21 @@ void parseOptions(int* argcp, char*** argvp, char*** daemon_argv) {
   if (flags.show_version) {
     printf("%s\n", PACKAGE_VERSION);
     exit(0);
+  }
+}
+
+void print_command_list_for_help(FILE* where) {
+  auto defs = get_all_commands();
+  std::sort(
+      defs.begin(),
+      defs.end(),
+      [](command_handler_def* A, command_handler_def* B) {
+        return strcmp(A->name, B->name) < 0;
+      });
+
+  fprintf(where, "\n\nAvailable commands:\n\n");
+  for (auto& def : defs) {
+    fprintf(where, "      %s\n", def->name);
   }
 }
 
