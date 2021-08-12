@@ -208,21 +208,21 @@ void CookieSync::notifyCookie(const w_string& path) {
   }
 }
 
-bool CookieSync::isCookiePrefix(const w_string& path) {
+bool CookieSync::isCookiePrefix(w_string_piece path) {
   auto cookieDirs = cookieDirs_.rlock();
   for (const auto& dir : cookieDirs->dirs_) {
-    if (w_string_startswith(path, dir) &&
-        w_string_startswith(path.baseName(), cookieDirs->cookiePrefix_)) {
+    if (path.startsWith(dir) &&
+        path.baseName().startsWith(cookieDirs->cookiePrefix_)) {
       return true;
     }
   }
   return false;
 }
 
-bool CookieSync::isCookieDir(const w_string& path) {
+bool CookieSync::isCookieDir(w_string_piece path) {
   auto cookieDirs = cookieDirs_.rlock();
   for (const auto& dir : cookieDirs->dirs_) {
-    if (w_string_equal(path, dir)) {
+    if (path == dir) {
       return true;
     }
   }

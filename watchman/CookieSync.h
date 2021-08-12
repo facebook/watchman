@@ -53,10 +53,10 @@ class CookieSync {
   void abortAllCookies();
 
   // Check if this path matches an actual cookie.
-  bool isCookiePrefix(const w_string& path);
+  bool isCookiePrefix(w_string_piece path);
 
   // Check if the path matches a cookie directory.
-  bool isCookieDir(const w_string& path);
+  bool isCookieDir(w_string_piece path);
 
   // Returns the set of prefixes for cookie files
   std::unordered_set<w_string> cookiePrefix() const;
