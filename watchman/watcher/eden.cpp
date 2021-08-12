@@ -183,7 +183,7 @@ class EdenFileResult : public FileResult {
       JournalPosition* position = nullptr,
       bool isNew = false,
       DType dtype = DType::Unknown)
-      : root_path_(rootPath),
+      : rootPath_(rootPath),
         thriftChannel_{std::move(thriftChannel)},
         fullName_(fullName),
         dtype_(dtype) {
@@ -353,13 +353,13 @@ class EdenFileResult : public FileResult {
 
       auto relName = edenFile.fullName_.piece();
 
-      if (root_path_ == edenFile.fullName_) {
+      if (rootPath_ == edenFile.fullName_) {
         // The root tree inode has changed
         relName = "";
       } else {
         // Strip off the mount point prefix for the names we're going
         // to pass to eden.  The +1 is its trailing slash.
-        relName.advance(root_path_.size() + 1);
+        relName.advance(rootPath_.size() + 1);
       }
 
       if (edenFile.neededProperties() & FileResult::Property::SymlinkTarget) {
@@ -401,7 +401,7 @@ class EdenFileResult : public FileResult {
     auto client = getEdenClient(thriftChannel_);
     loadFileInformation(
         client.get(),
-        root_path_,
+        rootPath_,
         getFileInformationNames,
         getFileInformationFiles,
         onlyEntryInfoNeeded);
@@ -411,7 +411,7 @@ class EdenFileResult : public FileResult {
 
     if (!getShaFiles.empty()) {
       std::vector<SHA1Result> sha1s;
-      client->sync_getSHA1(sha1s, to<std::string>(root_path_), getShaNames);
+      client->sync_getSHA1(sha1s, to<std::string>(rootPath_), getShaNames);
 
       if (sha1s.size() != getShaFiles.size()) {
         watchman::log(
@@ -431,7 +431,7 @@ class EdenFileResult : public FileResult {
   }
 
  private:
-  w_string root_path_;
+  w_string rootPath_;
   std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
   w_string fullName_;
   Optional<FileInformation> stat_;
@@ -733,7 +733,7 @@ std::shared_ptr<apache::thrift::PooledRequestChannel> makeThriftChannel(
 } // namespace
 
 class EdenView final : public QueryableView {
-  w_string root_path_;
+  w_string rootPath_;
   std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
   // The source control system that we detected during initialization
   mutable std::unique_ptr<EdenWrappedSCM> scm_;
@@ -746,9 +746,9 @@ class EdenView final : public QueryableView {
 
  public:
   explicit EdenView(watchman_root* root)
-      : root_path_(root->root_path),
+      : rootPath_(root->root_path),
         thriftChannel_(makeThriftChannel(
-            root_path_,
+            rootPath_,
             root->config.getInt("eden_retry_connection_count", 3))),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         mountPoint_(to<std::string>(root->root_path)),
@@ -977,7 +977,7 @@ class EdenView final : public QueryableView {
       bool isNew = createdFileNames.find(item.name) != createdFileNames.end();
 
       auto file = make_unique<EdenFileResult>(
-          root_path_,
+          rootPath_,
           thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
           &resultPosition,
@@ -1000,7 +1000,11 @@ class EdenView final : public QueryableView {
 
   void syncToNow(
       const std::shared_ptr<watchman_root>&,
-      std::chrono::milliseconds) override {}
+      std::chrono::milliseconds) override {
+    // TODO: on FUSE and NFS, where all writes give synchronous notifications to
+    // the EdenFS daemon, cookie files are not necessary, and could be replaced
+    // with a Thrift call here.
+  }
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
@@ -1021,7 +1025,7 @@ class EdenView final : public QueryableView {
 
     for (auto& item : fileInfo) {
       auto file = make_unique<EdenFileResult>(
-          root_path_,
+          rootPath_,
           thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
           /* position=*/nullptr,
@@ -1172,7 +1176,7 @@ class EdenView final : public QueryableView {
       // first, and then add a bulk CookieSync::notifyCookies() method to avoid
       // locking and unlocking its internal mutex so frequently.
       for (auto& file : *delta.createdPaths_ref()) {
-        auto full = w_string::pathCat({root_path_, file});
+        auto full = w_string::pathCat({rootPath_, file});
         root->cookies.notifyCookie(full);
       }
 
