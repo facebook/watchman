@@ -10,6 +10,10 @@ import os
 import WatchmanEdenTestCase
 
 
+def possible_cookie(name):
+    return ".watchman-cookie-" in name
+
+
 class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
     def requiresPersistentSession(self):
         return True
@@ -170,8 +174,8 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            dat["files"],
             self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "welcome"],
+            dat["files"],
         )
 
         # Sanity check that the subscription is working
@@ -184,15 +188,25 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # Since watchman won't be able to run hg to query the list of files changed
         # between commits, it will generate a fresh instance result.
         repo.update(commits[0])
-        dat = self.waitForSub("myname", root=root)[0]
-        self.assertFileListsEqual(
-            dat["files"],
-            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "w0000t"],
-        )
+
+        # hg update may issue multiple subscription changes. Wait for the first one that is a fresh instance.
+        while True:
+            dat = self.waitForSub("myname", root=root)[0]
+            if "is_fresh_instance" not in dat:
+                print("dat", dat)
+            if dat["is_fresh_instance"]:
+                break
+
         self.assertEqual(True, dat["is_fresh_instance"])
+        self.assertFileListsEqual(
+            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "w0000t"],
+            [x for x in dat["files"] if not possible_cookie(x)],
+        )
 
         # Make sure the subscription still delivers normal file update events
         self.touchRelative(root, "new2")
-        dat = self.waitForSub("myname", root=root)[0]
-        self.assertEqual(False, dat["is_fresh_instance"])
-        self.assertFileListsEqual(dat["files"], ["new2"])
+        while True:
+            dat = self.waitForSub("myname", root=root)[0]
+            self.assertEqual(False, dat["is_fresh_instance"])
+            if "new2" in dat["files"]:
+                break
