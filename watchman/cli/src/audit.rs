@@ -209,6 +209,11 @@ impl AuditCmd {
             result.clock,
             result.version
         );
+        if let Some(debug) = result.debug {
+            if let Some(cookie_files) = debug.cookie_files {
+                eprintln!("    cookie files: {:?}", cookie_files)
+            }
+        }
 
         let filesystem_state = filesystem_state_handle.await.unwrap();
 

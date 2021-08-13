@@ -326,6 +326,11 @@ pub struct QueryRequestCommon {
     pub request_id: Option<String>,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+pub struct QueryDebugInfo {
+    pub cookie_files: Option<Vec<PathBuf>>,
+}
+
 /// Holds the result of a query.
 /// The result is generic over a `F` type that you define.
 /// The `F` should deserialize the list of fields in your QueryRequestCommon
@@ -367,6 +372,8 @@ where
     /// the save state storage engine.
     #[serde(rename = "saved-state-info")]
     pub saved_state_info: Option<Value>,
+
+    pub debug: Option<QueryDebugInfo>,
 }
 
 #[derive(Serialize, Default, Clone, Debug)]
