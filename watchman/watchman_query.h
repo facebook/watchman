@@ -135,19 +135,15 @@ void w_query_process_file(
     watchman::QueryContext* ctx,
     std::unique_ptr<watchman::FileResult> file);
 
-// Generator callback, used to plug in an alternate
-// generator when used in triggers or subscriptions
-using w_query_generator = std::function<void(
-    w_query* query,
-    const std::shared_ptr<watchman_root>& root,
-    watchman::QueryContext* ctx)>;
 void time_generator(
     w_query* query,
     const std::shared_ptr<watchman_root>& root,
     watchman::QueryContext* ctx);
 
-struct w_query_res {
-  bool is_fresh_instance;
+namespace watchman {
+
+struct QueryResult {
+  bool isFreshInstance;
   json_ref resultsArray;
   // Only populated if the query was set to dedup_results
   std::unordered_set<w_string> dedupedFileNames;
@@ -156,10 +152,19 @@ struct w_query_res {
   json_ref savedStateInfo;
 };
 
-w_query_res w_query_execute(
+// Generator callback, used to plug in an alternate
+// generator when used in triggers or subscriptions
+using QueryGenerator = std::function<void(
     w_query* query,
     const std::shared_ptr<watchman_root>& root,
-    w_query_generator generator);
+    watchman::QueryContext* ctx)>;
+
+} // namespace watchman
+
+watchman::QueryResult w_query_execute(
+    w_query* query,
+    const std::shared_ptr<watchman_root>& root,
+    watchman::QueryGenerator generator);
 
 // Returns a shared reference to the wholename
 // of the file.  The caller must not delref
@@ -175,8 +180,6 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     const char* clockspec,
     json_ref* expr_p);
 void w_query_legacy_field_list(watchman::QueryFieldList* flist);
-
-void w_query_init_all();
 
 enum w_query_icmp_op {
   W_QUERY_ICMP_EQ,

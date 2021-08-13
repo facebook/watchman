@@ -30,7 +30,7 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   auto res = w_query_execute(query.get(), root, nullptr);
   auto response = make_response();
   response.set(
-      {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+      {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
        {"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray)}});
   if (res.savedStateInfo) {

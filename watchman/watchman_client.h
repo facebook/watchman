@@ -11,10 +11,11 @@
 #include "watchman_pdu.h"
 
 struct w_query;
-struct w_query_res;
 struct watchman_client_subscription;
 
 namespace watchman {
+
+struct QueryResult;
 
 enum ClientStateDisposition {
   PendingEnter,
@@ -109,10 +110,12 @@ struct watchman_client_subscription
       OnStateTransition onStateTransition);
 
  private:
+  using QueryResult = watchman::QueryResult;
+
   ClockSpec runSubscriptionRules(
       watchman_user_client* client,
       const std::shared_ptr<watchman_root>& root);
-  void updateSubscriptionTicks(w_query_res* res);
+  void updateSubscriptionTicks(QueryResult* res);
   void processSubscriptionImpl();
 };
 

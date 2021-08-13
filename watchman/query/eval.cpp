@@ -163,19 +163,19 @@ static void default_generators(
 static void execute_common(
     QueryContext* ctx,
     w_perf_t* sample,
-    w_query_res* res,
-    w_query_generator generator) {
+    QueryResult* res,
+    QueryGenerator generator) {
   ctx->stopWatch.reset();
 
   if (ctx->query->dedup_results) {
     ctx->dedup.reserve(64);
   }
 
-  // is_fresh_instance is also later set by the value in ctx after generator
-  res->is_fresh_instance =
+  // isFreshInstance is also later set by the value in ctx after generator
+  res->isFreshInstance =
       !ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance;
 
-  if (!(res->is_fresh_instance && ctx->query->empty_on_fresh_instance)) {
+  if (!(res->isFreshInstance && ctx->query->empty_on_fresh_instance)) {
     if (!generator) {
       generator = default_generators;
     }
@@ -200,7 +200,7 @@ static void execute_common(
   // For Eden instances it is possible that when running the query it was
   // discovered that it is actually a fresh instance [e.g. mount generation
   // changes or journal truncation]; update res to match
-  res->is_fresh_instance |= ctx->since.clock.is_fresh_instance;
+  res->isFreshInstance |= ctx->since.clock.is_fresh_instance;
 
   if (sample && !ctx->namesToLog.empty()) {
     auto nameList = json_array_of_size(ctx->namesToLog.size());
@@ -225,7 +225,7 @@ static void execute_common(
     sample->add_meta(
         "query_execute",
         json_object(
-            {{"fresh_instance", json_boolean(res->is_fresh_instance)},
+            {{"fresh_instance", json_boolean(res->isFreshInstance)},
              {"num_deduped", json_integer(ctx->num_deduped)},
              {"num_results", json_integer(json_array_size(ctx->resultsArray))},
              {"num_walked", json_integer(ctx->getNumWalked())},
@@ -240,11 +240,11 @@ static void execute_common(
 // Capability indicating support for scm-aware since queries
 W_CAP_REG("scm-since")
 
-w_query_res w_query_execute(
+QueryResult w_query_execute(
     w_query* query,
     const std::shared_ptr<watchman_root>& root,
-    w_query_generator generator) {
-  w_query_res res;
+    QueryGenerator generator) {
+  QueryResult res;
   std::shared_ptr<w_query> altQuery;
   ClockSpec resultClock(ClockPosition{});
   bool disableFreshInstance{false};
@@ -426,7 +426,7 @@ w_query_res w_query_execute(
   if (query->bench_iterations > 0) {
     for (uint32_t i = 0; i < query->bench_iterations; ++i) {
       QueryContext c{query, root, ctx.disableFreshInstance};
-      w_query_res r;
+      QueryResult r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
       c.since = ctx.since;
       execute_common(&c, nullptr, &r, generator);

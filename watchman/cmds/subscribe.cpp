@@ -199,7 +199,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
   }
 }
 
-void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
+void watchman_client_subscription::updateSubscriptionTicks(QueryResult* res) {
   // create a new spec that will be used the next time
   query->since_spec = std::make_unique<ClockSpec>(res->clockAtStartOfQuery);
 }
@@ -263,7 +263,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     bool mergeBaseChanged = scmAwareQuery &&
         res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
     if (res.resultsArray.array().empty() && !mergeBaseChanged &&
-        !res.is_fresh_instance) {
+        !res.isFreshInstance) {
       updateSubscriptionTicks(&res);
       return nullptr;
     }
@@ -279,7 +279,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     updateSubscriptionTicks(&res);
 
     response.set(
-        {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+        {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
          {"clock", res.clockAtStartOfQuery.toJson()},
          {"files", std::move(res.resultsArray)},
          {"root", w_string_to_json(root->root_path)},

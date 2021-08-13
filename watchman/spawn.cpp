@@ -7,15 +7,13 @@
 #include "watchman/watchman.h"
 #include "watchman/watchman_system.h"
 
-using watchman::ChildProcess;
-using watchman::FileDescriptor;
+using namespace watchman;
 using Options = watchman::ChildProcess::Options;
 using Environment = watchman::ChildProcess::Environment;
-using namespace watchman;
 
 static std::unique_ptr<watchman_stream> prepare_stdin(
     struct watchman_trigger_command* cmd,
-    w_query_res* res) {
+    QueryResult* res) {
   char stdin_file_name[WATCHMAN_NAME_MAX];
 
   if (cmd->stdin_style == trigger_input_style::input_dev_null) {
@@ -89,7 +87,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
 static void spawn_command(
     const std::shared_ptr<watchman_root>& root,
     struct watchman_trigger_command* cmd,
-    w_query_res* res,
+    QueryResult* res,
     ClockSpec* since_spec) {
   bool file_overflow = false;
 
