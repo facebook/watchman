@@ -158,7 +158,8 @@ class InMemoryView final : public QueryableView {
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
   void syncToNow(
       const std::shared_ptr<watchman_root>& root,
-      std::chrono::milliseconds timeout) override;
+      std::chrono::milliseconds timeout,
+      std::vector<w_string>& cookieFileNames) override;
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
@@ -200,7 +201,8 @@ class InMemoryView final : public QueryableView {
  private:
   void syncToNowCookies(
       const std::shared_ptr<watchman_root>& root,
-      std::chrono::milliseconds timeout);
+      std::chrono::milliseconds timeout,
+      std::vector<w_string>& cookieFileNames);
 
   // Returns the erased file's otime.
   w_clock_t ageOutFile(

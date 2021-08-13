@@ -19,19 +19,29 @@ class CookieSync {
   void addCookieDir(const w_string& dir);
   void removeCookieDir(const w_string& dir);
 
-  /* Ensure that we're synchronized with the state of the
+  /**
+   * Ensure that we're synchronized with the state of the
    * filesystem at the current time.
-   * We do this by touching a cookie file and waiting to
-   * observe it via inotify.  When we see it we know that
+   *
+   * We do this by touching one or more cookie files and waiting to
+   * observe them via the watcher.  When we see it we know that
    * we've seen everything up to the point in time at which
-   * we're asking questions.
-   * Throws a std::system_error with an ETIMEDOUT error if
-   * the timeout expires before we observe the change, or
-   * a runtime_error if the root has been deleted or rendered
-   * inaccessible. */
-  void syncToNow(std::chrono::milliseconds timeout);
+   * we're asking questions. (Note: it's unclear if all filesystem watchers
+   * provide such an ordering guarantee, and it's worth flushing all pending
+   * notifications to be sure.)
+   *
+   * Throws a std::system_error with an ETIMEDOUT
+   * error if the timeout expires before we observe the change, or a
+   * runtime_error if the root has been deleted or rendered inaccessible.
+   *
+   * cookieFileNames is populated with the names of all cookie files used.
+   */
+  void syncToNow(
+      std::chrono::milliseconds timeout,
+      std::vector<w_string>& cookieFileNames);
 
-  /** Touches a cookie file and returns a Future that will
+  /**
+   * Touches a cookie file and returns a Future that will
    * be ready when that cookie file is processed by the IO
    * thread at some future time.
    * Important: if you chain a lambda onto the future, it
@@ -39,7 +49,7 @@ class CookieSync {
    * It is recommended that you minimize the actions performed
    * in that context to avoid holding up the IO thread.
    **/
-  folly::Future<folly::Unit> sync();
+  folly::Future<folly::Unit> sync(std::vector<w_string>& cookieFileNames);
 
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just

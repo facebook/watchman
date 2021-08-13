@@ -65,7 +65,8 @@ std::vector<w_string> CookieSync::getOutstandingCookieFileList() const {
   return result;
 }
 
-folly::Future<folly::Unit> CookieSync::sync() {
+folly::Future<folly::Unit> CookieSync::sync(
+    std::vector<w_string>& cookieFileNames) {
   auto prefixes = cookiePrefix();
   auto serial = serial_++;
 
@@ -81,8 +82,10 @@ folly::Future<folly::Unit> CookieSync::sync() {
   CookieMap pendingCookies;
   std::optional<std::tuple<w_string, int>> lastError;
 
+  cookieFileNames.reserve(prefixes.size());
   for (const auto& prefix : prefixes) {
     auto path_str = w_string::build(prefix, serial);
+    cookieFileNames.push_back(path_str);
 
     /* then touch the file */
     auto file = w_stm_open(
@@ -122,13 +125,15 @@ folly::Future<folly::Unit> CookieSync::sync() {
   return cookie->promise.getFuture();
 }
 
-void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
+void CookieSync::syncToNow(
+    std::chrono::milliseconds timeout,
+    std::vector<w_string>& cookieFileNames) {
   /* compute deadline */
   using namespace std::chrono;
   auto deadline = system_clock::now() + timeout;
 
   while (true) {
-    auto cookie = sync();
+    auto cookie = sync(cookieFileNames);
 
     if (!cookie.wait(timeout).isReady()) {
       auto why = folly::to<std::string>(

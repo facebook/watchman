@@ -1001,7 +1001,8 @@ class EdenView final : public QueryableView {
 
   void syncToNow(
       const std::shared_ptr<watchman_root>&,
-      std::chrono::milliseconds) override {
+      std::chrono::milliseconds,
+      std::vector<w_string>& /*cookieFileNames*/) override {
     // TODO: on FUSE and NFS, where all writes give synchronous notifications to
     // the EdenFS daemon, cookie files are not necessary, and could be replaced
     // with a Thrift call here.

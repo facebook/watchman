@@ -173,7 +173,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
-  void syncToNow(std::chrono::milliseconds timeout);
+  void syncToNow(
+      std::chrono::milliseconds timeout,
+      std::vector<w_string>& cookieFileNames);
   void scheduleRecrawl(const char* why);
   void recrawlTriggered(const char* why);
 

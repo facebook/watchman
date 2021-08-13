@@ -9,11 +9,13 @@
 using folly::to;
 using watchman::w_perf_t;
 
-void watchman_root::syncToNow(std::chrono::milliseconds timeout) {
+void watchman_root::syncToNow(
+    std::chrono::milliseconds timeout,
+    std::vector<w_string>& cookieFileNames) {
   w_perf_t sample("sync_to_now");
   auto root = shared_from_this();
   try {
-    view()->syncToNow(root, timeout);
+    view()->syncToNow(root, timeout, cookieFileNames);
     if (sample.finish()) {
       sample.add_root_meta(root);
       sample.add_meta(
@@ -52,8 +54,9 @@ namespace watchman {
  * inaccessible. */
 void InMemoryView::syncToNow(
     const std::shared_ptr<watchman_root>& root,
-    std::chrono::milliseconds timeout) {
-  syncToNowCookies(root, timeout);
+    std::chrono::milliseconds timeout,
+    std::vector<w_string>& cookieFileNames) {
+  syncToNowCookies(root, timeout, cookieFileNames);
 
   // Some watcher implementations (notably, FSEvents) reorder change events
   // before they're reported, and cookie files are not sufficient. Instead, the
@@ -73,9 +76,10 @@ void InMemoryView::syncToNow(
 
 void InMemoryView::syncToNowCookies(
     const std::shared_ptr<watchman_root>& root,
-    std::chrono::milliseconds timeout) {
+    std::chrono::milliseconds timeout,
+    std::vector<w_string>& cookieFileNames) {
   try {
-    cookies_.syncToNow(timeout);
+    cookies_.syncToNow(timeout, cookieFileNames);
   } catch (const std::system_error& exc) {
     auto cookieDirs = cookies_.cookieDirs();
 
@@ -99,7 +103,7 @@ void InMemoryView::syncToNowCookies(
           // The cookie dir was a VCS subdir and it got deleted.  Let's
           // focus instead on the parent dir and recursively retry.
           cookies_.setCookieDir(rootPath_);
-          return cookies_.syncToNow(timeout);
+          return cookies_.syncToNow(timeout, cookieFileNames);
         }
       } else {
         // Split watchers have one watch on the root and watches for nested

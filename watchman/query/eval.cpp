@@ -245,7 +245,6 @@ QueryResult w_query_execute(
     const std::shared_ptr<watchman_root>& root,
     QueryGenerator generator) {
   QueryResult res;
-  std::shared_ptr<w_query> altQuery;
   ClockSpec resultClock(ClockPosition{});
   bool disableFreshInstance{false};
   auto requestId = query->request_id;
@@ -388,7 +387,7 @@ QueryResult w_query_execute(
     ctx.state = QueryContextState::WaitingForCookieSync;
     ctx.stopWatch.reset();
     try {
-      root->syncToNow(query->sync_timeout);
+      root->syncToNow(query->sync_timeout, res.debugInfo.cookieFileNames);
     } catch (const std::exception& exc) {
       throw QueryExecError("synchronization failed: ", exc.what());
     }

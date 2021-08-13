@@ -42,7 +42,8 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
   virtual void syncToNow(
       const std::shared_ptr<watchman_root>& root,
-      std::chrono::milliseconds timeout) = 0;
+      std::chrono::milliseconds timeout,
+      std::vector<w_string>& cookieFileNames) = 0;
 
   // Specialized query function that is used to test whether
   // version control files exist as part of some settling handling.

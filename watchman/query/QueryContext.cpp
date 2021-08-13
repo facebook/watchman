@@ -33,6 +33,17 @@ folly::Optional<json_ref> file_result_to_json(
   return value;
 }
 
+} // namespace
+
+// TODO: Move this into a new QueryResult.cpp file.
+json_ref QueryDebugInfo::render() const {
+  auto arr = json_array();
+  for (auto& fn : cookieFileNames) {
+    json_array_append(arr, w_string_to_json(fn));
+  }
+  return json_object({
+      {"cookie_files", arr},
+  });
 }
 
 w_string QueryContext::computeWholeName(FileResult* file) const {

@@ -142,6 +142,12 @@ void time_generator(
 
 namespace watchman {
 
+struct QueryDebugInfo {
+  std::vector<w_string> cookieFileNames;
+
+  json_ref render() const;
+};
+
 struct QueryResult {
   bool isFreshInstance;
   json_ref resultsArray;
@@ -150,6 +156,7 @@ struct QueryResult {
   ClockSpec clockAtStartOfQuery;
   uint32_t stateTransCountAtStartOfQuery;
   json_ref savedStateInfo;
+  QueryDebugInfo debugInfo;
 };
 
 // Generator callback, used to plug in an alternate

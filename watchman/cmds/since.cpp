@@ -32,7 +32,8 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   response.set(
       {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
        {"clock", res.clockAtStartOfQuery.toJson()},
-       {"files", std::move(res.resultsArray)}});
+       {"files", std::move(res.resultsArray)},
+       {"debug", res.debugInfo.render()}});
   if (res.savedStateInfo) {
     response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
   }
