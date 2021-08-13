@@ -7,8 +7,7 @@
 
 #ifdef HAVE_PCRE_H
 
-using watchman::CaseSensitivity;
-using watchman::QueryParseError;
+using namespace watchman;
 
 class PcreExpr : public QueryExpr {
   pcre* re;
