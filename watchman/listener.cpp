@@ -324,12 +324,6 @@ disconnected:
   clients.wlock()->erase(client);
 }
 
-// This is just a placeholder.
-// This catches SIGUSR1 so we don't terminate.
-// We use this to interrupt blocking syscalls
-// on the worker threads
-static void wakeme(int) {}
-
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
 #include <sys/siginfo.h> // @manual
@@ -410,8 +404,6 @@ static FileDescriptor get_listener_tcp_socket() {
 }
 
 static FileDescriptor get_listener_unix_domain_socket(const char* path) {
-  struct sockaddr_un un {};
-
 #ifndef _WIN32
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
@@ -426,6 +418,7 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   }
 #endif
 
+  struct sockaddr_un un {};
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     logf(ERR, "{}: path is too long\n", path);
     return FileDescriptor();
@@ -438,8 +431,8 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
 
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path) + 1);
-  unlink(path);
 
+  (void)unlink(path);
   if (::bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
       0) {
     logf(ERR, "bind({}): {}\n", path, folly::errnoStr(errno));
@@ -636,62 +629,6 @@ static void named_pipe_accept_loop() {
  * named pipe style) accept loop that runs in another thread.
  */
 class AcceptLoop {
-  std::thread thread_;
-  bool joined_{false};
-
-  static void accept_thread(
-      FileDescriptor&& listenerDescriptor,
-      std::shared_ptr<watchman_event> listener_event) {
-    auto listener = w_stm_fdopen(std::move(listenerDescriptor));
-    while (!w_is_stopping()) {
-      FileDescriptor client_fd;
-      struct watchman_event_poll pfd[2];
-      int bufsize;
-
-      pfd[0].evt = listener->getEvents();
-      pfd[1].evt = listener_event.get();
-
-      if (w_poll_events(pfd, 2, 60000) == 0) {
-        if (w_is_stopping()) {
-          break;
-        }
-        // Timed out, or error.
-        continue;
-      }
-
-      if (w_is_stopping()) {
-        break;
-      }
-
-#ifdef HAVE_ACCEPT4
-      client_fd = FileDescriptor(
-          accept4(
-              listener->getFileDescriptor().system_handle(),
-              nullptr,
-              0,
-              SOCK_CLOEXEC),
-          FileDescriptor::FDType::Socket);
-#else
-      client_fd = FileDescriptor(
-          ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0),
-          FileDescriptor::FDType::Socket);
-#endif
-      if (!client_fd) {
-        continue;
-      }
-      client_fd.setCloExec();
-      bufsize = WATCHMAN_IO_BUF_SIZE;
-      ::setsockopt(
-          client_fd.system_handle(),
-          SOL_SOCKET,
-          SO_SNDBUF,
-          (char*)&bufsize,
-          sizeof(bufsize));
-
-      make_new_client(w_stm_fdopen(std::move(client_fd)));
-    }
-  }
-
  public:
   /** Start an accept loop thread using the provided socket
    * descriptor (`fd`).  The `name` parameter is used to name the
@@ -739,6 +676,62 @@ class AcceptLoop {
     thread_.join();
     joined_ = true;
   }
+
+ private:
+  static void accept_thread(
+      FileDescriptor&& listenerDescriptor,
+      std::shared_ptr<watchman_event> listener_event) {
+    auto listener = w_stm_fdopen(std::move(listenerDescriptor));
+    while (!w_is_stopping()) {
+      FileDescriptor client_fd;
+      struct watchman_event_poll pfd[2];
+
+      pfd[0].evt = listener->getEvents();
+      pfd[1].evt = listener_event.get();
+
+      if (w_poll_events(pfd, 2, 60000) == 0) {
+        if (w_is_stopping()) {
+          break;
+        }
+        // Timed out, or error.
+        continue;
+      }
+
+      if (w_is_stopping()) {
+        break;
+      }
+
+#ifdef HAVE_ACCEPT4
+      client_fd = FileDescriptor(
+          accept4(
+              listener->getFileDescriptor().system_handle(),
+              nullptr,
+              0,
+              SOCK_CLOEXEC),
+          FileDescriptor::FDType::Socket);
+#else
+      client_fd = FileDescriptor(
+          ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0),
+          FileDescriptor::FDType::Socket);
+#endif
+      if (!client_fd) {
+        continue;
+      }
+      client_fd.setCloExec();
+      int bufsize = WATCHMAN_IO_BUF_SIZE;
+      ::setsockopt(
+          client_fd.system_handle(),
+          SOL_SOCKET,
+          SO_SNDBUF,
+          (char*)&bufsize,
+          sizeof(bufsize));
+
+      make_new_client(w_stm_fdopen(std::move(client_fd)));
+    }
+  }
+
+  std::thread thread_;
+  bool joined_{false};
 };
 
 bool w_start_listener() {
@@ -819,7 +812,7 @@ bool w_start_listener() {
   /* allow SIGUSR1 and SIGCHLD to wake up a blocked thread, without restarting
    * syscalls */
   memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = wakeme;
+  sa.sa_handler = [](int) {};
   sa.sa_flags = 0;
   sigaction(SIGUSR1, &sa, NULL);
   sigaction(SIGCHLD, &sa, NULL);
