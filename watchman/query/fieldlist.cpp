@@ -2,16 +2,17 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/watchman.h"
 
 using namespace watchman;
 using folly::Optional;
 
-static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
+static Optional<json_ref> make_name(FileResult* file, const QueryContext* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
+static Optional<json_ref> make_symlink(FileResult* file, const QueryContext*) {
   auto target = file->readLink();
   if (!target.has_value()) {
     return folly::none;
@@ -19,7 +20,7 @@ static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
   return *target ? w_string_to_json(*target) : json_null();
 }
 
-static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
+static Optional<json_ref> make_sha1_hex(FileResult* file, const QueryContext*) {
   try {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
@@ -53,7 +54,7 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
   }
 }
 
-static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
+static Optional<json_ref> make_size(FileResult* file, const QueryContext*) {
   auto size = file->size();
   if (!size.has_value()) {
     return folly::none;
@@ -61,7 +62,7 @@ static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
   return json_integer(size.value());
 }
 
-static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
+static Optional<json_ref> make_exists(FileResult* file, const QueryContext*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
     return folly::none;
@@ -69,7 +70,7 @@ static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
   return json_boolean(exists.value());
 }
 
-static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
+static Optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
   bool is_new = false;
 
   if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
@@ -92,7 +93,7 @@ static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
 
 #define MAKE_CLOCK_FIELD(name, member)                      \
   static Optional<json_ref> make_##name(                    \
-      FileResult* file, const w_query_ctx* ctx) {           \
+      FileResult* file, const QueryContext* ctx) {          \
     char buf[128];                                          \
     auto clock = file->member();                            \
     if (!clock.has_value()) {                               \
@@ -118,20 +119,20 @@ static_assert(
     sizeof(json_int_t) >= sizeof(time_t),
     "json_int_t isn't large enough to hold a time_t");
 
-#define MAKE_INT_FIELD(name, member)          \
-  static Optional<json_ref> make_##name(      \
-      FileResult* file, const w_query_ctx*) { \
-    auto stat = file->stat();                 \
-    if (!stat.has_value()) {                  \
-      /* need to load data */                 \
-      return folly::none;                     \
-    }                                         \
-    return json_integer(stat->member);        \
+#define MAKE_INT_FIELD(name, member)           \
+  static Optional<json_ref> make_##name(       \
+      FileResult* file, const QueryContext*) { \
+    auto stat = file->stat();                  \
+    if (!stat.has_value()) {                   \
+      /* need to load data */                  \
+      return folly::none;                      \
+    }                                          \
+    return json_integer(stat->member);         \
   }
 
 #define MAKE_TIME_INT_FIELD(name, member, scale)                  \
   static Optional<json_ref> make_##name(                          \
-      FileResult* file, const w_query_ctx*) {                     \
+      FileResult* file, const QueryContext*) {                    \
     auto spec = file->member();                                   \
     if (!spec.has_value()) {                                      \
       /* need to load data */                                     \
@@ -144,7 +145,7 @@ static_assert(
 
 #define MAKE_TIME_DOUBLE_FIELD(name, member)               \
   static Optional<json_ref> make_##name(                   \
-      FileResult* file, const w_query_ctx*) {              \
+      FileResult* file, const QueryContext*) {             \
     auto spec = file->member();                            \
     if (!spec.has_value()) {                               \
       /* need to load data */                              \
@@ -188,7 +189,7 @@ MAKE_INT_FIELD(nlink, nlink)
 
 static Optional<json_ref> make_type_field(
     FileResult* file,
-    const w_query_ctx*) {
+    const QueryContext*) {
   auto dtype = file->dtype();
   if (dtype.has_value()) {
     switch (*dtype) {
@@ -257,10 +258,10 @@ static Optional<json_ref> make_type_field(
 }
 
 // Helper to construct the list of field defs
-static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
+static std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
   struct {
     const char* name;
-    Optional<json_ref> (*make)(FileResult* file, const w_query_ctx* ctx);
+    Optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
   } defs[] = {
       {"name", make_name},
       {"symlink_target", make_symlink},
@@ -281,10 +282,10 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
       {"type", make_type_field},
       {"content.sha1hex", make_sha1_hex},
   };
-  std::unordered_map<w_string, w_query_field_renderer> map;
+  std::unordered_map<w_string, QueryFieldRenderer> map;
   for (auto& def : defs) {
     w_string name(def.name, W_STRING_UNICODE);
-    map.emplace(name, w_query_field_renderer{name, def.make});
+    map.emplace(name, QueryFieldRenderer{name, def.make});
   }
 
   return map;
@@ -292,12 +293,12 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
 
 // Meyers singleton to avoid SIOF wrt. static constructors in this module
 // and the order that w_ctor_fn callbacks are dispatched.
-static std::unordered_map<w_string, w_query_field_renderer>& field_defs() {
-  static std::unordered_map<w_string, w_query_field_renderer> map(build_defs());
+static std::unordered_map<w_string, QueryFieldRenderer>& field_defs() {
+  static std::unordered_map<w_string, QueryFieldRenderer> map(build_defs());
   return map;
 }
 
-json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
+json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
   auto templ = json_array_of_size(fieldList.size());
 
   for (auto& f : fieldList) {
@@ -307,27 +308,7 @@ json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
   return templ;
 }
 
-Optional<json_ref> file_result_to_json(
-    const w_query_field_list& fieldList,
-    const std::unique_ptr<FileResult>& file,
-    const w_query_ctx* ctx) {
-  if (fieldList.size() == 1) {
-    return fieldList.front()->make(file.get(), ctx);
-  }
-  auto value = json_object_of_size(fieldList.size());
-
-  for (auto& f : fieldList) {
-    auto ele = f->make(file.get(), ctx);
-    if (!ele.has_value()) {
-      // Need data to be loaded
-      return folly::none;
-    }
-    value.set(f->name, std::move(ele.value()));
-  }
-  return value;
-}
-
-void parse_field_list(json_ref field_list, w_query_field_list* selected) {
+void parse_field_list(json_ref field_list, QueryFieldList* selected) {
   uint32_t i;
 
   selected->clear();

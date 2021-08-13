@@ -6,15 +6,12 @@
 #include <folly/ScopeGuard.h>
 #include "watchman/Errors.h"
 #include "watchman/LocalFileResult.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 #include "watchman/scm/SCM.h"
 
 using namespace watchman;
-
-namespace {
-constexpr size_t kMaximumRenderBatchSize = 1024;
-}
 
 FileResult::~FileResult() {}
 
@@ -26,27 +23,7 @@ folly::Optional<DType> FileResult::dtype() {
   return statInfo->dtype();
 }
 
-w_string w_query_ctx::computeWholeName(FileResult* file) const {
-  uint32_t name_start;
-
-  if (query->relative_root) {
-    // At this point every path should start with the relative root, so this is
-    // legal
-    name_start = query->relative_root.size() + 1;
-  } else {
-    name_start = root->root_path.size() + 1;
-  }
-
-  // Record the name relative to the root
-  auto parent = file->dirName();
-  if (name_start > parent.size()) {
-    return file->baseName().asWString();
-  }
-  parent.advance(name_start);
-  return w_string::build(parent, "/", file->baseName());
-}
-
-const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
+const w_string& w_query_ctx_get_wholename(QueryContext* ctx) {
   if (ctx->wholename) {
     return ctx->wholename;
   }
@@ -82,7 +59,7 @@ const std::vector<w_string>& getUnconditionalLogFilePrefixes() {
 /* Query evaluator */
 void w_query_process_file(
     w_query* query,
-    struct w_query_ctx* ctx,
+    QueryContext* ctx,
     std::unique_ptr<FileResult> file) {
   ctx->wholename.reset();
   ctx->file = std::move(file);
@@ -147,49 +124,17 @@ void w_query_process_file(
   ctx->maybeRender(std::move(ctx->file));
 }
 
-bool w_query_ctx::dirMatchesRelativeRoot(w_string_piece fullDirectoryPath) {
-  if (!query->relative_root) {
-    return true;
-  }
-
-  // "matches relative root" here can be either an exact match for
-  // the relative root, or some path below it, so we compare against
-  // both.  relative_root_slash is a precomputed version of relative_root
-  // with the trailing slash to make this comparison very slightly cheaper
-  // and less awkward to express in code.
-  return fullDirectoryPath == query->relative_root ||
-      fullDirectoryPath.startsWith(query->relative_root_slash);
-}
-
-bool w_query_ctx::fileMatchesRelativeRoot(w_string_piece fullFilePath) {
-  // dirName() scans the string contents; avoid it with this cheap test
-  if (!query->relative_root) {
-    return true;
-  }
-
-  return dirMatchesRelativeRoot(fullFilePath.dirName());
-}
-
-bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
-  // getFullPath() allocates memory; avoid it with this cheap test
-  if (!query->relative_root) {
-    return true;
-  }
-
-  return dirMatchesRelativeRoot(f->parent->getFullPath());
-}
-
 void time_generator(
     w_query* query,
     const std::shared_ptr<watchman_root>& root,
-    struct w_query_ctx* ctx) {
+    QueryContext* ctx) {
   root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
     w_query* query,
     const std::shared_ptr<watchman_root>& root,
-    struct w_query_ctx* ctx) {
+    QueryContext* ctx) {
   bool generated = false;
 
   // Time based query
@@ -216,7 +161,7 @@ static void default_generators(
 }
 
 static void execute_common(
-    struct w_query_ctx* ctx,
+    QueryContext* ctx,
     w_perf_t* sample,
     w_query_res* res,
     w_query_generator generator) {
@@ -290,86 +235,6 @@ static void execute_common(
 
   res->resultsArray = ctx->resultsArray;
   res->dedupedFileNames = std::move(ctx->dedup);
-}
-
-w_query_ctx::w_query_ctx(
-    w_query* q,
-    const std::shared_ptr<watchman_root>& root,
-    bool disableFreshInstance)
-    : created(std::chrono::steady_clock::now()),
-      query(q),
-      root(root),
-      resultsArray(json_array()),
-      disableFreshInstance{disableFreshInstance} {
-  // build a template for the serializer
-  if (query->fieldList.size() > 1) {
-    json_array_set_template_new(
-        resultsArray, field_list_to_json_name_array(query->fieldList));
-  }
-}
-
-void w_query_ctx::addToEvalBatch(std::unique_ptr<FileResult>&& file) {
-  evalBatch_.emplace_back(std::move(file));
-
-  // Find a balance between local memory usage, latency in fetching
-  // and the cost of fetching the data needed to re-evaluate this batch.
-  // TODO: maybe allow passing this number in via the query?
-  if (evalBatch_.size() >= 20480) {
-    fetchEvalBatchNow();
-  }
-}
-
-void w_query_ctx::fetchEvalBatchNow() {
-  if (evalBatch_.empty()) {
-    return;
-  }
-  evalBatch_.front()->batchFetchProperties(evalBatch_);
-
-  auto toProcess = std::move(evalBatch_);
-
-  for (auto& file : toProcess) {
-    w_query_process_file(query, this, std::move(file));
-  }
-
-  w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
-}
-
-void w_query_ctx::maybeRender(std::unique_ptr<FileResult>&& file) {
-  auto maybeRendered = file_result_to_json(query->fieldList, file, this);
-  if (maybeRendered.has_value()) {
-    json_array_append_new(resultsArray, std::move(maybeRendered.value()));
-    return;
-  }
-
-  addToRenderBatch(std::move(file));
-}
-
-void w_query_ctx::addToRenderBatch(std::unique_ptr<FileResult>&& file) {
-  renderBatch_.emplace_back(std::move(file));
-  // TODO: maybe allow passing this number in via the query?
-  if (renderBatch_.size() >= kMaximumRenderBatchSize) {
-    fetchRenderBatchNow();
-  }
-}
-
-bool w_query_ctx::fetchRenderBatchNow() {
-  if (renderBatch_.empty()) {
-    return true;
-  }
-  renderBatch_.front()->batchFetchProperties(renderBatch_);
-
-  auto toProcess = std::move(renderBatch_);
-
-  for (auto& file : toProcess) {
-    auto maybeRendered = file_result_to_json(query->fieldList, file, this);
-    if (maybeRendered.has_value()) {
-      json_array_append_new(resultsArray, std::move(maybeRendered.value()));
-    } else {
-      renderBatch_.emplace_back(std::move(file));
-    }
-  }
-
-  return renderBatch_.empty();
 }
 
 // Capability indicating support for scm-aware since queries
@@ -457,7 +322,7 @@ w_query_res w_query_execute(
         generator = [root, modifiedMergebase, requestId](
                         w_query* q,
                         const std::shared_ptr<watchman_root>& r,
-                        struct w_query_ctx* c) {
+                        QueryContext* c) {
           auto changedFiles =
               root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
                   modifiedMergebase, requestId);
@@ -507,11 +372,10 @@ w_query_res w_query_execute(
   // indicated to omit those. To do so, lets just make an empty
   // generator.
   if (query->omit_changed_files) {
-    generator = [](w_query*,
-                   const std::shared_ptr<watchman_root>&,
-                   struct w_query_ctx*) {};
+    generator =
+        [](w_query*, const std::shared_ptr<watchman_root>&, QueryContext*) {};
   }
-  w_query_ctx ctx(query, root, disableFreshInstance);
+  QueryContext ctx{query, root, disableFreshInstance};
 
   // Track the query against the root.
   // This is to enable the `watchman debug-status` diagnostic command.
@@ -561,7 +425,7 @@ w_query_res w_query_execute(
 
   if (query->bench_iterations > 0) {
     for (uint32_t i = 0; i < query->bench_iterations; ++i) {
-      w_query_ctx c(query, root, ctx.disableFreshInstance);
+      QueryContext c{query, root, ctx.disableFreshInstance};
       w_query_res r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
       c.since = ctx.since;

@@ -25,7 +25,7 @@ class DirNameExpr : public QueryExpr {
       StartsWith startswith)
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
-  EvaluateResult evaluate(w_query_ctx* ctx, FileResult*) override {
+  EvaluateResult evaluate(QueryContext* ctx, FileResult*) override {
     auto& str = w_query_ctx_get_wholename(ctx);
     size_t i;
 

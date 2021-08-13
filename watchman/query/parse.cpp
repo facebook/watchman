@@ -318,7 +318,7 @@ bool w_query::isFieldRequested(w_string_piece name) const {
   return false;
 }
 
-void w_query_legacy_field_list(w_query_field_list* flist) {
+void w_query_legacy_field_list(QueryFieldList* flist) {
   static const char* names[] = {
       "name",
       "exists",

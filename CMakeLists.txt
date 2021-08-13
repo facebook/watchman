@@ -642,6 +642,7 @@ watchman/stream_stdout.cpp
 # string.cpp (in libstring)
 watchman/time.cpp
 watchman/tmp.cpp
+watchman/query/QueryContext.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp
 watchman/query/empty.cpp

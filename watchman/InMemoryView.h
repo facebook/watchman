@@ -163,14 +163,13 @@ class InMemoryView final : public QueryableView {
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
 
-  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void timeGenerator(w_query* query, QueryContext* ctx) const override;
 
-  void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void pathGenerator(w_query* query, QueryContext* ctx) const override;
 
-  void globGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void globGenerator(w_query* query, QueryContext* ctx) const override;
 
-  void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
-      const override;
+  void allFilesGenerator(w_query* query, QueryContext* ctx) const override;
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<watchman_root>& root) override;
@@ -232,15 +231,15 @@ class InMemoryView final : public QueryableView {
   /** Recursively walks files under a specified dir */
   void dirGenerator(
       w_query* query,
-      struct w_query_ctx* ctx,
+      QueryContext* ctx,
       const watchman_dir* dir,
       uint32_t depth) const;
   void globGeneratorTree(
-      struct w_query_ctx* ctx,
+      QueryContext* ctx,
       const struct watchman_glob_tree* node,
       const struct watchman_dir* dir) const;
   void globGeneratorDoublestar(
-      struct w_query_ctx* ctx,
+      QueryContext* ctx,
       const struct watchman_dir* dir,
       const struct watchman_glob_tree* node,
       const char* dir_name,

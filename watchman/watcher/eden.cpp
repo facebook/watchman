@@ -23,6 +23,7 @@
 #include "watchman/FSDetect.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watcher/Watcher.h"
@@ -572,7 +573,7 @@ static std::string escapeGlobSpecialChars(w_string_piece str) {
  * We need to respect the ignore_dirs configuration setting and
  * also remove anything that doesn't match the relative_root constraint
  * in the query. */
-void filterOutPaths(std::vector<NameAndDType>& files, w_query_ctx* ctx) {
+void filterOutPaths(std::vector<NameAndDType>& files, QueryContext* ctx) {
   files.erase(
       std::remove_if(
           files.begin(),
@@ -769,7 +770,7 @@ class EdenView final : public QueryableView {
     crawlInfo->crawlFinish = crawlInfo->crawlStart;
   }
 
-  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+  void timeGenerator(w_query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     auto client = getEdenClient(thriftChannel_);
 
@@ -1009,7 +1010,7 @@ class EdenView final : public QueryableView {
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
       w_query* query,
-      struct w_query_ctx* ctx) const {
+      QueryContext* ctx) const {
     auto client = getEdenClient(thriftChannel_);
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
@@ -1043,7 +1044,7 @@ class EdenView final : public QueryableView {
 
   // Helper for computing a relative path prefix piece.
   // The returned piece is owned by the supplied context object!
-  w_string_piece computeRelativePathPiece(struct w_query_ctx* ctx) const {
+  w_string_piece computeRelativePathPiece(QueryContext* ctx) const {
     w_string_piece rel;
     if (ctx->query->relative_root) {
       rel = ctx->query->relative_root;
@@ -1053,7 +1054,7 @@ class EdenView final : public QueryableView {
   }
 
   /** Walks files that match the supplied set of paths */
-  void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+  void pathGenerator(w_query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
@@ -1080,7 +1081,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  void globGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+  void globGenerator(w_query* query, QueryContext* ctx) const override {
     if (!query->glob_tree) {
       // If we are called via the codepath in the query evaluator that
       // just speculatively executes queries then `glob` may not be
@@ -1107,8 +1108,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
-      const override {
+  void allFilesGenerator(w_query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden

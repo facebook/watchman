@@ -6,8 +6,7 @@
 
 #include <memory>
 
-using watchman::DType;
-using watchman::QueryParseError;
+using namespace watchman;
 
 class TypeExpr : public QueryExpr {
   char arg;
@@ -15,7 +14,7 @@ class TypeExpr : public QueryExpr {
  public:
   explicit TypeExpr(char arg) : arg(arg) {}
 
-  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
     auto optionalDtype = file->dtype();
     if (!optionalDtype.has_value()) {
       return folly::none;

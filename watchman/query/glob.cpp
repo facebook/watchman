@@ -5,6 +5,7 @@
 #include <memory>
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman.h"
 
@@ -307,7 +308,7 @@ namespace watchman {
  * as any one of them matches the file node.
  */
 void InMemoryView::globGeneratorDoublestar(
-    struct w_query_ctx* ctx,
+    QueryContext* ctx,
     const struct watchman_dir* dir,
     const struct watchman_glob_tree* node,
     const char* dir_name,
@@ -372,7 +373,7 @@ void InMemoryView::globGeneratorDoublestar(
 
 /* Match each child of node against the children of dir */
 void InMemoryView::globGeneratorTree(
-    struct w_query_ctx* ctx,
+    QueryContext* ctx,
     const struct watchman_glob_tree* node,
     const struct watchman_dir* dir) const {
   if (!node->doublestar_children.empty()) {
@@ -473,8 +474,7 @@ void InMemoryView::globGeneratorTree(
   }
 }
 
-void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
-    const {
+void InMemoryView::globGenerator(w_query* query, QueryContext* ctx) const {
   w_string relative_root;
 
   if (query->relative_root) {

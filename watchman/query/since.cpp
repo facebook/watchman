@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/watchman.h"
 
 #include <memory>
@@ -28,7 +29,7 @@ class SinceExpr : public QueryExpr {
   explicit SinceExpr(std::unique_ptr<ClockSpec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
-  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
     time_t tval = 0;
 
     auto since = spec->evaluate(

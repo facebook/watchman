@@ -9,20 +9,20 @@ QueryableView::~QueryableView() {}
 
 /** Perform a time-based (since) query and emit results to the supplied
  * query context */
-void QueryableView::timeGenerator(w_query*, struct w_query_ctx*) const {
+void QueryableView::timeGenerator(w_query*, QueryContext*) const {
   throw QueryExecError("timeGenerator not implemented");
 }
 
 /** Walks files that match the supplied set of paths */
-void QueryableView::pathGenerator(w_query*, struct w_query_ctx*) const {
+void QueryableView::pathGenerator(w_query*, QueryContext*) const {
   throw QueryExecError("pathGenerator not implemented");
 }
 
-void QueryableView::globGenerator(w_query*, struct w_query_ctx*) const {
+void QueryableView::globGenerator(w_query*, QueryContext*) const {
   throw QueryExecError("globGenerator not implemented");
 }
 
-void QueryableView::allFilesGenerator(w_query*, struct w_query_ctx*) const {
+void QueryableView::allFilesGenerator(w_query*, QueryContext*) const {
   throw QueryExecError("allFilesGenerator not implemented");
 }
 

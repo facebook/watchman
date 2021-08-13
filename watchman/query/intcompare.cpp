@@ -82,7 +82,7 @@ class SizeExpr : public QueryExpr {
  public:
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
-  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
     auto exists = file->exists();
     auto size = file->size();
 

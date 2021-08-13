@@ -68,6 +68,8 @@ class ClientStateAssertions {
 } // namespace watchman
 
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
+  using QueryContext = watchman::QueryContext;
+
   /* path to root */
   w_string root_path;
   /* filesystem type name, as returned by w_fstype() */
@@ -160,7 +162,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // If is only safe to read the query contexts while the queries.rlock()
   // is held, and even then it is only really safe to read fields that
   // are not changed by the query exection.
-  folly::Synchronized<std::unordered_set<w_query_ctx*>> queries;
+  folly::Synchronized<std::unordered_set<QueryContext*>> queries;
 
   // Obtain the current view pointer.
   // This is safe wrt. a concurrent recrawl operation

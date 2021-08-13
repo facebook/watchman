@@ -5,9 +5,11 @@
 
 #include <memory>
 
+using namespace watchman;
+
 class ExistsExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
     return file->exists();
   }
 
@@ -19,7 +21,7 @@ W_TERM_PARSER("exists", ExistsExpr::parse)
 
 class EmptyExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
     auto exists = file->exists();
     auto stat = file->stat();
     auto size = file->size();

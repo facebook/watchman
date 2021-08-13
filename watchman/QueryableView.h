@@ -24,16 +24,16 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
    * Perform a time-based (since) query and emit results to the supplied
    * query context.
    */
-  virtual void timeGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void timeGenerator(w_query* query, QueryContext* ctx) const;
 
   /**
    * Walks files that match the supplied set of paths.
    */
-  virtual void pathGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void pathGenerator(w_query* query, QueryContext* ctx) const;
 
-  virtual void globGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void globGenerator(w_query* query, QueryContext* ctx) const;
 
-  virtual void allFilesGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void allFilesGenerator(w_query* query, QueryContext* ctx) const;
 
   virtual ClockPosition getMostRecentRootNumberAndTickValue() const = 0;
   virtual w_string getCurrentClockString() const = 0;

@@ -20,7 +20,7 @@ class NameExpr : public QueryExpr {
         wholename(wholename) {}
 
  public:
-  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
     if (!set.empty()) {
       bool matched;
       w_string str;
