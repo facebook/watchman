@@ -49,7 +49,8 @@ static void compute_file_name(
     std::string& str,
     const std::string& user,
     const char* suffix,
-    const char* what);
+    const char* what,
+    bool require_absolute = true);
 
 namespace {
 const std::string& get_pid_file() {
@@ -99,11 +100,14 @@ void detect_low_process_priority() {
     ignore_result(::dup2(fd, STDIN_FILENO));
     ::close(fd);
   }
-  fd = open(logging::log_name.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
-  if (fd != -1) {
-    ignore_result(::dup2(fd, STDOUT_FILENO));
-    ignore_result(::dup2(fd, STDERR_FILENO));
-    ::close(fd);
+
+  if (logging::log_name != "-") {
+    fd = open(logging::log_name.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
+    if (fd != -1) {
+      ignore_result(::dup2(fd, STDOUT_FILENO));
+      ignore_result(::dup2(fd, STDERR_FILENO));
+      ::close(fd);
+    }
   }
 
   // If we weren't attached to a tty, check this now that we've opened
@@ -720,7 +724,8 @@ static void compute_file_name(
     std::string& str,
     const std::string& user,
     const char* suffix,
-    const char* what) {
+    const char* what,
+    bool require_absolute) {
   bool str_computed = false;
   if (str.empty()) {
     str_computed = true;
@@ -745,7 +750,7 @@ static void compute_file_name(
     str = folly::to<std::string>(state_dir, "/", suffix);
   }
 #ifndef _WIN32
-  if (!w_string_piece(str).pathIsAbsolute()) {
+  if (require_absolute && !w_string_piece(str).pathIsAbsolute()) {
     log(FATAL,
         what,
         " must be an absolute file path but ",
@@ -873,7 +878,12 @@ static void setup_sock_name() {
   compute_file_name(flags.unix_sock_name, user, "sock", "sockname");
 
   compute_file_name(flags.watchman_state_file, user, "state", "statefile");
-  compute_file_name(logging::log_name, user, "log", "logfile");
+  compute_file_name(
+      logging::log_name,
+      user,
+      "log",
+      "logfile",
+      /*require_absolute=*/logging::log_name != "-");
 
   if (flags.unix_sock_name.size() >= sizeof(un.sun_path) - 1) {
     log(FATAL, flags.unix_sock_name, ": path is too long\n");

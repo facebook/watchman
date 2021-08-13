@@ -106,7 +106,7 @@ const OptDesc opts[] = {
      IS_DAEMON},
     {"logfile",
      'o',
-     "Specify path to logfile",
+     "Specify path to logfile ('-' = stdout and stderr)",
      REQ_STRING,
      &watchman::logging::log_name,
      "PATH",
