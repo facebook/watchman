@@ -5,8 +5,6 @@
 
 #include <memory>
 
-using namespace watchman;
-
 class ExistsExpr : public QueryExpr {
  public:
   EvaluateResult evaluate(QueryContext*, FileResult* file) override {
