@@ -235,7 +235,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
       n,
       folly::errnoStr(errno));
   if (root->inner.cancelled) {
-    return {0, false};
+    return {false};
   }
 
   auto now = std::chrono::system_clock::now();
@@ -271,7 +271,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
             "root dir {} has been (re)moved [code {:x}], canceling watch\n",
             root->root_path,
             fflags);
-        return {0, true};
+        return {true};
       }
 
       // Remove our watch bits
@@ -287,7 +287,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
         path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
   }
 
-  return {n > 0, false};
+  return {false};
 }
 
 bool KQueueWatcher::waitNotify(int timeoutms) {

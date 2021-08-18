@@ -78,19 +78,17 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // Signal any threads to terminate.  Do not join them here.
   virtual void signalThreads() {}
 
-  struct ConsumeNotifyRet {
-    // Were events added to the collection?
-    bool addedPending;
-    // Should the watch be cancelled?
-    bool cancelSelf;
-  };
-
   /**
    * Wait for an inotify event to become available.
    * Returns true if events are available or false if signalThreads() has been
    * called or timeout has elapsed.
    */
   virtual bool waitNotify(int timeoutms) = 0;
+
+  struct ConsumeNotifyRet {
+    // Should the watch be cancelled?
+    bool cancelSelf;
+  };
 
   /**
    * Consume any available notifications.  If there are none pending,

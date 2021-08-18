@@ -222,7 +222,6 @@ bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
 Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll) {
-  bool ret = false;
   {
     auto guard = injectedRecrawl_.wlock();
     if (guard->has_value()) {
@@ -237,22 +236,21 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
       guard->reset();
     }
   }
+
   {
     auto fseventWatches = fseventWatchers_.wlock();
     for (auto& [watchpath, fsevent] : *fseventWatches) {
-      auto [addedPending, cancelSelf] = fsevent->consumeNotify(root, coll);
+      auto [cancelSelf] = fsevent->consumeNotify(root, coll);
       if (cancelSelf) {
         fsevent->signalThreads();
         root->cookies.removeCookieDir(watchpath);
         fseventWatches->erase(watchpath);
         continue;
       }
-      ret |= addedPending;
     }
   }
-  auto [addedPending, cancelSelf] = kqueueWatcher_->consumeNotify(root, coll);
-  ret |= addedPending;
-  return {ret, cancelSelf};
+
+  return kqueueWatcher_->consumeNotify(root, coll);
 }
 
 bool KQueueAndFSEventsWatcher::waitNotify(int timeoutms) {

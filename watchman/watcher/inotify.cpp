@@ -398,7 +398,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
-      return {false, false};
+      return {false};
     }
     logf(
         FATAL,
@@ -450,7 +450,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     }
   }
 
-  return {true, cancel};
+  return {cancel};
 }
 
 bool InotifyWatcher::waitNotify(int timeoutms) {

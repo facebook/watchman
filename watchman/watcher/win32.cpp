@@ -388,7 +388,7 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
   }
 
   // The readChangesThread cancels itself.
-  return {!items.empty(), false};
+  return {false};
 }
 
 bool WinWatcher::waitNotify(int timeoutms) {
