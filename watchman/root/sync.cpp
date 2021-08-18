@@ -70,7 +70,17 @@ void InMemoryView::syncToNow(
     // everything prior.
     //
     // Would be nice to use a deadline rather than a timeout here.
-    std::move(result).get(timeout);
+
+    try {
+      std::move(result).get(timeout);
+    } catch (folly::FutureTimeout&) {
+      auto why = folly::to<std::string>(
+          "syncToNow: timed out waiting for pending watcher events to be flushed within ",
+          timeout.count(),
+          " milliseconds");
+      log(ERR, why, "\n");
+      throw std::system_error(ETIMEDOUT, std::generic_category(), why);
+    }
   }
 }
 

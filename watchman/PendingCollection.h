@@ -148,7 +148,7 @@ class PendingChanges {
    * Returns the number of unique pending items in the collection. Does not
    * include sync requests.
    */
-  uint32_t size() const;
+  uint32_t getPendingItemCount() const;
 
  protected:
   art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;

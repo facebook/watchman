@@ -697,6 +697,7 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
   std::vector<folly::Promise<folly::Unit>> syncs;
+  bool addedPending = false;
   bool cancelSelf = false;
 
   {
@@ -782,14 +783,16 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
       }
 
       coll.add(item.path, now, flags);
+      addedPending = true;
     }
   }
 
   for (auto& sync : syncs) {
     coll.addSync(std::move(sync));
+    addedPending = true;
   }
 
-  return {!items.empty(), cancelSelf};
+  return {addedPending, cancelSelf};
 }
 
 void FSEventsWatcher::signalThreads() {

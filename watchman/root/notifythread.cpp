@@ -45,7 +45,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
       if (!resultFlags.addedPending) {
         break;
       }
-      if (fromWatcher.size() >= WATCHMAN_BATCH_LIMIT) {
+      if (fromWatcher.getPendingItemCount() >= WATCHMAN_BATCH_LIMIT) {
         break;
       }
       if (!watcher_->waitNotify(0)) {

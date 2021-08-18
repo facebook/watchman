@@ -179,7 +179,7 @@ class NaivePendingCollection {
     head_ = p;
   }
 
-  size_t size() const {
+  size_t getPendingItemCount() const {
     size_t i = 0;
     for (auto p = head_; p; p = p->next) {
       ++i;
@@ -354,7 +354,7 @@ TYPED_TEST(PendingCollectionFixture, real_example) {
   this->coll.add(
       w_string{"/home/chadaustin/tmp/watchmanroots/test-root/f"}, this->now, 3);
 
-  EXPECT_EQ(3, this->coll.size());
+  EXPECT_EQ(3, this->coll.getPendingItemCount());
 
   auto item = this->coll.stealItems();
   ASSERT_NE(nullptr, item);

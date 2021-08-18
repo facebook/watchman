@@ -243,7 +243,11 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   std::vector<std::vector<folly::Promise<folly::Unit>>> allSyncs;
 
   while (!coll.empty()) {
-    logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
+    logf(
+        DBG,
+        "processing {} events in {}\n",
+        coll.getPendingItemCount(),
+        rootPath_);
 
     auto pending = coll.stealItems();
     auto syncs = coll.stealSyncs();
