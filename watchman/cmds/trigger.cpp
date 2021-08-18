@@ -1,9 +1,14 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/sockname.h"
+#include "watchman/watchman_trigger.h"
 
 #include <memory>
+
+// TODO: remove
+#include "watchman/watchman.h"
 
 using namespace watchman;
 

@@ -3,7 +3,9 @@
 
 #include "watchman/Options.h"
 
-using watchman::flags;
+using namespace watchman;
+
+namespace watchman {
 
 bool disable_unix_socket = false;
 bool disable_named_pipe = false;
@@ -23,3 +25,5 @@ const std::string& get_unix_sock_name() {
 const std::string& get_named_pipe_sock_path() {
   return flags.named_pipe_path;
 }
+
+} // namespace watchman

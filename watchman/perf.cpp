@@ -8,11 +8,13 @@
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
 #include "watchman/WatchmanConfig.h"
-#include "watchman/watchman.h"
+#include "watchman/sockname.h"
 #include "watchman/watchman_perf.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_system.h"
 #include "watchman/watchman_time.h"
+
+using namespace watchman;
 
 namespace watchman {
 namespace {
