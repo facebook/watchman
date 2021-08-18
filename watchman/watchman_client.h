@@ -7,8 +7,9 @@
 #include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/Logging.h"
+#include "watchman/watchman_pdu.h"
 #include "watchman/watchman_perf.h"
-#include "watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 struct w_query;
 struct watchman_client_subscription;
