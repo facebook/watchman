@@ -107,7 +107,7 @@ static void log_drop_event(
     const std::shared_ptr<watchman_root>& root,
     bool isKernel) {
   w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
-  sample.add_root_meta(root);
+  root->addPerfSampleMetadata(sample);
   sample.finish();
   sample.force_log();
   sample.log();

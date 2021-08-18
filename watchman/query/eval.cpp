@@ -221,7 +221,7 @@ static void execute_common(
   }
 
   if (sample && sample->finish()) {
-    sample->add_root_meta(ctx->root);
+    ctx->root->addPerfSampleMetadata(*sample);
     sample->add_meta(
         "query_execute",
         json_object(

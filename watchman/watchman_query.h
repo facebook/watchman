@@ -19,6 +19,7 @@ struct QueryContext;
 }
 
 struct watchman_file;
+struct watchman_root;
 struct w_query;
 
 namespace watchman {

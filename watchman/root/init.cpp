@@ -92,5 +92,25 @@ watchman_root::~watchman_root() {
   --live_roots;
 }
 
+void watchman_root::addPerfSampleMetadata(watchman_perf_sample& sample) const {
+  // Note: if the root lock isn't held, we may read inaccurate numbers for
+  // some of these properties.  We're ok with that, and don't want to force
+  // the root lock to be re-acquired just for this.
+  auto meta = json_object(
+      {{"path", w_string_to_json(root_path)},
+       {"recrawl_count", json_integer(recrawlInfo.rlock()->recrawlCount)},
+       {"case_sensitive",
+        json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)}});
+
+  // During recrawl, the view may be re-assigned.  Protect against
+  // reading a nullptr.
+  auto view = this->view();
+  if (view) {
+    meta.set({{"watcher", w_string_to_json(view->getName())}});
+  }
+
+  sample.add_meta("root", std::move(meta));
+}
+
 /* vim:ts=2:sw=2:et:
  */

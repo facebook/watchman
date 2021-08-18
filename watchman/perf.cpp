@@ -10,7 +10,6 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
 #include "watchman/watchman_perf.h"
-#include "watchman/watchman_root.h"
 #include "watchman/watchman_system.h"
 #include "watchman/watchman_time.h"
 
@@ -163,27 +162,6 @@ bool watchman_perf_sample::finish() {
 
 void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
   meta_data.set(key, std::move(val));
-}
-
-void watchman_perf_sample::add_root_meta(
-    const std::shared_ptr<watchman_root>& root) {
-  // Note: if the root lock isn't held, we may read inaccurate numbers for
-  // some of these properties.  We're ok with that, and don't want to force
-  // the root lock to be re-acquired just for this.
-  auto meta = json_object(
-      {{"path", w_string_to_json(root->root_path)},
-       {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-       {"case_sensitive",
-        json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive)}});
-
-  // During recrawl, the view may be re-assigned.  Protect against
-  // reading a nullptr.
-  auto view = root->view();
-  if (view) {
-    meta.set({{"watcher", w_string_to_json(view->getName())}});
-  }
-
-  add_meta("root", std::move(meta));
 }
 
 void watchman_perf_sample::set_wall_time_thresh(double thresh) {

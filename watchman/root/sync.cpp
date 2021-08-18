@@ -17,7 +17,7 @@ void watchman_root::syncToNow(
   try {
     view()->syncToNow(root, timeout, cookieFileNames);
     if (sample.finish()) {
-      sample.add_root_meta(root);
+      root->addPerfSampleMetadata(sample);
       sample.add_meta(
           "sync_to_now",
           json_object(
@@ -28,7 +28,7 @@ void watchman_root::syncToNow(
   } catch (const std::exception& exc) {
     sample.force_log();
     sample.finish();
-    sample.add_root_meta(root);
+    root->addPerfSampleMetadata(sample);
     sample.add_meta(
         "sync_to_now",
         json_object(

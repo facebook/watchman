@@ -5,8 +5,6 @@
 
 #include "watchman/thirdparty/jansson/jansson.h"
 
-struct watchman_root;
-
 // Performance metrics sampling
 
 namespace watchman {
@@ -54,9 +52,6 @@ struct watchman_perf_sample {
 
   // Annotate the sample with metadata
   void add_meta(const char* key, json_ref&& val);
-
-  // Annotate the sample with some standard metadata taken from a root.
-  void add_root_meta(const std::shared_ptr<watchman_root>& root);
 
   // Force the sample to go to the log
   void force_log();

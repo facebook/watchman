@@ -84,7 +84,7 @@ void InMemoryView::fullCrawl(
 
   root->cookies.abortAllCookies();
 
-  sample.add_root_meta(root);
+  root->addPerfSampleMetadata(sample);
 
   sample.finish();
   sample.force_log();

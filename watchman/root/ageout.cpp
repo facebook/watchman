@@ -40,7 +40,7 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
     }
   }
   if (sample.finish()) {
-    sample.add_root_meta(shared_from_this());
+    addPerfSampleMetadata(sample);
     sample.log();
   }
 }
