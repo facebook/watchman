@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <array>
-#include "LRUCache.h"
+#include "watchman/LRUCache.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
