@@ -732,8 +732,18 @@ enum Dtype {
 }
 
 struct PredictiveFetch {
-  // number of directories to glob
-  1: unsigned64 numTopDirectories;
+  // Number of directories to glob. If not specified, a default value (predictivePrefetchProfileSize in EdenConfig.h) is used.
+  1: optional unsigned64 numTopDirectories;
+  // Fetch the most accessed diectories by user specified. If not specified, user is derived from the server state.
+  2: optional string user;
+  // Fetch the most accessed diectories in repository specified. If not specified, repo is derived from the mount.
+  3: optional string repo;
+  // Optional query parameter: fetch top most accessed directories with specified Operating System
+  4: optional string os;
+  // Optional query parameter: fetch top most accessed directories after startTime
+  5: optional unsigned64 startTime;
+  // Optional query parameter: fetch top most accessed directories before endTime
+  6: optional unsigned64 endTime;
 }
 /** Params for globFiles(). */
 struct GlobParams {
