@@ -14,6 +14,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/net/NetworkSocket.h>
 #include <memory>
+#include "watchman/Constants.h"
 #include "watchman/FileDescriptor.h"
 #include "watchman/Pipe.h"
 

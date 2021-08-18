@@ -7,6 +7,8 @@
 #include <folly/Range.h>
 #include <stdexcept>
 
+#include "watchman/watchman_preprocessor.h"
+
 class json_ref;
 struct watchman_client;
 

@@ -4,6 +4,7 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <atomic>
+#include "watchman/Constants.h"
 #include "watchman/Errors.h"
 #include "watchman/FSDetect.h"
 #include "watchman/FileDescriptor.h"

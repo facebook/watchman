@@ -12,10 +12,12 @@
 #include <chrono>
 #include <thread>
 #include "SignalHandler.h"
+#include "watchman/Constants.h"
 #include "watchman/sockname.h"
+#include "watchman/watchman.h"
 
 // TODO: remove
-#include "watchman.h"
+//#include "watchman.h"
 
 using namespace watchman;
 
