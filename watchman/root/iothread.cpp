@@ -36,7 +36,7 @@ void InMemoryView::fullCrawl(
     PendingChanges& pending) {
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
-  w_perf_t sample("full-crawl");
+  PerfSample sample("full-crawl");
 
   auto view = view_.wlock();
   // Ensure that we observe these files with a new, distinct clock,

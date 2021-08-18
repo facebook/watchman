@@ -143,7 +143,7 @@ void do_clock_check(watchman_stream* client) {
   try {
     auto roots = get_watch_list(client);
     for (auto& r : roots.array()) {
-      w_perf_t sample("clock-test");
+      PerfSample sample("clock-test");
       sample.add_meta("root", json_object({{"path", r}}));
       try {
         check_clock_command(client, r);

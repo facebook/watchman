@@ -4,7 +4,7 @@
 
 #include <future>
 #include <vector>
-#include "watchman/watchman_perf.h"
+#include "watchman/PerfSample.h"
 #include "watchman/watchman_string.h"
 #include "watchman_query.h"
 
@@ -39,7 +39,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual w_string getCurrentClockString() const = 0;
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
-  virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+  virtual void ageOut(PerfSample& sample, std::chrono::seconds minAge);
   virtual void syncToNow(
       const std::shared_ptr<watchman_root>& root,
       std::chrono::milliseconds timeout,

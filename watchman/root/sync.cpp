@@ -7,12 +7,12 @@
 #include "watchman/watchman.h"
 
 using folly::to;
-using watchman::w_perf_t;
+using namespace watchman;
 
 void watchman_root::syncToNow(
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
-  w_perf_t sample("sync_to_now");
+  PerfSample sample("sync_to_now");
   auto root = shared_from_this();
   try {
     view()->syncToNow(root, timeout, cookieFileNames);

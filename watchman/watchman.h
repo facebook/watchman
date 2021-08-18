@@ -17,7 +17,6 @@ struct watchman_trigger_command;
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_file.h"
 
-#include "watchman/watchman_perf.h"
 #include "watchman_client.h"
 #include "watchman_pdu.h"
 #include "watchman_query.h"

@@ -30,8 +30,8 @@ struct watchman_trigger_command;
 
 namespace watchman {
 
-struct watchman_perf_sample;
 class ClientStateAssertion;
+class PerfSample;
 
 class ClientStateAssertions {
  public:
@@ -201,7 +201,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   json_ref getStatus() const;
 
   // Annotate the sample with some standard metadata taken from a root.
-  void addPerfSampleMetadata(watchman::watchman_perf_sample& sample) const;
+  void addPerfSampleMetadata(watchman::PerfSample& sample) const;
 
  private:
   void applyIgnoreConfiguration();

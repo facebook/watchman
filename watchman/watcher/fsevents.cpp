@@ -106,7 +106,7 @@ std::shared_ptr<FSEventsWatcher> watcherFromRoot(
 static void log_drop_event(
     const std::shared_ptr<watchman_root>& root,
     bool isKernel) {
-  w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
+  PerfSample sample(isKernel ? "KernelDropped" : "UserDropped");
   root->addPerfSampleMetadata(sample);
   sample.finish();
   sample.force_log();

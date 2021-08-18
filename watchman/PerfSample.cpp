@@ -1,6 +1,7 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/PerfSample.h"
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <thread>
@@ -9,7 +10,6 @@
 #include "watchman/Options.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
-#include "watchman/watchman_perf.h"
 #include "watchman/watchman_system.h"
 #include "watchman/watchman_time.h"
 
@@ -103,15 +103,14 @@ void processSamples(
   }
 }
 
-watchman_perf_sample::watchman_perf_sample(const char* description)
-    : description(description) {
+PerfSample::PerfSample(const char* description) : description(description) {
   gettimeofday(&time_begin, nullptr);
 #ifdef HAVE_SYS_RESOURCE_H
   getrusage(RUSAGE_SELF, &usage_begin);
 #endif
 }
 
-bool watchman_perf_sample::finish() {
+bool PerfSample::finish() {
   gettimeofday(&time_end, nullptr);
   w_timeval_sub(time_end, time_begin, &duration);
 #ifdef HAVE_SYS_RESOURCE_H
@@ -160,15 +159,15 @@ bool watchman_perf_sample::finish() {
   return will_log;
 }
 
-void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
+void PerfSample::add_meta(const char* key, json_ref&& val) {
   meta_data.set(key, std::move(val));
 }
 
-void watchman_perf_sample::set_wall_time_thresh(double thresh) {
+void PerfSample::set_wall_time_thresh(double thresh) {
   wall_time_elapsed_thresh = thresh;
 }
 
-void watchman_perf_sample::force_log() {
+void PerfSample::force_log() {
   will_log = true;
 }
 
@@ -297,7 +296,7 @@ void PerfLogThread::loop() noexcept {
   }
 }
 
-void watchman_perf_sample::log() {
+void PerfSample::log() {
   if (!will_log) {
     return;
   }
