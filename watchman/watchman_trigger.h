@@ -3,11 +3,13 @@
 #pragma once
 #include <thread>
 #include "watchman/ChildProcess.h"
-#include "watchman/watchman_root.h"
+#include "watchman/PubSub.h"
 
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
 
 class watchman_event;
+struct watchman_root;
+struct w_query;
 
 struct watchman_trigger_command {
   w_string triggername;

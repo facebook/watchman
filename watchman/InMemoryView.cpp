@@ -10,7 +10,9 @@
 #include "watchman/query/QueryContext.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_file.h"
+#include "watchman/watchman_root.h"
 
 using folly::Optional;
 

@@ -3,7 +3,7 @@
 
 #include <folly/String.h>
 #include <folly/memory/Malloc.h>
-#include "watchman/watchman.h"
+#include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 

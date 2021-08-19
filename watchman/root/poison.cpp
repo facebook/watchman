@@ -1,6 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/watchman_root.h"
+
 #include "watchman/watchman.h"
 
 void set_poison_state(

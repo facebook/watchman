@@ -3,7 +3,7 @@
 
 #include "watchman/Errors.h"
 #include "watchman/query/QueryContext.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_query.h"
 
 #include <memory>
 

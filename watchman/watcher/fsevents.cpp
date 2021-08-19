@@ -13,7 +13,8 @@
 #include "watchman/LogConfig.h"
 #include "watchman/Pipe.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_root.h"
 
 #if HAVE_FSEVENTS
 

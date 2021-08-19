@@ -2,6 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include <folly/String.h>
+#include "watchman/Logging.h"
+#include "watchman/PerfSample.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
+
 #include "watchman/watchman.h"
 
 namespace watchman {

@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/Errors.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_query.h"
 
 #include <memory>
 

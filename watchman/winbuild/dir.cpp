@@ -3,8 +3,9 @@
 
 #include <folly/ScopeGuard.h>
 #include "watchman/FileDescriptor.h"
-#include "watchman/watchman.h"
+#include "watchman/FileSystem.h"
 #include "watchman/watchman_opendir.h"
+#include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
 using watchman::FileDescriptor;

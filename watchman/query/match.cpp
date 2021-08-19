@@ -1,12 +1,12 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/Errors.h"
-#include "watchman/watchman.h"
-
 #include <memory>
 #include <string>
+#include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
+#include "watchman/watchman_query.h"
 
 using watchman::CaseSensitivity;
 using watchman::QueryParseError;

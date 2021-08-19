@@ -6,7 +6,7 @@
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 #include <algorithm>
 #include <condition_variable>

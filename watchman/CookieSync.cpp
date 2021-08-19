@@ -1,10 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/CookieSync.h"
 #include <folly/String.h>
 #include <exception>
 #include <optional>
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman_stream.h"
 #include "watchman/watchman_system.h"
 
 namespace watchman {

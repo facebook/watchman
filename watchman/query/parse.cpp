@@ -1,8 +1,10 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_query.h"
+#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

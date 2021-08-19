@@ -13,13 +13,20 @@
 #include <variant>
 
 #include "watchman/ChildProcess.h"
+#include "watchman/Clock.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
+#include "watchman/PerfSample.h"
 #include "watchman/ProcessLock.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
+#include "watchman/watchman_cmd.h"
 #include "watchman/watchman_opendir.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_root.h"
+#include "watchman/watchman_stream.h"
 
 #ifdef _WIN32
 #include <Lmcons.h> // @manual

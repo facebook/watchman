@@ -3,7 +3,9 @@
 
 #include "watchman/MapUtil.h"
 #include "watchman/ThreadPool.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_root.h"
 #include "watchman/watchman_system.h"
 
 using namespace watchman;

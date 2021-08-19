@@ -4,7 +4,7 @@
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 using folly::to;
 using namespace watchman;

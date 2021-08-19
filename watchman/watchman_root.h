@@ -12,6 +12,7 @@
 #include "watchman/QueryableView.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_ignore.h"
+#include "watchman/watchman_trigger.h"
 
 #define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -25,8 +26,6 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 /* Idle out watches that haven't had activity in several days */
 #define DEFAULT_REAP_AGE (86400 * 5)
-
-struct watchman_trigger_command;
 
 namespace watchman {
 

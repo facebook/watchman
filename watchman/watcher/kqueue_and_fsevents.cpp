@@ -4,11 +4,13 @@
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <mutex>
-#include "fsevents.h"
-#include "kqueue.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman.h"
+#include "watchman/watcher/fsevents.h"
+#include "watchman/watcher/kqueue.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_file.h"
+#include "watchman/watchman_root.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)
 namespace watchman {

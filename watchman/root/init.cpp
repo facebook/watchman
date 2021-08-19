@@ -1,11 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
-
 #include <folly/String.h>
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/WatcherRegistry.h"
+#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

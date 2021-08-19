@@ -3,7 +3,7 @@
 #include "SCM.h"
 #include <memory>
 #include "Mercurial.h"
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
 
 namespace watchman {
 

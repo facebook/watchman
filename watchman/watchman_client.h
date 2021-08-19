@@ -13,6 +13,7 @@
 
 struct w_query;
 struct watchman_client_subscription;
+struct watchman_root;
 
 namespace watchman {
 

@@ -3,6 +3,9 @@
 
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_root.h"
+
 #include "watchman/watchman.h"
 
 using namespace watchman;

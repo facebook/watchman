@@ -6,6 +6,9 @@
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
+
 #include "watchman/watchman.h"
 
 using namespace watchman;

@@ -3,7 +3,8 @@
 
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
-#include "watchman/watchman.h"
+#include "watchman/watchman_ignore.h"
+#include "watchman/watchman_time.h"
 
 // A list that looks similar to one used in one of our repos
 const char* ignore_dirs[] = {
@@ -43,7 +44,7 @@ struct test_case {
 };
 
 void run_correctness_test(
-    struct watchman_ignore* state,
+    watchman_ignore* state,
     const struct test_case* tests,
     uint32_t num_tests) {
   uint32_t i;
@@ -55,7 +56,7 @@ void run_correctness_test(
 }
 
 void add_strings(
-    struct watchman_ignore* ignore,
+    watchman_ignore* ignore,
     const char** strings,
     uint32_t num_strings,
     bool is_vcs_ignore) {
@@ -65,7 +66,7 @@ void add_strings(
   }
 }
 
-void init_state(struct watchman_ignore* state) {
+void init_state(watchman_ignore* state) {
   add_strings(
       state, ignore_dirs, sizeof(ignore_dirs) / sizeof(ignore_dirs[0]), false);
 
@@ -74,7 +75,7 @@ void init_state(struct watchman_ignore* state) {
 }
 
 TEST(Ignore, correctness) {
-  struct watchman_ignore state;
+  watchman_ignore state;
   static const struct test_case tests[] = {
       {"some/path", false},
       {"buck-out/gen/foo", true},
@@ -151,7 +152,7 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
 static const size_t kWordLimit = 230000;
 
 void bench_list(const char* label, const char* prefix) {
-  struct watchman_ignore state;
+  watchman_ignore state;
   size_t i, n;
   struct timeval start, end;
 

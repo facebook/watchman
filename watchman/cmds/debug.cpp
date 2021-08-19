@@ -4,6 +4,10 @@
 #include <folly/chrono/Conv.h>
 #include <iomanip>
 #include "watchman/Logging.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_root.h"
+
 #include "watchman/watchman.h"
 
 using namespace watchman;

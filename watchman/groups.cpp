@@ -1,7 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include <folly/String.h>
+#include "watchman/Logging.h"
 #include "watchman/watchman.h"
+
 #ifndef _WIN32
 #include <errno.h>
 #include <grp.h>

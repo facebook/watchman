@@ -3,11 +3,13 @@
 
 #include <folly/ScopeGuard.h>
 #include <memory>
+#include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 
 using std::make_unique;
 using watchman::QueryParseError;

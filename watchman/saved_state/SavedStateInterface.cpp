@@ -3,8 +3,8 @@
 #include "watchman/saved_state/SavedStateInterface.h"
 #include <memory>
 #include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/saved_state/LocalSavedStateInterface.h"
-#include "watchman/watchman.h"
 
 namespace watchman {
 

@@ -1,11 +1,13 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/query/QueryContext.h"
-#include "watchman/watchman.h"
-
 #include <folly/Synchronized.h>
 #include <vector>
+#include "watchman/query/QueryContext.h"
+#include "watchman/watchman_root.h"
+#include "watchman/watchman_trigger.h"
+
+#include "watchman/watchman.h"
 
 using namespace watchman;
 

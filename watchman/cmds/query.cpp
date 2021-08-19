@@ -1,7 +1,9 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_query.h"
 
 using namespace watchman;
 

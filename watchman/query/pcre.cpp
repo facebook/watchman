@@ -3,7 +3,7 @@
 
 #include <memory>
 #include "watchman/Errors.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_query.h"
 
 #ifdef HAVE_PCRE_H
 

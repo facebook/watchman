@@ -1,29 +1,11 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#ifndef WATCHMAN_H
-#define WATCHMAN_H
+#pragma once
 
-#include "watchman/watchman_system.h"
-
+#include <folly/Synchronized.h>
+#include <string>
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman_string.h"
-
-struct watchman_file;
-struct watchman_dir;
-struct watchman_root;
-struct watchman_trigger_command;
-
-#include "watchman/watchman_dir.h"
-#include "watchman/watchman_file.h"
-
-#include "watchman_client.h"
-#include "watchman_pdu.h"
-#include "watchman_query.h"
-#include "watchman_root.h"
-
-#include "watchman/watchman_cmd.h"
-#include "watchman_trigger.h"
 
 extern folly::Synchronized<std::string> poisoned_reason;
 
@@ -67,8 +49,6 @@ void startSanityCheckThread();
  */
 const struct group* w_get_group(const char* group_name);
 #endif // ndef WIN32
-
-#endif
 
 /* vim:ts=2:sw=2:et:
  */

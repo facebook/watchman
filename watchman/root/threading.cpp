@@ -1,6 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/QueryableView.h"
+#include "watchman/watchman_root.h"
+#include "watchman/watchman_trigger.h"
+
 #include "watchman/watchman.h"
 
 std::shared_ptr<watchman::QueryableView> watchman_root::view() const {

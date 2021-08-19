@@ -1,8 +1,17 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include <folly/ExceptionString.h>
 #include <folly/ScopeGuard.h>
-#include "watchman/watchman.h"
+#include <folly/Synchronized.h>
+#include "watchman/CommandRegistry.h"
+#include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
 

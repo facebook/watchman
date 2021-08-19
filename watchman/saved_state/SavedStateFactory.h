@@ -6,11 +6,11 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 
-class SCM;
 struct watchman_root;
 
 namespace watchman {
 
+class SCM;
 class SavedStateInterface;
 
 /**

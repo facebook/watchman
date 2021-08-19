@@ -2,8 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_root.h"
 
 using namespace watchman;
 
