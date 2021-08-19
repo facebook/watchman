@@ -7,8 +7,9 @@
 #include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/Logging.h"
-#include "watchman/watchman_perf.h"
-#include "watchman_pdu.h"
+#include "watchman/PerfSample.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 struct w_query;
 struct watchman_client_subscription;
@@ -55,7 +56,7 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
 
   // The command currently being processed by dispatch_command
   json_ref current_command;
-  watchman::w_perf_t* perf_sample{nullptr};
+  watchman::PerfSample* perf_sample{nullptr};
 
   // Queue of things to send to the client.
   std::deque<json_ref> responses;

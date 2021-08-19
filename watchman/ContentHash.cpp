@@ -1,9 +1,14 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "ContentHash.h"
+#include "watchman/ContentHash.h"
+#include <folly/ScopeGuard.h>
+#include <string>
+#include "watchman/FileSystem.h"
+#include "watchman/Logging.h"
 #include "watchman/ThreadPool.h"
-#include "watchman_hash.h"
-#include "watchman_stream.h"
+#include "watchman/watchman_hash.h"
+#include "watchman/watchman_stream.h"
+
 #ifdef __APPLE__
 #define COMMON_DIGEST_FOR_OPENSSL
 #include "CommonCrypto/CommonDigest.h" // @manual
@@ -12,10 +17,6 @@
 #else
 #include <openssl/sha.h>
 #endif
-#include <folly/ScopeGuard.h>
-#include <string>
-#include "watchman/FileSystem.h"
-#include "watchman/Logging.h"
 
 using folly::to;
 

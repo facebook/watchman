@@ -3,15 +3,16 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "watchman/thirdparty/jansson/jansson.h"
-
-struct watchman_root;
 
 // Performance metrics sampling
 
 namespace watchman {
 
-struct watchman_perf_sample {
+class PerfSample {
+ public:
   // What we're sampling across
   const char* description;
 
@@ -20,7 +21,9 @@ struct watchman_perf_sample {
   json_ref meta_data{json_object()};
 
   // Measure the wall time
-  struct timeval time_begin, time_end, duration;
+  timeval time_begin;
+  timeval time_end;
+  timeval duration;
 
   // If set to true, the sample should be sent to the logging
   // mechanism
@@ -36,13 +39,18 @@ struct watchman_perf_sample {
   // action being sampled because there can be multiple
   // watched roots and these metrics include the usage from
   // all of them.
-  struct rusage usage_begin, usage_end, usage;
+  struct rusage usage_begin;
+  struct rusage usage_end;
+  struct rusage usage;
 #endif
 
   // Initialize and mark the start of a sample
-  watchman_perf_sample(const char* description);
-  watchman_perf_sample(const watchman_perf_sample&) = delete;
-  watchman_perf_sample(watchman_perf_sample&&) = delete;
+  explicit PerfSample(const char* description);
+
+  PerfSample(const PerfSample&) = delete;
+  PerfSample(PerfSample&&) = delete;
+  PerfSample& operator=(const PerfSample&) = delete;
+  PerfSample& operator=(PerfSample&&) = delete;
 
   // Augment any configuration policy and cause this sample to be logged if the
   // walltime exceeds the specified number of seconds (fractions are supported)
@@ -55,16 +63,12 @@ struct watchman_perf_sample {
   // Annotate the sample with metadata
   void add_meta(const char* key, json_ref&& val);
 
-  // Annotate the sample with some standard metadata taken from a root.
-  void add_root_meta(const std::shared_ptr<watchman_root>& root);
-
   // Force the sample to go to the log
   void force_log();
 
   // If will_log is set, arranges to send the sample to the log
   void log();
 };
-typedef struct watchman_perf_sample w_perf_t;
 
 void perf_shutdown();
 

@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman/WatchmanConfig.h"
-#include "watchman/watchman.h"
+#include "watchman/sockname.h"
 #include "watchman/watchman_stream.h"
 
 using namespace watchman;

@@ -1,7 +1,7 @@
 /* Copyright (c) Facebook, Inc. and its affiliates.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "watchman/watchman_perf.h"
+#include "watchman/PerfSample.h"
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
@@ -19,7 +19,7 @@ TEST(Perf, thread_shutdown) {
     cfg_shutdown();
   };
 
-  watchman_perf_sample sample("test");
+  PerfSample sample("test");
   sample.force_log();
   auto logged = sample.finish();
   EXPECT_TRUE(logged);

@@ -9,12 +9,12 @@
 #include "watchman/ContentHash.h"
 #include "watchman/CookieSync.h"
 #include "watchman/PendingCollection.h"
+#include "watchman/PerfSample.h"
 #include "watchman/QueryableView.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_perf.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
@@ -155,7 +155,7 @@ class InMemoryView final : public QueryableView {
     };
   }
 
-  void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
+  void ageOut(PerfSample& sample, std::chrono::seconds minAge) override;
   void syncToNow(
       const std::shared_ptr<watchman_root>& root,
       std::chrono::milliseconds timeout,

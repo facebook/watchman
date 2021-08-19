@@ -5,6 +5,11 @@
 
 #include <stdexcept>
 #include "watchman/CommandRegistry.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_preprocessor.h"
+#include "watchman/watchman_system.h"
+
+struct watchman_root;
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
@@ -25,7 +30,7 @@ bool find_project_root(
 
 void preprocess_command(
     json_ref& args,
-    enum w_pdu_type output_pdu,
+    w_pdu_type output_pdu,
     uint32_t output_capabilities);
 bool dispatch_command(
     struct watchman_client* client,

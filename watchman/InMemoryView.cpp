@@ -485,7 +485,7 @@ w_clock_t InMemoryView::ageOutFile(
   return ageOutOtime;
 }
 
-void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
+void InMemoryView::ageOut(PerfSample& sample, std::chrono::seconds minAge) {
   uint32_t num_aged_files = 0;
   uint32_t num_walked = 0;
   std::unordered_set<w_string> dirs_to_erase;

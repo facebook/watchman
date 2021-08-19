@@ -147,7 +147,7 @@ bool PendingChanges::empty() const {
   return 0 == tree_.size() && syncs_.empty();
 }
 
-uint32_t PendingChanges::size() const {
+uint32_t PendingChanges::getPendingItemCount() const {
   return tree_.size();
 }
 

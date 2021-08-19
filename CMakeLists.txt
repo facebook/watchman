@@ -612,6 +612,7 @@ watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/Options.cpp
 watchman/PendingCollection.cpp
+watchman/PerfSample.cpp
 watchman/Pipe.cpp
 watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)
@@ -632,7 +633,6 @@ watchman/listener-user.cpp
 watchman/listener.cpp
 watchman/main.cpp
 watchman/opendir.cpp
-watchman/perf.cpp
 watchman/sockname.cpp
 watchman/spawn.cpp
 watchman/state.cpp

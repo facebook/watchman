@@ -8,8 +8,6 @@
 
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
-#include "watchman_hash.h"
-#include "watchman_stream.h"
 
 struct watchman_file;
 struct watchman_dir;
@@ -19,10 +17,6 @@ struct watchman_trigger_command;
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_file.h"
 
-#define WATCHMAN_IO_BUF_SIZE 1048576
-#define WATCHMAN_BATCH_LIMIT (16 * 1024)
-
-#include "watchman/watchman_perf.h"
 #include "watchman_client.h"
 #include "watchman_pdu.h"
 #include "watchman_query.h"
@@ -63,25 +57,6 @@ void startSanityCheckThread();
 #else
 #define w_strsignal(val) strsignal((val))
 #endif
-
-extern bool disable_unix_socket;
-extern bool disable_named_pipe;
-
-/** Returns the legacy socket name.
- * It is legacy because its meaning is system dependent and
- * a little confusing, but needs to be retained for backwards
- * compatibility reasons as it is exported into the environment
- * in a number of scenarios.
- * You should prefer to use get_unix_sock_name() or
- * get_named_pipe_sock_path() instead
- */
-const char* get_sock_name_legacy();
-
-/** Returns the configured unix domain socket path. */
-const std::string& get_unix_sock_name();
-
-/** Returns the configured named pipe socket path */
-const std::string& get_named_pipe_sock_path();
 
 #ifndef _WIN32
 /**

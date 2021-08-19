@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
+#include "watchman/watchman_stream.h"
 
 using watchman::FileDescriptor;
 using namespace watchman;

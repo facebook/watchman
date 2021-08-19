@@ -1,6 +1,7 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/PerfSample.h"
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <thread>
@@ -8,11 +9,11 @@
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
 #include "watchman/WatchmanConfig.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_perf.h"
-#include "watchman/watchman_root.h"
+#include "watchman/sockname.h"
 #include "watchman/watchman_system.h"
 #include "watchman/watchman_time.h"
+
+using namespace watchman;
 
 namespace watchman {
 namespace {
@@ -102,15 +103,14 @@ void processSamples(
   }
 }
 
-watchman_perf_sample::watchman_perf_sample(const char* description)
-    : description(description) {
+PerfSample::PerfSample(const char* description) : description(description) {
   gettimeofday(&time_begin, nullptr);
 #ifdef HAVE_SYS_RESOURCE_H
   getrusage(RUSAGE_SELF, &usage_begin);
 #endif
 }
 
-bool watchman_perf_sample::finish() {
+bool PerfSample::finish() {
   gettimeofday(&time_end, nullptr);
   w_timeval_sub(time_end, time_begin, &duration);
 #ifdef HAVE_SYS_RESOURCE_H
@@ -159,36 +159,15 @@ bool watchman_perf_sample::finish() {
   return will_log;
 }
 
-void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
+void PerfSample::add_meta(const char* key, json_ref&& val) {
   meta_data.set(key, std::move(val));
 }
 
-void watchman_perf_sample::add_root_meta(
-    const std::shared_ptr<watchman_root>& root) {
-  // Note: if the root lock isn't held, we may read inaccurate numbers for
-  // some of these properties.  We're ok with that, and don't want to force
-  // the root lock to be re-acquired just for this.
-  auto meta = json_object(
-      {{"path", w_string_to_json(root->root_path)},
-       {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-       {"case_sensitive",
-        json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive)}});
-
-  // During recrawl, the view may be re-assigned.  Protect against
-  // reading a nullptr.
-  auto view = root->view();
-  if (view) {
-    meta.set({{"watcher", w_string_to_json(view->getName())}});
-  }
-
-  add_meta("root", std::move(meta));
-}
-
-void watchman_perf_sample::set_wall_time_thresh(double thresh) {
+void PerfSample::set_wall_time_thresh(double thresh) {
   wall_time_elapsed_thresh = thresh;
 }
 
-void watchman_perf_sample::force_log() {
+void PerfSample::force_log() {
   will_log = true;
 }
 
@@ -317,7 +296,7 @@ void PerfLogThread::loop() noexcept {
   }
 }
 
-void watchman_perf_sample::log() {
+void PerfSample::log() {
   if (!will_log) {
     return;
   }

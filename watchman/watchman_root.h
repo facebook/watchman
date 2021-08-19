@@ -29,7 +29,9 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 struct watchman_trigger_command;
 
 namespace watchman {
+
 class ClientStateAssertion;
+class PerfSample;
 
 class ClientStateAssertions {
  public:
@@ -166,7 +168,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   // Obtain the current view pointer.
   // This is safe wrt. a concurrent recrawl operation
-  std::shared_ptr<watchman::QueryableView> view();
+  std::shared_ptr<watchman::QueryableView> view() const;
 
   explicit watchman_root(const w_string& root_path, const w_string& fs_type);
   ~watchman_root();
@@ -197,6 +199,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   static json_ref getStatusForAllRoots();
   json_ref getStatus() const;
+
+  // Annotate the sample with some standard metadata taken from a root.
+  void addPerfSampleMetadata(watchman::PerfSample& sample) const;
 
  private:
   void applyIgnoreConfiguration();

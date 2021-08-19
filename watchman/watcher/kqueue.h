@@ -1,10 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Constants.h"
 #include "watchman/FileDescriptor.h"
 #include "watchman/Pipe.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
 
 #ifdef HAVE_KQUEUE
 

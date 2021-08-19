@@ -1,9 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman/Constants.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 namespace watchman {
 
@@ -35,23 +36,18 @@ void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
     if (!watcher_->waitNotify(86400)) {
       continue;
     }
-    while (true) {
+    do {
       auto resultFlags = watcher_->consumeNotify(root, fromWatcher);
 
       if (resultFlags.cancelSelf) {
         root->cancel();
         break;
       }
-      if (!resultFlags.addedPending) {
+      if (fromWatcher.getPendingItemCount() >= WATCHMAN_BATCH_LIMIT) {
         break;
       }
-      if (fromWatcher.size() >= WATCHMAN_BATCH_LIMIT) {
-        break;
-      }
-      if (!watcher_->waitNotify(0)) {
-        break;
-      }
-    }
+    } while (watcher_->waitNotify(0));
+
     if (!fromWatcher.empty()) {
       auto lock = pending_.lock();
       lock->append(fromWatcher.stealItems(), fromWatcher.stealSyncs());

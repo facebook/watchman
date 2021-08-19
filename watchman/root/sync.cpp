@@ -7,17 +7,17 @@
 #include "watchman/watchman.h"
 
 using folly::to;
-using watchman::w_perf_t;
+using namespace watchman;
 
 void watchman_root::syncToNow(
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
-  w_perf_t sample("sync_to_now");
+  PerfSample sample("sync_to_now");
   auto root = shared_from_this();
   try {
     view()->syncToNow(root, timeout, cookieFileNames);
     if (sample.finish()) {
-      sample.add_root_meta(root);
+      root->addPerfSampleMetadata(sample);
       sample.add_meta(
           "sync_to_now",
           json_object(
@@ -28,7 +28,7 @@ void watchman_root::syncToNow(
   } catch (const std::exception& exc) {
     sample.force_log();
     sample.finish();
-    sample.add_root_meta(root);
+    root->addPerfSampleMetadata(sample);
     sample.add_meta(
         "sync_to_now",
         json_object(
@@ -70,7 +70,17 @@ void InMemoryView::syncToNow(
     // everything prior.
     //
     // Would be nice to use a deadline rather than a timeout here.
-    std::move(result).get(timeout);
+
+    try {
+      std::move(result).get(timeout);
+    } catch (folly::FutureTimeout&) {
+      auto why = folly::to<std::string>(
+          "syncToNow: timed out waiting for pending watcher events to be flushed within ",
+          timeout.count(),
+          " milliseconds");
+      log(ERR, why, "\n");
+      throw std::system_error(ETIMEDOUT, std::generic_category(), why);
+    }
   }
 }
 

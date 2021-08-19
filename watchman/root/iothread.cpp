@@ -36,7 +36,7 @@ void InMemoryView::fullCrawl(
     PendingChanges& pending) {
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
-  w_perf_t sample("full-crawl");
+  PerfSample sample("full-crawl");
 
   auto view = view_.wlock();
   // Ensure that we observe these files with a new, distinct clock,
@@ -84,7 +84,7 @@ void InMemoryView::fullCrawl(
 
   root->cookies.abortAllCookies();
 
-  sample.add_root_meta(root);
+  root->addPerfSampleMetadata(sample);
 
   sample.finish();
   sample.force_log();
@@ -243,7 +243,11 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   std::vector<std::vector<folly::Promise<folly::Unit>>> allSyncs;
 
   while (!coll.empty()) {
-    logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
+    logf(
+        DBG,
+        "processing {} events in {}\n",
+        coll.getPendingItemCount(),
+        rootPath_);
 
     auto pending = coll.stealItems();
     auto syncs = coll.stealSyncs();

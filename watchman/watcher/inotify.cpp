@@ -4,6 +4,7 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <atomic>
+#include "watchman/Constants.h"
 #include "watchman/Errors.h"
 #include "watchman/FSDetect.h"
 #include "watchman/FileDescriptor.h"
@@ -398,7 +399,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
-      return {false, false};
+      return {false};
     }
     logf(
         FATAL,
@@ -450,7 +451,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     }
   }
 
-  return {true, cancel};
+  return {cancel};
 }
 
 bool InotifyWatcher::waitNotify(int timeoutms) {

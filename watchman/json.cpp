@@ -3,8 +3,12 @@
 
 #include <folly/Range.h>
 #include <folly/String.h>
+#include "watchman/CommandRegistry.h"
+#include "watchman/Constants.h"
+#include "watchman/Logging.h"
 #include "watchman/bser.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
 

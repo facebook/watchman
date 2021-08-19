@@ -18,6 +18,7 @@
 #include "watchman/Options.h"
 #include "watchman/ProcessLock.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/sockname.h"
 #include "watchman/watchman_opendir.h"
 
 #ifdef _WIN32

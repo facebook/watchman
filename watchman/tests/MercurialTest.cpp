@@ -3,7 +3,6 @@
 
 #include "watchman/scm/Mercurial.h"
 #include <folly/portability/GTest.h>
-#include "watchman/watchman.h"
 
 using namespace std::chrono;
 

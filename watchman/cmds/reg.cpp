@@ -99,7 +99,7 @@ bool dispatch_command(
       logf(DBG, "dispatch_command: {}\n", def->name);
       snprintf(
           sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
-      w_perf_t sample(sample_name);
+      PerfSample sample(sample_name);
       client->perf_sample = &sample;
       SCOPE_EXIT {
         client->perf_sample = nullptr;

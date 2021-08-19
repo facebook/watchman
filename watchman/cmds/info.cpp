@@ -1,7 +1,13 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/Logging.h"
+#include "watchman/sockname.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_root.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
 

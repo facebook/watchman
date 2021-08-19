@@ -3,7 +3,7 @@
 
 #include "watchman/watchman.h"
 
-std::shared_ptr<watchman::QueryableView> watchman_root::view() {
+std::shared_ptr<watchman::QueryableView> watchman_root::view() const {
   // We grab a read lock on the recrawl info to ensure that we
   // can't race with scheduleRecrawl and observe a nullptr for
   // the view_.

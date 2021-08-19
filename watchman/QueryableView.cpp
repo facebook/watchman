@@ -35,7 +35,7 @@ std::chrono::system_clock::time_point QueryableView::getLastAgeOutTimeStamp()
   return std::chrono::system_clock::time_point{};
 }
 
-void QueryableView::ageOut(w_perf_t&, std::chrono::seconds) {}
+void QueryableView::ageOut(PerfSample&, std::chrono::seconds) {}
 
 bool QueryableView::isVCSOperationInProgress() const {
   static const std::vector<w_string> lockFiles{".hg/wlock", ".git/index.lock"};

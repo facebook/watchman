@@ -75,7 +75,7 @@ std::shared_ptr<watchman_root> doResolveOrCreateRoot(
     }
 
     if (client->perf_sample) {
-      client->perf_sample->add_root_meta(root);
+      root->addPerfSampleMetadata(*client->perf_sample);
     }
     return root;
 
