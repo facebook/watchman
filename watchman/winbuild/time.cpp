@@ -1,7 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_time.h"
 
 // 100's of nanoseconds since the FILETIME epoch
 static const uint64_t EPOCH = ((uint64_t)116444736000000000ULL);

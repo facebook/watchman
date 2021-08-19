@@ -6,6 +6,7 @@
 #include <folly/Synchronized.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
+#include "watchman/Poison.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_client.h"
@@ -14,12 +15,6 @@
 #include "watchman/watchman_stream.h"
 
 using namespace watchman;
-
-/* Some error conditions will put us into a non-recoverable state where we
- * can't guarantee that we will be operating correctly.  Rather than suffering
- * in silence and misleading our clients, we'll poison ourselves and advertise
- * that we have done so and provide some advice on how the user can cure us. */
-folly::Synchronized<std::string> poisoned_reason;
 
 command_handler_def* lookup(const json_ref& args, int mode) {
   const char* cmd_name;

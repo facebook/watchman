@@ -233,12 +233,6 @@ extern folly::Synchronized<
 std::shared_ptr<watchman_root>
 root_resolve(const char* filename, bool auto_watch, bool* created);
 
-void set_poison_state(
-    const w_string& dir,
-    std::chrono::system_clock::time_point now,
-    const char* syscall,
-    const std::error_code& err);
-
 void handle_open_errno(
     watchman_root& root,
     struct watchman_dir* dir,

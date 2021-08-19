@@ -11,6 +11,7 @@
 #include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
+#include "watchman/Poison.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"

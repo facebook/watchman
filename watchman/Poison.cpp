@@ -3,9 +3,10 @@
 
 #include "watchman/Logging.h"
 #include "watchman/WatchmanConfig.h"
-#include "watchman/watchman_root.h"
 
-#include "watchman/watchman.h"
+namespace watchman {
+
+folly::Synchronized<std::string> poisoned_reason;
 
 void set_poison_state(
     const w_string& dir,
@@ -37,6 +38,8 @@ void set_poison_state(
   watchman::log(watchman::ERR, why);
   *poisoned_reason.wlock() = why;
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

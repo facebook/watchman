@@ -523,7 +523,7 @@ add_library(log STATIC watchman/PubSub.cpp watchman/LogConfig.cpp watchman/Loggi
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC watchman/hash.cpp)
 target_link_libraries(hash third_party_deps)
-add_library(err STATIC watchman/root/poison.cpp watchman/root/warnerr.cpp)
+add_library(err STATIC watchman/Poison.cpp watchman/root/warnerr.cpp)
 target_link_libraries(err third_party_deps)
 add_library(jansson_utf STATIC watchman/thirdparty/jansson/utf.cpp)
 

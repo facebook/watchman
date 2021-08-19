@@ -5,15 +5,12 @@
 
 #include <folly/Synchronized.h>
 #include <string>
+#include "watchman/FileDescriptor.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-
-extern folly::Synchronized<std::string> poisoned_reason;
 
 bool w_is_stopping();
 
 void w_request_shutdown();
-
-#include "watchman/watchman_time.h"
 
 extern std::string watchman_tmp_dir;
 void w_state_shutdown();
@@ -22,8 +19,6 @@ bool w_state_load();
 bool w_root_save_state(json_ref& state);
 bool w_root_load_state(const json_ref& state);
 json_ref w_root_watch_list_to_json();
-
-#include "watchman/FileDescriptor.h"
 
 #ifdef __APPLE__
 watchman::FileDescriptor w_get_listener_socket_from_launchd();
