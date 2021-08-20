@@ -1,10 +1,23 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <chrono>
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 namespace watchman {
 
@@ -36,7 +49,7 @@ void InMemoryView::fullCrawl(
     PendingChanges& pending) {
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
-  w_perf_t sample("full-crawl");
+  PerfSample sample("full-crawl");
 
   auto view = view_.wlock();
   // Ensure that we observe these files with a new, distinct clock,
@@ -84,7 +97,7 @@ void InMemoryView::fullCrawl(
 
   root->cookies.abortAllCookies();
 
-  sample.add_root_meta(root);
+  root->addPerfSampleMetadata(sample);
 
   sample.finish();
   sample.force_log();
@@ -243,7 +256,11 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   std::vector<std::vector<folly::Promise<folly::Unit>>> allSyncs;
 
   while (!coll.empty()) {
-    logf(DBG, "processing {} events in {}\n", coll.size(), rootPath_);
+    logf(
+        DBG,
+        "processing {} events in {}\n",
+        coll.getPendingItemCount(),
+        rootPath_);
 
     auto pending = coll.stealItems();
     auto syncs = coll.stealSyncs();

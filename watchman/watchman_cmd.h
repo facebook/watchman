@@ -1,10 +1,28 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
 #include <stdexcept>
 #include "watchman/CommandRegistry.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_preprocessor.h"
+#include "watchman/watchman_system.h"
+
+struct watchman_root;
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
@@ -25,7 +43,7 @@ bool find_project_root(
 
 void preprocess_command(
     json_ref& args,
-    enum w_pdu_type output_pdu,
+    w_pdu_type output_pdu,
     uint32_t output_capabilities);
 bool dispatch_command(
     struct watchman_client* client,

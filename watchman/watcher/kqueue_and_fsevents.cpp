@@ -1,14 +1,29 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <mutex>
-#include "fsevents.h"
-#include "kqueue.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman.h"
+#include "watchman/watcher/fsevents.h"
+#include "watchman/watcher/kqueue.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_file.h"
+#include "watchman/watchman_root.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)
 namespace watchman {
@@ -222,7 +237,6 @@ bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
 Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     const std::shared_ptr<watchman_root>& root,
     PendingChanges& coll) {
-  bool ret = false;
   {
     auto guard = injectedRecrawl_.wlock();
     if (guard->has_value()) {
@@ -237,22 +251,21 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
       guard->reset();
     }
   }
+
   {
     auto fseventWatches = fseventWatchers_.wlock();
     for (auto& [watchpath, fsevent] : *fseventWatches) {
-      auto [addedPending, cancelSelf] = fsevent->consumeNotify(root, coll);
+      auto [cancelSelf] = fsevent->consumeNotify(root, coll);
       if (cancelSelf) {
         fsevent->signalThreads();
         root->cookies.removeCookieDir(watchpath);
         fseventWatches->erase(watchpath);
         continue;
       }
-      ret |= addedPending;
     }
   }
-  auto [addedPending, cancelSelf] = kqueueWatcher_->consumeNotify(root, coll);
-  ret |= addedPending;
-  return {ret, cancelSelf};
+
+  return kqueueWatcher_->consumeNotify(root, coll);
 }
 
 bool KQueueAndFSEventsWatcher::waitNotify(int timeoutms) {

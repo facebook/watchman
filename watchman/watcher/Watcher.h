@@ -1,5 +1,19 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 #include <folly/futures/Future.h>
 #include <stdexcept>
@@ -78,19 +92,17 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // Signal any threads to terminate.  Do not join them here.
   virtual void signalThreads() {}
 
-  struct ConsumeNotifyRet {
-    // Were events added to the collection?
-    bool addedPending;
-    // Should the watch be cancelled?
-    bool cancelSelf;
-  };
-
   /**
    * Wait for an inotify event to become available.
    * Returns true if events are available or false if signalThreads() has been
    * called or timeout has elapsed.
    */
   virtual bool waitNotify(int timeoutms) = 0;
+
+  struct ConsumeNotifyRet {
+    // Should the watch be cancelled?
+    bool cancelSelf;
+  };
 
   /**
    * Consume any available notifications.  If there are none pending,

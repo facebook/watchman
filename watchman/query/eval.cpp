@@ -1,15 +1,31 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "watchman/watchman.h"
 
 #include <folly/ScopeGuard.h>
+#include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/LocalFileResult.h"
+#include "watchman/WatchmanConfig.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 #include "watchman/scm/SCM.h"
+#include "watchman/watchman_root.h"
 
 using namespace watchman;
 
@@ -162,7 +178,7 @@ static void default_generators(
 
 static void execute_common(
     QueryContext* ctx,
-    w_perf_t* sample,
+    PerfSample* sample,
     QueryResult* res,
     QueryGenerator generator) {
   ctx->stopWatch.reset();
@@ -221,7 +237,7 @@ static void execute_common(
   }
 
   if (sample && sample->finish()) {
-    sample->add_root_meta(ctx->root);
+    ctx->root->addPerfSampleMetadata(*sample);
     sample->add_meta(
         "query_execute",
         json_object(
@@ -249,7 +265,7 @@ QueryResult w_query_execute(
   bool disableFreshInstance{false};
   auto requestId = query->request_id;
 
-  w_perf_t sample("query_execute");
+  PerfSample sample("query_execute");
   if (requestId && !requestId.empty()) {
     log(DBG, "request_id = ", requestId, "\n");
     sample.add_meta("request_id", w_string_to_json(requestId));

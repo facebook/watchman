@@ -1,7 +1,20 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 void watchman_root::considerAgeOut() {
   if (gc_interval.count() == 0) {
@@ -23,7 +36,7 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
   // large number of creates and deletes for many unique filenames in
   // a given dir (eg: temporary/randomized filenames generated as part
   // of build tooling or atomic renames)
-  watchman::w_perf_t sample("age_out");
+  watchman::PerfSample sample("age_out");
 
   view()->ageOut(sample, std::chrono::seconds(min_age));
 
@@ -40,7 +53,7 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
     }
   }
   if (sample.finish()) {
-    sample.add_root_meta(shared_from_this());
+    addPerfSampleMetadata(sample);
     sample.log();
   }
 }

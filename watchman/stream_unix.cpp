@@ -1,7 +1,28 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include "watchman/watchman.h"
+#include <folly/SocketAddress.h>
+#include <folly/net/NetworkSocket.h>
+#include <memory>
+#include "watchman/Constants.h"
+#include "watchman/FileDescriptor.h"
+#include "watchman/Logging.h"
+#include "watchman/Pipe.h"
+#include "watchman/watchman_stream.h"
+
 #ifdef HAVE_UCRED_H
 #include <ucred.h> // @manual
 #endif
@@ -11,11 +32,6 @@
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h> // @manual
 #endif
-#include <folly/SocketAddress.h>
-#include <folly/net/NetworkSocket.h>
-#include <memory>
-#include "watchman/FileDescriptor.h"
-#include "watchman/Pipe.h"
 
 using watchman::FileDescriptor;
 using watchman::Pipe;

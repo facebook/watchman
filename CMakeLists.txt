@@ -1,3 +1,17 @@
+# Copyright (c) Facebook, Inc. and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 set(CMAKE_MODULE_PATH
@@ -523,7 +537,7 @@ add_library(log STATIC watchman/PubSub.cpp watchman/LogConfig.cpp watchman/Loggi
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC watchman/hash.cpp)
 target_link_libraries(hash third_party_deps)
-add_library(err STATIC watchman/root/poison.cpp watchman/root/warnerr.cpp)
+add_library(err STATIC watchman/Poison.cpp watchman/root/warnerr.cpp)
 target_link_libraries(err third_party_deps)
 add_library(jansson_utf STATIC watchman/thirdparty/jansson/utf.cpp)
 
@@ -612,6 +626,7 @@ watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/Options.cpp
 watchman/PendingCollection.cpp
+watchman/PerfSample.cpp
 watchman/Pipe.cpp
 watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)
@@ -632,7 +647,6 @@ watchman/listener-user.cpp
 watchman/listener.cpp
 watchman/main.cpp
 watchman/opendir.cpp
-watchman/perf.cpp
 watchman/sockname.cpp
 watchman/spawn.cpp
 watchman/state.cpp

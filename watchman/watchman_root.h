@@ -1,5 +1,19 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 #include <folly/Synchronized.h>
 #include <atomic>
@@ -12,6 +26,7 @@
 #include "watchman/QueryableView.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_ignore.h"
+#include "watchman/watchman_trigger.h"
 
 #define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -26,10 +41,10 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 /* Idle out watches that haven't had activity in several days */
 #define DEFAULT_REAP_AGE (86400 * 5)
 
-struct watchman_trigger_command;
-
 namespace watchman {
+
 class ClientStateAssertion;
+class PerfSample;
 
 class ClientStateAssertions {
  public:
@@ -166,7 +181,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   // Obtain the current view pointer.
   // This is safe wrt. a concurrent recrawl operation
-  std::shared_ptr<watchman::QueryableView> view();
+  std::shared_ptr<watchman::QueryableView> view() const;
 
   explicit watchman_root(const w_string& root_path, const w_string& fs_type);
   ~watchman_root();
@@ -198,6 +213,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   static json_ref getStatusForAllRoots();
   json_ref getStatus() const;
 
+  // Annotate the sample with some standard metadata taken from a root.
+  void addPerfSampleMetadata(watchman::PerfSample& sample) const;
+
  private:
   void applyIgnoreConfiguration();
 };
@@ -228,12 +246,6 @@ extern folly::Synchronized<
 
 std::shared_ptr<watchman_root>
 root_resolve(const char* filename, bool auto_watch, bool* created);
-
-void set_poison_state(
-    const w_string& dir,
-    std::chrono::system_clock::time_point now,
-    const char* syscall,
-    const std::error_code& err);
 
 void handle_open_errno(
     watchman_root& root,

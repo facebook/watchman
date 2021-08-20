@@ -1,11 +1,23 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
-
-#include "watchman/watchman.h"
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <folly/String.h>
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/WatcherRegistry.h"
+#include "watchman/watchman_root.h"
 
 using namespace watchman;
 
@@ -90,6 +102,26 @@ watchman_root::watchman_root(const w_string& root_path, const w_string& fs_type)
 watchman_root::~watchman_root() {
   logf(DBG, "root: final ref on {}\n", root_path);
   --live_roots;
+}
+
+void watchman_root::addPerfSampleMetadata(PerfSample& sample) const {
+  // Note: if the root lock isn't held, we may read inaccurate numbers for
+  // some of these properties.  We're ok with that, and don't want to force
+  // the root lock to be re-acquired just for this.
+  auto meta = json_object(
+      {{"path", w_string_to_json(root_path)},
+       {"recrawl_count", json_integer(recrawlInfo.rlock()->recrawlCount)},
+       {"case_sensitive",
+        json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)}});
+
+  // During recrawl, the view may be re-assigned.  Protect against
+  // reading a nullptr.
+  auto view = this->view();
+  if (view) {
+    meta.set({{"watcher", w_string_to_json(view->getName())}});
+  }
+
+  sample.add_meta("root", std::move(meta));
 }
 
 /* vim:ts=2:sw=2:et:

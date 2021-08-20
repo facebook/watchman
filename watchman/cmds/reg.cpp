@@ -1,16 +1,33 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+#include <folly/ExceptionString.h>
 #include <folly/ScopeGuard.h>
-#include "watchman/watchman.h"
+#include <folly/Synchronized.h>
+#include "watchman/CommandRegistry.h"
+#include "watchman/Logging.h"
+#include "watchman/Poison.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/thirdparty/jansson/jansson.h"
+#include "watchman/watchman_client.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
-
-/* Some error conditions will put us into a non-recoverable state where we
- * can't guarantee that we will be operating correctly.  Rather than suffering
- * in silence and misleading our clients, we'll poison ourselves and advertise
- * that we have done so and provide some advice on how the user can cure us. */
-folly::Synchronized<std::string> poisoned_reason;
 
 command_handler_def* lookup(const json_ref& args, int mode) {
   const char* cmd_name;
@@ -99,7 +116,7 @@ bool dispatch_command(
       logf(DBG, "dispatch_command: {}\n", def->name);
       snprintf(
           sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
-      w_perf_t sample(sample_name);
+      PerfSample sample(sample_name);
       client->perf_sample = &sample;
       SCOPE_EXIT {
         client->perf_sample = nullptr;

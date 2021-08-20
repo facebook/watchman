@@ -1,5 +1,19 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 #include <folly/Synchronized.h>
 #include <memory>
@@ -9,12 +23,12 @@
 #include "watchman/ContentHash.h"
 #include "watchman/CookieSync.h"
 #include "watchman/PendingCollection.h"
+#include "watchman/PerfSample.h"
 #include "watchman/QueryableView.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_perf.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
@@ -155,7 +169,7 @@ class InMemoryView final : public QueryableView {
     };
   }
 
-  void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
+  void ageOut(PerfSample& sample, std::chrono::seconds minAge) override;
   void syncToNow(
       const std::shared_ptr<watchman_root>& root,
       std::chrono::milliseconds timeout,

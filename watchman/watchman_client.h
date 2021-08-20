@@ -1,5 +1,19 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 #include <folly/Synchronized.h>
 #include <deque>
@@ -7,11 +21,13 @@
 #include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/Logging.h"
-#include "watchman/watchman_perf.h"
-#include "watchman_pdu.h"
+#include "watchman/PerfSample.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_stream.h"
 
 struct w_query;
 struct watchman_client_subscription;
+struct watchman_root;
 
 namespace watchman {
 
@@ -55,7 +71,7 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
 
   // The command currently being processed by dispatch_command
   json_ref current_command;
-  watchman::w_perf_t* perf_sample{nullptr};
+  watchman::PerfSample* perf_sample{nullptr};
 
   // Queue of things to send to the client.
   std::deque<json_ref> responses;

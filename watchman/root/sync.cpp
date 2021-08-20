@@ -1,23 +1,36 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman.h"
+#include "watchman/watchman_root.h"
 
 using folly::to;
-using watchman::w_perf_t;
+using namespace watchman;
 
 void watchman_root::syncToNow(
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
-  w_perf_t sample("sync_to_now");
+  PerfSample sample("sync_to_now");
   auto root = shared_from_this();
   try {
     view()->syncToNow(root, timeout, cookieFileNames);
     if (sample.finish()) {
-      sample.add_root_meta(root);
+      root->addPerfSampleMetadata(sample);
       sample.add_meta(
           "sync_to_now",
           json_object(
@@ -28,7 +41,7 @@ void watchman_root::syncToNow(
   } catch (const std::exception& exc) {
     sample.force_log();
     sample.finish();
-    sample.add_root_meta(root);
+    root->addPerfSampleMetadata(sample);
     sample.add_meta(
         "sync_to_now",
         json_object(
@@ -70,7 +83,17 @@ void InMemoryView::syncToNow(
     // everything prior.
     //
     // Would be nice to use a deadline rather than a timeout here.
-    std::move(result).get(timeout);
+
+    try {
+      std::move(result).get(timeout);
+    } catch (folly::FutureTimeout&) {
+      auto why = folly::to<std::string>(
+          "syncToNow: timed out waiting for pending watcher events to be flushed within ",
+          timeout.count(),
+          " milliseconds");
+      log(ERR, why, "\n");
+      throw std::system_error(ETIMEDOUT, std::generic_category(), why);
+    }
   }
 }
 

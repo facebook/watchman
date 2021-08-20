@@ -17,21 +17,21 @@ namespace py3 eden.fs.config
  * setting of CommandLine takes precedence over all other settings.
  */
 enum ConfigSource {
-  Default = 0
-  SystemConfig = 1
-  UserConfig = 2
-  CommandLine = 3
+  Default = 0,
+  SystemConfig = 1,
+  UserConfig = 2,
+  CommandLine = 3,
 }
 
 enum ConfigReloadBehavior {
   // Automatically reload the configuration file from disk if it appears to be
   // necessary.
-  AutoReload = 0
+  AutoReload = 0,
   // Do not reload the config from disk, and return the current cached values.
-  NoReload = 1
+  NoReload = 1,
   // Always attempt to reload the config from disk, even if we have recently
   // checked to see if it was up-to-date.
-  ForceReload = 2
+  ForceReload = 2,
 }
 
 struct ConfigValue {
@@ -40,10 +40,10 @@ struct ConfigValue {
   // TODO: In the future it may be nice to add a sourceValue field that
   // contains the original value from before variable interpolation.  We don't
   // currently store this data after performing parsing, however.
-  1: string parsedValue
-  2: ConfigSource source
+  1: string parsedValue;
+  2: ConfigSource source;
 }
 
 struct EdenConfigData {
-  1: map<string, ConfigValue> values
+  1: map<string, ConfigValue> values;
 }
