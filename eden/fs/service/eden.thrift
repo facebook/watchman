@@ -908,20 +908,22 @@ struct GetScmStatusParams {
   * BackingStore object type. Caller will response to verify the type of the content
   * matching the parameters passed. Exception will be thrown if type mismatch.
   */
-enum RootType {
+enum ObjectType {
   TREE = 0,
-  BLOB = 1,
+  REGULAR_FILE = 1,
+  EXECUTABLE_FILE = 2,
+  SYMLINK = 3,
 }
 
-struct SetPathRootIdParams {
+struct SetPathObjectIdParams {
   1: PathString mountPoint;
   2: PathString path;
-  3: BinaryHash rootId;
-  4: RootType type;
+  3: BinaryHash objectId;
+  4: ObjectType type;
   5: CheckoutMode mode;
 }
 
-struct SetPathRootIdResult {
+struct SetPathObjectIdResult {
   1: list<CheckoutConflict> conflicts;
 }
 
@@ -1475,12 +1477,12 @@ service EdenService extends fb303_core.BaseService {
   i64 unblockFault(1: UnblockFaultArg info) throws (1: EdenError ex);
 
   /**
-   * Directly load a BackingStore object identified by rootId at the given path.
+   * Directly load a BackingStore object identified by id at the given path.
    *
    * If any file or directory name conflict, the behavior is same with Checkout
    * This method is thread safe.
    */
-  SetPathRootIdResult setPathRootId(1: SetPathRootIdParams params) throws (
-    1: EdenError ex,
-  );
+  SetPathObjectIdResult setPathObjectId(
+    1: SetPathObjectIdParams params,
+  ) throws (1: EdenError ex);
 }
