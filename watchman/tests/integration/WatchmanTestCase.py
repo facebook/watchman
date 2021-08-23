@@ -421,21 +421,22 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         if data is None or not normalize:
             return data
 
-        def norm_sub_item(item):
+        return [self.normalizeFiles(sub) for sub in data]
+
+    def normalizeFiles(self, data):
+        def norm_item(item):
             if isinstance(item, STRING_TYPES):
                 return norm_relative_path(item)
             item["name"] = norm_relative_path(item["name"])
             return item
 
-        def norm_sub(sub):
-            if "files" in sub:
-                files = []
-                for item in sub["files"]:
-                    files.append(norm_sub_item(item))
-                sub["files"] = files
-            return sub
+        if "files" in data:
+            files = []
+            for item in data["files"]:
+                files.append(norm_item(item))
+            data["files"] = files
 
-        return list(map(norm_sub, data))
+        return data
 
     def isCaseInsensitive(self):
         if hasattr(self, "_case_insensitive"):

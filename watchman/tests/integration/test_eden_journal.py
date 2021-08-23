@@ -151,15 +151,17 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
                         ["match", "hg-check*"],
                     ],
                 ],
-                "fields": ["name"],
+                "fields": ["name", "new"],
                 "since": clock,
             },
         )
 
-        self.assertFileListsEqual(
+        res = self.normalizeFiles(res)
+
+        self.assertCountEqual(
             res["files"],
-            ["newfile"],
-            message="Files created and removed across the update operation should show up in the changed list",
+            [{"name": "newfile", "new": False}],
+            "Files created and removed across the update operation should show up in the changed list",
         )
 
     def test_aba_checkouts_show_briefly_changed_files(self):
@@ -202,15 +204,17 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
                         ["match", "hg-check*"],
                     ],
                 ],
-                "fields": ["name"],
+                "fields": ["name", "new"],
                 "since": clock,
             },
         )
 
-        self.assertFileListsEqual(
+        res = self.normalizeFiles(res)
+
+        self.assertCountEqual(
             res["files"],
-            ["newfile"],
-            message="Files created and removed across the update operation should show up in the changed list",
+            [{"name": "newfile", "new": False}],
+            "Files created and removed across the update operation should show up in the changed list",
         )
 
     def test_querying_with_truncated_journal_returns_fresh_instance(self):

@@ -97,7 +97,7 @@ void StatusAccumulator::add(w_string_piece status) {
         // Should remove + add be considered new? Treat it as changed for now.
         byFile_[name] += 1;
         break;
-      case 'D':
+      case 'R':
         byFile_[name] += -1;
         break;
       default:
