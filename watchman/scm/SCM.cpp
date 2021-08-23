@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-#include "SCM.h"
+#include "watchman/scm/SCM.h"
 #include <memory>
-#include "Mercurial.h"
 #include "watchman/Logging.h"
+#include "watchman/scm/Git.h"
+#include "watchman/scm/Mercurial.h"
 
 namespace watchman {
 
@@ -76,6 +77,7 @@ std::unique_ptr<SCM> SCM::scmForPath(w_string_piece rootPath) {
   }
 
   if (base == kGit) {
+    return std::make_unique<Git>(rootPath, scmRoot.piece().dirName());
   }
 
   return nullptr;
