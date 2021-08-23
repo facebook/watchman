@@ -733,7 +733,7 @@ enum Dtype {
 
 struct PredictiveFetch {
   // Number of directories to glob. If not specified, a default value (predictivePrefetchProfileSize in EdenConfig.h) is used.
-  1: optional unsigned64 numTopDirectories;
+  1: optional i32 numTopDirectories;
   // Fetch the most accessed diectories by user specified. If not specified, user is derived from the server state.
   2: optional string user;
   // Fetch the most accessed diectories in repository specified. If not specified, repo is derived from the mount.
