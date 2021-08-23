@@ -47,7 +47,7 @@ class ProcessInfo(object):
 
 
 class InotifyInfo(object):
-    """ Extract information about users of inotify on the system """
+    """Extract information about users of inotify on the system"""
 
     def __init__(self, procinfo):
         self.procinfo = procinfo

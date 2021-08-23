@@ -26,7 +26,7 @@ def patterns_to_terms(pats):
 
 
 class Target(object):
-    """ Base Class for a Target
+    """Base Class for a Target
 
     We track the patterns that we consider to be the dependencies for
     this target and establish a subscription for them.
@@ -82,7 +82,7 @@ class Target(object):
 
 
 class MakefileTarget(Target):
-    """ Represents a Makefile target that we'd like to build. """
+    """Represents a Makefile target that we'd like to build."""
 
     def __init__(self, name, make, targets, patterns):
         self.make = make
@@ -95,7 +95,7 @@ class MakefileTarget(Target):
 
 
 class RunTarget(Target):
-    """ Represents a script that we'd like to run. """
+    """Represents a script that we'd like to run."""
 
     def __init__(self, name, runfile, patterns):
         self.runfile = runfile
@@ -106,7 +106,7 @@ class RunTarget(Target):
 
 
 class DefineTarget(argparse.Action):
-    """ argument parser helper to manage defining MakefileTarget instances. """
+    """argument parser helper to manage defining MakefileTarget instances."""
 
     def __init__(self, option_strings, dest, **kwargs):
         super(DefineTarget, self).__init__(option_strings, dest, **kwargs)
