@@ -2,7 +2,7 @@
   <header>
     <a href="{{ site.url }}{{ site.baseurl }}/"><img src="{{ site.baseurl }}/static/logo.png" alt=""/><h2>{{ site.title }}</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           {% for item in site.data.nav %}
           <li class="navItem {% if page.collection == item.category or page.category == item.category %}navItemActive{% endif %}">
