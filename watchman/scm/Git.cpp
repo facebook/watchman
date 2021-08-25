@@ -202,15 +202,12 @@ std::vector<w_string> Git::getFilesChangedSinceMergeBaseWith(
           [this, commit = std::move(commitCopy), requestId](
               const std::string&) {
             auto result = runGit(
-                {gitExecutablePath(),
-                 "diff",
-                 "--name-only",
-                 to<std::string>(commit, "...")},
+                {gitExecutablePath(), "diff", "--name-only", "-z", commit},
                 makeGitOptions(requestId),
                 "query for files changed since merge base");
 
             std::vector<w_string> lines;
-            w_string_piece(result.output).split(lines, '\n');
+            w_string_piece(result.output).split(lines, '\0');
             return folly::makeFuture(lines);
           })
       .get()
