@@ -10,15 +10,15 @@ redirect_from: docs/cmd/get-config/
 The `get-config` command returns the `.watchmanconfig` for the root.
 If there is no `.watchmanconfig`, it returns an empty configuration field:
 
-```bash
+~~~bash
 $ watchman get-config .
 {
     "version": "2.9.9",
     "config": {}
 }
-```
+~~~
 
-```bash
+~~~bash
 $ watchman get-config /path/to/root
 {
     "version": "2.9.9",
@@ -28,7 +28,7 @@ $ watchman get-config /path/to/root
         ]
     }
 }
-```
+~~~
 
 Note that watchman only reads the `.watchmanconfig` file when the watch is
 established.  If changes are made after that point, the `get-config` response

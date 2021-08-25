@@ -61,10 +61,10 @@ accordingly.
 macOS has a similar internal limit and behavior when that limit is exceeded.
 If you're encountering a message like:
 
-```
+~~~
 Recrawled this watch 1 times, most recently because:
 /some/path: kFSEventStreamEventFlagUserDropped
-```
+~~~
 
 then you are hitting the limits of your system.  There is no direct control
 over the limit, but starting in Watchman 3.2 you may increase the
@@ -102,13 +102,13 @@ we mean by `<STATEDIR>`, `<TMPDIR>`, `<USER>` and so on.
 
 ## <a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch
 
-```
+~~~
 A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -> Cannot allocate memory
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
 https://facebook.github.io/watchman/docs/troubleshooting.html#poison-inotify-add-watch
-```
+~~~
 
 If you've encountered this state it means that your *kernel* was unable to
 watch a dir in one or more of the roots you've asked it to watch.  This
@@ -142,30 +142,30 @@ resolution is:
 
 *Since 4.6*
 
-```
+~~~bash
 $ watchman watch-del-all
 $ watchman shutdown-server
-```
+~~~
 
 *Before 4.6*
 
-```
+~~~bash
 $ rm <STATEDIR>/state       # see above for what STATEDIR means
 $ watchman --no-spawn --no-local shutdown-server
-```
+~~~
 
 If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.
 
 ## Poison: opendir
 
-```
+~~~
 A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: opendir(/my/path) -> Too many open files in system
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
 https://facebook.github.io/watchman/docs/troubleshooting.html#opendir
-```
+~~~
 
 If you've encountered this state it means that your entire system had too many
 open files, and that this prevented watchman from tracking the changes on your
@@ -258,8 +258,8 @@ X.  This issue was resolved in Watchman version 3.1.
 
 To update:
 
-```
-watchman shutdown-server
-brew update
-brew reinstall watchman
-```
+~~~bash
+$ watchman shutdown-server
+$ brew update
+$ brew reinstall watchman
+~~~

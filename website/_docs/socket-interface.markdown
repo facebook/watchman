@@ -40,9 +40,9 @@ Sending the `since` command is simply a matter of formatting it as JSON.  Note
 that the JSON text must be a single line (don't send a pretty printed version
 of it!) and be followed by a newline `\n` character:
 
-```json
+~~~json
 ["since", "/path/to/src", "n:c_srcs", "*.c"] <NEWLINE>
-```
+~~~
 
 ### BSER encoding
 

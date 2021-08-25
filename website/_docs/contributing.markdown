@@ -41,19 +41,19 @@ You will need:
 The build time dependencies can be installed by running `getdeps.py --install-deps`.
 This is run for you when you run `autogen.sh` in the example below:
 
-```
+~~~bash
 $ git clone https://github.com/facebook/watchman.git
 $ cd watchman
 $ ./autogen.sh
 $ make
-```
+~~~
 
 After making a change, run the integration tests to make sure that things
 are still working well before you submit your pull request:
 
-```
+~~~bash
 $ make integration
-```
+~~~
 
 We'll probably ask you to augment the test suite to cover the functionality
 that you're adding or changing.
@@ -70,17 +70,17 @@ documentation.
 
 One time setup:
 
-```bash
+~~~bash
 $ cd website
 $ sudo gem install bundler
 $ sudo bundler install
-```
+~~~
 
 Then:
 
-```bash
+~~~bash
 $ jekyll serve -w -t
-```
+~~~
 
 This will print out a URL that you can open in your browser to preview your
 documentation changes.

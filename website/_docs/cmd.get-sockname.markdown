@@ -14,10 +14,10 @@ Rather than hard-coding the path or replicating the logic discussed in
 CLI to determine the path.  This has the side effect of spawning the service
 for your user if it was not already running--bonus!
 
-```bash
+~~~bash
 $ watchman get-sockname
 {
   "version": "2.5",
   "sockname": "/tmp/.watchman.wez"
 }
-```
+~~~

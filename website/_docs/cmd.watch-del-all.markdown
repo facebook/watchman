@@ -13,15 +13,15 @@ Removes all watches and associated triggers.
 
 From the command line:
 
-```bash
+~~~bash
 $ watchman watch-del-all
-```
+~~~
 
 JSON:
 
-```json
+~~~json
 ["watch-del-all"]
-```
+~~~
 
 Analogous to the `watch-del` this command will remove all watches and
 associated triggers from the running process, and the state file (

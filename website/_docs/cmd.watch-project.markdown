@@ -93,14 +93,14 @@ root directories.  The default value for `enforce_root_files` is `false`.
 Assuming that `~/www/.hg` and `~/www/some/child/dir` both exist, then
 the command:
 
-```bash
+~~~bash
 $ watchman watch-project ~/www/some/child/dir
 {
   "version": "3.0.1",
   "watch": "/Users/wez/www",
   "relative_path": "some/child/dir"
 }
-```
+~~~
 
 establishes a watch on the `~/www` directory because that is the directory
 that contains `.hg`, which is one of the items listed in the default value
@@ -127,9 +127,9 @@ responsible for supplying an absolute path.
 
 JSON:
 
-```json
+~~~json
 ["watch", "/Users/wez/www/some/child/dir"]
-```
+~~~
 
 ### Initiating a watch
 

@@ -29,9 +29,9 @@ As a convenience, watchman can maintain the last observed clock for a client by
 associating it with a client defined cursor name.  For example, you could
 enumerate all the "C" source files on your first invocation of:
 
-```bash
+~~~bash
 watchman since /path/to/src n:c_srcs '*.c'
-```
+~~~
 
 and when you run it a second time, it will show you only the "C" source files
 that changed since the last time that someone queried using "n:c_srcs" as the

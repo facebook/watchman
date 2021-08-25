@@ -11,15 +11,15 @@ Removes a watch and any associated triggers.
 
 From the command line:
 
-```bash
+~~~bash
 $ watchman watch-del /path/to/dir
-```
+~~~
 
 JSON:
 
-```json
+~~~json
 ["watch-del", "/path/to/dir"]
-```
+~~~
 
 The removed watch and any associated triggers will be removed from the state
 file and will not be automatically watched if/when watchman is restarted.

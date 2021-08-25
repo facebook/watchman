@@ -47,23 +47,23 @@ python) as well as watchman.
 
 ### Source subscription
 
-```bash
+~~~bash
 $ watchman-replicate-subscription PATH -n NAME
-```
+~~~
 The source subscription must be an existing subscription for the provided path.
 Any combination of the 'name', 'pid', and 'client' arguments can be used provided
 they uniquely identify a subscription. Source subscription details for a watched
 root can be retrieved as follows:
 
-```bash
+~~~bash
 $ watchman-replicate-subscriptions PATH --list
-```
+~~~
 
 The subscription name, pid and client can then used to replicate the subscription.
 
-```bash
+~~~bash
 $ watchman-replicate-subscription PATH -n NAME -c CLIENT -p PID
-```
+~~~
 
 ### Controlling lifetime
 

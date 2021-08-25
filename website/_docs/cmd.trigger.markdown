@@ -54,9 +54,9 @@ possible in earlier versions.
 
 JSON:
 
-```json
+~~~json
 ["trigger", "/path/to/dir", <triggerobj>]
-```
+~~~
 
 Where `triggerobj` is a trigger configuration object with the fields
 defined below.
@@ -64,7 +64,7 @@ defined below.
 Here's an example trigger specified via the CLI that will cause `make` to
 be run whenever assets or sources are changed:
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["trigger", "/path/to/root", {
   "name": "assets",
@@ -72,7 +72,7 @@ $ watchman -j <<-EOT
   "command": ["make"]
 }]
 EOT
-```
+~~~
 
 The possible trigger object properties are:
 
@@ -174,24 +174,24 @@ In only supports the [Simple Pattern Syntax](
 
 From the command line:
 
-```bash
+~~~bash
 $ watchman -- trigger /path/to/dir triggername [patterns] -- [cmd]
-```
+~~~
 
 Note that the first `--` is to distinguish watchman CLI switches from the
 second `--`, which delimits patterns from the trigger command.  This is only
 needed when using the CLI, not when using the JSON protocol.
 
 JSON:
-```json
+~~~json
 ["trigger", "/path/to/dir", "triggername", <patterns>, "--", <cmd>]
-```
+~~~
 
 For example:
 
-```bash
+~~~bash
 $ watchman -- trigger ~/www jsfiles '*.js' -- ls -l
-```
+~~~
 
 Note the single quotes around the `*.js`; if you omit them, your shell
 will expand it to a list of file names and register those in the trigger.
@@ -200,9 +200,9 @@ trigger will not cause the trigger to run.
 
 or in JSON:
 
-```json
+~~~json
 ["trigger", "/home/wez/www", "jsfiles", "*.js", "--", "ls", "-l"]
-```
+~~~
 
 The simple syntax is interpreted as a trigger object with the following
 settings:
@@ -244,14 +244,14 @@ syntax:
 Watchman supports optionally evaluating triggers with respect to a path within a
 watched root. This is used with the `relative_root` parameter:
 
-```json
+~~~json
 ["trigger", "/path/to/watched/root", {
   "name": "relative-assets",
   "expression": ["pcre", "\.(js|css|c|cpp)$"],
   "command": ["make"],
   "relative_root": "project1"
 }]
-```
+~~~
 
 Setting a relative root results in the following modifications to triggers:
 

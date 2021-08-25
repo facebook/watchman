@@ -25,14 +25,14 @@ instantaneous value of the clock associated with the watched root, and
 may be almost immediately invalidated if there are any filesystem
 notifications that are yet to be processed.
 
-```bash
+~~~bash
 $ watchman clock /path/to/dir
-```
+~~~
 
 JSON:
 
 Note the third options argument is optional.
 
-```json
+~~~json
 ["clock", "/path/to/dir", {"sync_timeout": 100}]
-```
+~~~

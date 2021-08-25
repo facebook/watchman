@@ -18,7 +18,7 @@ compatibility rather than interrogating the full list.
 Here's some example output.  The actual capabilities list is in unspecified
 order and is much longer than is reproduced here:
 
-```bash
+~~~bash
 $ watchman list-capabilities
 {
     "version": "3.8.0",
@@ -28,4 +28,4 @@ $ watchman list-capabilities
         "cmd-trigger"
     ]
 }
-```
+~~~

@@ -40,33 +40,33 @@ Assuming subscriptions `sub1`, `sub2` and `sub3` have been established on this
 session, if `sub1` has updates pending, `sub2` is up-to-date and `sub3` is
 currently dropping updates:
 
-```json
+~~~json
 ["flush-subscriptions", "/path/to/root", {"sync_timeout": 1000}]
-```
+~~~
 
 In response, Watchman will first emit a unilateral subscription PDU for `sub1`,
 then respond with
 
-```json
+~~~json
 {
   "clock": "c:1446410081:18462:7:135",
   "synced": ["sub1"],
   "no_sync_needed": ["sub2"],
   "dropped": ["sub3"]
 }
-```
+~~~
 
 To flush updates for some but not all subscriptions associated with this
 session:
 
-```json
+~~~json
 ["flush-subscriptions", "/path/to/root",
   {
     "sync_timeout": 1000,
     "subscriptions": ["sub1", "sub2"]
   }
 ]
-```
+~~~
 
 ### Deferred and Dropped Updates
 

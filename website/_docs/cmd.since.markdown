@@ -7,9 +7,9 @@ permalink: docs/cmd/since.html
 redirect_from: docs/cmd/since/
 ---
 
-```bash
+~~~bash
 $ watchman since /path/to/dir <clockspec> [patterns]
-```
+~~~
 
 Finds all files that were modified since the specified clockspec that
 match the optional list of patterns.  If no patterns are specified,
@@ -18,7 +18,7 @@ all modified files are returned.
 The response includes a `files` array, each element of which is an
 object with fields containing information about the file:
 
-```json
+~~~json
 {
     "version": "2.7",
     "is_fresh_instance": true,
@@ -41,7 +41,7 @@ object with fields containing information about the file:
         }
     ]
 }
-```
+~~~
 
 The fields should be largely self-explanatory; they correspond to
 fields from the underlying `struct stat`, but a couple need special

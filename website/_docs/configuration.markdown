@@ -97,11 +97,11 @@ this configuration value if it is not present.
 This example causes only `.watchmanconfig` to be considered as a project
 root file:
 
-```json
+~~~json
 {
   "root_files": [".watchmanconfig"]
 }
-```
+~~~
 
 See the [watch-project](cmd/watch-project.html) command for more information.
 
@@ -131,11 +131,11 @@ restrictions.
 
 For example,
 
-```json
+~~~json
 {
   "root_restrict_files": [".git", ".hg"]
 }
-```
+~~~
 
 will allow watches only in the top level of Git or Mercurial repositories.
 
@@ -153,12 +153,12 @@ be reported as `unknown`.
 
 For example,
 
-```json
+~~~json
 {
   "illegal_fstypes": ["nfs", "cifs", "smb"],
   "illegal_fstypes_advice": "use a local directory"
 }
-```
+~~~
 
 will prevent watching dirs mounted on network filesystems and provide the
 advice to use a local directory.  You may omit the `illegal_fstypes_advice`
@@ -181,11 +181,11 @@ are unwanted because of the sheer volume of files.
 
 For example,
 
-```json
+~~~json
 {
   "ignore_dirs": ["build"]
 }
-```
+~~~
 
 would ignore the `build` directory at the top level of the watched tree, and
 everything below it.  It will never appear in the watchman query results for

@@ -28,11 +28,11 @@ These two lines establish a watch on a source directory and then set up a
 trigger named `buildme` that will run a tool named `minify-css` whenever a CSS
 file is changed.  The tool will be passed a list of the changed filenames.
 
-```bash
+~~~bash
 $ watchman watch ~/src
 # the single quotes around '*.css' are important!
 $ watchman -- trigger ~/src buildme '*.css' -- minify-css
-```
+~~~
 
 The output for buildme will land in the Watchman log file unless you send it
 somewhere else.

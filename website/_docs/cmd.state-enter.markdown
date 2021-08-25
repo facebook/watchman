@@ -27,21 +27,21 @@ notifications generated while the watch is in a particular named state.
 
 This is the simplest example; entering a state named `mystate`:
 
-```json
+~~~json
 ["state-enter", "/path/to/root", "mystate"]
-```
+~~~
 
 It will cause any subscribers to receive a unilateral subscription PDU
 from the watchman server:
 
-```json
+~~~json
 {
   "subscription":  "mysubscriptionname",
   "root":          "/path/to/root",
   "state-enter":   "mystate",
   "clock":         "c:1446410081:18462:7:127"
 }
-```
+~~~
 
 The `clock` field in the response is the (synchronized; see below) clock at the
 time that the state was entered and can be used in subsequent queries, in
@@ -52,18 +52,18 @@ A more complex example demonstrates passing metadata to any subscribers.  The
 `metadata` field is propagated through to the subscribers and is not
 interpreted by the watchman server.  It can be any JSON value.
 
-```json
+~~~json
 ["state-enter", "/path/to/root", {
   "name": "mystate",
   "metadata": {
     "foo": "bar"
   }
 }]
-```
+~~~
 
 This will emit the following unilateral subscription PDU to all subscribers:
 
-```json
+~~~json
 {
   "subscription":  "mysubscriptionname",
   "root":          "/path/to/root",
@@ -73,7 +73,7 @@ This will emit the following unilateral subscription PDU to all subscribers:
     "foo": "bar"
   }
 }
-```
+~~~
 
 ### Synchronization
 
@@ -93,7 +93,7 @@ In some cases, perhaps during the initial crawl of a very large tree, You may
 specify an alternative value for the timeout; the value is expressed in
 *milliseconds*:
 
-```json
+~~~json
 ["state-enter", "/path/to/root", {
   "name": "mystate",
   "sync_timeout": 10000,
@@ -101,7 +101,7 @@ specify an alternative value for the timeout; the value is expressed in
     "foo": "bar"
   }
 }]
-```
+~~~
 
 You may also specify `0` for the timeout to disable synchronization for this
 particular command.   This may cause the state to appear to clients to have

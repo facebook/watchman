@@ -37,7 +37,7 @@ the tip of the repo to which the local repo is published, and the user is
 checked out at the 6b38a5 commit:
 
 
-```
+~~~
 | @  6b38a5  wez
 | |  Add cats.cpp
 | |
@@ -45,14 +45,14 @@ checked out at the 6b38a5 commit:
 |/   Add cat.jpg
 |
 o f12345 master
-```
+~~~
 
 Now the user synchronizes their repo with the remote, fetching the commits but
 not changing their work yet.   This is often combined with the step that follows,
 but we are breaking it out here for the purposes of illustration.  This is
 equivalent to running `hg pull` or `git fetch`:
 
-```
+~~~
 o  fabf87  coworker     master
 .  Amazing new feature
 .
@@ -63,7 +63,7 @@ o  fabf87  coworker     master
 |/   Add cat.jpg
 |
 o
-```
+~~~
 
 The ellipsis portion of the DAG represents uninteresting commits to `wez`; there
 may be hundreds of files changed by those commits, but `wez` only cares about the
@@ -72,7 +72,7 @@ work in their local branch of the DAG.
 Now `wez` wants to rebase their work on master.  This would be done using
 a command like `hg rebase -d master -s fa2e92`:
 
-```
+~~~
 | @  bbbbbb  wez
 | |  Add cats.cpp
 | |
@@ -82,7 +82,7 @@ a command like `hg rebase -d master -s fa2e92`:
 o  fabf87  coworker     master
 .  Amazing new feature
 .
-```
+~~~
 
 The crucial part of this is what happens to the working copy; assuming that we now land
 on commit `bbbbbb`, Watchman will observe changes for all of the hundreds of files that
@@ -96,7 +96,7 @@ the minimized set of files that changed.
 To enable this mode you issue a query using a new *fat clock* as the `since` parameter
 for the query:
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": {
@@ -108,7 +108,7 @@ $ watchman -j <<-EOT
   "fields": ["name"]
 }]
 EOT
-```
+~~~
 
 This particular `since` value starts with an unspecified clock value and requests that
 watchman run the query in source control aware mode, using the symbolic name `master`
@@ -117,7 +117,7 @@ to compute the merge base for the commit graph.
 If we look back to the illustrations above and rewind to the first scenario,
 the results of this query will look something like this:
 
-```
+~~~
 {
    "clock": {
        "clock": "c:123:123",
@@ -128,7 +128,7 @@ the results of this query will look something like this:
     },
     "files": ["cat.jpg", "cats.cpp"]
 }
-```
+~~~
 
 This result informs the client of the merge base with master (which happens to
 be master itself) and the list of changes since that merge base.
@@ -137,7 +137,7 @@ To get the next incremental change the client feeds that clock value back in to 
 next query.  Looking back to the second illustration above, if we were to run this query
 after the running `hg pull` (note that this doesn't change the working copy):
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": {
@@ -151,11 +151,11 @@ $ watchman -j <<-EOT
   "fields": ["name"]
 }]
 EOT
-```
+~~~
 
 we'd get this result:
 
-```
+~~~json
 {
    "clock": {
        "clock": "c:123:124",
@@ -166,7 +166,7 @@ we'd get this result:
     },
     "files": []
 }
-```
+~~~
 
 Note that the `files` list is empty because we didn't change any files, and
 note that one of the numeric portions of the clock string has changed.
@@ -183,7 +183,7 @@ Now if we rebase and update to the rebased revision (taking us to the last of th
 illustrations from above), we'd run this query, feeding in the clock from the last
 query to get the correct incremental result:
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": {
@@ -197,11 +197,11 @@ $ watchman -j <<-EOT
   "fields": ["name"]
 }]
 EOT
-```
+~~~
 
 we'd get this result:
 
-```
+~~~json
 {
    "clock": {
        "clock": "c:123:125",
@@ -212,7 +212,7 @@ we'd get this result:
     },
     "files": ["cat.jpg", "cats.cpp"]
 }
-```
+~~~
 
 Note that the mergebase reported in the clock has changed and note that the
 list of files reported is just the two from our commit stack despite there
@@ -242,7 +242,7 @@ preconditions and things to note:
 
 To initiate a source control aware subscription:
 
-```json
+~~~json
 ["subscribe", "/path/to/root", "mysubscriptionname", {
   "fields": ["name"],
   "since": {
@@ -251,12 +251,12 @@ To initiate a source control aware subscription:
     }
   }
 }]
-```
+~~~
 
 You'll then receive subscription responses as files change; those responses
 will contain *fat clock* values for the `since` and `clock` fields:
 
-```json
+~~~json
 {
   "subscription": "mysubscriptionname",
   "clock": {
@@ -276,7 +276,7 @@ will contain *fat clock* values for the `since` and `clock` fields:
   "files": ["cat.jpg", "cats.cpp"],
   "root":  "/path/to/root"
 }
-```
+~~~
 
 The `clock` field holds the value of the clock and the merge base as of the subscription
 notification.

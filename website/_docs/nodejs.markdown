@@ -9,16 +9,16 @@ redirect_from: docs/nodejs/
 
 To install the nodejs client:
 
-```bash
+~~~bash
 $ npm install fb-watchman
-```
+~~~
 
 and to import it and create a client instance:
 
-```js
+~~~js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
-```
+~~~
 
 This documentation assumes that you are using the latest available version
 of the `fb-watchman` package published to the npm repository.
@@ -34,7 +34,7 @@ The `capabilityCheck` method issues a [version](
 /watchman/docs/cmds/version.html) command to query the capabilities of the
 server.
 
-```js
+~~~js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
 client.capabilityCheck({optional:[], required:['relative_root']},
@@ -49,7 +49,7 @@ client.capabilityCheck({optional:[], required:['relative_root']},
     // {'version': '3.8.0', 'capabilities': {'relative_root': true}}
     console.log(resp);
   });
-```
+~~~
 
 ## Initiating a watch
 
@@ -57,7 +57,7 @@ Almost every operation in watchman revolves around watching a directory tree.
 You can repeatedly ask to watch the same directory without error; watchman will
 re-use an existing watch.
 
-```js
+~~~js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
 
@@ -95,7 +95,7 @@ client.capabilityCheck({optional:[], required:['relative_root']},
                     ' relative_path', resp.relative_path);
       });
   });
-```
+~~~
 
 ## Subscribing to changes
 
@@ -110,7 +110,7 @@ The following will generate subscription results for all files in the
 tree that match the query expression and then generate subscription
 results as files change:
 
-```js
+~~~js
 // `watch` is obtained from `resp.watch` in the `watch-project` response.
 // `relative_path` is obtained from `resp.relative_path` in the
 // `watch-project` response.
@@ -158,7 +158,7 @@ function make_subscription(client, watch, relative_path) {
     });
   });
 }
-```
+~~~
 
 ### Subscribing only to changed files
 
@@ -170,7 +170,7 @@ watchman tracks changes using an [abstract clock](
 /watchman/docs/clockspec.html).  We'll determine the current clock at the time
 that we initiate the watch and then add that as a constraint in our subscription.
 
-```js
+~~~js
 function make_time_constrained_subscription(client, watch, relative_path) {
   client.command(['clock', watch], function (error, resp) {
     if (error) {
@@ -197,7 +197,7 @@ function make_time_constrained_subscription(client, watch, relative_path) {
       });
   });
 }
-```
+~~~
 
 ## NodeJS API Reference
 
@@ -233,7 +233,7 @@ If any of the `required` capabilities are not supported by the server, the
 `error` parameter in the `done` callback will be set and will contain a
 meaningful error message.
 
-```js
+~~~js
 client.capabilityCheck({optional:[], required:['relative_root']},
   function (error, resp) {
     if (error) {
@@ -246,7 +246,7 @@ client.capabilityCheck({optional:[], required:['relative_root']},
     // {'version': '3.8.0', 'capabilities': {'relative_root': true}}
     console.log(resp);
   });
-```
+~~~
 
 ### client.command(args [, done])
 
@@ -259,7 +259,7 @@ The `done` parameter is a callback that will be passed (error, result) when the
 command completes.  You may omit it if you are not interested in the result of
 the command.
 
-```js
+~~~js
 client.command(['watch-project', process.cwd()], function(error, resp) {
   if (error) {
     console.log('watch failed: ', error);
@@ -276,7 +276,7 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
     console.log('watching ', resp.watch);
   }
 });
-```
+~~~
 
 If a field named `warning` is present in `resp`, the watchman service is trying
 to communicate an issue that the user should see and address.  For example, if
@@ -316,20 +316,20 @@ Emitted when the socket to the watchman service is closed
 Emitted in response to a unilateral `log` PDU from the watchman service.
 To enable these, you need to send a `log-level` command to the service:
 
-```js
+~~~js
 // This is very verbose, you probably don't want to do this
 client.command(['log-level', 'debug']);
 client.on('log', function(info) {
   console.log(info);
 });
-```
+~~~
 
 ### Event: 'subscription'
 
 Emitted in response to a unilateral `subscription` PDU from the watchman
 service.  To enable these, you need to send a `subscribe` command to the service:
 
-```js
+~~~js
   // Subscribe to notifications about .js files
   client.command(['subscribe', process.cwd(), 'mysubscription', {
       expression: ["match", "*.js"]
@@ -351,14 +351,14 @@ service.  To enable these, you need to send a `subscribe` command to the service
   client.on('subscription', function(resp) {
     console.log(resp.root, resp.subscription, resp.files);
   });
-```
+~~~
 
 To cancel a subscription, use the `unsubscribe` command and pass in the name of
 the subscription you want to cancel:
 
-```js
+~~~js
   client.command(['unsubscribe', process.cwd(), 'mysubscription']);
-```
+~~~
 
 Note that subscriptions names are scoped to your connection to the watchman
 service; multiple different clients can use the same subscription name without

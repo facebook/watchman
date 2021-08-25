@@ -15,18 +15,18 @@ Watchman will track all files and dirs rooted at the specified path.
 
 From the command line:
 
-```bash
+~~~bash
 $ watchman watch ~/www
-```
+~~~
 
 Note that, when you're using the CLI, you can specify the root as `~/www`
 because the shell will resolve `~/www` to `/home/wez/www`, but when you use the
 JSON protocol, you are responsible for supplying an absolute path.
 
 JSON:
-```json
+~~~json
 ["watch", "/home/wez/www"]
-```
+~~~
 
 Watchman will `realpath(3)` the directory and start watching it if it isn't
 already.  A newly watched directory is processed in a couple of stages:

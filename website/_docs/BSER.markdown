@@ -88,28 +88,28 @@ from the null value.
 
 For example:
 
-```
+~~~json
 [
    {"name": "fred", "age": 20},
    {"name": "pete", "age": 30},
    {"age": 25 },
 ]
-```
+~~~
 
 is represented similar to:
 
-```
+~~~json
 ["name", "age"],
 [
   "fred", 20,
   "pete", 30,
   0x0c,   25
 ]
-```
+~~~
 
 The precise sequence is:
 
-```
+~~~
 0b          template
 00          array     -- start prop names
 0302        int, 2    -- two prop names
@@ -130,4 +130,4 @@ The precise sequence is:
 031e        int, 0x1e -- object 2, prop 2 age=30
 0c          skip      -- object 3, prop 1, not set
 0319        int, 0x19 -- object 3, prop 2 age=25
-```
+~~~

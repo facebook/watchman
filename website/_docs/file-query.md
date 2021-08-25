@@ -42,14 +42,14 @@ compatibility reasons) is to emit those duplicate results in the query output.
 You may ask Watchman to de-duplicate results for you by enabling the
 `dedup_results` boolean in your query:
 
-```
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "path": ["bar", "bar"],
   "dedup_results": true
 }]
 EOT
-```
+~~~
 
 You may test for this feature using an extended version command and requesting
 the capability name `dedup_results`.
@@ -63,14 +63,14 @@ The following query will consider the set of files changed since the last
 query using the named cursor `mycursor` and then pass them to the expression
 evaluator to be filtered to just those that are files:
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": "n:mycursor",
   "expression": ["type", "f"]
 }]
 EOT
-```
+~~~
 
 If the `since` parameter value is blank, was produced by a different watchman
 process (in other words, the watchman process was restarted between the time
@@ -103,21 +103,21 @@ the `since` generator may *not* produce a symlink in the following cases:
 The `suffix` generator produces a list of files that have a particular suffix
 or set of suffixes.  The value can be either a string or an array of strings.
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "suffix": "js"
 }]
 EOT
-```
+~~~
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "suffix": ["js", "css"]
 }]
 EOT
-```
+~~~
 
 If the `suffix` generator is given an empty array, it produces no files.
 
@@ -139,24 +139,24 @@ tree concurrently.
 This query will yield a list of all of the C source and header files found
 directly in the `src` dir:
 
-```
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "glob": ["src/*.c", "src/*.h"],
   "fields": ["name"]
 }]
-```
+~~~
 
 This query will yield a list of all of the C source and header files found
 in any subdirectories of the root:
 
-```
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "glob": ["**/*.c", "**/*.h"],
   "fields": ["name"]
 }]
-```
+~~~
 
 Note that it is more efficient to use the `suffix` generator together with a
 `dirname` expression term for such a broadly scoped query as it results in
@@ -193,21 +193,21 @@ this path.  A `depth` value of `-1` means no limit on the depth.
 
 The following `path` generators are equivalent:
 
-```
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "path": ["bar"]
 }]
 EOT
-```
+~~~
 
-```
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "path": [{"path": "bar", "depth": -1}]
 }]
 EOT
-```
+~~~
 
 If the `path` generator is given an empty array, it produces no files.
 
@@ -221,12 +221,12 @@ The `all` generator produces a list of all file nodes.  It is the default
 generator and is used in the case where no other generators were explicitly
 specified.
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
 }]
 EOT
-```
+~~~
 
 The `all` generator can produce symlinks.
 
@@ -245,16 +245,16 @@ added to the output set.
 An expression term is canonically represented as a JSON array whose zeroth
 element is a string containing the term name.
 
-```json
+~~~json
 ["termname", arg1, arg2]
-```
+~~~
 
 If the term accepts no arguments you may use a short form that consists of just
 the term name expressed as a string:
 
-```json
+~~~json
 "true"
-```
+~~~
 
 Expressions that match against file names may match against either the
 *basename* or the *wholename* of the file.  The basename is the name of the
@@ -271,11 +271,11 @@ of this page.
 Watchman supports optionally evaluating queries with respect to a path within a
 watched root. This is used with the `relative_root` parameter:
 
-```json
+~~~json
 ["query", "/path/to/watched/root", {
   "relative_root": "project1",
 }]
-```
+~~~
 
 Setting a relative root results in the following modifications to queries:
 
@@ -295,4 +295,3 @@ Relative roots behave similarly to a separate Watchman watch on the
 subdirectory, without any of the system overhead that that imposes. This is
 useful for large repositories, where your script or tool is only interested in a
 particular directory inside the repository.
-

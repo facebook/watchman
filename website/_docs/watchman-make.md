@@ -26,13 +26,13 @@ changing.  The `--settle` argument controls the settle duration.
 
 ### Example
 
-```bash
+~~~bash
 $ watchman-make -p '**/*.c' '**/*.h' 'Makefile*' -t all -p 'tests/**/*.py' 'tests/**/*.c' -t integration
 # Relative to /Users/wez/fb/watchman
 # Changes to files matching **/*.c **/*.h Makefile* will execute `make all`
 # Changes to files matching tests/**/*.py tests/**/*.c will execute `make integration`
 # waiting for changes
-```
+~~~
 
 ### Targets
 
@@ -45,9 +45,9 @@ The example above defines two targets using the `-t` argument; `all` and
 `Makefile`.  Each target will pick up the list of patterns defined by the `-p`
 argument that precedes it.
 
-```bash
+~~~bash
 $ watchman-make -p '**/*.c' '**/*.h' -t all
-```
+~~~
 
 The above defines a target named `all` that will be triggered whenever any
 combination of files are changed that have filenames that match either of the
@@ -69,9 +69,9 @@ specific to Makefiles or make.
 There are two different ways to specify multiple targets.  The first is shown
 in the main example at the top of this page and is repeated here:
 
-```bash
+~~~bash
 $ watchman-make -p '*.c' '*.h' 'Makefile*' -t all -p 'tests/**/*.py' 'tests/**/*.c' -t integration
-```
+~~~
 
 This defines two independent targets, `all` and `integration` that each have a
 list of patterns defined as their triggers.  Each time you specify a target
@@ -83,9 +83,9 @@ if you change a source file under the tests directory.
 
 An alternative is to list multiple target names with your `-t` option:
 
-```bash
+~~~bash
 $ watchman-make -p '*.c' '*.h' 'Makefile*' 'tests/**/*.py' 'tests/**/*.c' -t all integration
-```
+~~~
 
 this will execute `make all integration` if you change any top level `*.c` file
 *or* test source file.
@@ -97,9 +97,9 @@ this will execute `make all integration` if you change any top level `*.c` file
 As an alternative to targets, you can provide the path to a script which `watchman-make`
 will execute when changes are detected.
 
-```bash
+~~~bash
 $ watchman-make -p '**/*.c' '**/*.h' --run my_script.sh
-```
+~~~
 
 The above will run the provided script whenever any
 combination of files are changed that have filenames that match either of the

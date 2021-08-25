@@ -47,15 +47,14 @@ library provides support for [pkg-config](https://www.freedesktop.org/wiki/Softw
 For example, if your application was contained entirely in one C++ file called
 `app.cpp` the following would be sufficient for build on a system with GNU Make:
 
-```bash
-make LDFLAGS=$(pkg-config watchmanclient --libs) CPPFLAGS=$(pkg-config watchmanclient --cflags) app
-
-```
+~~~bash
+$ make LDFLAGS=$(pkg-config watchmanclient --libs) CPPFLAGS=$(pkg-config watchmanclient --cflags) app
+~~~
 
 If Watchman is installed in a location `pkg-config` does not search for packages
 by default, you may need to modify the `PKG_CONFIG_PATH` environment
 variable. For example:
 
-```bash
-export PKG_CONFIG_PATH=<watchman path>/lib/pkgconfig:$PKG_CONFIG_PATH
-```
+~~~bash
+$ export PKG_CONFIG_PATH=<watchman path>/lib/pkgconfig:$PKG_CONFIG_PATH
+~~~

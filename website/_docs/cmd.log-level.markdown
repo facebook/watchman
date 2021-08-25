@@ -11,15 +11,15 @@ Changes the log level of your connection to the watchman service.
 
 From the command line:
 
-```bash
+~~~bash
 $ watchman --server-encoding=json --persistent log-level debug
-```
+~~~
 
 JSON:
 
-```json
+~~~json
 ["log-level", "debug"]
-```
+~~~
 
 This command changes the log level of your client session.  Whenever watchman
 writes to its log, it walks the list of client sessions and also sends a log
@@ -37,9 +37,9 @@ mechanism.
 Log events are sent unilaterally by the server as they happen, and have
 the following structure:
 
-```json
+~~~json
 {
   "version": "1.0",
   "log": "log this please"
 }
-```
+~~~

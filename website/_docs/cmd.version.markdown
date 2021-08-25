@@ -10,20 +10,20 @@ redirect_from: docs/cmd/version/
 The version command will tell you the version and build information
 for the currently running watchman service:
 
-```bash
+~~~bash
 $ watchman version
 {
     "version": "2.9.6",
     "buildinfo": "git:2727d9a1e47a4a2229c65cbb2f0c7656cbd96270"
 }
-```
+~~~
 
 To get the version of the client:
 
-```bash
+~~~bash
 $ watchman -v
 2.9.8
-```
+~~~
 
 If the server and client versions don't match up, you should probably
 restart your server: `watchman shutdown-server ; watchman`.
@@ -43,7 +43,7 @@ You can read more about the [available capability names](
 
 To check whether the `relative_root` capability is supported:
 
-```bash
+~~~bash
 $ watchman -j <<< '["version", {"optional":["relative_root"]}]'
 {
     "version": "3.8.0",
@@ -51,11 +51,11 @@ $ watchman -j <<< '["version", {"optional":["relative_root"]}]'
         "relative_root": true
     }
 }
-```
+~~~
 
 If the capability is not supported:
 
-```bash
+~~~bash
 $ watchman -j <<< '["version", {"optional":["will-never-exist"]}]'
 {
     "version": "3.8.0",
@@ -63,12 +63,12 @@ $ watchman -j <<< '["version", {"optional":["will-never-exist"]}]'
         "will-never-exist": false
     }
 }
-```
+~~~
 
 To have the server generate an error response if a capability is not
 supported:
 
-```bash
+~~~bash
 $ watchman -j <<< '["version", {"required":["will-never-exist"]}]'
 {
     "version": "3.8.0",
@@ -77,11 +77,11 @@ $ watchman -j <<< '["version", {"required":["will-never-exist"]}]'
     },
     "error": "client required capability `will-never-exist` is not supported by this server"
 }
-```
+~~~
 
 To require one feature and test whether some optional features are supported:
 
-```bash
+~~~bash
 $ watchman -j <<< '["version", {"required":["term-match"],"optional":["a","b"]}]'
 {
     "version": "3.8.0",
@@ -91,7 +91,7 @@ $ watchman -j <<< '["version", {"required":["term-match"],"optional":["a","b"]}]
         "term-match": true
     }
 }
-```
+~~~
 
 ### capabilityCheck
 
@@ -103,18 +103,18 @@ to capability named based checks.
 
 In *python*:
 
-```python
+~~~python
 import pywatchman
 client = pywatchman.client()
 # will throw an error if any of the required names are not supported
 res = client.capabilityCheck(optional=['a'], required=['term-match'])
 print res
 # {'version': '3.8.0', 'capabilities': {'term-match': True, 'a': False}}
-```
+~~~
 
 In *node*:
 
-```js
+~~~js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
 client.capabilityCheck({optional:['a'], required:['term-match']},
@@ -127,4 +127,4 @@ client.capabilityCheck({optional:['a'], required:['term-match']},
         // {'version': '3.8.0', 'capabilities': {'term-match': false, 'a': false}}
         client.end();
     });
-```
+~~~

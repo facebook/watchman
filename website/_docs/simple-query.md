@@ -45,20 +45,20 @@ For example:
 
 Generates a file expression:
 
-```json
+~~~json
 ["match", "*.c", "wholename"]
-```
+~~~
 
 A list:
 
     '*.js' '*.css'
 
-```json
+~~~json
 ["anyof",
   ["match", "*.js", "wholename"],
   ["match", "*.css", "wholename"]
 ]
-```
+~~~
 
 An example of how the exclusion list syntax works:
 
@@ -66,11 +66,9 @@ An example of how the exclusion list syntax works:
 
 Generates:
 
-```json
+~~~json
 ["allof",
   ["not", ["match", "*.c", "wholename"]],
   ["match", "*main*", "wholename"]
 ]
-```
-
-
+~~~

@@ -63,9 +63,9 @@ watchman will refuse to start.
 
 ## Locating the service
 
-```
+~~~
  -U, --sockname=PATH   Specify alternate sockname
-```
+~~~
 
 The default location for sockname will be `<STATEDIR>/<USER>`.  Older versions
 of Watchman would default to `<TMPDIR>/.watchman.<USER>`, depending on how
@@ -83,22 +83,22 @@ The `watchman` executable will attempt to start the service if there is no
 response on the socket specified above.  In some cases it is desirable to avoid
 starting the service if it isn't running:
 
-```
+~~~
  --no-spawn            Don't spawn service if it is not already running.
                        Will try running the command in client mode if
                        possible.
  --no-local            When no-spawn is enabled, don't use client mode
-```
+~~~
 
 Client mode implements the [watchman find command](
 /watchman/docs/cmd/find.html) as an immediate search.
 
 These options control how the client talks to the server:
 
-```
+~~~
  -p, --persistent           Persist and wait for further responses
      --server-encoding=ARG  CLI<->server encoding. json or bser.
-```
+~~~
 
 Persistent connections have relatively limited use with the CLI, but can be
 useful to connect ad-hoc to the service to receive logging information (See
@@ -111,15 +111,15 @@ when talking to the server.  You generally shouldn't need to worry about this.
 
 Most simple invocations of the CLI will pass a list of arguments:
 
-```bash
+~~~bash
 $ watchman watch /path/to/dir
-```
+~~~
 
 This is turned into a request like this:
 
-```json
+~~~json
 ["watch", "/path/to/dir"]
-```
+~~~
 
 and sent to the service using the [Socket Interface](
 /watchman/docs/socket-interface.html).
@@ -127,11 +127,11 @@ and sent to the service using the [Socket Interface](
 The response is received and then sent to the `stdout` stream formatted based on
 the selected output-encoding:
 
-```
+~~~
      --output-encoding=ARG  CLI output encoding. json (default) or bser
      --no-pretty            Don't pretty print JSON output (more efficient
                             when being processed by another program)
-```
+~~~
 
 Each command has its own response output but watchman will always include a
 field named `error` if something about the request was not successful.  In case
@@ -142,34 +142,34 @@ to `stderr` and the process will exit with a non-zero exit status.
 Instead of passing the request as command line parameters, you can send a JSON
 representation on the `stdin` stream.  These invocations are all equivalent:
 
-```bash
+~~~bash
 $ watchman watch /path/to/dir
-```
+~~~
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["watch", "/path/to/dir"]
 EOT
-```
+~~~
 
-```bash
+~~~bash
 $ watchman -j <<< '["watch", "/path/to/dir"]'
-```
+~~~
 
-```bash
+~~~bash
 $ echo '["watch", "/path/to/dir"]' | watchman -j
-```
+~~~
 
-```bash
+~~~bash
 $ echo '["watch", "/path/to/dir"]' > cmd.json
 $ watchman -j < cmd.json
-```
+~~~
 
-```bash
+~~~bash
 $ watchman --json-command <<-EOT
 ["watch", "/path/to/dir"]
 EOT
-```
+~~~
 
 *Since 3.8*
 
@@ -200,19 +200,19 @@ By default, watchman will remember all watches and associated triggers and
 reinstate them if the process is restarted.  This state is stored in the
 *statefile*:
 
-```
+~~~
  --statefile=PATH      Specify path to file to hold watch and trigger state
  -n, --no-save-state   Don't save state between invocations
-```
+~~~
 
 The default location for statefile will be `<STATEDIR>/<USER>.state`.  Older
 versions of watchman may store the state in `<TMPDIR>/.watchman.<USER>.state`,
 depending on how they were configured.
 
-```
+~~~
 -o, --logfile=PATH   Specify path to logfile
     --log-level      set log verbosity (0 = off, default is 1, verbose = 2)
-```
+~~~
 
 The default location for logfile will be `<STATEDIR>/<USER>.log`.  Older
 versions of watchman may store the logs in `<TMPDIR>/.watchman.<USER>.log`,
@@ -221,15 +221,15 @@ depending on how they were configured.
 In some relatively uncommon circumstances, such as in test harnesses, you may
 need to directly run the service without it putting itself into the background:
 
-```
+~~~
  -f, --foreground      Run the service in the foreground
-```
+~~~
 
 *Since 4.6.*
 
-```
+~~~
      --inetd                Spawning from an inetd style supervisor
-```
+~~~
 
 When this flag is specified, watchman will use stdin as the listening socket
 rather than attempting to set it up for itself.  This allows some other process

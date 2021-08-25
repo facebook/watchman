@@ -9,7 +9,7 @@ redirect_from: docs/cmd/query/
 
 *Since 1.6.*
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "suffix": "php",
@@ -21,7 +21,7 @@ $ watchman -j <<-EOT
   "fields": ["name"]
 }]
 EOT
-```
+~~~
 
 Executes a query against the specified root. This example uses the `-j` flag to
 the watchman binary that tells it to read stdin and interpret it as the JSON
@@ -38,15 +38,15 @@ is processed by passing it to the query engine (see [File Queries](
 The query command will then consult the `fields` member of the query object;
 if it is not present it will default to:
 
-```json
+~~~json
 "fields": ["name", "exists", "new", "size", "mode"]
-```
+~~~
 
 For each file in the result set, the query command will generate a JSON object
 value populated with the requested fields.  For example, the default set of
 fields will return a response something like this:
 
-```json
+~~~json
 {
     "version": "2.9",
     "clock": "c:80616:59",
@@ -61,12 +61,12 @@ fields will return a response something like this:
         }
     ]
 }
-```
+~~~
 
 If a field's value cannot be computed, a field's value may be `null`, or may
 be an object with an `error` key containing a descriptive message string:
 
-```json
+~~~json
 {
     "version": "2019-07-22T13:50:36Z",
     "is_fresh_instance": false,
@@ -88,7 +88,7 @@ be an object with an `error` key containing a descriptive message string:
         }
     ]
 }
-```
+~~~
 
 For queries using the `since` generator, the `is_fresh_instance` member is true
 if the particular clock value indicates that it was returned by a different
@@ -99,15 +99,15 @@ Advanced users may set the input parameter `empty_on_fresh_instance` to true,
 in which case no files will be returned for fresh instances.
 
 If the `fields` member consists of a single entry, the files result will be a
-simple array of values; ```"fields": ["name"]``` produces:
+simple array of values; ~~~"fields": ["name"]~~~ produces:
 
-```json
+~~~json
 {
     "version": "1.5",
     "clock": "c:80616:59",
     "files": ["argv.c", "foo.c"]
 }
-```
+~~~
 
 ### Available fields
 
@@ -161,13 +161,13 @@ If your synchronization requirements differ from the default, you may pass in
 your desired timeout when you construct your query; it must be an integer value
 expressed in milliseconds:
 
-```json
+~~~json
 ["query", "/path/to/root", {
   "expression": ["exists"],
   "fields": ["name"],
   "sync_timeout": 60000
 }]
-```
+~~~
 
 You may specify `0` as the value if you do not wish for the query to create
 a cookie and synchronize; the query will be evaluated over the present view
@@ -184,14 +184,14 @@ situations it is important to ensure that the query attempt times out sooner
 than this.  You may use the `lock_timeout` field to control this behavior.
 `lock_timeout` must be an integer value expressed in milliseconds:
 
-```json
+~~~json
 ["query", "/path/to/root", {
   "expression": ["exists"],
   "fields": ["name"],
   "lock_timeout": 60000,
   "sync_timeout": 60000
 }]
-```
+~~~
 
 Prior to version 4.6, the `lock_timeout` could not be configured and had an
 effective value of infinity.
@@ -214,7 +214,7 @@ tools but are running on a case insensitive filesystem.  By forcing the name
 matches to case sensitive mode the matches are faster and in some cases can be
 accelerated by using alternative algorithms.
 
-```bash
+~~~bash
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "suffix": "php",
@@ -223,4 +223,4 @@ $ watchman -j <<-EOT
   "fields": ["name"]
 }]
 EOT
-```
+~~~

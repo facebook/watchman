@@ -32,9 +32,9 @@ until after the files have stopped changing.
 
 ### Paths and Patterns
 
-```bash
+~~~bash
 $ watchman-wait path [path ...]
-```
+~~~
 
 The primary unit of watching is a path.  You must specify a list of one or more
 paths that you'd like to wait for.  Paths can be files or directories.  Each of
@@ -45,13 +45,13 @@ If you'd like to wait for a file to be created you can watch the directory in
 which it will be created.  You may further refine your watch by limiting it to
 a set of patterns.
 
-```bash
+~~~bash
 $ watchman-wait . -p '*.so'
-```
+~~~
 
-```bash
+~~~bash
 $ watchman-wait -p '*.so' -- .
-```
+~~~
 
 Both of the above will wait for a shared object file to be changed in any path
 under the current working directory.  Since both the `-p` option and the list

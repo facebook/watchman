@@ -72,7 +72,7 @@ You can find the binary downloads in the [latest release](https://github.com/fac
 * Download and extract the release for your system from the [latest release](https://github.com/facebook/watchman/releases/latest)
 * It will be named something like `watchman-vYYYY.MM.DD.00-linux.zip`
 
-```
+~~~bash
 $ unzip watchman-*-linux.zip
 $ cd watchman-vYYYY.MM.DD.00-linux
 $ sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
@@ -80,7 +80,7 @@ $ sudo cp bin/* /usr/local/bin
 $ sudo cp lib/* /usr/local/lib
 $ sudo chmod 755 /usr/local/bin/watchman
 $ sudo chmod 2777 /usr/local/var/run/watchman
-```
+~~~
 
 ## Build/Install
 
@@ -89,32 +89,32 @@ $ sudo chmod 2777 /usr/local/var/run/watchman
 To build the most recent release currently tracked by
 [Homebrew](http://brew.sh/):
 
-```bash
+~~~bash
 $ brew update
 $ brew install watchman
-```
+~~~
 
 To install the latest build from github:
 
-```bash
+~~~bash
 $ brew install --HEAD watchman
-```
+~~~
 
 ### Installing on macOS via macports
 
 To install the package maintained by [MacPorts](https://www.macports.org):
 
-```bash
+~~~bash
 $ sudo port install watchman
-```
+~~~
 
 ### Installing on Windows via Chocolatey
 
 Watchman is available to install via the [Chocolatey](https://www.chocolatey.org) Windows package manager.  Installation is as simple as:
 
-```powershell
+~~~powershell
 PS C:\> choco install watchman
-```
+~~~
 
 The package is maintained by the community rather than by Facebook, Inc., so if you experience issues with installation/uninstallation, you should [contact the package maintainers](https://chocolatey.org/packages/watchman/ContactOwners) for assistance.
 
@@ -132,22 +132,22 @@ need to install `libfolly`.
 
 See below for some more information on options to configure your build.
 
-```bash
+~~~bash
 $ # use the latest stable release
 $ git clone https://github.com/facebook/watchman.git -b {{ site.data.current_release.tag }} --depth 1
-$ cd watchman 
+$ cd watchman
 $ ./autogen.sh
 $ ./configure
 $ make
 $ sudo make install
-```
+~~~
 
 ### Compile Time Configuration Options
 
 Our configure script accepts all the standard options, but there are a couple
 that are specific to watchman that might be relevant to your needs:
 
-```
+~~~
 --enable-conffile=PATH  Use PATH as the default configuration file name.
                         Default is /etc/watchman.json
 
@@ -177,7 +177,7 @@ that are specific to watchman that might be relevant to your needs:
 
 --with-folly=PATH  Specify root for Folly (needed for the C++ client library)
                    https://github.com/facebook/folly
-```
+~~~
 
 (Run `./configure --help` to get the list for the version you checked out)
 
@@ -226,15 +226,15 @@ Watchman will attempt to raise its descriptor limit to match
 The following will raise the limits to allow 10 million files total, with 1
 million files per process until your next reboot.
 
-```bash
+~~~bash
 $ sudo sysctl -w kern.maxfiles=10485760
 $ sudo sysctl -w kern.maxfilesperproc=1048576
-```
+~~~
 
 Putting the following into a file named `/etc/sysctl.conf` on macOS will cause
 these values to persist across reboots:
 
-```
+~~~
 kern.maxfiles=10485760
 kern.maxfilesperproc=1048576
-```
+~~~
