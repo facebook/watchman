@@ -53,7 +53,7 @@ color:
   # Background of fixed nav header - headertext color is used for mini logo text
   nav: "#4356e6"
   # Text of links in the nav
-  navtext: "#bfc6ff"
+  navtext: "#e0e7F7"
   # Color of link underlines in the main body, and hover background color for links
   link: "#4356e6"
 
