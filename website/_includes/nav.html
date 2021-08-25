@@ -1,6 +1,6 @@
 <div id="fixed_header" class="fixedHeaderContainer{% if include.alwayson %} visible{% endif %}">
   <header>
-    <a href="{{ site.url }}{{ site.baseurl }}/"><img src="{{ site.baseurl }}/static/logo.png" /><h2>{{ site.title }}</h2></a>
+    <a href="{{ site.url }}{{ site.baseurl }}/"><img src="{{ site.baseurl }}/static/logo.png" alt=""/><h2>{{ site.title }}</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
       <nav class="navigation">
         <ul>
@@ -29,7 +29,7 @@
       {% endfor %}
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -65,12 +65,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -83,7 +83,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
