@@ -28,6 +28,7 @@
 #include "SignalHandler.h"
 #include "watchman/Constants.h"
 #include "watchman/GroupLookup.h"
+#include "watchman/SanityCheck.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
 #include "watchman/watchman_client.h"

@@ -632,13 +632,13 @@ watchman/Pipe.cpp
 watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)
 watchman/QueryableView.cpp
+watchman/SanityCheck.cpp
 watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/TempDir.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/checksock.cpp
 watchman/clientmode.cpp
 # hash.cpp (in libhash)
 watchman/ignore.cpp

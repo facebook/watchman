@@ -16,19 +16,6 @@
 
 #pragma once
 
-#include <string>
-#include "watchman/thirdparty/jansson/jansson.h"
-
-bool w_is_stopping();
-
-void w_request_shutdown();
-
-void w_state_shutdown();
-void w_state_save();
-bool w_state_load();
-bool w_root_save_state(json_ref& state);
-bool w_root_load_state(const json_ref& state);
-json_ref w_root_watch_list_to_json();
-
-/* vim:ts=2:sw=2:et:
- */
+namespace watchman {
+void startSanityCheckThread();
+}
