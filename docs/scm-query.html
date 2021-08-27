@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Source Control Aware Queries | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Source Control Aware Queries" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Since 4.9." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Source Control Aware Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Since 4.9.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/scm-query.html"},"url":"https://facebook.github.io/watchman/docs/scm-query.html"}</script>
+{"headline":"Source Control Aware Queries","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 4.9.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/scm-query.html"},"url":"https://facebook.github.io/watchman/docs/scm-query.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -714,10 +714,10 @@ window.addEventListener('load', function() {
       <p><em>Since 4.9.</em></p>
 
 <p><em>The <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
-enhanced functionality is <code class="highlighter-rouge">scm-since</code>.</em></p>
+enhanced functionality is <code class="language-plaintext highlighter-rouge">scm-since</code>.</em></p>
 
 <p>At the time of writing, only Mercurial is supported.  The capability name for
-this is <code class="highlighter-rouge">scm-hg</code>.  The internal architecture allows supporting other source
+this is <code class="language-plaintext highlighter-rouge">scm-hg</code>.  The internal architecture allows supporting other source
 control systems quite easily; it just needs someone to implement and test them!</p>
 
 <p>A common pattern for tools that consume watchman is wanting to reason about
@@ -736,42 +736,25 @@ and use that to locate the pre-built data and process only the delta
 between that state and the current state of the repo.</p>
 
 <p>An illustration may help.  Here we see that a user has a stack of two commits
-based off the symbolic <code class="highlighter-rouge">master</code> commit.  In this scenario, <code class="highlighter-rouge">master</code> is tracking
+based off the symbolic <code class="language-plaintext highlighter-rouge">master</code> commit.  In this scenario, <code class="language-plaintext highlighter-rouge">master</code> is tracking
 the tip of the repo to which the local repo is published, and the user is
 checked out at the 6b38a5 commit:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre>| @  6b38a5  wez
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>| @  6b38a5  wez
 | |  Add cats.cpp
 | |
 | o  fa2e92  wez
 |/   Add cat.jpg
 |
 o f12345 master
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>Now the user synchronizes their repo with the remote, fetching the commits but
 not changing their work yet.   This is often combined with the step that follows,
 but we are breaking it out here for the purposes of illustration.  This is
-equivalent to running <code class="highlighter-rouge">hg pull</code> or <code class="highlighter-rouge">git fetch</code>:</p>
+equivalent to running <code class="language-plaintext highlighter-rouge">hg pull</code> or <code class="language-plaintext highlighter-rouge">git fetch</code>:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10</pre></td><td class="code"><pre>o  fabf87  coworker     master
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>o  fabf87  coworker     master
 .  Amazing new feature
 .
 | @  6b38a5  wez
@@ -781,26 +764,16 @@ equivalent to running <code class="highlighter-rouge">hg pull</code> or <code cl
 |/   Add cat.jpg
 |
 o
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
-<p>The ellipsis portion of the DAG represents uninteresting commits to <code class="highlighter-rouge">wez</code>; there
-may be hundreds of files changed by those commits, but <code class="highlighter-rouge">wez</code> only cares about the
+<p>The ellipsis portion of the DAG represents uninteresting commits to <code class="language-plaintext highlighter-rouge">wez</code>; there
+may be hundreds of files changed by those commits, but <code class="language-plaintext highlighter-rouge">wez</code> only cares about the
 work in their local branch of the DAG.</p>
 
-<p>Now <code class="highlighter-rouge">wez</code> wants to rebase their work on master.  This would be done using
-a command like <code class="highlighter-rouge">hg rebase -d master -s fa2e92</code>:</p>
+<p>Now <code class="language-plaintext highlighter-rouge">wez</code> wants to rebase their work on master.  This would be done using
+a command like <code class="language-plaintext highlighter-rouge">hg rebase -d master -s fa2e92</code>:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9</pre></td><td class="code"><pre>| @  bbbbbb  wez
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>| @  bbbbbb  wez
 | |  Add cats.cpp
 | |
 | o  aaaaaa  wez
@@ -809,33 +782,21 @@ a command like <code class="highlighter-rouge">hg rebase -d master -s fa2e92</co
 o  fabf87  coworker     master
 .  Amazing new feature
 .
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>The crucial part of this is what happens to the working copy; assuming that we now land
-on commit <code class="highlighter-rouge">bbbbbb</code>, Watchman will observe changes for all of the hundreds of files that
+on commit <code class="language-plaintext highlighter-rouge">bbbbbb</code>, Watchman will observe changes for all of the hundreds of files that
 changed across the rebase and pass this information on to the tools that are subscribed
 or are querying for this information.</p>
 
 <p>If your tooling is source control aware then you can ask watchman to run since queries
-in a mode where it will return you information about the merge base with <code class="highlighter-rouge">master</code> and
+in a mode where it will return you information about the merge base with <code class="language-plaintext highlighter-rouge">master</code> and
 the minimized set of files that changed.</p>
 
-<p>To enable this mode you issue a query using a new <em>fat clock</em> as the <code class="highlighter-rouge">since</code> parameter
+<p>To enable this mode you issue a query using a new <em>fat clock</em> as the <code class="language-plaintext highlighter-rouge">since</code> parameter
 for the query:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "since": {
       "scm": {
@@ -845,61 +806,36 @@ for the query:</p>
   "expression": ["type", "f"],
   "fields": ["name"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<p>This particular <code class="highlighter-rouge">since</code> value starts with an unspecified clock value and requests that
-watchman run the query in source control aware mode, using the symbolic name <code class="highlighter-rouge">master</code>
+<p>This particular <code class="language-plaintext highlighter-rouge">since</code> value starts with an unspecified clock value and requests that
+watchman run the query in source control aware mode, using the symbolic name <code class="language-plaintext highlighter-rouge">master</code>
 to compute the merge base for the commit graph.</p>
 
 <p>If we look back to the illustrations above and rewind to the first scenario,
 the results of this query will look something like this:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:123"</span><span class="p">,</span><span class="w">
-       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
-            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
-       </span><span class="p">}</span><span class="w">
-    </span><span class="p">},</span><span class="w">
-    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>{
+   "clock": {
+       "clock": "c:123:123",
+       "scm": {
+            "mergebase": "f12345",
+            "mergebase-with": "master"
+       }
+    },
+    "files": ["cat.jpg", "cats.cpp"]
+}
+</code></pre></div></div>
 
 <p>This result informs the client of the merge base with master (which happens to
 be master itself) and the list of changes since that merge base.</p>
 
 <p>To get the next incremental change the client feeds that clock value back in to its
 next query.  Looking back to the second illustration above, if we were to run this query
-after the running <code class="highlighter-rouge">hg pull</code> (note that this doesn’t change the working copy):</p>
+after the running <code class="language-plaintext highlighter-rouge">hg pull</code> (note that this doesn’t change the working copy):</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "since": {
        "clock": "c:123:123",
@@ -911,37 +847,24 @@ after the running <code class="highlighter-rouge">hg pull</code> (note that this
   "expression": ["type", "f"],
   "fields": ["name"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <p>we’d get this result:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:124"</span><span class="p">,</span><span class="w">
-       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
-            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+   </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:124"</span><span class="p">,</span><span class="w">
+       </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
        </span><span class="p">}</span><span class="w">
     </span><span class="p">},</span><span class="w">
-    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+    </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>Note that the <code class="highlighter-rouge">files</code> list is empty because we didn’t change any files, and
+<p>Note that the <code class="language-plaintext highlighter-rouge">files</code> list is empty because we didn’t change any files, and
 note that one of the numeric portions of the clock string has changed.</p>
 
 <p>Also note that the mergebase revision remains the same because we also didn’t
@@ -956,19 +879,7 @@ of this example.</p>
 illustrations from above), we’d run this query, feeding in the clock from the last
 query to get the correct incremental result:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "since": {
        "clock": "c:123:124",
@@ -980,43 +891,30 @@ query to get the correct incremental result:</p>
   "expression": ["type", "f"],
   "fields": ["name"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <p>we’d get this result:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:125"</span><span class="p">,</span><span class="w">
-       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
-            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+   </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:125"</span><span class="p">,</span><span class="w">
+       </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
        </span><span class="p">}</span><span class="w">
     </span><span class="p">},</span><span class="w">
-    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
+    </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>Note that the mergebase reported in the clock has changed and note that the
 list of files reported is just the two from our commit stack despite there
 being hundreds of files that were physically updated on the disk.</p>
 
-<p>Your client can now lookup some state based on the <code class="highlighter-rouge">fabf87</code> revision and
-download it, and can then incrementally apply the computation for <code class="highlighter-rouge">cat.jpg</code> and
-<code class="highlighter-rouge">cats.cpp</code> on top of that state.</p>
+<p>Your client can now lookup some state based on the <code class="language-plaintext highlighter-rouge">fabf87</code> revision and
+download it, and can then incrementally apply the computation for <code class="language-plaintext highlighter-rouge">cat.jpg</code> and
+<code class="language-plaintext highlighter-rouge">cats.cpp</code> on top of that state.</p>
 
 <p>If your client doesn’t know how to do this, then you shouldn’t use this
 source control aware query mode!</p>
@@ -1030,92 +928,63 @@ preconditions and things to note:</p>
 <ul>
   <li>Watchman needs the cooperation of the source control system to know when
 it should defer events.  At the time of writing this is only possible when
-using Mercurial with the <code class="highlighter-rouge">fsmonitor</code> extension enabled.</li>
-  <li>Source control aware subscriptions implicitly enable <code class="highlighter-rouge">defer_vcs</code> and
-<code class="highlighter-rouge">defer:["hg.update"]</code>.  As with the point above, this is to ensure that
+using Mercurial with the <code class="language-plaintext highlighter-rouge">fsmonitor</code> extension enabled.</li>
+  <li>Source control aware subscriptions implicitly enable <code class="language-plaintext highlighter-rouge">defer_vcs</code> and
+<code class="language-plaintext highlighter-rouge">defer:["hg.update"]</code>.  As with the point above, this is to ensure that
 you don’t get notified about files changing during the working copy update
 operation; that would defeat the point of using source control awareness.</li>
 </ul>
 
 <p>To initiate a source control aware subscription:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
     </span><span class="p">}</span><span class="w">
   </span><span class="p">}</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>You’ll then receive subscription responses as files change; those responses
-will contain <em>fat clock</em> values for the <code class="highlighter-rouge">since</code> and <code class="highlighter-rouge">clock</code> fields:</p>
+will contain <em>fat clock</em> values for the <code class="language-plaintext highlighter-rouge">since</code> and <code class="language-plaintext highlighter-rouge">clock</code> fields:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:125"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
-      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
-    </span><span class="err">}</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:125"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="p">}</span><span class="w">
   </span><span class="p">},</span><span class="w">
-  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
-      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
-    </span><span class="err">}</span><span class="w">
+  </span><span class="nl">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="p">}</span><span class="w">
   </span><span class="p">},</span><span class="w">
-  </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/to/root"</span><span class="w">
+  </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/to/root"</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>The <code class="highlighter-rouge">clock</code> field holds the value of the clock and the merge base as of the subscription
+<p>The <code class="language-plaintext highlighter-rouge">clock</code> field holds the value of the clock and the merge base as of the subscription
 notification.</p>
 
-<p>The <code class="highlighter-rouge">since</code> field holds the <em>fat clock</em> that was returned in the <code class="highlighter-rouge">clock</code> field from
+<p>The <code class="language-plaintext highlighter-rouge">since</code> field holds the <em>fat clock</em> that was returned in the <code class="language-plaintext highlighter-rouge">clock</code> field from
 the prior subscription update.  It is present as a convenience for you; you can compare
-the <code class="highlighter-rouge">mergebase</code> fields between the two to determine that the merge base changed in
+the <code class="language-plaintext highlighter-rouge">mergebase</code> fields between the two to determine that the merge base changed in
 this update.  This is an important detail because more files in the working copy have
-been physically changed than are reflected in the <code class="highlighter-rouge">files</code> list; your tooling will need
+been physically changed than are reflected in the <code class="language-plaintext highlighter-rouge">files</code> list; your tooling will need
 to so something appropriate to ensure that it computes a consistent and correct result.</p>
 
-<h3 id="state-enter--state-leave"><code class="highlighter-rouge">state-enter</code> &amp; <code class="highlighter-rouge">state-leave</code></h3>
+<h3 id="state-enter--state-leave"><code class="language-plaintext highlighter-rouge">state-enter</code> &amp; <code class="language-plaintext highlighter-rouge">state-leave</code></h3>
 
 <p>Source control aware subscriptions will always include a <em>fat clock</em> in their responses, however,
-only the regular clock is provided in <code class="highlighter-rouge">state-enter</code> and <code class="highlighter-rouge">state-leave</code> notifications.
+only the regular clock is provided in <code class="language-plaintext highlighter-rouge">state-enter</code> and <code class="language-plaintext highlighter-rouge">state-leave</code> notifications.
 This is because computing the source control information is a non-trivial operation and
 could increase latency.</p>
 
@@ -1130,7 +999,7 @@ could increase latency.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

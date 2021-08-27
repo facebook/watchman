@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>watch-project | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="watch-project" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Since 3.1." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"watch-project","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Since 3.1.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/watch-project.html"},"url":"https://facebook.github.io/watchman/docs/cmd/watch-project.html"}</script>
+{"headline":"watch-project","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 3.1.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/watch-project.html"},"url":"https://facebook.github.io/watchman/docs/cmd/watch-project.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -731,7 +731,7 @@ reliability of filesystem watching is degraded, sometimes to the point that it
 ceases to function.</p>
 
 <p>It is therefore desirable to avoid this situation and consolidate the
-filesystem watches.  Watchman offers the <code class="highlighter-rouge">watch-project</code> command to allow
+filesystem watches.  Watchman offers the <code class="language-plaintext highlighter-rouge">watch-project</code> command to allow
 clients to opt-in to the watch consolidation behavior described below.</p>
 
 <h3 id="whats-a-project-path">What’s a project path?</h3>
@@ -743,23 +743,23 @@ already established a watch at the root of a project, so any other tools that
 wish to watch a sub-directory can do so for no additional cost if they re-use
 that existing watch at a higher level in the filesystem tree.</p>
 
-<p>The <code class="highlighter-rouge">watch-project</code> command uses a simple procedure to locate the
+<p>The <code class="language-plaintext highlighter-rouge">watch-project</code> command uses a simple procedure to locate the
 <em>project</em> path that corresponds to a given path.  While simple it is
 rather verbose to describe it precisely:</p>
 
 <ol>
   <li>The search is begun with a list of file names; we’ll refer to it as
-<code class="highlighter-rouge">root_files</code>.  Any file in this list, if present in a directory,
+<code class="language-plaintext highlighter-rouge">root_files</code>.  Any file in this list, if present in a directory,
 identifies that directory as being a valid project directory.</li>
   <li>The search is begun with the candidate directory set to the argument
-passed to <code class="highlighter-rouge">watch-project</code>.  The candidate directory is passed to
-the <code class="highlighter-rouge">realpath(3)</code> function and the result is set as the new value
+passed to <code class="language-plaintext highlighter-rouge">watch-project</code>.  The candidate directory is passed to
+the <code class="language-plaintext highlighter-rouge">realpath(3)</code> function and the result is set as the new value
 of the candidate directory.</li>
-  <li>The candidate directory is concatenated with each of the <code class="highlighter-rouge">root_files</code>,
+  <li>The candidate directory is concatenated with each of the <code class="language-plaintext highlighter-rouge">root_files</code>,
 one by one, and the resultant path is tested for existence.  If the
 path exists then the candidate directory is the path that will be used
 for watch and the search is halted successfully.</li>
-  <li>If none of the <code class="highlighter-rouge">root_files</code> can be found in the candidate directory
+  <li>If none of the <code class="language-plaintext highlighter-rouge">root_files</code> can be found in the candidate directory
 then the parent of the candidate directory is used as a new candidate
 and the process is repeated at step 3 above.</li>
   <li>If no viable candidates are found and the root of the filesystem is reached,
@@ -769,11 +769,11 @@ then the search terminates unsuccessfully.</li>
 <p>Watchman may perform the above search procedure twice.  The logic is:</p>
 
 <ol>
-  <li><code class="highlighter-rouge">root_files</code> will be set to list only <code class="highlighter-rouge">.watchmanconfig</code></li>
+  <li><code class="language-plaintext highlighter-rouge">root_files</code> will be set to list only <code class="language-plaintext highlighter-rouge">.watchmanconfig</code></li>
   <li>Perform the search procedure above</li>
   <li>If the search terminates successfully, then the watch is established
 for the current value of the candidate directory.</li>
-  <li>If the search terminates unsuccessfully, <code class="highlighter-rouge">root_files</code> is set to
+  <li>If the search terminates unsuccessfully, <code class="language-plaintext highlighter-rouge">root_files</code> is set to
 the global configuration option <a href="../config.html#root_files">root_files</a>
 and the search procedure is re-run.</li>
   <li>If the search terminates successfully, then the watch is established
@@ -782,69 +782,60 @@ for the current value of the candidate directory.</li>
 <a href="../config.html#enforce_root_files">enforce_root_files</a> is set to true
 then the watch attempt fails.</li>
   <li>Otherwise, the watch is established for the original argument to the
-<code class="highlighter-rouge">watch-project</code> command</li>
+<code class="language-plaintext highlighter-rouge">watch-project</code> command</li>
 </ol>
 
 <p>What this means in laymans terms is that the definitive location  of the
-project root is where the <code class="highlighter-rouge">.watchmanconfig</code> file is found.  If it is
-not found then the set of files defined by the <code class="highlighter-rouge">root_files</code> configuration
+project root is where the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> file is found.  If it is
+not found then the set of files defined by the <code class="language-plaintext highlighter-rouge">root_files</code> configuration
 is used to locate a candidate.</p>
 
 <p>If no viable candidate is found then watchman will watch the requested
-directory, unless the <code class="highlighter-rouge">enforce_root_files</code> setting is set to true.</p>
+directory, unless the <code class="language-plaintext highlighter-rouge">enforce_root_files</code> setting is set to true.</p>
 
-<p>The default value for <code class="highlighter-rouge">root_files</code> will match most common version control
-root directories.  The default value for <code class="highlighter-rouge">enforce_root_files</code> is <code class="highlighter-rouge">false</code>.</p>
+<p>The default value for <code class="language-plaintext highlighter-rouge">root_files</code> will match most common version control
+root directories.  The default value for <code class="language-plaintext highlighter-rouge">enforce_root_files</code> is <code class="language-plaintext highlighter-rouge">false</code>.</p>
 
 <h3 id="using-watch-project">Using watch-project</h3>
 
-<p>Assuming that <code class="highlighter-rouge">~/www/.hg</code> and <code class="highlighter-rouge">~/www/some/child/dir</code> both exist, then
+<p>Assuming that <code class="language-plaintext highlighter-rouge">~/www/.hg</code> and <code class="language-plaintext highlighter-rouge">~/www/some/child/dir</code> both exist, then
 the command:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch-project ~/www/some/child/dir
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman watch-project ~/www/some/child/dir
 <span class="o">{</span>
   <span class="s2">"version"</span>: <span class="s2">"3.0.1"</span>,
   <span class="s2">"watch"</span>: <span class="s2">"/Users/wez/www"</span>,
   <span class="s2">"relative_path"</span>: <span class="s2">"some/child/dir"</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
-<p>establishes a watch on the <code class="highlighter-rouge">~/www</code> directory because that is the directory
-that contains <code class="highlighter-rouge">.hg</code>, which is one of the items listed in the default value
-for <code class="highlighter-rouge">root_files</code>.</p>
+<p>establishes a watch on the <code class="language-plaintext highlighter-rouge">~/www</code> directory because that is the directory
+that contains <code class="language-plaintext highlighter-rouge">.hg</code>, which is one of the items listed in the default value
+for <code class="language-plaintext highlighter-rouge">root_files</code>.</p>
 
-<p>As a client using <code class="highlighter-rouge">watch-project</code> it is important to observe the
-<code class="highlighter-rouge">relative_path</code> and/or <code class="highlighter-rouge">watch</code> elements of the response; they identify which
+<p>As a client using <code class="language-plaintext highlighter-rouge">watch-project</code> it is important to observe the
+<code class="language-plaintext highlighter-rouge">relative_path</code> and/or <code class="language-plaintext highlighter-rouge">watch</code> elements of the response; they identify which
 directory is actually being watched.  <strong>Any triggers, subscriptions or queries
 that the client issues must be relative to the watched root to operate as
-expected.</strong>  A client can use <code class="highlighter-rouge">relative_path</code> to more easily construct
+expected.</strong>  A client can use <code class="language-plaintext highlighter-rouge">relative_path</code> to more easily construct
 queries or adjust the results of queries by either concatenating the string
 when composing paths in a query expression or removing the string from the
 prefix when processing the results.</p>
 
-<p>If <code class="highlighter-rouge">relative_path</code> is missing from the response it means that the requested
-dir is the same as the watched dir and that the <code class="highlighter-rouge">watch-project</code> invocation
-turned out to be exactly equivalent to a <code class="highlighter-rouge">watch</code> invocation for the requested
+<p>If <code class="language-plaintext highlighter-rouge">relative_path</code> is missing from the response it means that the requested
+dir is the same as the watched dir and that the <code class="language-plaintext highlighter-rouge">watch-project</code> invocation
+turned out to be exactly equivalent to a <code class="language-plaintext highlighter-rouge">watch</code> invocation for the requested
 directory.</p>
 
 <p>Note that, when you’re using the CLI, you can specify the root as
-<code class="highlighter-rouge">~/www/some/child/dir</code> because the shell will resolve <code class="highlighter-rouge">~/www/some/child/dir</code> to
-<code class="highlighter-rouge">/Users/wez/www/some/child/dir</code>, but when you use the JSON protocol, you are
+<code class="language-plaintext highlighter-rouge">~/www/some/child/dir</code> because the shell will resolve <code class="language-plaintext highlighter-rouge">~/www/some/child/dir</code> to
+<code class="language-plaintext highlighter-rouge">/Users/wez/www/some/child/dir</code>, but when you use the JSON protocol, you are
 responsible for supplying an absolute path.</p>
 
 <p>JSON:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"watch"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/Users/wez/www/some/child/dir"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"watch"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/Users/wez/www/some/child/dir"</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <h3 id="initiating-a-watch">Initiating a watch</h3>
 
@@ -861,7 +852,7 @@ fashion</li>
 
 <h3 id="persistence">Persistence</h3>
 
-<p>Unless the <code class="highlighter-rouge">--no-save-state</code> server option was used to start the watchman
+<p>Unless the <code class="language-plaintext highlighter-rouge">--no-save-state</code> server option was used to start the watchman
 service, watches and their associated triggers are saved and re-established
 across a process restart.</p>
 
@@ -887,7 +878,7 @@ A reaped watch is cancelled and removed from the state file.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

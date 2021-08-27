@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Command Line | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Command Line" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="The watchman executable contains both the client and the server components of the watchman service." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Command Line","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"The watchman executable contains both the client and the server components of the watchman service.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cli-options.html"},"url":"https://facebook.github.io/watchman/docs/cli-options.html"}</script>
+{"headline":"Command Line","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"The watchman executable contains both the client and the server components of the watchman service.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cli-options.html"},"url":"https://facebook.github.io/watchman/docs/cli-options.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -711,68 +711,66 @@ window.addEventListener('load', function() {
 
   <article class="post-content">
    
-      <p>The <code class="highlighter-rouge">watchman</code> executable contains both the client and the server components
+      <p>The <code class="language-plaintext highlighter-rouge">watchman</code> executable contains both the client and the server components
 of the watchman service.</p>
 
-<p>By default, when <code class="highlighter-rouge">watchman</code> is run, it will attempt to communicate with your
+<p>By default, when <code class="language-plaintext highlighter-rouge">watchman</code> is run, it will attempt to communicate with your
 existing server instance (each user has their own persistent process), and will
 attempt to start it if it doesn’t exist.</p>
 
-<p>There are some options that affect how <code class="highlighter-rouge">watchman</code> will locate the server, some
+<p>There are some options that affect how <code class="language-plaintext highlighter-rouge">watchman</code> will locate the server, some
 options that affect only the client and some others that affect only the
 server.  Since all of the options are understood by the same executable we’ve
 broken those out into sections of their own to make it clearer when they apply.</p>
 
 <h2 id="quick-note-on-default-locations">Quick note on default locations</h2>
 
-<p>Watchman will prefer to resolve your user name from the <code class="highlighter-rouge">$USER</code> environmental
-variable, or <code class="highlighter-rouge">$LOGNAME</code> if <code class="highlighter-rouge">$USER</code> was not set.  If neither are set watchman
-will look it up from the system using <code class="highlighter-rouge">getpwuid(getuid())</code>.  When we refer to
-<code class="highlighter-rouge">&lt;USER&gt;</code> in this documentation we mean the result of this resolution.</p>
+<p>Watchman will prefer to resolve your user name from the <code class="language-plaintext highlighter-rouge">$USER</code> environmental
+variable, or <code class="language-plaintext highlighter-rouge">$LOGNAME</code> if <code class="language-plaintext highlighter-rouge">$USER</code> was not set.  If neither are set watchman
+will look it up from the system using <code class="language-plaintext highlighter-rouge">getpwuid(getuid())</code>.  When we refer to
+<code class="language-plaintext highlighter-rouge">&lt;USER&gt;</code> in this documentation we mean the result of this resolution.</p>
 
 <p>In some cases Watchman will need to create files in a temporary location.
-Watchman will resolve this temporary location by looking at the <code class="highlighter-rouge">$TMPDIR</code>
-environmental variable, or <code class="highlighter-rouge">$TMP</code> if <code class="highlighter-rouge">$TMPDIR</code> was not set.  If neither are set
-watchman will use <code class="highlighter-rouge">/tmp</code>.  When we refer to <code class="highlighter-rouge">&lt;TMPDIR&gt;</code> in this documentation we
+Watchman will resolve this temporary location by looking at the <code class="language-plaintext highlighter-rouge">$TMPDIR</code>
+environmental variable, or <code class="language-plaintext highlighter-rouge">$TMP</code> if <code class="language-plaintext highlighter-rouge">$TMPDIR</code> was not set.  If neither are set
+watchman will use <code class="language-plaintext highlighter-rouge">/tmp</code>.  When we refer to <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;</code> in this documentation we
 mean the result of this resolution.</p>
 
 <p>Watchman tracks its persistent state in a location that we refer to as the
-<code class="highlighter-rouge">&lt;STATEDIR&gt;</code> in this documentation.</p>
+<code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;</code> in this documentation.</p>
 
 <p><em>Since 3.1.</em></p>
 
-<p>The <code class="highlighter-rouge">STATEDIR</code> defaulted to <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code>.  You can change this
+<p>The <code class="language-plaintext highlighter-rouge">STATEDIR</code> defaulted to <code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code>.  You can change this
 default when you build watchman by using the configure option
-<code class="highlighter-rouge">--enable-statedir</code>.</p>
+<code class="language-plaintext highlighter-rouge">--enable-statedir</code>.</p>
 
 <p>Earlier versions of Watchman didn’t have a default statedir and would instead
-use the <code class="highlighter-rouge">&lt;TMPDIR&gt;</code> for this state.  We switched away from that because some
-environments randomize the <code class="highlighter-rouge">&lt;TMPDIR&gt;</code> location and this made it difficult for
+use the <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;</code> for this state.  We switched away from that because some
+environments randomize the <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;</code> location and this made it difficult for
 clients to locate the Watchman service.</p>
 
 <p><em>Since 3.8.</em></p>
 
-<p>The <code class="highlighter-rouge">STATEDIR</code> defaults to <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state</code>.  You can
+<p>The <code class="language-plaintext highlighter-rouge">STATEDIR</code> defaults to <code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state</code>.  You can
 change this default when you build watchman by using the configure option
-<code class="highlighter-rouge">--enable-statedir</code>; the configure option replaces the
-<code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code> portion of this string.  If you specify
-<code class="highlighter-rouge">--disable-statedir</code> then that portion of the string will be computed from the
-<code class="highlighter-rouge">&lt;TMPDIR&gt;</code> location.</p>
+<code class="language-plaintext highlighter-rouge">--enable-statedir</code>; the configure option replaces the
+<code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code> portion of this string.  If you specify
+<code class="language-plaintext highlighter-rouge">--disable-statedir</code> then that portion of the string will be computed from the
+<code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;</code> location.</p>
 
-<p>Watchman will create the <code class="highlighter-rouge">&lt;USER&gt;-state</code> portion if it does not exist, and will
+<p>Watchman will create the <code class="language-plaintext highlighter-rouge">&lt;USER&gt;-state</code> portion if it does not exist, and will
 perform some permission and ownership checks to reduce the risk of untrusted
 users placing files in this location.  If those checks are not satisfied,
 watchman will refuse to start.</p>
 
 <h2 id="locating-the-service">Locating the service</h2>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre> -U, --sockname=PATH   Specify alternate sockname
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> -U, --sockname=PATH   Specify alternate sockname
+</code></pre></div></div>
 
-<p>The default location for sockname will be <code class="highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;</code>.  Older versions
-of Watchman would default to <code class="highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;</code>, depending on how
+<p>The default location for sockname will be <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;</code>.  Older versions
+of Watchman would default to <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;</code>, depending on how
 it was configured.</p>
 
 <p>If you are building a client to access the service programmatically, we
@@ -782,31 +780,23 @@ it isn’t already running.</p>
 
 <h2 id="client-options">Client Options</h2>
 
-<p>The <code class="highlighter-rouge">watchman</code> executable will attempt to start the service if there is no
+<p>The <code class="language-plaintext highlighter-rouge">watchman</code> executable will attempt to start the service if there is no
 response on the socket specified above.  In some cases it is desirable to avoid
 starting the service if it isn’t running:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre> --no-spawn            Don't spawn service if it is not already running.
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> --no-spawn            Don't spawn service if it is not already running.
                        Will try running the command in client mode if
                        possible.
  --no-local            When no-spawn is enabled, don't use client mode
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>Client mode implements the <a href="/watchman/docs/cmd/find.html">watchman find command</a> as an immediate search.</p>
 
 <p>These options control how the client talks to the server:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre> -p, --persistent           Persist and wait for further responses
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> -p, --persistent           Persist and wait for further responses
      --server-encoding=ARG  CLI&lt;-&gt;server encoding. json or bser.
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>Persistent connections have relatively limited use with the CLI, but can be
 useful to connect ad-hoc to the service to receive logging information (See
@@ -819,95 +809,70 @@ when talking to the server.  You generally shouldn’t need to worry about this.
 
 <p>Most simple invocations of the CLI will pass a list of arguments:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch /path/to/dir
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman watch /path/to/dir
+</code></pre></div></div>
 
 <p>This is turned into a request like this:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"watch"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/dir"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"watch"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/dir"</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>and sent to the service using the <a href="/watchman/docs/socket-interface.html">Socket Interface</a>.</p>
 
-<p>The response is received and then sent to the <code class="highlighter-rouge">stdout</code> stream formatted based on
+<p>The response is received and then sent to the <code class="language-plaintext highlighter-rouge">stdout</code> stream formatted based on
 the selected output-encoding:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre>     --output-encoding=ARG  CLI output encoding. json (default) or bser
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>     --output-encoding=ARG  CLI output encoding. json (default) or bser
      --no-pretty            Don't pretty print JSON output (more efficient
                             when being processed by another program)
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>Each command has its own response output but watchman will always include a
-field named <code class="highlighter-rouge">error</code> if something about the request was not successful.  In case
+field named <code class="language-plaintext highlighter-rouge">error</code> if something about the request was not successful.  In case
 of some protocol level errors (eg: connection was terminated) instead of
-printing a response on <code class="highlighter-rouge">stdout</code>, an unstructured error message will be printed
-to <code class="highlighter-rouge">stderr</code> and the process will exit with a non-zero exit status.</p>
+printing a response on <code class="language-plaintext highlighter-rouge">stdout</code>, an unstructured error message will be printed
+to <code class="language-plaintext highlighter-rouge">stderr</code> and the process will exit with a non-zero exit status.</p>
 
 <p>Instead of passing the request as command line parameters, you can send a JSON
-representation on the <code class="highlighter-rouge">stdin</code> stream.  These invocations are all equivalent:</p>
+representation on the <code class="language-plaintext highlighter-rouge">stdin</code> stream.  These invocations are all equivalent:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch /path/to/dir
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman watch /path/to/dir
+</code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["watch", "/path/to/dir"]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["watch", "/path/to/dir"]'</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["watch", "/path/to/dir"]'</span>
+</code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span><span class="nb">echo</span> <span class="s1">'["watch", "/path/to/dir"]'</span> | watchman -j
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="nb">echo</span> <span class="s1">'["watch", "/path/to/dir"]'</span> | watchman <span class="nt">-j</span>
+</code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre><span class="gp">$ </span><span class="nb">echo</span> <span class="s1">'["watch", "/path/to/dir"]'</span> &gt; cmd.json
-<span class="gp">$ </span>watchman -j &lt; cmd.json
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="nb">echo</span> <span class="s1">'["watch", "/path/to/dir"]'</span> <span class="o">&gt;</span> cmd.json
+<span class="nv">$ </span>watchman <span class="nt">-j</span> &lt; cmd.json
+</code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="gp">$ </span>watchman --json-command <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">--json-command</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["watch", "/path/to/dir"]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <p><em>Since 3.8</em></p>
 
-<p>The CLI now also recognizes BSER as a valid input stream when using the <code class="highlighter-rouge">-j</code>
-option.  This will implicitly set <code class="highlighter-rouge">--server-encoding=bser</code> and
-<code class="highlighter-rouge">--output-encoding=bser</code> if those options have not been set to something else.</p>
+<p>The CLI now also recognizes BSER as a valid input stream when using the <code class="language-plaintext highlighter-rouge">-j</code>
+option.  This will implicitly set <code class="language-plaintext highlighter-rouge">--server-encoding=bser</code> and
+<code class="language-plaintext highlighter-rouge">--output-encoding=bser</code> if those options have not been set to something else.</p>
 
 <h2 id="exit-status">Exit Status</h2>
 
-<p>The <code class="highlighter-rouge">watchman</code> binary will exit with a return code of 0 in most cases; this
+<p>The <code class="language-plaintext highlighter-rouge">watchman</code> binary will exit with a return code of 0 in most cases; this
 indicates that the output it generated should be valid JSON.  To determine if
 your command was successful, you need to parse the JSON and look for the
-<code class="highlighter-rouge">error</code> field as described above.</p>
+<code class="language-plaintext highlighter-rouge">error</code> field as described above.</p>
 
-<p><code class="highlighter-rouge">watchman</code> will exit with a non-zero exit status in cases where something
+<p><code class="language-plaintext highlighter-rouge">watchman</code> will exit with a non-zero exit status in cases where something
 low-level went wrong, such as protocol level errors (eg: connection was
 terminated).</p>
 
@@ -923,48 +888,38 @@ for a running server, you will need to restart it (you can stop it by running
 reinstate them if the process is restarted.  This state is stored in the
 <em>statefile</em>:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre> --statefile=PATH      Specify path to file to hold watch and trigger state
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> --statefile=PATH      Specify path to file to hold watch and trigger state
  -n, --no-save-state   Don't save state between invocations
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
-<p>The default location for statefile will be <code class="highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.state</code>.  Older
-versions of watchman may store the state in <code class="highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.state</code>,
+<p>The default location for statefile will be <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.state</code>.  Older
+versions of watchman may store the state in <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.state</code>,
 depending on how they were configured.</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>-o, --logfile=PATH   Specify path to logfile
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>-o, --logfile=PATH   Specify path to logfile
     --log-level      set log verbosity (0 = off, default is 1, verbose = 2)
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
-<p>The default location for logfile will be <code class="highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.log</code>.  Older
-versions of watchman may store the logs in <code class="highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>,
+<p>The default location for logfile will be <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.log</code>.  Older
+versions of watchman may store the logs in <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>,
 depending on how they were configured.</p>
 
 <p>In some relatively uncommon circumstances, such as in test harnesses, you may
 need to directly run the service without it putting itself into the background:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre> -f, --foreground      Run the service in the foreground
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> -f, --foreground      Run the service in the foreground
+</code></pre></div></div>
 
 <p><em>Since 4.6.</em></p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>     --inetd                Spawning from an inetd style supervisor
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>     --inetd                Spawning from an inetd style supervisor
+</code></pre></div></div>
 
 <p>When this flag is specified, watchman will use stdin as the listening socket
 rather than attempting to set it up for itself.  This allows some other process
 to maintain the socket and defer activating the watchman service until a client
 is ready to connect.  This is most practically beneficial when used together
-with <code class="highlighter-rouge">systemd</code>.</p>
+with <code class="language-plaintext highlighter-rouge">systemd</code>.</p>
 
 <p><a href="https://github.com/facebook/watchman/commit/2985377eaf8c8538b28fae9add061b67991a87c2">This commit includes a sample configuration for systemd</a>.</p>
 
@@ -979,7 +934,7 @@ with <code class="highlighter-rouge">systemd</code>.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

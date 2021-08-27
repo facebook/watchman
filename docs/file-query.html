@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>File Queries | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="File Queries" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Watchman file queries consist of 1 or more generators that feed files through the expression evaluator." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"File Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Watchman file queries consist of 1 or more generators that feed files through the expression evaluator.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/file-query.html"},"url":"https://facebook.github.io/watchman/docs/file-query.html"}</script>
+{"headline":"File Queries","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Watchman file queries consist of 1 or more generators that feed files through the expression evaluator.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/file-query.html"},"url":"https://facebook.github.io/watchman/docs/file-query.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -717,7 +717,7 @@ the <em>expression evaluator</em>.</p>
 <h3 id="generators">Generators</h3>
 
 <p>Generators are analogous to the list of <em>paths</em> that you specify when using the
-<code class="highlighter-rouge">find(1)</code> utility, but are implemented in watchman with a bit of a twist
+<code class="language-plaintext highlighter-rouge">find(1)</code> utility, but are implemented in watchman with a bit of a twist
 because watchman doesn’t need to crawl the filesystem in realtime and instead
 maintains a couple of indexes over the tree.</p>
 
@@ -740,73 +740,59 @@ clockspec.</li>
 
 <p><em>Since 4.7.</em></p>
 
-<p>If your query uses multiple generators, or configures the <code class="highlighter-rouge">path</code> generator with
+<p>If your query uses multiple generators, or configures the <code class="language-plaintext highlighter-rouge">path</code> generator with
 paths that yield multiple results, the default behavior (for backwards
 compatibility reasons) is to emit those duplicate results in the query output.</p>
 
 <p>You may ask Watchman to de-duplicate results for you by enabling the
-<code class="highlighter-rouge">dedup_results</code> boolean in your query:</p>
+<code class="language-plaintext highlighter-rouge">dedup_results</code> boolean in your query:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "path": ["bar", "bar"],
   "dedup_results": true
 }]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <p>You may test for this feature using an extended version command and requesting
-the capability name <code class="highlighter-rouge">dedup_results</code>.</p>
+the capability name <code class="language-plaintext highlighter-rouge">dedup_results</code>.</p>
 
 <h3 id="since-generator">Since Generator</h3>
 
-<p>The <code class="highlighter-rouge">since</code> generator produces a list of files that were modified since a
+<p>The <code class="language-plaintext highlighter-rouge">since</code> generator produces a list of files that were modified since a
 specific <a href="../docs/clockspec.html">clockspec</a>.</p>
 
 <p>The following query will consider the set of files changed since the last
-query using the named cursor <code class="highlighter-rouge">mycursor</code> and then pass them to the expression
+query using the named cursor <code class="language-plaintext highlighter-rouge">mycursor</code> and then pass them to the expression
 evaluator to be filtered to just those that are files:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "since": "n:mycursor",
   "expression": ["type", "f"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<p>If the <code class="highlighter-rouge">since</code> parameter value is blank, was produced by a different watchman
+<p>If the <code class="language-plaintext highlighter-rouge">since</code> parameter value is blank, was produced by a different watchman
 process (in other words, the watchman process was restarted between the time
 that the value was obtained and the time the query was issued) or is a named
-cursor that has not yet been used in a query, the <code class="highlighter-rouge">since</code> generator will
+cursor that has not yet been used in a query, the <code class="language-plaintext highlighter-rouge">since</code> generator will
 consider the state to be a <em>fresh instance</em> and its behavior is modified:</p>
 
 <p>A <em>fresh instance</em> result set will only include files that currently exist
-and will generate file nodes that are always considered to be <code class="highlighter-rouge">new</code>.</p>
+and will generate file nodes that are always considered to be <code class="language-plaintext highlighter-rouge">new</code>.</p>
 
-<p>If the query was configured with the <code class="highlighter-rouge">empty_on_fresh_instance</code> property set to
-<code class="highlighter-rouge">true</code> then the result set will be empty and the <code class="highlighter-rouge">is_fresh_instance</code> property
-will be set to <code class="highlighter-rouge">true</code> in the result object.</p>
+<p>If the query was configured with the <code class="language-plaintext highlighter-rouge">empty_on_fresh_instance</code> property set to
+<code class="language-plaintext highlighter-rouge">true</code> then the result set will be empty and the <code class="language-plaintext highlighter-rouge">is_fresh_instance</code> property
+will be set to <code class="language-plaintext highlighter-rouge">true</code> in the result object.</p>
 
 <p>The since generator also knows how to talk to source control;
 <a href="/watchman/docs/scm-query.html">you can read more about that here</a>.</p>
 
-<p>The <code class="highlighter-rouge">since</code> generator does not consider the targets of symlinks. In particular,
-the <code class="highlighter-rouge">since</code> generator may <em>not</em> produce a symlink in the following cases:</p>
+<p>The <code class="language-plaintext highlighter-rouge">since</code> generator does not consider the targets of symlinks. In particular,
+the <code class="language-plaintext highlighter-rouge">since</code> generator may <em>not</em> produce a symlink in the following cases:</p>
 
 <ul>
   <li>The symlink’s target was a file, and the file is since modified.</li>
@@ -819,177 +805,136 @@ from that directory.</li>
 
 <h3 id="suffix-generator">Suffix Generator</h3>
 
-<p>The <code class="highlighter-rouge">suffix</code> generator produces a list of files that have a particular suffix
+<p>The <code class="language-plaintext highlighter-rouge">suffix</code> generator produces a list of files that have a particular suffix
 or set of suffixes.  The value can be either a string or an array of strings.</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "suffix": "js"
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "suffix": ["js", "css"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<p>If the <code class="highlighter-rouge">suffix</code> generator is given an empty array, it produces no files.</p>
+<p>If the <code class="language-plaintext highlighter-rouge">suffix</code> generator is given an empty array, it produces no files.</p>
 
-<p>The <code class="highlighter-rouge">suffix</code> generator can produce symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">suffix</code> generator can produce symlinks.</p>
 
-<p>The <code class="highlighter-rouge">suffix</code> generator does not follow symlinks. For example, a symlink to
-<code class="highlighter-rouge">/etc</code> will not cause a <code class="highlighter-rouge">"suffix": "conf"</code> query to search within <code class="highlighter-rouge">/etc</code> and
-produce <code class="highlighter-rouge">/etc/resolv.conf</code>.</p>
+<p>The <code class="language-plaintext highlighter-rouge">suffix</code> generator does not follow symlinks. For example, a symlink to
+<code class="language-plaintext highlighter-rouge">/etc</code> will not cause a <code class="language-plaintext highlighter-rouge">"suffix": "conf"</code> query to search within <code class="language-plaintext highlighter-rouge">/etc</code> and
+produce <code class="language-plaintext highlighter-rouge">/etc/resolv.conf</code>.</p>
 
 <h3 id="glob-generator">Glob Generator</h3>
 
 <p><em>Since 4.7.</em></p>
 
-<p>The <code class="highlighter-rouge">glob</code> generator produces a list of files by matching against your
+<p>The <code class="language-plaintext highlighter-rouge">glob</code> generator produces a list of files by matching against your
 input list of patterns.  It does this by building a tree from the glob
 expression(s) and walking both the expression and the in-memory filesystem
 tree concurrently.</p>
 
 <p>This query will yield a list of all of the C source and header files found
-directly in the <code class="highlighter-rouge">src</code> dir:</p>
+directly in the <code class="language-plaintext highlighter-rouge">src</code> dir:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "glob": ["src/*.c", "src/*.h"],
   "fields": ["name"]
 }]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>This query will yield a list of all of the C source and header files found
 in any subdirectories of the root:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "glob": ["**/*.c", "**/*.h"],
   "fields": ["name"]
 }]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>Note that it is more efficient to use the <code class="highlighter-rouge">suffix</code> generator together with a
-<code class="highlighter-rouge">dirname</code> expression term for such a broadly scoped query as it results in
+<p>Note that it is more efficient to use the <code class="language-plaintext highlighter-rouge">suffix</code> generator together with a
+<code class="language-plaintext highlighter-rouge">dirname</code> expression term for such a broadly scoped query as it results in
 fewer comparisons.  This example is included as an illustration of recursive
 globbing.</p>
 
-<p>The glob generator implicitly enables <code class="highlighter-rouge">dedup_results</code> mode.</p>
+<p>The glob generator implicitly enables <code class="language-plaintext highlighter-rouge">dedup_results</code> mode.</p>
 
-<p>If the <code class="highlighter-rouge">glob</code> generator is given an empty array, it produces no files.</p>
+<p>If the <code class="language-plaintext highlighter-rouge">glob</code> generator is given an empty array, it produces no files.</p>
 
-<p>The <code class="highlighter-rouge">glob</code> generator can produce symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">glob</code> generator can produce symlinks.</p>
 
-<p>The <code class="highlighter-rouge">glob</code> generator does not follow symlinks. For example, a symlink to <code class="highlighter-rouge">/etc</code>
-will not cause a <code class="highlighter-rouge">"glob": ["**/resolv.conf"]</code> query to search within <code class="highlighter-rouge">/etc</code> and
-produce <code class="highlighter-rouge">/etc/resolv.conf</code>.</p>
+<p>The <code class="language-plaintext highlighter-rouge">glob</code> generator does not follow symlinks. For example, a symlink to <code class="language-plaintext highlighter-rouge">/etc</code>
+will not cause a <code class="language-plaintext highlighter-rouge">"glob": ["**/resolv.conf"]</code> query to search within <code class="language-plaintext highlighter-rouge">/etc</code> and
+produce <code class="language-plaintext highlighter-rouge">/etc/resolv.conf</code>.</p>
 
 <h3 id="path-generator">Path Generator</h3>
 
-<p>The <code class="highlighter-rouge">path</code> generator produces a list of files based on their path and depth.
+<p>The <code class="language-plaintext highlighter-rouge">path</code> generator produces a list of files based on their path and depth.
 Depth controls how far watchman will search down the directory tree for files.</p>
 
-<p>The <code class="highlighter-rouge">path</code> generator expects an array of path specifiers.  Each path specifier
+<p>The <code class="language-plaintext highlighter-rouge">path</code> generator expects an array of path specifiers.  Each path specifier
 can be either a string or an object and each will produce a set of files.</p>
 
-<p>If it is a string then it is treated as the value for <code class="highlighter-rouge">path</code> with <code class="highlighter-rouge">depth</code> set
-to infinite.  If an object, the fields <code class="highlighter-rouge">path</code> (a string) and <code class="highlighter-rouge">depth</code> (an
+<p>If it is a string then it is treated as the value for <code class="language-plaintext highlighter-rouge">path</code> with <code class="language-plaintext highlighter-rouge">depth</code> set
+to infinite.  If an object, the fields <code class="language-plaintext highlighter-rouge">path</code> (a string) and <code class="language-plaintext highlighter-rouge">depth</code> (an
 integer) must be supplied.</p>
 
-<p>Paths are relative to the root, so if watchman is watching <code class="highlighter-rouge">/foo/</code>, path <code class="highlighter-rouge">bar</code>
-refers to <code class="highlighter-rouge">/foo/bar</code>.</p>
+<p>Paths are relative to the root, so if watchman is watching <code class="language-plaintext highlighter-rouge">/foo/</code>, path <code class="language-plaintext highlighter-rouge">bar</code>
+refers to <code class="language-plaintext highlighter-rouge">/foo/bar</code>.</p>
 
-<p>A <code class="highlighter-rouge">depth</code> value of <code class="highlighter-rouge">0</code> means only files and directories which are contained in
-this path.  A <code class="highlighter-rouge">depth</code> value of <code class="highlighter-rouge">-1</code> means no limit on the depth.</p>
+<p>A <code class="language-plaintext highlighter-rouge">depth</code> value of <code class="language-plaintext highlighter-rouge">0</code> means only files and directories which are contained in
+this path.  A <code class="language-plaintext highlighter-rouge">depth</code> value of <code class="language-plaintext highlighter-rouge">-1</code> means no limit on the depth.</p>
 
-<p>The following <code class="highlighter-rouge">path</code> generators are equivalent:</p>
+<p>The following <code class="language-plaintext highlighter-rouge">path</code> generators are equivalent:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "path": ["bar"]
 }]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
   "path": [{"path": "bar", "depth": -1}]
 }]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<p>If the <code class="highlighter-rouge">path</code> generator is given an empty array, it produces no files.</p>
+<p>If the <code class="language-plaintext highlighter-rouge">path</code> generator is given an empty array, it produces no files.</p>
 
-<p>The <code class="highlighter-rouge">path</code> generator can produce symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">path</code> generator can produce symlinks.</p>
 
-<p>The <code class="highlighter-rouge">path</code> generator does not follow symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">path</code> generator does not follow symlinks.</p>
 
 <h3 id="all-generator">All Generator</h3>
 
-<p>The <code class="highlighter-rouge">all</code> generator produces a list of all file nodes.  It is the default
+<p>The <code class="language-plaintext highlighter-rouge">all</code> generator produces a list of all file nodes.  It is the default
 generator and is used in the case where no other generators were explicitly
 specified.</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["query", "/path/to/root", {
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
-<p>The <code class="highlighter-rouge">all</code> generator can produce symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">all</code> generator can produce symlinks.</p>
 
-<p>The <code class="highlighter-rouge">all</code> generator does not follow symlinks.</p>
+<p>The <code class="language-plaintext highlighter-rouge">all</code> generator does not follow symlinks.</p>
 
 <h3 id="expressions">Expressions</h3>
 
 <p>A watchman query expression consists of 0 or more expression terms.  If no
 terms are provided then each file evaluated is considered a match (equivalent
-to specifying a single <code class="highlighter-rouge">true</code> expression term).</p>
+to specifying a single <code class="language-plaintext highlighter-rouge">true</code> expression term).</p>
 
 <p>Otherwise, the expression is evaluated against the file and produces a boolean
 result.  If that result is true then the file is considered a match and is
@@ -998,18 +943,14 @@ added to the output set.</p>
 <p>An expression term is canonically represented as a JSON array whose zeroth
 element is a string containing the term name.</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"termname"</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">2</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"termname"</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">2</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>If the term accepts no arguments you may use a short form that consists of just
 the term name expressed as a string:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="s2">"true"</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="s2">"true"</span><span class="w">
+</span></code></pre></div></div>
 
 <p>Expressions that match against file names may match against either the
 <em>basename</em> or the <em>wholename</em> of the file.  The basename is the name of the
@@ -1024,30 +965,26 @@ of this page.</p>
 <p><em>Since 3.3.</em></p>
 
 <p>Watchman supports optionally evaluating queries with respect to a path within a
-watched root. This is used with the <code class="highlighter-rouge">relative_root</code> parameter:</p>
+watched root. This is used with the <code class="language-plaintext highlighter-rouge">relative_root</code> parameter:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"query"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/watched/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"relative_root"</span><span class="p">:</span><span class="w"> </span><span class="s2">"project1"</span><span class="p">,</span><span class="w">
-</span><span class="err">}</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"query"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/watched/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"relative_root"</span><span class="p">:</span><span class="w"> </span><span class="s2">"project1"</span><span class="p">,</span><span class="w">
+</span><span class="p">}]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>Setting a relative root results in the following modifications to queries:</p>
 
 <ul>
-  <li>The <code class="highlighter-rouge">path</code> generator is evaluated with respect to the relative root. In the
-above example, <code class="highlighter-rouge">"path": ["dir"]</code> will return all files inside
-<code class="highlighter-rouge">/path/to/watched/root/project1/dir</code>.</li>
+  <li>The <code class="language-plaintext highlighter-rouge">path</code> generator is evaluated with respect to the relative root. In the
+above example, <code class="language-plaintext highlighter-rouge">"path": ["dir"]</code> will return all files inside
+<code class="language-plaintext highlighter-rouge">/path/to/watched/root/project1/dir</code>.</li>
   <li>The input expression is evaluated with respect to the relative root. In the
-above example, <code class="highlighter-rouge">"expression": ["match", "dir/*.txt", "wholename"]</code> will return
-all files inside <code class="highlighter-rouge">/path/to/watched/root/project1/dir/</code> that match the glob
-<code class="highlighter-rouge">*.txt</code>.</li>
+above example, <code class="language-plaintext highlighter-rouge">"expression": ["match", "dir/*.txt", "wholename"]</code> will return
+all files inside <code class="language-plaintext highlighter-rouge">/path/to/watched/root/project1/dir/</code> that match the glob
+<code class="language-plaintext highlighter-rouge">*.txt</code>.</li>
   <li>Paths inside the relative root are returned with the relative root stripped
-off. For example, a path <code class="highlighter-rouge">project1/dir/file.txt</code> would be returned as
-<code class="highlighter-rouge">dir/file.txt</code>.</li>
+off. For example, a path <code class="language-plaintext highlighter-rouge">project1/dir/file.txt</code> would be returned as
+<code class="language-plaintext highlighter-rouge">dir/file.txt</code>.</li>
   <li>Paths outside the relative root are not returned.</li>
 </ul>
 
@@ -1055,7 +992,6 @@ off. For example, a path <code class="highlighter-rouge">project1/dir/file.txt</
 subdirectory, without any of the system overhead that that imposes. This is
 useful for large repositories, where your script or tool is only interested in a
 particular directory inside the repository.</p>
-
 
     
   </article>
@@ -1068,7 +1004,7 @@ particular directory inside the repository.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

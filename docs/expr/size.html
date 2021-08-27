@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>size | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="size" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Since version 3.1" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"size","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Since version 3.1","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/size.html"},"url":"https://facebook.github.io/watchman/docs/expr/size.html"}</script>
+{"headline":"size","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since version 3.1","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/size.html"},"url":"https://facebook.github.io/watchman/docs/expr/size.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -718,14 +718,12 @@ using simple relational operators as described in the table below.</p>
 
 <p>The size term must always be an array with 3 elements:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre> ["size", "gt", 0]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> ["size", "gt", 0]
+</code></pre></div></div>
 
 <p>The second parameter describes the relational operator and the third parameter
 is the integer <em>operand</em> to compare against.   The example above evaluates to
-<code class="highlighter-rouge">true</code> if the file exists and its size is greater than zero.</p>
+<code class="language-plaintext highlighter-rouge">true</code> if the file exists and its size is greater than zero.</p>
 
 <p>Possible relational operators are:</p>
 
@@ -739,34 +737,34 @@ is the integer <em>operand</em> to compare against.   The example above evaluate
   </thead>
   <tbody>
     <tr>
-      <td><code class="highlighter-rouge">eq</code></td>
+      <td><code class="language-plaintext highlighter-rouge">eq</code></td>
       <td>Equal</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size == operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size == operand</code></td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">ne</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ne</code></td>
       <td>Not Equal</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size != operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size != operand</code></td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">gt</code></td>
+      <td><code class="language-plaintext highlighter-rouge">gt</code></td>
       <td>Greater Than</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size &gt; operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size &gt; operand</code></td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">ge</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ge</code></td>
       <td>Greater Than Or Equal</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size &gt;= operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size &gt;= operand</code></td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">lt</code></td>
+      <td><code class="language-plaintext highlighter-rouge">lt</code></td>
       <td>Less Than</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size &lt; operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size &lt; operand</code></td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">le</code></td>
+      <td><code class="language-plaintext highlighter-rouge">le</code></td>
       <td>Less Than Or Equal</td>
-      <td><code class="highlighter-rouge">true</code> if file exists and <code class="highlighter-rouge">size &lt;= operand</code></td>
+      <td><code class="language-plaintext highlighter-rouge">true</code> if file exists and <code class="language-plaintext highlighter-rouge">size &lt;= operand</code></td>
     </tr>
   </tbody>
 </table>
@@ -783,7 +781,7 @@ is the integer <em>operand</em> to compare against.   The example above evaluate
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

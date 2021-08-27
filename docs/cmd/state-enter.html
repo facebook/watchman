@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>state-enter | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="state-enter" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Since 4.4" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"state-enter","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Since 4.4","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/state-enter.html"},"url":"https://facebook.github.io/watchman/docs/cmd/state-enter.html"}</script>
+{"headline":"state-enter","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 4.4","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/state-enter.html"},"url":"https://facebook.github.io/watchman/docs/cmd/state-enter.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -713,12 +713,12 @@ window.addEventListener('load', function() {
    
       <p><em>Since 4.4</em></p>
 
-<p>The <code class="highlighter-rouge">state-enter</code> command works in conjunction with
+<p>The <code class="language-plaintext highlighter-rouge">state-enter</code> command works in conjunction with
 <a href="/watchman/docs/cmd/state-leave.html">state-leave</a> to facilitate <a href="/watchman/docs/cmd/subscribe.html#advanced-settling">advanced
 settling in subscriptions</a>.</p>
 
-<p><code class="highlighter-rouge">state-enter</code> causes a watch to be marked as being in a particular named
-state.  The state is asserted until a corresponding <code class="highlighter-rouge">state-leave</code> command is
+<p><code class="language-plaintext highlighter-rouge">state-enter</code> causes a watch to be marked as being in a particular named
+state.  The state is asserted until a corresponding <code class="language-plaintext highlighter-rouge">state-leave</code> command is
 issued or <em>until the watchman client session that entered the state
 disconnects</em>.  This automatic cleanup helps to avoid breaking subscribers
 if the tooling that initiated a state terminates unexpectedly.</p>
@@ -729,77 +729,51 @@ notifications generated while the watch is in a particular named state.</p>
 
 <h3 id="examples">Examples</h3>
 
-<p>This is the simplest example; entering a state named <code class="highlighter-rouge">mystate</code>:</p>
+<p>This is the simplest example; entering a state named <code class="language-plaintext highlighter-rouge">mystate</code>:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>It will cause any subscribers to receive a unilateral subscription PDU
 from the watchman server:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"c:1446410081:18462:7:127"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"c:1446410081:18462:7:127"</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>The <code class="highlighter-rouge">clock</code> field in the response is the (synchronized; see below) clock at the
+<p>The <code class="language-plaintext highlighter-rouge">clock</code> field in the response is the (synchronized; see below) clock at the
 time that the state was entered and can be used in subsequent queries, in
-combination with the corresponding <code class="highlighter-rouge">state-leave</code> subscription PDU clock, to
+combination with the corresponding <code class="language-plaintext highlighter-rouge">state-leave</code> subscription PDU clock, to
 locate things that changed while the state was asserted.</p>
 
 <p>A more complex example demonstrates passing metadata to any subscribers.  The
-<code class="highlighter-rouge">metadata</code> field is propagated through to the subscribers and is not
+<code class="language-plaintext highlighter-rouge">metadata</code> field is propagated through to the subscribers and is not
 interpreted by the watchman server.  It can be any JSON value.</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
   </span><span class="p">}</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>This will emit the following unilateral subscription PDU to all subscribers:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"c:1446410081:18462:7:137"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"c:1446410081:18462:7:137"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
   </span><span class="p">}</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <h3 id="synchronization">Synchronization</h3>
 
@@ -807,36 +781,28 @@ interpreted by the watchman server.  It can be any JSON value.</p>
 possible for subscribers to reason about when files changed with respect to
 the state.</p>
 
-<p>This means that issuing a <code class="highlighter-rouge">state-enter</code> command will <a href="/watchman/docs/cookies.html#how-cookies-work">perform query
+<p>This means that issuing a <code class="language-plaintext highlighter-rouge">state-enter</code> command will <a href="/watchman/docs/cookies.html#how-cookies-work">perform query
 synchronization</a> to ensure that
 things are in sync.</p>
 
-<p>The <code class="highlighter-rouge">state-enter</code> command will use a default <code class="highlighter-rouge">sync_timeout</code> of 60 seconds.
+<p>The <code class="language-plaintext highlighter-rouge">state-enter</code> command will use a default <code class="language-plaintext highlighter-rouge">sync_timeout</code> of 60 seconds.
 If the synchronization cookie is not observed within the configured
-<code class="highlighter-rouge">sync_timeout</code>, an error will be returned and <em>the state will not be entered</em>.</p>
+<code class="language-plaintext highlighter-rouge">sync_timeout</code>, an error will be returned and <em>the state will not be entered</em>.</p>
 
 <p>In some cases, perhaps during the initial crawl of a very large tree, You may
 specify an alternative value for the timeout; the value is expressed in
 <em>milliseconds</em>:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"state-enter"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mystate"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"foo"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="w">
   </span><span class="p">}</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>You may also specify <code class="highlighter-rouge">0</code> for the timeout to disable synchronization for this
+<p>You may also specify <code class="language-plaintext highlighter-rouge">0</code> for the timeout to disable synchronization for this
 particular command.   This may cause the state to appear to clients to have
 been entered logically before it actually did in the case that there are
 buffered notifications that have not yet been processed by watchman at the time
@@ -853,7 +819,7 @@ that the state was entered.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

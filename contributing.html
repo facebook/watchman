@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Contributing | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Contributing" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="If you’re thinking of hacking on watchman we’d love to hear from you! Feel free to use the GitHub issue tracker and pull requests discuss and submit code changes." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Contributing","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"If you’re thinking of hacking on watchman we’d love to hear from you! Feel free to use the GitHub issue tracker and pull requests discuss and submit code changes.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/contributing.html"},"url":"https://facebook.github.io/watchman/contributing.html"}</script>
+{"headline":"Contributing","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"If you’re thinking of hacking on watchman we’d love to hear from you! Feel free to use the GitHub issue tracker and pull requests discuss and submit code changes.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/contributing.html"},"url":"https://facebook.github.io/watchman/contributing.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -744,27 +744,20 @@ You will need:</p>
   <li>nodejs (for fb-watchman)</li>
 </ul>
 
-<p>The build time dependencies can be installed by running <code class="highlighter-rouge">getdeps.py --install-deps</code>.
-This is run for you when you run <code class="highlighter-rouge">autogen.sh</code> in the example below:</p>
+<p>The build time dependencies can be installed by running <code class="language-plaintext highlighter-rouge">getdeps.py --install-deps</code>.
+This is run for you when you run <code class="language-plaintext highlighter-rouge">autogen.sh</code> in the example below:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre>$ git clone https://github.com/facebook/watchman.git
-$ cd watchman
-$ ./autogen.sh
-$ make
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>git clone https://github.com/facebook/watchman.git
+<span class="nv">$ </span><span class="nb">cd </span>watchman
+<span class="nv">$ </span>./autogen.sh
+<span class="nv">$ </span>make
+</code></pre></div></div>
 
 <p>After making a change, run the integration tests to make sure that things
 are still working well before you submit your pull request:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>$ make integration
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>make integration
+</code></pre></div></div>
 
 <p>We’ll probably ask you to augment the test suite to cover the functionality
 that you’re adding or changing.</p>
@@ -776,31 +769,25 @@ so in such a way that it won’t break older clients of Watchman.</p>
 <h3 id="dont-forget-the-docs">Don’t forget the docs</h3>
 
 <p>If you’re changing or adding new functionality, we’ll ask you to also update
-the documentation.   You will need <code class="highlighter-rouge">ruby</code> 2.0.0 or later to preview the
+the documentation.   You will need <code class="language-plaintext highlighter-rouge">ruby</code> 2.0.0 or later to preview the
 documentation.</p>
 
 <p>One time setup:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="gp">$ </span><span class="nb">cd </span>website
-<span class="gp">$ </span>sudo gem install bundler
-<span class="gp">$ </span>sudo bundler install
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="nb">cd </span>website
+<span class="nv">$ </span><span class="nb">sudo </span>gem <span class="nb">install </span>bundler
+<span class="nv">$ </span><span class="nb">sudo </span>bundler <span class="nb">install</span>
+</code></pre></div></div>
 
 <p>Then:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>jekyll serve -w -t
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>jekyll serve <span class="nt">-w</span> <span class="nt">-t</span>
+</code></pre></div></div>
 
 <p>This will print out a URL that you can open in your browser to preview your
 documentation changes.</p>
 
-<p>The source for the documentation is in the <code class="highlighter-rouge">website/_docs</code> dir in markdown
+<p>The source for the documentation is in the <code class="language-plaintext highlighter-rouge">website/_docs</code> dir in markdown
 format.</p>
 
     
@@ -814,7 +801,7 @@ format.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

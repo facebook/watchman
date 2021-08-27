@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>BSER Binary Protocol | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="BSER Binary Protocol" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"BSER Binary Protocol","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/bser.html"},"url":"https://facebook.github.io/watchman/docs/bser.html"}</script>
+{"headline":"BSER Binary Protocol","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/bser.html"},"url":"https://facebook.github.io/watchman/docs/bser.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -725,18 +725,18 @@ the peer to determine how much storage is required to read and decode it.</p>
 
 <h2 id="arrays">Arrays</h2>
 
-<p>Arrays are indicated by a <code class="highlighter-rouge">0x00</code> byte value followed by an integer value to
+<p>Arrays are indicated by a <code class="language-plaintext highlighter-rouge">0x00</code> byte value followed by an integer value to
 indicate how many items follow.  Then each item is encoded one after the other.</p>
 
 <h2 id="objects">Objects</h2>
 
-<p>Objects are indicated by a <code class="highlighter-rouge">0x01</code> byte value followed by an integer value to
+<p>Objects are indicated by a <code class="language-plaintext highlighter-rouge">0x01</code> byte value followed by an integer value to
 indicate the number of properties in the object.  Then each key/value pair is
 encoded one after the other.</p>
 
 <h2 id="strings">Strings</h2>
 
-<p>Strings are indicated by a <code class="highlighter-rouge">0x02</code> byte value followed by an integer value to
+<p>Strings are indicated by a <code class="language-plaintext highlighter-rouge">0x02</code> byte value followed by an integer value to
 indicate the number of bytes in the string, followed by the bytes of the
 string.</p>
 
@@ -760,94 +760,62 @@ filenames don’t always have one, and filenames are unlikely to show up as keys
 running the watchman daemon.</p>
 
 <ul>
-  <li><code class="highlighter-rouge">0x03</code> indicates an int8_t.  It is followed by the int8_t value.</li>
-  <li><code class="highlighter-rouge">0x04</code> indicates an int16_t. It is followed by the int16_t value.</li>
-  <li><code class="highlighter-rouge">0x05</code> indicates an int32_t. It is followed by the int32_t value.</li>
-  <li><code class="highlighter-rouge">0x06</code> indicates an int64_t. It is followed by the int64_t value.</li>
+  <li><code class="language-plaintext highlighter-rouge">0x03</code> indicates an int8_t.  It is followed by the int8_t value.</li>
+  <li><code class="language-plaintext highlighter-rouge">0x04</code> indicates an int16_t. It is followed by the int16_t value.</li>
+  <li><code class="language-plaintext highlighter-rouge">0x05</code> indicates an int32_t. It is followed by the int32_t value.</li>
+  <li><code class="language-plaintext highlighter-rouge">0x06</code> indicates an int64_t. It is followed by the int64_t value.</li>
 </ul>
 
 <h2 id="real">Real</h2>
 
-<p>A real number is indicated by a <code class="highlighter-rouge">0x07</code> byte followed by 8 bytes of double value.</p>
+<p>A real number is indicated by a <code class="language-plaintext highlighter-rouge">0x07</code> byte followed by 8 bytes of double value.</p>
 
 <h2 id="boolean">Boolean</h2>
 
 <ul>
-  <li><code class="highlighter-rouge">0x08</code> indicates boolean true</li>
-  <li><code class="highlighter-rouge">0x09</code> indicates boolean false</li>
+  <li><code class="language-plaintext highlighter-rouge">0x08</code> indicates boolean true</li>
+  <li><code class="language-plaintext highlighter-rouge">0x09</code> indicates boolean false</li>
 </ul>
 
 <h2 id="null">Null</h2>
 
-<p><code class="highlighter-rouge">0x0a</code> indicates the null value</p>
+<p><code class="language-plaintext highlighter-rouge">0x0a</code> indicates the null value</p>
 
 <h2 id="array-of-templated-objects">Array of Templated Objects</h2>
 
-<p><code class="highlighter-rouge">0x0b</code> indicates a compact array of objects follows.  Some of the bigger
+<p><code class="language-plaintext highlighter-rouge">0x0b</code> indicates a compact array of objects follows.  Some of the bigger
 datastructures returned by watchman are tabular data expressed as an array
 of objects.  This serialization type factors out the repeated object keys
 into a header array listing the keys, followed by an array containing
 all the values of the objects.</p>
 
-<p>To represent missing keys in templated arrays, the <code class="highlighter-rouge">0x0c</code> encoding value may
+<p>To represent missing keys in templated arrays, the <code class="language-plaintext highlighter-rouge">0x0c</code> encoding value may
 be present.  If encountered it is interpreted as meaning that there is no value
 for the key that would have been decoded in this position.  This is distinct
 from the null value.</p>
 
 <p>For example:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>[
-   {"name": "fred", "age": 20},
-   {"name": "pete", "age": 30},
-   {"age": 25 },
-]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="w">
+   </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fred"</span><span class="p">,</span><span class="w"> </span><span class="nl">"age"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">},</span><span class="w">
+   </span><span class="p">{</span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"pete"</span><span class="p">,</span><span class="w"> </span><span class="nl">"age"</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="p">},</span><span class="w">
+   </span><span class="p">{</span><span class="nl">"age"</span><span class="p">:</span><span class="w"> </span><span class="mi">25</span><span class="w"> </span><span class="p">},</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>is represented similar to:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre>["name", "age"],
-[
-  "fred", 20,
-  "pete", 30,
-  0x0c,   25
-]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="s2">"age"</span><span class="p">]</span><span class="err">,</span><span class="w">
+</span><span class="p">[</span><span class="w">
+  </span><span class="s2">"fred"</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w">
+  </span><span class="s2">"pete"</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w">
+  </span><span class="mi">0</span><span class="err">x</span><span class="mi">0</span><span class="err">c</span><span class="p">,</span><span class="w">   </span><span class="mi">25</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>The precise sequence is:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20</pre></td><td class="code"><pre>0b          template
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>0b          template
 00          array     -- start prop names
 0302        int, 2    -- two prop names
 02          string    -- first prop "name"
@@ -867,9 +835,7 @@ from the null value.</p>
 031e        int, 0x1e -- object 2, prop 2 age=30
 0c          skip      -- object 3, prop 1, not set
 0319        int, 0x19 -- object 3, prop 2 age=25
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
     
   </article>
@@ -882,7 +848,7 @@ from the null value.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

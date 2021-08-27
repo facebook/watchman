@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>since | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="since" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Evaluates as true if the specified time property of the file is greater than the since value. Note that this is not the same as the since generator; when used as an expression term we are performing a straight clockspec comparison. When used as a generator, candidate files are selected based on the since time index. The end result might or might not be the same–in particular, if the since time index is not passed in, it will be treated the same as a fresh instance, and only files that exist will be returned. The efficiency can vary based on the size and shape of the file tree that you are watching; it may be cheaper to generate the candidate set of files by suffix and then check the modification time if many files were changed since your last query." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"since","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Evaluates as true if the specified time property of the file is greater than the since value. Note that this is not the same as the since generator; when used as an expression term we are performing a straight clockspec comparison. When used as a generator, candidate files are selected based on the since time index. The end result might or might not be the same–in particular, if the since time index is not passed in, it will be treated the same as a fresh instance, and only files that exist will be returned. The efficiency can vary based on the size and shape of the file tree that you are watching; it may be cheaper to generate the candidate set of files by suffix and then check the modification time if many files were changed since your last query.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/since.html"},"url":"https://facebook.github.io/watchman/docs/expr/since.html"}</script>
+{"headline":"since","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Evaluates as true if the specified time property of the file is greater than the since value. Note that this is not the same as the since generator; when used as an expression term we are performing a straight clockspec comparison. When used as a generator, candidate files are selected based on the since time index. The end result might or might not be the same–in particular, if the since time index is not passed in, it will be treated the same as a fresh instance, and only files that exist will be returned. The efficiency can vary based on the size and shape of the file tree that you are watching; it may be cheaper to generate the candidate set of files by suffix and then check the modification time if many files were changed since your last query.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/since.html"},"url":"https://facebook.github.io/watchman/docs/expr/since.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -712,11 +712,11 @@ window.addEventListener('load', function() {
   <article class="post-content">
    
       <p>Evaluates as true if the specified time property of the file is greater than
-the since value.  Note that this is not the same as the <code class="highlighter-rouge">since</code> generator; when
+the since value.  Note that this is not the same as the <code class="language-plaintext highlighter-rouge">since</code> generator; when
 used as an expression term we are performing a straight clockspec comparison.
-When used as a generator, candidate files are selected based on the <code class="highlighter-rouge">since</code>
+When used as a generator, candidate files are selected based on the <code class="language-plaintext highlighter-rouge">since</code>
 time index.  The end result might or might not be the same–in particular, if
-the <code class="highlighter-rouge">since</code> time index is not passed in, it will be treated the same as a fresh
+the <code class="language-plaintext highlighter-rouge">since</code> time index is not passed in, it will be treated the same as a fresh
 instance, and only files that exist will be returned. The efficiency can vary
 based on the size and shape of the file tree that you are watching; it may be
 cheaper to generate the candidate set of files by suffix and then check the
@@ -726,36 +726,26 @@ modification time if many files were changed since your last query.</p>
 the specified clockspec (this is equivalent to specifying “oclock” as the third
 parameter):</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre> ["since", "c:12345:234"]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> ["since", "c:12345:234"]
+</code></pre></div></div>
 
 <p>You may specify particular fields from the filesystem metadata.  In this case
 your clockspec should be a unix time value:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre> ["since", 12345668, "mtime"]
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> ["since", 12345668, "mtime"]
  ["since", 12345668, "ctime"]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>You may explicitly request the observed clock values too; in these cases we’ll
-accept either a timestamp or a clock value.  The <code class="highlighter-rouge">oclock</code> is the last observed
-change clock value (observed clock) and the <code class="highlighter-rouge">cclock</code> is the clock value where
+accept either a timestamp or a clock value.  The <code class="language-plaintext highlighter-rouge">oclock</code> is the last observed
+change clock value (observed clock) and the <code class="language-plaintext highlighter-rouge">cclock</code> is the clock value where
 we first observed the file come into existence (created clock):</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre> ["since", 12345668, "oclock"]
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code> ["since", 12345668, "oclock"]
  ["since", "c:1234:123", "oclock"]
  ["since", 12345668, "cclock"]
  ["since", "c:1234:2342", "cclock"]
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 
     
@@ -769,7 +759,7 @@ we first observed the file come into existence (created clock):</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

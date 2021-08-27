@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Socket Interface | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Socket Interface" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Most simple uses of Watchman will invoke the watchman binary and process its output. Sometimes it is desirable to avoid the overhead of an extra process and talk directly to your watchman service." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Socket Interface","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Most simple uses of Watchman will invoke the watchman binary and process its output. Sometimes it is desirable to avoid the overhead of an extra process and talk directly to your watchman service.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/socket-interface.html"},"url":"https://facebook.github.io/watchman/docs/socket-interface.html"}</script>
+{"headline":"Socket Interface","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Most simple uses of Watchman will invoke the watchman binary and process its output. Sometimes it is desirable to avoid the overhead of an extra process and talk directly to your watchman service.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/socket-interface.html"},"url":"https://facebook.github.io/watchman/docs/socket-interface.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -720,15 +720,15 @@ watchman binary will take care of spawning the server process if necessary.</p>
 
 <p>The server will create a unix domain socket for communication with its clients.
 The location of the socket depends on compile time options and command line
-flags.  It is recommended that you invoke <code class="highlighter-rouge">watchman get-sockname</code> to discover
+flags.  It is recommended that you invoke <code class="language-plaintext highlighter-rouge">watchman get-sockname</code> to discover
 the location, or if you are being invoked via a trigger (since version 2.9.7)
-you will find the location in the <code class="highlighter-rouge">$WATCHMAN_SOCK</code> environmental variable.</p>
+you will find the location in the <code class="language-plaintext highlighter-rouge">$WATCHMAN_SOCK</code> environmental variable.</p>
 
 <h2 id="watchman-protocol">Watchman Protocol</h2>
 
 <p>The unix socket implements a request-response protocol with PDUs encoded in
 either JSON or BSER representation.  Some watchman commands (notably
-<code class="highlighter-rouge">subscribe</code> and <code class="highlighter-rouge">log-level</code>) allow the watchman service to unilaterally send
+<code class="language-plaintext highlighter-rouge">subscribe</code> and <code class="language-plaintext highlighter-rouge">log-level</code>) allow the watchman service to unilaterally send
 any number of PDUs to the client, and require more stateful handling.</p>
 
 <h3 id="json-encoding">JSON encoding</h3>
@@ -740,14 +740,12 @@ compact JSON encoded data.  The newline is used to detect the end of the PDU.</p
 
 <p>Responses from the server are always represented as a JSON object.</p>
 
-<p>Sending the <code class="highlighter-rouge">since</code> command is simply a matter of formatting it as JSON.  Note
+<p>Sending the <code class="language-plaintext highlighter-rouge">since</code> command is simply a matter of formatting it as JSON.  Note
 that the JSON text must be a single line (don’t send a pretty printed version
-of it!) and be followed by a newline <code class="highlighter-rouge">\n</code> character:</p>
+of it!) and be followed by a newline <code class="language-plaintext highlighter-rouge">\n</code> character:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"since"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/src"</span><span class="p">,</span><span class="w"> </span><span class="s2">"n:c_srcs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.c"</span><span class="p">]</span><span class="w"> </span><span class="err">&lt;NEWLINE&gt;</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"since"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/src"</span><span class="p">,</span><span class="w"> </span><span class="s2">"n:c_srcs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.c"</span><span class="p">]</span><span class="w"> </span><span class="err">&lt;NEWLINE&gt;</span><span class="w">
+</span></code></pre></div></div>
 
 <h3 id="bser-encoding">BSER encoding</h3>
 
@@ -761,11 +759,11 @@ representation of strings.</p>
 
 <h3 id="reporting-errors-and-warnings">Reporting Errors and Warnings</h3>
 
-<p>If a Response includes a field named <code class="highlighter-rouge">error</code> it indicates that the request was
-not successful.  The <code class="highlighter-rouge">error</code> field, if present, is a string value that can be
+<p>If a Response includes a field named <code class="language-plaintext highlighter-rouge">error</code> it indicates that the request was
+not successful.  The <code class="language-plaintext highlighter-rouge">error</code> field, if present, is a string value that can be
 presented to the user.</p>
 
-<p>If a Response includes a field named <code class="highlighter-rouge">warning</code> it indicates that there is some
+<p>If a Response includes a field named <code class="language-plaintext highlighter-rouge">warning</code> it indicates that there is some
 condition that should be reported back to the user so that the system can
 operate more effectively.  Tools should display this to the user as an
 advisory.  At the time of writing, this can be triggered due to overflowing the
@@ -787,7 +785,7 @@ advice on tuning and resolving the issue.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

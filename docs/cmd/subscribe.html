@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>subscribe | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="subscribe" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Since 1.6" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"subscribe","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Since 1.6","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/subscribe.html"},"url":"https://facebook.github.io/watchman/docs/cmd/subscribe.html"}</script>
+{"headline":"subscribe","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 1.6","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/subscribe.html"},"url":"https://facebook.github.io/watchman/docs/cmd/subscribe.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -722,16 +722,7 @@ implicitly removed.</p>
 interface, but you may also subscribe via the command line tool if you’re
 interested in observing the changes for yourself:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j --server-encoding<span class="o">=</span>json -p <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="nt">--server-encoding</span><span class="o">=</span>json <span class="nt">-p</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["subscribe", "/path/to/root", "mysubscriptionname", {
   "expression": ["allof",
     ["type", "f"],
@@ -740,26 +731,19 @@ interested in observing the changes for yourself:</p>
   ],
   "fields": ["name"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <p>The example above registers a subscription against the specified root with the
-name <code class="highlighter-rouge">mysubscriptionname</code>.</p>
+name <code class="language-plaintext highlighter-rouge">mysubscriptionname</code>.</p>
 
 <p>The response to a subscribe command looks like this:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"version"</span><span class="p">:</span><span class="w">   </span><span class="s2">"1.6"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"subscribe"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"version"</span><span class="p">:</span><span class="w">   </span><span class="s2">"1.6"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"subscribe"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>When the subscription is first established, the
 expression term is evaluated and if any files match, a subscription notification
@@ -770,40 +754,26 @@ the expression is evaluated again.  If any files are matched, the server will
 unilaterally send the query results to the client with a packet that looks like
 this:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.6"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"one.php"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/being/watched"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.6"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"one.php"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/being/watched"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>The subscribe command object allows the client to specify a since parameter; if
 present in the command, the initial set of subscription results will only
 include files that changed since the specified clockspec, equivalent to using
-the <code class="highlighter-rouge">query</code> command with the <code class="highlighter-rouge">since</code> generator.</p>
+the <code class="language-plaintext highlighter-rouge">query</code> command with the <code class="language-plaintext highlighter-rouge">since</code> generator.</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"myname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"expression"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"not"</span><span class="p">,</span><span class="w"> </span><span class="s2">"empty"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"myname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"since"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"expression"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"not"</span><span class="p">,</span><span class="w"> </span><span class="s2">"empty"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>The suggested mode of operation is for the client process to maintain its own
 local copy of the last “clock” value and use that to establish the subscription
@@ -817,27 +787,17 @@ notifications until the kernel notification stream was complete.</p>
 <p>Starting in watchman version 3.2, after the notification stream is complete, if
 the root appears to be a version control directory, subscription notifications
 will be held until an outstanding version control operation is complete (at the
-time of writing, this is based on the presence of either <code class="highlighter-rouge">.hg/wlock</code> or
-<code class="highlighter-rouge">.git/index.lock</code>).  This behavior matches triggers and helps to avoid
+time of writing, this is based on the presence of either <code class="language-plaintext highlighter-rouge">.hg/wlock</code> or
+<code class="language-plaintext highlighter-rouge">.git/index.lock</code>).  This behavior matches triggers and helps to avoid
 performing transient work in response to files changing, for example, during a
 rebase operation.</p>
 
 <p>In some circumstances it is desirable for a client to observe the creation of
 the control files at the start of a version control operation.  You may specify
-that you want this behavior by passing the <code class="highlighter-rouge">defer_vcs</code> flag to your subscription
+that you want this behavior by passing the <code class="language-plaintext highlighter-rouge">defer_vcs</code> flag to your subscription
 command invocation:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j -p <span class="sh">&lt;&lt;-EOT
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="nt">-p</span> <span class="o">&lt;&lt;-</span><span class="no">EOT</span><span class="sh">
 ["subscribe", "/path/to/root", "mysubscriptionname", {
   "expression": ["allof",
     ["type", "f"],
@@ -847,10 +807,8 @@ command invocation:</p>
   "defer_vcs": false,
   "fields": ["name"]
 }]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span><span class="no">EOT
+</span></code></pre></div></div>
 
 <h2 id="advanced-settling">Advanced Settling</h2>
 
@@ -867,57 +825,44 @@ the notifications until the update completes, and some may wish to drop
 any notifications produced while the update was in progress.</p>
 
 <p>Watchman subscriptions provide the mechanism for each of these use cases and
-expose it via two new fields in the subscription object; <code class="highlighter-rouge">defer</code> and <code class="highlighter-rouge">drop</code> are
+expose it via two new fields in the subscription object; <code class="language-plaintext highlighter-rouge">defer</code> and <code class="language-plaintext highlighter-rouge">drop</code> are
 described below.</p>
 
-<p>It can be difficult to mix <code class="highlighter-rouge">defer</code> and <code class="highlighter-rouge">drop</code> with multiple overlapping states
+<p>It can be difficult to mix <code class="language-plaintext highlighter-rouge">defer</code> and <code class="language-plaintext highlighter-rouge">drop</code> with multiple overlapping states
 in the context of a given subscription stream as there is a single cursor to
 track the subscription position.</p>
 
-<p>If your application uses multiple overlapping states and wants to <code class="highlighter-rouge">defer</code> some
-results and <code class="highlighter-rouge">drop</code> others, it is recommended that you use <code class="highlighter-rouge">drop</code> for all of
-the states and then issues queries with <code class="highlighter-rouge">since</code> terms bounded by the <code class="highlighter-rouge">clock</code>
+<p>If your application uses multiple overlapping states and wants to <code class="language-plaintext highlighter-rouge">defer</code> some
+results and <code class="language-plaintext highlighter-rouge">drop</code> others, it is recommended that you use <code class="language-plaintext highlighter-rouge">drop</code> for all of
+the states and then issues queries with <code class="language-plaintext highlighter-rouge">since</code> terms bounded by the <code class="language-plaintext highlighter-rouge">clock</code>
 fields from the subscription state PDUs to ensure that it observes all of the
 results of interest.</p>
 
 <h3 id="defer">defer</h3>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"defer"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mystatename"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"defer"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mystatename"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>The <code class="highlighter-rouge">defer</code> field specifies a list of state names for which the subscriber
+<p>The <code class="language-plaintext highlighter-rouge">defer</code> field specifies a list of state names for which the subscriber
 wishes to defer the notification stream.  When a watchman client signals that
 a state has been entered via the
 <a href="/watchman/docs/cmd/state-enter.html">state-enter</a> command, if the state name
-matches any in the <code class="highlighter-rouge">defer</code> list then the subscription will emit a unilateral
+matches any in the <code class="language-plaintext highlighter-rouge">defer</code> list then the subscription will emit a unilateral
 subscription PDU like this:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystatename"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"&lt;clock&gt;"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w">      </span><span class="err">&lt;metadata</span><span class="w"> </span><span class="err">from</span><span class="w"> </span><span class="err">the</span><span class="w"> </span><span class="err">state-enter</span><span class="w"> </span><span class="err">command&gt;</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state-enter"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystatename"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"&lt;clock&gt;"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w">      </span><span class="err">&lt;metadata</span><span class="w"> </span><span class="err">from</span><span class="w"> </span><span class="err">the</span><span class="w"> </span><span class="err">state-enter</span><span class="w"> </span><span class="err">command&gt;</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>Watchman will then defer sending any subscription PDUs with <code class="highlighter-rouge">files</code> payloads
+<p>Watchman will then defer sending any subscription PDUs with <code class="language-plaintext highlighter-rouge">files</code> payloads
 until the state is vacated either by a
 <a href="/watchman/docs/cmd/state-leave.html">state-leave</a> command or by the client
 that entered the state disconnecting from the watchman service.</p>
@@ -925,52 +870,38 @@ that entered the state disconnecting from the watchman service.</p>
 <p>Once the state is vacated, watchman will emit a unilateral subscription PDU
 like this:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"state-leave"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystatename"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"&lt;clock&gt;"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"metadata"</span><span class="p">:</span><span class="w">      </span><span class="err">&lt;metadata</span><span class="w"> </span><span class="err">from</span><span class="w"> </span><span class="err">the</span><span class="w"> </span><span class="err">exit-state</span><span class="w"> </span><span class="err">command&gt;</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"subscription"</span><span class="p">:</span><span class="w">  </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"root"</span><span class="p">:</span><span class="w">          </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state-leave"</span><span class="p">:</span><span class="w">   </span><span class="s2">"mystatename"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"clock"</span><span class="p">:</span><span class="w">         </span><span class="s2">"&lt;clock&gt;"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"metadata"</span><span class="p">:</span><span class="w">      </span><span class="err">&lt;metadata</span><span class="w"> </span><span class="err">from</span><span class="w"> </span><span class="err">the</span><span class="w"> </span><span class="err">exit-state</span><span class="w"> </span><span class="err">command&gt;</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>The subscription stream will then be re-enabled and notifications received
-since the corresponding <code class="highlighter-rouge">state-enter</code> will be delivered to clients.</p>
+since the corresponding <code class="language-plaintext highlighter-rouge">state-enter</code> will be delivered to clients.</p>
 
 <h3 id="drop">drop</h3>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"drop"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mystatename"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nl">"drop"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mystatename"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="w">
 </span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>The <code class="highlighter-rouge">drop</code> field specifies a list of state names for which the subscriber
-wishes to discard the notification stream.  It works very much like <code class="highlighter-rouge">defer</code> as
+<p>The <code class="language-plaintext highlighter-rouge">drop</code> field specifies a list of state names for which the subscriber
+wishes to discard the notification stream.  It works very much like <code class="language-plaintext highlighter-rouge">defer</code> as
 described above, but when a state is vacated, the pending notification stream
-is fast-forwarded to the clock of the <code class="highlighter-rouge">state-leave</code> command, effectively
-suppressing any notifications that were generated between the <code class="highlighter-rouge">state-enter</code>
-and the <code class="highlighter-rouge">state-leave</code> commands.</p>
+is fast-forwarded to the clock of the <code class="language-plaintext highlighter-rouge">state-leave</code> command, effectively
+suppressing any notifications that were generated between the <code class="language-plaintext highlighter-rouge">state-enter</code>
+and the <code class="language-plaintext highlighter-rouge">state-leave</code> commands.</p>
 
 <h2 id="source-control-aware-subscriptions">Source Control Aware Subscriptions</h2>
 
 <p><em>Since 4.9</em></p>
 
 <p><a href="/watchman/docs/scm-query.html">Read more about these here</a></p>
-
 
     
   </article>
@@ -983,7 +914,7 @@ and the <code class="highlighter-rouge">state-leave</code> commands.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

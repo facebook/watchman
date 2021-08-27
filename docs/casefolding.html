@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Case-Insensitivity | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Case-Insensitivity" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac macOS’s HFS+, this can manifest itself in different ways:" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Case-Insensitivity","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac macOS’s HFS+, this can manifest itself in different ways:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/casefolding.html"},"url":"https://facebook.github.io/watchman/docs/casefolding.html"}</script>
+{"headline":"Case-Insensitivity","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac macOS’s HFS+, this can manifest itself in different ways:","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/casefolding.html"},"url":"https://facebook.github.io/watchman/docs/casefolding.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -717,14 +717,14 @@ file system like Mac macOS’s <a href="https://en.wikipedia.org/wiki/HFS_Plus">
 can manifest itself in different ways:</p>
 
 <ul>
-  <li>If a file <code class="highlighter-rouge">foo.txt</code> is renamed to <code class="highlighter-rouge">FOO.txt</code>, Watchman will report <code class="highlighter-rouge">FOO.txt</code> as
-created and <code class="highlighter-rouge">foo.txt</code> separately as changed.</li>
-  <li>If a file <code class="highlighter-rouge">foo.txt</code> is removed and another file <code class="highlighter-rouge">FOO.txt</code> is later added,
-Watchman will report <code class="highlighter-rouge">FOO.txt</code> as added, but it might report <code class="highlighter-rouge">foo.txt</code> as
+  <li>If a file <code class="language-plaintext highlighter-rouge">foo.txt</code> is renamed to <code class="language-plaintext highlighter-rouge">FOO.txt</code>, Watchman will report <code class="language-plaintext highlighter-rouge">FOO.txt</code> as
+created and <code class="language-plaintext highlighter-rouge">foo.txt</code> separately as changed.</li>
+  <li>If a file <code class="language-plaintext highlighter-rouge">foo.txt</code> is removed and another file <code class="language-plaintext highlighter-rouge">FOO.txt</code> is later added,
+Watchman will report <code class="language-plaintext highlighter-rouge">FOO.txt</code> as added, but it might report <code class="language-plaintext highlighter-rouge">foo.txt</code> as
 either removed or changed.</li>
 </ul>
 
-<p>In general, both <code class="highlighter-rouge">foo.txt</code> and <code class="highlighter-rouge">FOO.txt</code> can be reported, sometimes with
+<p>In general, both <code class="language-plaintext highlighter-rouge">foo.txt</code> and <code class="language-plaintext highlighter-rouge">FOO.txt</code> can be reported, sometimes with
 different stat data, sometimes with the same stat data.</p>
 
 <h2 id="why-doesnt-watchman-support-case-folding-properly">Why doesn’t Watchman support case-folding properly?</h2>
@@ -756,22 +756,22 @@ they aren’t. You invoke Watchman by asking it what files have changed. In this
 case, Watchman should work without you having to do anything special.</p>
 
 <p><strong>Example 2:</strong> Your application is a build system rule to generate CSS rules
-that is run by a Watchman trigger on <code class="highlighter-rouge">*.scss</code>. You expect all files you care
-about to end with the string <code class="highlighter-rouge">.scss</code> on case-insensitive file systems, and not
-another variant of it like <code class="highlighter-rouge">.SCSS</code>. In this case, Watchman should work fine –
+that is run by a Watchman trigger on <code class="language-plaintext highlighter-rouge">*.scss</code>. You expect all files you care
+about to end with the string <code class="language-plaintext highlighter-rouge">.scss</code> on case-insensitive file systems, and not
+another variant of it like <code class="language-plaintext highlighter-rouge">.SCSS</code>. In this case, Watchman should work fine –
 at most, it will provide you the same file multiple times with different case
 variants. You might be dealing with that in your build system anyway.</p>
 
-<p><strong>Example 3:</strong> Like example 2, except you expect <code class="highlighter-rouge">.SCSS</code> and other variants to
+<p><strong>Example 3:</strong> Like example 2, except you expect <code class="language-plaintext highlighter-rouge">.SCSS</code> and other variants to
 work too. In that case the only way is to explicitly add all possible variants
 to the trigger rule.</p>
 
 <p><strong>Example 4:</strong> You’re a source control system that has its own ideas about
 case-folding that might or might not match up with the operating system’s. You
 perform case-folding against an internal data structure, so that if the data
-structure has <code class="highlighter-rouge">foo.txt</code> and the file system has <code class="highlighter-rouge">FOO.txt</code> you make <code class="highlighter-rouge">foo.txt</code>
-take precedence. In that case, Watchman will tell you about both <code class="highlighter-rouge">FOO.txt</code> and
-<code class="highlighter-rouge">foo.txt</code>, and it’s up to you to perform
+structure has <code class="language-plaintext highlighter-rouge">foo.txt</code> and the file system has <code class="language-plaintext highlighter-rouge">FOO.txt</code> you make <code class="language-plaintext highlighter-rouge">foo.txt</code>
+take precedence. In that case, Watchman will tell you about both <code class="language-plaintext highlighter-rouge">FOO.txt</code> and
+<code class="language-plaintext highlighter-rouge">foo.txt</code>, and it’s up to you to perform
 normalization. <a href="https://bitbucket.org/facebook/hgwatchman">hgwatchman</a> just
 consults the file system in the rare case that a file changes case.</p>
 
@@ -790,7 +790,7 @@ consults the file system in the rare case that a file changes case.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

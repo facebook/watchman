@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Troubleshooting | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Troubleshooting" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Troubleshooting","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/troubleshooting.html"},"url":"https://facebook.github.io/watchman/docs/troubleshooting.html"}</script>
+{"headline":"Troubleshooting","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/troubleshooting.html"},"url":"https://facebook.github.io/watchman/docs/troubleshooting.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -742,7 +742,7 @@ filesystem.</p>
 inotify limits are sized quite small.  What this means is that the rate at
 which your watched roots are generating changes is higher than the kernel can
 buffer and relay to the watchman service.  When this happens, the kernel
-detects the overflow and signals <code class="highlighter-rouge">IN_Q_OVERFLOW</code>.  The recovery is to
+detects the overflow and signals <code class="language-plaintext highlighter-rouge">IN_Q_OVERFLOW</code>.  The recovery is to
 recursively scan the root to make sure that we know what is really there and
 re-sync with the notification stream.</p>
 
@@ -764,59 +764,50 @@ accordingly.</p>
 <p>macOS has a similar internal limit and behavior when that limit is exceeded.
 If you’re encountering a message like:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>Recrawled this watch 1 times, most recently because:
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>Recrawled this watch 1 times, most recently because:
 /some/path: kFSEventStreamEventFlagUserDropped
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>then you are hitting the limits of your system.  There is no direct control
 over the limit, but starting in Watchman 3.2 you may increase the
 <a href="/watchman/docs/config.html#fsevents-latency">fsevents_latency</a>
-parameter in your <code class="highlighter-rouge">.watchmanconfig</code> file.</p>
+parameter in your <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> file.</p>
 
 <h3 id="ive-changed-my-limits-how-can-i-clear-the-warning">I’ve changed my limits, how can I clear the warning?</h3>
 
 <p>The warning will stick until you cancel the watch and reinstate it, or restart
-the watchman process.  The simplest resolution is to run <code class="highlighter-rouge">watchman
+the watchman process.  The simplest resolution is to run <code class="language-plaintext highlighter-rouge">watchman
 shutdown-server</code> and re-establish your watch on your next watchman query.</p>
 
 <h2 id="where-are-the-logs">Where are the logs?</h2>
 
-<p>Watchman places logs in a file named <code class="highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.log</code>, where <code class="highlighter-rouge">STATEDIR</code>
+<p>Watchman places logs in a file named <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;/&lt;USER&gt;.log</code>, where <code class="language-plaintext highlighter-rouge">STATEDIR</code>
 is set at the time that you built watchman.</p>
 
-<p>If you used the <code class="highlighter-rouge">--enable-statedir=&lt;STATEDIR&gt;</code> configure option, that will
-be the location that holds your logs.  If not, the default for <code class="highlighter-rouge">STATEDIR</code>
-will be <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code>, or for older versions of watchman,
-the logs may be placed in <code class="highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>.</p>
+<p>If you used the <code class="language-plaintext highlighter-rouge">--enable-statedir=&lt;STATEDIR&gt;</code> configure option, that will
+be the location that holds your logs.  If not, the default for <code class="language-plaintext highlighter-rouge">STATEDIR</code>
+will be <code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code>, or for older versions of watchman,
+the logs may be placed in <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>.</p>
 
 <p><em>Since 3.8.</em></p>
 
-<p>Watchman places the logs in a file named <code class="highlighter-rouge">&lt;STATEDIR&gt;/log</code>, which will
-typically be a location like <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state/log</code>. If
-you’re running a <code class="highlighter-rouge">homebrew</code> build of watchman, <code class="highlighter-rouge">&lt;PREFIX&gt;</code> is usually <code class="highlighter-rouge">/usr/local</code>.</p>
+<p>Watchman places the logs in a file named <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;/log</code>, which will
+typically be a location like <code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state/log</code>. If
+you’re running a <code class="language-plaintext highlighter-rouge">homebrew</code> build of watchman, <code class="language-plaintext highlighter-rouge">&lt;PREFIX&gt;</code> is usually <code class="language-plaintext highlighter-rouge">/usr/local</code>.</p>
 
-<p>The default log location may be overridden by the <code class="highlighter-rouge">--logfile</code> <a href="/watchman/docs/cli-options.html#server-options">Server Option</a>.</p>
+<p>The default log location may be overridden by the <code class="language-plaintext highlighter-rouge">--logfile</code> <a href="/watchman/docs/cli-options.html#server-options">Server Option</a>.</p>
 
 <p><a href="/watchman/docs/cli-options.html#quick-note-on-default-locations">Quick note on default locations</a> explains what
-we mean by <code class="highlighter-rouge">&lt;STATEDIR&gt;</code>, <code class="highlighter-rouge">&lt;TMPDIR&gt;</code>, <code class="highlighter-rouge">&lt;USER&gt;</code> and so on.</p>
+we mean by <code class="language-plaintext highlighter-rouge">&lt;STATEDIR&gt;</code>, <code class="language-plaintext highlighter-rouge">&lt;TMPDIR&gt;</code>, <code class="language-plaintext highlighter-rouge">&lt;USER&gt;</code> and so on.</p>
 
 <h2 id="poison-inotify_add_watch"><a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch</h2>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>A non-recoverable condition has triggered.  Watchman needs your help!
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -&gt; Cannot allocate memory
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
 https://facebook.github.io/watchman/docs/troubleshooting.html#poison-inotify-add-watch
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>If you’ve encountered this state it means that your <em>kernel</em> was unable to
 watch a dir in one or more of the roots you’ve asked it to watch.  This
@@ -851,39 +842,27 @@ resolution is:</p>
 
 <p><em>Since 4.6</em></p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>$ watchman watch-del-all
-$ watchman shutdown-server
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman watch-del-all
+<span class="nv">$ </span>watchman shutdown-server
+</code></pre></div></div>
 
 <p><em>Before 4.6</em></p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>$ rm &lt;STATEDIR&gt;/state       # see above for what STATEDIR means
-$ watchman --no-spawn --no-local shutdown-server
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="nb">rm</span> &lt;STATEDIR&gt;/state       <span class="c"># see above for what STATEDIR means</span>
+<span class="nv">$ </span>watchman <span class="nt">--no-spawn</span> <span class="nt">--no-local</span> shutdown-server
+</code></pre></div></div>
 
 <p>If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.</p>
 
 <h2 id="poison-opendir">Poison: opendir</h2>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>A non-recoverable condition has triggered.  Watchman needs your help!
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: opendir(/my/path) -&gt; Too many open files in system
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
 https://facebook.github.io/watchman/docs/troubleshooting.html#opendir
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>If you’ve encountered this state it means that your entire system had too many
 open files, and that this prevented watchman from tracking the changes on your
@@ -911,7 +890,7 @@ messages to the log file.</p>
 <p>If you got here because an error message told you to read this section,
 it will have also asked you to look at your log file.  If you are using an
 older version of watchman and encounter the error message
-<code class="highlighter-rouge">FSEventStreamStart failed</code>, then you should locate your log file (see
+<code class="language-plaintext highlighter-rouge">FSEventStreamStart failed</code>, then you should locate your log file (see
 <a href="#where-are-the-logs">Where are the logs?</a> above) and look for lines
 that mention FSEvents and then consult the information below.</p>
 
@@ -941,13 +920,13 @@ so that watchman will only allow watching project roots.</li>
 Some examples are:</li>
   <li>editors such as Sublime Text and TextMate.</li>
   <li>Many nodejs packages and Grunt style workflows make use of fsevents.
-Make sure that you upgrade nodejs to at least version <code class="highlighter-rouge">v0.11.14</code>.  If
+Make sure that you upgrade nodejs to at least version <code class="language-plaintext highlighter-rouge">v0.11.14</code>.  If
 possible, configure your nodejs packages to use either
 <a href="https://www.npmjs.com/package/sane">sane</a> or
 <a href="https://www.npmjs.com/package/fb-watchman">fb-watchman</a> for file watching
 as this will consolidate the number of fsevents watches down to just the
 set maintained by watchman.</li>
-  <li>Restart the fsevents service: <code class="highlighter-rouge">sudo pkill -9 -x fseventsd</code></li>
+  <li>Restart the fsevents service: <code class="language-plaintext highlighter-rouge">sudo pkill -9 -x fseventsd</code></li>
   <li>Restart your computer</li>
 </ul>
 
@@ -979,14 +958,10 @@ X.  This issue was resolved in Watchman version 3.1.</p>
 
 <p>To update:</p>
 
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre>watchman shutdown-server
-brew update
-brew reinstall watchman
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman shutdown-server
+<span class="nv">$ </span>brew update
+<span class="nv">$ </span>brew reinstall watchman
+</code></pre></div></div>
 
     
   </article>
@@ -999,7 +974,7 @@ brew reinstall watchman
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

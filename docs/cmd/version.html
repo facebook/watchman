@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>version | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="version" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="The version command will tell you the version and build information for the currently running watchman service:" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"version","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"The version command will tell you the version and build information for the currently running watchman service:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/version.html"},"url":"https://facebook.github.io/watchman/docs/cmd/version.html"}</script>
+{"headline":"version","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"The version command will tell you the version and build information for the currently running watchman service:","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/version.html"},"url":"https://facebook.github.io/watchman/docs/cmd/version.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -714,30 +714,21 @@ window.addEventListener('load', function() {
       <p>The version command will tell you the version and build information
 for the currently running watchman service:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="gp">$ </span>watchman version
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman version
 <span class="o">{</span>
     <span class="s2">"version"</span>: <span class="s2">"2.9.6"</span>,
     <span class="s2">"buildinfo"</span>: <span class="s2">"git:2727d9a1e47a4a2229c65cbb2f0c7656cbd96270"</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>To get the version of the client:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -v
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-v</span>
 2.9.8
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>If the server and client versions don’t match up, you should probably
-restart your server: <code class="highlighter-rouge">watchman shutdown-server ; watchman</code>.</p>
+restart your server: <code class="language-plaintext highlighter-rouge">watchman shutdown-server ; watchman</code>.</p>
 
 <h3 id="capabilities">Capabilities</h3>
 
@@ -751,55 +742,32 @@ were introduced.</p>
 
 <p>You can read more about the <a href="/watchman/docs/capabilities.html">available capability names</a>.</p>
 
-<p>To check whether the <code class="highlighter-rouge">relative_root</code> capability is supported:</p>
+<p>To check whether the <code class="language-plaintext highlighter-rouge">relative_root</code> capability is supported:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"optional":["relative_root"]}]'</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"optional":["relative_root"]}]'</span>
 <span class="o">{</span>
     <span class="s2">"version"</span>: <span class="s2">"3.8.0"</span>,
     <span class="s2">"capabilities"</span>: <span class="o">{</span>
         <span class="s2">"relative_root"</span>: <span class="nb">true</span>
     <span class="o">}</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>If the capability is not supported:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"optional":["will-never-exist"]}]'</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"optional":["will-never-exist"]}]'</span>
 <span class="o">{</span>
     <span class="s2">"version"</span>: <span class="s2">"3.8.0"</span>,
     <span class="s2">"capabilities"</span>: <span class="o">{</span>
         <span class="s2">"will-never-exist"</span>: <span class="nb">false</span>
     <span class="o">}</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>To have the server generate an error response if a capability is not
 supported:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"required":["will-never-exist"]}]'</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"required":["will-never-exist"]}]'</span>
 <span class="o">{</span>
     <span class="s2">"version"</span>: <span class="s2">"3.8.0"</span>,
     <span class="s2">"capabilities"</span>: <span class="o">{</span>
@@ -807,21 +775,11 @@ supported:</p>
     <span class="o">}</span>,
     <span class="s2">"error"</span>: <span class="s2">"client required capability </span><span class="sb">`</span>will-never-exist<span class="sb">`</span><span class="s2"> is not supported by this server"</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <p>To require one feature and test whether some optional features are supported:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"required":["term-match"],"optional":["a","b"]}]'</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span>watchman <span class="nt">-j</span> <span class="o">&lt;&lt;&lt;</span> <span class="s1">'["version", {"required":["term-match"],"optional":["a","b"]}]'</span>
 <span class="o">{</span>
     <span class="s2">"version"</span>: <span class="s2">"3.8.0"</span>,
     <span class="s2">"capabilities"</span>: <span class="o">{</span>
@@ -830,13 +788,11 @@ supported:</p>
         <span class="s2">"term-match"</span>: <span class="nb">true</span>
     <span class="o">}</span>
 <span class="o">}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
 <h3 id="capabilitycheck">capabilityCheck</h3>
 
-<p>The <strong>node</strong> and <strong>python</strong> clients provide a <code class="highlighter-rouge">capabilityCheck</code> method that
+<p>The <strong>node</strong> and <strong>python</strong> clients provide a <code class="language-plaintext highlighter-rouge">capabilityCheck</code> method that
 will perform the version check above, and that also provide limited support
 for testing capability support against older versions of the watchman server.
 This facilitates a smoother transition from version number based checks
@@ -844,37 +800,19 @@ to capability named based checks.</p>
 
 <p>In <em>python</em>:</p>
 
-<div class="language-python highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="kn">import</span> <span class="nn">pywatchman</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">pywatchman</span><span class="o">.</span><span class="n">client</span><span class="p">()</span>
-<span class="c"># will throw an error if any of the required names are not supported</span>
-<span class="n">res</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">capabilityCheck</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="p">[</span><span class="s">'a'</span><span class="p">],</span> <span class="n">required</span><span class="o">=</span><span class="p">[</span><span class="s">'term-match'</span><span class="p">])</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="kn">import</span> <span class="nn">pywatchman</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">pywatchman</span><span class="p">.</span><span class="n">client</span><span class="p">()</span>
+<span class="c1"># will throw an error if any of the required names are not supported
+</span><span class="n">res</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">capabilityCheck</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="p">[</span><span class="s">'a'</span><span class="p">],</span> <span class="n">required</span><span class="o">=</span><span class="p">[</span><span class="s">'term-match'</span><span class="p">])</span>
 <span class="k">print</span> <span class="n">res</span>
-<span class="c"># {'version': '3.8.0', 'capabilities': {'term-match': True, 'a': False}}</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+<span class="c1"># {'version': '3.8.0', 'capabilities': {'term-match': True, 'a': False}}
+</span></code></pre></div></div>
 
 <p>In <em>node</em>:</p>
 
-<div class="language-js highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12</pre></td><td class="code"><pre><span class="kd">var</span> <span class="nx">watchman</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'fb-watchman'</span><span class="p">);</span>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="kd">var</span> <span class="nx">watchman</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">fb-watchman</span><span class="dl">'</span><span class="p">);</span>
 <span class="kd">var</span> <span class="nx">client</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">watchman</span><span class="p">.</span><span class="nx">Client</span><span class="p">();</span>
-<span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="na">optional</span><span class="p">:[</span><span class="s1">'a'</span><span class="p">],</span> <span class="na">required</span><span class="p">:[</span><span class="s1">'term-match'</span><span class="p">]},</span>
+<span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="na">optional</span><span class="p">:[</span><span class="dl">'</span><span class="s1">a</span><span class="dl">'</span><span class="p">],</span> <span class="na">required</span><span class="p">:[</span><span class="dl">'</span><span class="s1">term-match</span><span class="dl">'</span><span class="p">]},</span>
     <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
           <span class="c1">// error will be an Error object if any of the required named</span>
@@ -884,9 +822,7 @@ to capability named based checks.</p>
         <span class="c1">// {'version': '3.8.0', 'capabilities': {'term-match': false, 'a': false}}</span>
         <span class="nx">client</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
     <span class="p">});</span>
-</pre></td></tr></tbody></table>
-</div>
-</div>
+</code></pre></div></div>
 
     
   </article>
@@ -899,7 +835,7 @@ to capability named based checks.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

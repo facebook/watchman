@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>match &amp; imatch | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="match &amp; imatch" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="The match expression performs a glob-style match against the basename of the file, evaluating true if the match is successful." />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"match &amp; imatch","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"The match expression performs a glob-style match against the basename of the file, evaluating true if the match is successful.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/match.html"},"url":"https://facebook.github.io/watchman/docs/expr/match.html"}</script>
+{"headline":"match &amp; imatch","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"The match expression performs a glob-style match against the basename of the file, evaluating true if the match is successful.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/match.html"},"url":"https://facebook.github.io/watchman/docs/expr/match.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -711,76 +711,65 @@ window.addEventListener('load', function() {
 
   <article class="post-content">
    
-      <p>The <code class="highlighter-rouge">match</code> expression performs a glob-style match against the basename of
+      <p>The <code class="language-plaintext highlighter-rouge">match</code> expression performs a glob-style match against the basename of
 the file, evaluating true if the match is successful.</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>You may optionally provide a third argument to change the scope of the match
 from the basename to the wholename of the file.</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"basename"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"basename"</span><span class="p">]</span><span class="w">
 </span><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"dir/*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"wholename"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <h3 id="case-sensitivity">Case sensitivity</h3>
 
-<p><code class="highlighter-rouge">match</code> is case sensitive; for case insensitive matching use <code class="highlighter-rouge">imatch</code> instead;
-it behaves identically to <code class="highlighter-rouge">match</code> except that the match is performed ignoring
+<p><code class="language-plaintext highlighter-rouge">match</code> is case sensitive; for case insensitive matching use <code class="language-plaintext highlighter-rouge">imatch</code> instead;
+it behaves identically to <code class="language-plaintext highlighter-rouge">match</code> except that the match is performed ignoring
 case.</p>
 
 <p><em>Since 2.9.9.</em></p>
 
 <p>On systems where the watched root is a case insensitive filesystem (this is the
-common case for macOS and Windows), <code class="highlighter-rouge">match</code> is equivalent to <code class="highlighter-rouge">imatch</code>.</p>
+common case for macOS and Windows), <code class="language-plaintext highlighter-rouge">match</code> is equivalent to <code class="language-plaintext highlighter-rouge">imatch</code>.</p>
 
 <p><em>Since 4.7.</em></p>
 
 <p>You can override the case sensitivity of all name matching operations used
-in the query by setting the <code class="highlighter-rouge">case_sensitive</code> field in your query.</p>
+in the query by setting the <code class="language-plaintext highlighter-rouge">case_sensitive</code> field in your query.</p>
 
 <h2 id="wildmatch">wildmatch</h2>
 
 <p><em>Since 3.7.</em></p>
 
-<p>The <code class="highlighter-rouge">match</code> expression has been enhanced as described below.  The
+<p>The <code class="language-plaintext highlighter-rouge">match</code> expression has been enhanced as described below.  The
 <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
-enhanced functionality is <code class="highlighter-rouge">wildmatch</code>.</p>
+enhanced functionality is <code class="language-plaintext highlighter-rouge">wildmatch</code>.</p>
 
-<p>If you want to recursively match all files under a directory, use the <code class="highlighter-rouge">**</code>
-glob operator along with the <code class="highlighter-rouge">wholename</code> scope:</p>
+<p>If you want to recursively match all files under a directory, use the <code class="language-plaintext highlighter-rouge">**</code>
+glob operator along with the <code class="language-plaintext highlighter-rouge">wholename</code> scope:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"src/**/*.java"</span><span class="p">,</span><span class="w"> </span><span class="s2">"wholename"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"src/**/*.java"</span><span class="p">,</span><span class="w"> </span><span class="s2">"wholename"</span><span class="p">]</span><span class="w">
+</span></code></pre></div></div>
 
-<p>By default, paths whose names start with <code class="highlighter-rouge">.</code> are not included. To
+<p>By default, paths whose names start with <code class="language-plaintext highlighter-rouge">.</code> are not included. To
 change this behavior, you may optionally provide a fourth argument
 containing a dictionary of flags:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"basename"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nt">"includedotfiles"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"basename"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nl">"includedotfiles"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}]</span><span class="w">
+</span></code></pre></div></div>
 
 <p>By default, backslashes in the pattern escape the next character, so
-<code class="highlighter-rouge">\*</code> matches a literal <code class="highlighter-rouge">*</code> character. To change this behavior so
-backslashes are treated literally, set the <code class="highlighter-rouge">noescape</code> flag to <code class="highlighter-rouge">true</code>
-in the flags dictionary. (Note that <code class="highlighter-rouge">\\</code> is a literal <code class="highlighter-rouge">\</code> in JSON notation):</p>
+<code class="language-plaintext highlighter-rouge">\*</code> matches a literal <code class="language-plaintext highlighter-rouge">*</code> character. To change this behavior so
+backslashes are treated literally, set the <code class="language-plaintext highlighter-rouge">noescape</code> flag to <code class="language-plaintext highlighter-rouge">true</code>
+in the flags dictionary. (Note that <code class="language-plaintext highlighter-rouge">\\</code> is a literal <code class="language-plaintext highlighter-rouge">\</code> in JSON notation):</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*\\*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"filename"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nt">"noescape"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">[</span><span class="s2">"match"</span><span class="p">,</span><span class="w"> </span><span class="s2">"*</span><span class="se">\\</span><span class="s2">*.txt"</span><span class="p">,</span><span class="w"> </span><span class="s2">"filename"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nl">"noescape"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}]</span><span class="w">
+</span></code></pre></div></div>
 
-<p>matches <code class="highlighter-rouge">a\b.txt</code>.</p>
+<p>matches <code class="language-plaintext highlighter-rouge">a\b.txt</code>.</p>
 
 
     
@@ -794,7 +783,7 @@ in the flags dictionary. (Note that <code class="highlighter-rouge">\\</code> is
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>

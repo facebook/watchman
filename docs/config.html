@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.2.3 -->
+  <!-- Begin Jekyll SEO tag v2.6.1 -->
 <title>Configuration Files | Watchman</title>
+<meta name="generator" content="Jekyll v3.9.0" />
 <meta property="og:title" content="Configuration Files" />
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Watchman looks for configuration files in two places:" />
@@ -16,14 +17,14 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2020-07-13T18:42:18-07:00" />
+<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Configuration Files","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2020-07-13T18:42:18-07:00","dateModified":"2020-07-13T18:42:18-07:00","description":"Watchman looks for configuration files in two places:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"url":"https://facebook.github.io/watchman/docs/config.html"}</script>
+{"headline":"Configuration Files","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Watchman looks for configuration files in two places:","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"url":"https://facebook.github.io/watchman/docs/config.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  <link rel="icon" href="/watchman/static/favicon.png" type="image/x-icon">
 
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
@@ -32,12 +33,12 @@
   <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
-  <body>    
+  <body>
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" alt=""/><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
-      <nav class="navigation">
+      <nav class="navigation" role="navigation" aria-label="Website navigation">
         <ul>
           
           <li class="navItem navItemActive">
@@ -82,7 +83,7 @@
       
     ];
   </script>
-  <script type="text/javascript">  
+  <script type="text/javascript">
   window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
@@ -108,6 +109,7 @@
         });
         document.dispatchEvent(event);
       },
+      // TODO: Add aria-label, aria-controls, and aira-expanded
       render: function() {
         var classes = React.addons.classSet({
           'navSlideout': true,
@@ -118,12 +120,12 @@
           'slidingNavActive': this.state.slideoutActive,
         });
         return (
-          React.createElement("div", null, 
-            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+          React.createElement("div", null,
+            React.createElement("div", {className: classes, onClick: this.handleSlide},
               React.createElement("i", {className: "fa fa-bars"})
-            ), 
-            React.createElement("nav", {className: navClasses}, 
-              React.createElement("ul", null, 
+            ),
+            React.createElement("nav", {className: navClasses},
+              React.createElement("ul", null,
                 this.props.data.map(this.renderNavItems)
               )
             )
@@ -136,7 +138,7 @@
           'navItemActive': this.state.currentPath === child.href,
         });
         return (
-          React.createElement("li", {key: index, className: classes}, 
+          React.createElement("li", {key: index, className: classes},
             React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
           )
         );
@@ -157,9 +159,7 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <div>
-</div>
-<nav class='toc' id="doc_nav"></nav>
+    <nav class='toc' id="doc_nav" role="navigation" aria-label="Documentation navigation"></nav>
 <script>
   var docnavData = [
     
@@ -714,24 +714,29 @@ window.addEventListener('load', function() {
       <p>Watchman looks for configuration files in two places:</p>
 
 <ul>
-  <li>The global configuration file <code class="highlighter-rouge">/etc/watchman.json</code></li>
-  <li>The root specific configuration file <code class="highlighter-rouge">.watchmanconfig</code></li>
+  <li>The global configuration file <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code></li>
+  <li>The root specific configuration file <code class="language-plaintext highlighter-rouge">.watchmanconfig</code></li>
 </ul>
 
-<p>When watching a root, if a valid JSON file named <code class="highlighter-rouge">.watchmanconfig</code> is present
+<p>When watching a root, if a valid JSON file named <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> is present
 in the root directory, watchman will load it and use it as a source of
 configuration information specific to that root.</p>
 
 <p>The global configuration path can be changed by passing the
-<code class="highlighter-rouge">--enable-conffile</code> option to configure when you build watchman.  This
-documentation refers to it as <code class="highlighter-rouge">/etc/watchman.json</code> throughout, just be aware
+<code class="language-plaintext highlighter-rouge">--enable-conffile</code> option to configure when you build watchman.  This
+documentation refers to it as <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code> throughout, just be aware
 that your particular installation may locate it elsewhere.   In addition,
-the environmental variable <code class="highlighter-rouge">$WATCHMAN_CONFIG_FILE</code> will override the
+the environmental variable <code class="language-plaintext highlighter-rouge">$WATCHMAN_CONFIG_FILE</code> will override the
 default location.</p>
 
-<p>Changes to the <code class="highlighter-rouge">.watchmanconfig</code> or <code class="highlighter-rouge">/etc/watchman.json</code> files are not picked
+<p>If the global configuration file does not exist, Watchman will fall back
+on that path with “.default” appended (e.g. /etc/watchman.json.default).
+This allows the Watchman system package to provide different configuration
+defaults, like setting enforce_root_files to true.</p>
+
+<p>Changes to the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> or <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code> files are not picked
 up automatically; you will need to remove and re-add the watch (for
-<code class="highlighter-rouge">.watchmanconfig</code>) or restart watchman (for <code class="highlighter-rouge">/etc/watchman.json</code>) for those
+<code class="language-plaintext highlighter-rouge">.watchmanconfig</code>) or restart watchman (for <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code>) for those
 changes to take effect.</p>
 
 <h3 id="resolution--scoping">Resolution / Scoping</h3>
@@ -739,12 +744,12 @@ changes to take effect.</p>
 <p>There are three configuration scopes:</p>
 
 <ul>
-  <li><strong>local</strong> - the option value is read from the <code class="highlighter-rouge">.watchmanconfig</code> file in the
+  <li><strong>local</strong> - the option value is read from the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> file in the
 associated root.</li>
-  <li><strong>global</strong> - the option value is read from the <code class="highlighter-rouge">/etc/watchman.json</code> file</li>
-  <li><strong>fallback</strong> - the option value is read from the <code class="highlighter-rouge">.watchmanconfig</code> file.
-If the option was not present in the <code class="highlighter-rouge">.watchmanconfig</code> file, then read
-it from the <code class="highlighter-rouge">/etc/watchman.json</code> file.</li>
+  <li><strong>global</strong> - the option value is read from the <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code> file</li>
+  <li><strong>fallback</strong> - the option value is read from the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> file.
+If the option was not present in the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> file, then read
+it from the <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code> file.</li>
 </ul>
 
 <p>This table shows the scoping and availability of the various options:</p>
@@ -759,77 +764,77 @@ it from the <code class="highlighter-rouge">/etc/watchman.json</code> file.</li>
   </thead>
   <tbody>
     <tr>
-      <td><code class="highlighter-rouge">settle</code></td>
+      <td><code class="language-plaintext highlighter-rouge">settle</code></td>
       <td>local</td>
       <td> </td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">root_restrict_files</code></td>
+      <td><code class="language-plaintext highlighter-rouge">root_restrict_files</code></td>
       <td>global</td>
       <td>deprecated in 3.1</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">root_files</code></td>
+      <td><code class="language-plaintext highlighter-rouge">root_files</code></td>
       <td>global</td>
       <td>3.1</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">enforce_root_files</code></td>
+      <td><code class="language-plaintext highlighter-rouge">enforce_root_files</code></td>
       <td>global</td>
       <td>3.1</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">illegal_fstypes</code></td>
+      <td><code class="language-plaintext highlighter-rouge">illegal_fstypes</code></td>
       <td>global</td>
       <td>2.9.8</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">illegal_fstypes_advice</code></td>
+      <td><code class="language-plaintext highlighter-rouge">illegal_fstypes_advice</code></td>
       <td>global</td>
       <td>2.9.8</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">ignore_vcs</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ignore_vcs</code></td>
       <td>local</td>
       <td>2.9.3</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">ignore_dirs</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ignore_dirs</code></td>
       <td>local</td>
       <td>2.9.3</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">gc_age_seconds</code></td>
+      <td><code class="language-plaintext highlighter-rouge">gc_age_seconds</code></td>
       <td>local</td>
       <td>2.9.4</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">gc_interval_seconds</code></td>
+      <td><code class="language-plaintext highlighter-rouge">gc_interval_seconds</code></td>
       <td>local</td>
       <td>2.9.4</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">fsevents_latency</code></td>
+      <td><code class="language-plaintext highlighter-rouge">fsevents_latency</code></td>
       <td>fallback</td>
       <td>3.2</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">idle_reap_age_seconds</code></td>
+      <td><code class="language-plaintext highlighter-rouge">idle_reap_age_seconds</code></td>
       <td>local</td>
       <td>3.7</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">hint_num_files_per_dir</code></td>
+      <td><code class="language-plaintext highlighter-rouge">hint_num_files_per_dir</code></td>
       <td>fallback</td>
       <td>3.9</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">hint_num_dirs</code></td>
+      <td><code class="language-plaintext highlighter-rouge">hint_num_dirs</code></td>
       <td>fallback</td>
       <td>4.6</td>
     </tr>
     <tr>
-      <td><code class="highlighter-rouge">suppress_recrawl_warnings</code></td>
+      <td><code class="language-plaintext highlighter-rouge">suppress_recrawl_warnings</code></td>
       <td>fallback</td>
       <td>4.7</td>
     </tr>
@@ -855,30 +860,26 @@ directory as the root of a project.</p>
 use the value of the now deprecated
 <a href="#root_restrict_files">root_restrict_files</a> configuration setting.</p>
 
-<p>If neither <code class="highlighter-rouge">root_files</code> nor <code class="highlighter-rouge">root_restrict_files</code> is specified in the
+<p>If neither <code class="language-plaintext highlighter-rouge">root_files</code> nor <code class="language-plaintext highlighter-rouge">root_restrict_files</code> is specified in the
 configuration, watchman will use a default value consisting of:</p>
 
 <ul>
-  <li><code class="highlighter-rouge">.git</code></li>
-  <li><code class="highlighter-rouge">.hg</code></li>
-  <li><code class="highlighter-rouge">.svn</code></li>
-  <li><code class="highlighter-rouge">.watchmanconfig</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.git</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.hg</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.svn</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.watchmanconfig</code></li>
 </ul>
 
-<p>Watchman will add <code class="highlighter-rouge">.watchmanconfig</code> to whatever value is specified for
+<p>Watchman will add <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> to whatever value is specified for
 this configuration value if it is not present.</p>
 
-<p>This example causes only <code class="highlighter-rouge">.watchmanconfig</code> to be considered as a project
+<p>This example causes only <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> to be considered as a project
 root file:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"root_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".watchmanconfig"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"root_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".watchmanconfig"</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>See the <a href="cmd/watch-project.html">watch-project</a> command for more information.</p>
 
@@ -886,7 +887,7 @@ root file:</p>
 
 <p><em>Since 3.1.</em></p>
 
-<p>This is a boolean option that defaults to <code class="highlighter-rouge">false</code>.  If it is set to <code class="highlighter-rouge">true</code>
+<p>This is a boolean option that defaults to <code class="language-plaintext highlighter-rouge">false</code>.  If it is set to <code class="language-plaintext highlighter-rouge">true</code>
 then the <a href="cmd/watch.html">watch</a> command will only succeed if the requested
 directory contains one of the files listed by the <a href="#root_files">root_files</a>
 configuration option, and the <a href="cmd/watch-project.html">watch-project</a> command
@@ -895,7 +896,7 @@ will only succeed if a valid project root is found.</p>
 <p>If left unspecified, to aid in transitioning between versions, watchman will
 check to see if the now deprecated <a href="#root_restrict_files">root_restrict_files</a>
 configuration setting is present.  If it is found then the effective value of
-<code class="highlighter-rouge">enforce_root_files</code> is set to <code class="highlighter-rouge">true</code>.</p>
+<code class="language-plaintext highlighter-rouge">enforce_root_files</code> is set to <code class="language-plaintext highlighter-rouge">true</code>.</p>
 
 <h3 id="root_restrict_files">root_restrict_files</h3>
 
@@ -908,14 +909,10 @@ restrictions.</p>
 
 <p>For example,</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"root_restrict_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".git"</span><span class="p">,</span><span class="w"> </span><span class="s2">".hg"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"root_restrict_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".git"</span><span class="p">,</span><span class="w"> </span><span class="s2">".hg"</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>will allow watches only in the top level of Git or Mercurial repositories.</p>
 
@@ -923,35 +920,30 @@ restrictions.</p>
 
 <p>Specifies a list of filesystem types that watchman is prohibited to attempt to
 watch.  Watchman will determine the filesystem type of the root of a watch; if
-the typename is present in the <code class="highlighter-rouge">illegal_fstypes</code> list, the watch will be
-prohibited.  You may also specify <code class="highlighter-rouge">illegal_fstypes_advice</code> as a string with
+the typename is present in the <code class="language-plaintext highlighter-rouge">illegal_fstypes</code> list, the watch will be
+prohibited.  You may also specify <code class="language-plaintext highlighter-rouge">illegal_fstypes_advice</code> as a string with
 additional advice to your user.  The purpose of this configuration option is
 largely to prevent the use of Watchman on network mounted filesystems.  On
 Linux systems, Watchman may not be able to determine the precise type name of a
 mounted filesystem.  If the filesystem type is not known to watchman, it will
-be reported as <code class="highlighter-rouge">unknown</code>.</p>
+be reported as <code class="language-plaintext highlighter-rouge">unknown</code>.</p>
 
 <p>For example,</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"illegal_fstypes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"nfs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cifs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"smb"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"illegal_fstypes_advice"</span><span class="p">:</span><span class="w"> </span><span class="s2">"use a local directory"</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"illegal_fstypes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"nfs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cifs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"smb"</span><span class="p">],</span><span class="w">
+  </span><span class="nl">"illegal_fstypes_advice"</span><span class="p">:</span><span class="w"> </span><span class="s2">"use a local directory"</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
 <p>will prevent watching dirs mounted on network filesystems and provide the
-advice to use a local directory.  You may omit the <code class="highlighter-rouge">illegal_fstypes_advice</code>
+advice to use a local directory.  You may omit the <code class="language-plaintext highlighter-rouge">illegal_fstypes_advice</code>
 setting to use a default suggestion to relocate the directory to local disk.</p>
 
 <h3 id="ignore_vcs">ignore_vcs</h3>
 
 <p>Apply special VCS ignore logic to the set of named dirs.  This option has a
-default value of <code class="highlighter-rouge">[".git", ".hg", ".svn"]</code>.  Dirs that match this option are
+default value of <code class="language-plaintext highlighter-rouge">[".git", ".hg", ".svn"]</code>.  Dirs that match this option are
 observed and watched using special shallow logic.  The shallow watch allows
 watchman to mildly abuse the version control directories to store its query
 cookie files and to observe VCS locking activity without having to watch the
@@ -965,20 +957,16 @@ are unwanted because of the sheer volume of files.</p>
 
 <p>For example,</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"ignore_dirs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"build"</span><span class="p">]</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"ignore_dirs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"build"</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
+</span></code></pre></div></div>
 
-<p>would ignore the <code class="highlighter-rouge">build</code> directory at the top level of the watched tree, and
+<p>would ignore the <code class="language-plaintext highlighter-rouge">build</code> directory at the top level of the watched tree, and
 everything below it.  It will never appear in the watchman query results for
 the tree.</p>
 
-<p>On Linux systems, <code class="highlighter-rouge">ignore_dirs</code> is respected at the OS level; the kernel
+<p>On Linux systems, <code class="language-plaintext highlighter-rouge">ignore_dirs</code> is respected at the OS level; the kernel
 simply will not tell watchman about changes to ignored dirs.  macOS and Windows
 have limited or no support for this, so watchman needs to process and ignore
 this class of change.</p>
@@ -986,48 +974,48 @@ this class of change.</p>
 <p>For large trees or especially busy build dirs, it is recommended that you move
 the busy build dirs out of the tree for more optimal performance.</p>
 
-<p>Since version 2.9.9, if you list a dir in <code class="highlighter-rouge">ignore_dirs</code> that is also listed in
-<code class="highlighter-rouge">ignore_vcs</code>, the <code class="highlighter-rouge">ignore_dirs</code> placement will take precedence.  This may not
-sound like a big deal, but since <code class="highlighter-rouge">ignore_vcs</code> is used as a hint to for the
+<p>Since version 2.9.9, if you list a dir in <code class="language-plaintext highlighter-rouge">ignore_dirs</code> that is also listed in
+<code class="language-plaintext highlighter-rouge">ignore_vcs</code>, the <code class="language-plaintext highlighter-rouge">ignore_dirs</code> placement will take precedence.  This may not
+sound like a big deal, but since <code class="language-plaintext highlighter-rouge">ignore_vcs</code> is used as a hint to for the
 placement of <a href="/watchman/docs/cookies.html">cookie files</a>, having these two
 options overlap in earlier versions would break watchman queries.</p>
 
 <p><em>Since 4.6.</em></p>
 
-<p>On macOS the first 8 items listed in <code class="highlighter-rouge">ignore_dirs</code> can be accelerated at the
+<p>On macOS the first 8 items listed in <code class="language-plaintext highlighter-rouge">ignore_dirs</code> can be accelerated at the
 OS level.  This means that changes to those paths are not even communicated
 to the watchman service.  Entries beyond the first 8 are processed and
 ignored by watchman.  If your workload is prone to recrawl events you will
-want to prioritize your <code class="highlighter-rouge">ignore_dirs</code> list so that the most busy ignored
+want to prioritize your <code class="language-plaintext highlighter-rouge">ignore_dirs</code> list so that the most busy ignored
 locations occupy the first 8 positions in this list.</p>
 
 <h3 id="gc_age_seconds">gc_age_seconds</h3>
 
 <p>Deleted files (and dirs) older than this are periodically pruned from the
 internal view of the filesystem.  Until they are pruned, they will be visible
-to queries but will have their <code class="highlighter-rouge">exists</code> field set to <code class="highlighter-rouge">false</code>.   Once they are
+to queries but will have their <code class="language-plaintext highlighter-rouge">exists</code> field set to <code class="language-plaintext highlighter-rouge">false</code>.   Once they are
 pruned, watchman will remember the most recent clock value of the pruned nodes.
 Any since queries based on a clock prior to the last prune clock will be
 treated as a fresh instance query.  This allows a client to detect and choose
-how to handle the case where they have missed changes.  See <code class="highlighter-rouge">is_fresh_instance</code>
+how to handle the case where they have missed changes.  See <code class="language-plaintext highlighter-rouge">is_fresh_instance</code>
 elsewhere in this document for more information.  The default for this is
-<code class="highlighter-rouge">43200</code> (12 hours).</p>
+<code class="language-plaintext highlighter-rouge">43200</code> (12 hours).</p>
 
 <h3 id="gc_interval_seconds">gc_interval_seconds</h3>
 
-<p>How often to check for, and prune out, deleted nodes per the <code class="highlighter-rouge">gc_age_seconds</code>
-option description above.  The default for this is <code class="highlighter-rouge">86400</code> (24 hours).  Set
-this to <code class="highlighter-rouge">0</code> to disable the periodic pruning operation.</p>
+<p>How often to check for, and prune out, deleted nodes per the <code class="language-plaintext highlighter-rouge">gc_age_seconds</code>
+option description above.  The default for this is <code class="language-plaintext highlighter-rouge">86400</code> (24 hours).  Set
+this to <code class="language-plaintext highlighter-rouge">0</code> to disable the periodic pruning operation.</p>
 
 <h3 id="fsevents_latency">fsevents_latency</h3>
 
-<p>Controls the latency parameter that is passed to <code class="highlighter-rouge">FSEventStreamCreate</code> on macOS.
+<p>Controls the latency parameter that is passed to <code class="language-plaintext highlighter-rouge">FSEventStreamCreate</code> on macOS.
 The value is measured in seconds.  The fixed value of this parameter prior to
-version 3.2 of watchman was <code class="highlighter-rouge">0.0001</code> seconds.  Starting in version 3.2 of
-watchman, the default is now <code class="highlighter-rouge">0.01</code> seconds and can be controlled on a
+version 3.2 of watchman was <code class="language-plaintext highlighter-rouge">0.0001</code> seconds.  Starting in version 3.2 of
+watchman, the default is now <code class="language-plaintext highlighter-rouge">0.01</code> seconds and can be controlled on a
 per-root basis.</p>
 
-<p>If you observe problems with <code class="highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> increasing
+<p>If you observe problems with <code class="language-plaintext highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> increasing
 the latency parameter will allow the system to batch more change notifications
 together and operate more efficiently.</p>
 
@@ -1037,34 +1025,44 @@ together and operate more efficiently.</p>
 
 <p><em>Since 4.6.</em></p>
 
-<p>Defaults to <code class="highlighter-rouge">false</code>.  If set to <code class="highlighter-rouge">true</code>, if a watch receives a
-<code class="highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> event, attempt to resync from the
-<code class="highlighter-rouge">fsevents</code> journal if it is available.  The journal may not be available if one
+<p>Defaults to <code class="language-plaintext highlighter-rouge">false</code>.  If set to <code class="language-plaintext highlighter-rouge">true</code>, if a watch receives a
+<code class="language-plaintext highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> event, attempt to resync from the
+<code class="language-plaintext highlighter-rouge">fsevents</code> journal if it is available.  The journal may not be available if one
 or more volumes are mounted read-only, if the administrator has purged the
-journal, or if the <code class="highlighter-rouge">fsevents</code> id numbers have rolled over.</p>
+journal, or if the <code class="language-plaintext highlighter-rouge">fsevents</code> id numbers have rolled over.</p>
 
 <p>This resync operation is advantageous because it effectively allows rewinding
 and replaying the event stream from a known point in time and avoids the need
 to recrawl the entire watch.</p>
 
-<p>If this option is set to <code class="highlighter-rouge">false</code>, or if the journal is not available, the
+<p>If this option is set to <code class="language-plaintext highlighter-rouge">false</code>, or if the journal is not available, the
 original strategy of recrawling the watched directory tree is used instead.</p>
 
 <p><em>Since 4.7.</em></p>
 
-<p>The default changed to <code class="highlighter-rouge">true</code>.  In addition, this resync strategy is now
-also applied to <code class="highlighter-rouge">kFSEventStreamEventFlagKernelDropped</code> events.</p>
+<p>The default changed to <code class="language-plaintext highlighter-rouge">true</code>.  In addition, this resync strategy is now
+also applied to <code class="language-plaintext highlighter-rouge">kFSEventStreamEventFlagKernelDropped</code> events.</p>
+
+<h3 id="prefer_split_fsevents_watcher">prefer_split_fsevents_watcher</h3>
+
+<p>This is macOS specific.</p>
+
+<p>Defaults to <code class="language-plaintext highlighter-rouge">false</code>. If set to <code class="language-plaintext highlighter-rouge">true</code>, Watchman will use several FSEvents streams
+to watch a directory hierarchy instead of a single stream. This has been shown
+to significantly reduce the number of <code class="language-plaintext highlighter-rouge">kFSEventStreamEventFlagUserDropped</code>
+events for workflows issuing heavy writes to a top-level directory that is
+listed in <a href="#ignore_dirs">ignore_dirs</a>.</p>
 
 <h3 id="idle_reap_age_seconds">idle_reap_age_seconds</h3>
 
 <p><em>Since 3.7.</em></p>
 
 <p>How many seconds a watch can remain idle before becoming a candidate for
-reaping, measured in seconds.  The default for this is <code class="highlighter-rouge">432000</code> (5 days).  Set
-this to <code class="highlighter-rouge">0</code> to prevent reaping.</p>
+reaping, measured in seconds.  The default for this is <code class="language-plaintext highlighter-rouge">432000</code> (5 days).  Set
+this to <code class="language-plaintext highlighter-rouge">0</code> to prevent reaping.</p>
 
 <p>A watch is considered to be idle when it has had no commands that operate on it
-for <code class="highlighter-rouge">idle_reap_age_seconds</code>.   If an idle watch has no triggers and no
+for <code class="language-plaintext highlighter-rouge">idle_reap_age_seconds</code>.   If an idle watch has no triggers and no
 subscriptions then it will be cancelled, releasing the associated operating
 system resources, and removed from the state file.</p>
 
@@ -1077,9 +1075,9 @@ is most impactful during the initial crawl of the filesystem.  Setting
 this too small will increase the chance of a hash insert having a collision
 and drive up the cost of the insert and subsequent gets.</p>
 
-<p>Prior to version 3.9 of watchman this value was fixed at <code class="highlighter-rouge">2</code>.  Starting
-in version 3.9 the default value is <code class="highlighter-rouge">64</code> and can be configured via this
-setting in the <code class="highlighter-rouge">.watchmanconfig</code> or the global <code class="highlighter-rouge">/etc/watchman.json</code>
+<p>Prior to version 3.9 of watchman this value was fixed at <code class="language-plaintext highlighter-rouge">2</code>.  Starting
+in version 3.9 the default value is <code class="language-plaintext highlighter-rouge">64</code> and can be configured via this
+setting in the <code class="language-plaintext highlighter-rouge">.watchmanconfig</code> or the global <code class="language-plaintext highlighter-rouge">/etc/watchman.json</code>
 configuration file.</p>
 
 <p>Setting this value very large increases the memory overhead per directory in
@@ -1103,7 +1101,7 @@ time to run.</p>
 in the entire watched tree.  The default value for this is 131072.</p>
 
 <p>The optimal size is a power-of-two larger than the number of directories
-in your tree; running <code class="highlighter-rouge">find . -type d | wc -l</code> will tell you the number
+in your tree; running <code class="language-plaintext highlighter-rouge">find . -type d | wc -l</code> will tell you the number
 that you have.</p>
 
 <p>Making this number too large is potentially wasteful of memory.  Making this
@@ -1114,8 +1112,8 @@ hash tables are rebuilt.</p>
 
 <p><em>Since 4.7</em></p>
 
-<p>When set to <code class="highlighter-rouge">true</code>, watchman will not produce recrawl related warning fields in
-the response PDUs of various requests.  The default is <code class="highlighter-rouge">false</code>; the intent is
+<p>When set to <code class="language-plaintext highlighter-rouge">true</code>, watchman will not produce recrawl related warning fields in
+the response PDUs of various requests.  The default is <code class="language-plaintext highlighter-rouge">false</code>; the intent is
 that someone in your organization should be aware of recrawls and be able to
 manage the configuration and workload.  Some sites employ an alternative
 mechanism for sampling and reporting this to the right set of people and wish
@@ -1133,7 +1131,7 @@ unable to make the appropriate configuration changes for themselves.</p>
       <div class="footerContainer">
   <div id="footer_wrap" class="wrapper footerWrapper">
     <section id="fb_oss" class="fbOpenSourceFooter">
-      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source Home" title="Facebook Open Source" /></a>
     </section>
   </div>
 </div>
