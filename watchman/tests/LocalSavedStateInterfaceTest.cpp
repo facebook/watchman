@@ -19,7 +19,6 @@
 #include <folly/test/TestUtils.h>
 #include "watchman/Errors.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman.h"
 
 using namespace watchman;
 

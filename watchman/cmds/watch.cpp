@@ -19,8 +19,6 @@
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_root.h"
 
-#include "watchman/watchman.h"
-
 using namespace watchman;
 
 void w_cmd_realpath_root(json_ref& args) {

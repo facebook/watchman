@@ -16,7 +16,7 @@
 
 #include <folly/Conv.h>
 #include "watchman/Logging.h"
-#include "watchman/watchman.h"
+#include "watchman/Shutdown.h"
 
 #ifdef HAVE_SYS_SIGLIST
 #define w_strsignal(val) sys_siglist[(val)]

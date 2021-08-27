@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "watchman/watchman.h"
-
 #include <folly/ScopeGuard.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"

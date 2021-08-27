@@ -28,6 +28,7 @@
 #include "watchman/Constants.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/SanityCheck.h"
+#include "watchman/Shutdown.h"
 #include "watchman/SignalHandler.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
@@ -35,20 +36,12 @@
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
-#include "watchman/watchman.h"
-
 using namespace watchman;
 
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
-static std::vector<std::shared_ptr<watchman_event>> listener_thread_events;
-static std::atomic<bool> stopping = false;
 static constexpr size_t kResponseLogLimit = 8;
-
-bool w_is_stopping() {
-  return stopping.load(std::memory_order_relaxed);
-}
 
 json_ref make_response() {
   auto resp = json_object();
@@ -136,14 +129,6 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
 
   if (ping) {
     this->ping->notify();
-  }
-}
-
-void w_request_shutdown() {
-  stopping.store(true, std::memory_order_relaxed);
-  // Knock listener thread out of poll/accept
-  for (auto& evt : listener_thread_events) {
-    evt->notify();
   }
 }
 
@@ -631,11 +616,10 @@ static void named_pipe_accept_loop_internal(
 static void named_pipe_accept_loop() {
   log(DBG, "Starting pipe listener on ", get_named_pipe_sock_path(), "\n");
 
+  std::shared_ptr<watchman_event> listener_event = w_event_make_named_pipe();
+  w_push_listener_thread_event(listener_event);
+
   std::vector<std::thread> acceptors;
-  std::shared_ptr<watchman_event> listener_event(w_event_make_named_pipe());
-
-  listener_thread_events.push_back(listener_event);
-
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(std::thread([i, listener_event]() {
       w_set_thread_name("accept", i);
@@ -660,8 +644,8 @@ class AcceptLoop {
     fd.setCloExec();
     fd.setNonBlock();
 
-    std::shared_ptr<watchman_event> listener_event(w_event_make_sockets());
-    listener_thread_events.push_back(listener_event);
+    std::shared_ptr<watchman_event> listener_event = w_event_make_sockets();
+    w_push_listener_thread_event(listener_event);
 
     thread_ = std::thread(
         [listener_fd = std::move(fd), name, listener_event]() mutable {

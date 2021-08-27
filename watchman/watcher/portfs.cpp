@@ -21,7 +21,6 @@
 #include <folly/Synchronized.h>
 #include <memory>
 #include "watchman/InMemoryView.h"
-#include "watchman/watchman.h"
 
 #ifdef HAVE_PORT_CREATE
 

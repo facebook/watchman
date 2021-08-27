@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <memory>
+
+class watchman_event;
+
 bool w_is_stopping();
-
 void w_request_shutdown();
-
-/* vim:ts=2:sw=2:et:
- */
+void w_push_listener_thread_event(std::shared_ptr<watchman_event> event);

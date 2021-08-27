@@ -633,6 +633,7 @@ watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)
 watchman/QueryableView.cpp
 watchman/SanityCheck.cpp
+watchman/Shutdown.cpp
 watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/TempDir.cpp

@@ -20,7 +20,7 @@
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
-#include "watchman/watchman.h"
+#include "watchman/Shutdown.h"
 #include "watchman/watchman_pdu.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
