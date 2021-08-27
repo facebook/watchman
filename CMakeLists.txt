@@ -634,6 +634,7 @@ watchman/ProcessLock.cpp
 watchman/QueryableView.cpp
 watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
+watchman/TempDir.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
@@ -655,7 +656,6 @@ watchman/stream_unix.cpp
 watchman/stream_stdout.cpp
 # string.cpp (in libstring)
 watchman/time.cpp
-watchman/tmp.cpp
 watchman/query/QueryContext.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp

@@ -34,6 +34,7 @@
 #include "watchman/Options.h"
 #include "watchman/PerfSample.h"
 #include "watchman/ProcessLock.h"
+#include "watchman/TempDir.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/listener.h"

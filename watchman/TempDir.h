@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
-#include "watchman/watchman.h"
+#pragma once
 
-std::string watchman_tmp_dir;
+#include <string>
+
+namespace watchman {
+
+extern std::string watchman_tmp_dir;
+
+} // namespace watchman
