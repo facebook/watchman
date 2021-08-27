@@ -34,11 +34,5 @@ namespace watchman {
 void startSanityCheckThread();
 }
 
-#ifdef HAVE_SYS_SIGLIST
-#define w_strsignal(val) sys_siglist[(val)]
-#else
-#define w_strsignal(val) strsignal((val))
-#endif
-
 /* vim:ts=2:sw=2:et:
  */

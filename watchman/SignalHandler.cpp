@@ -18,6 +18,12 @@
 #include "watchman/Logging.h"
 #include "watchman/watchman.h"
 
+#ifdef HAVE_SYS_SIGLIST
+#define w_strsignal(val) sys_siglist[(val)]
+#else
+#define w_strsignal(val) strsignal((val))
+#endif
+
 using namespace watchman;
 
 #ifndef _WIN32
