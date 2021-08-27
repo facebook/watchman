@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "watchman/listener.h"
 #include <folly/Exception.h>
 #include <folly/MapUtil.h>
 #include <folly/Optional.h>

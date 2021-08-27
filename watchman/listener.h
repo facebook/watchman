@@ -16,32 +16,10 @@
 
 #pragma once
 
-#include <folly/Synchronized.h>
-#include <string>
-#include "watchman/FileDescriptor.h"
-#include "watchman/thirdparty/jansson/jansson.h"
+#include <watchman/FileDescriptor.h>
 
-bool w_is_stopping();
-
-void w_request_shutdown();
-
-extern std::string watchman_tmp_dir;
-void w_state_shutdown();
-void w_state_save();
-bool w_state_load();
-bool w_root_save_state(json_ref& state);
-bool w_root_load_state(const json_ref& state);
-json_ref w_root_watch_list_to_json();
-
-namespace watchman {
-void startSanityCheckThread();
-}
-
-#ifdef HAVE_SYS_SIGLIST
-#define w_strsignal(val) sys_siglist[(val)]
-#else
-#define w_strsignal(val) strsignal((val))
+#ifdef __APPLE__
+watchman::FileDescriptor w_get_listener_socket_from_launchd();
 #endif
-
-/* vim:ts=2:sw=2:et:
- */
+void w_listener_prep_inetd();
+bool w_start_listener();
