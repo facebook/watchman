@@ -15,6 +15,7 @@
  */
 
 #include <folly/String.h>
+#include "watchman/FileDescriptor.h"
 #include "watchman/Logging.h"
 #include "watchman/watchman.h"
 

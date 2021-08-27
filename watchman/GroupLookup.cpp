@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include "watchman/GroupLookup.h"
 #include <folly/String.h>
 #include "watchman/Logging.h"
-#include "watchman/watchman.h"
 
 #ifndef _WIN32
 #include <errno.h>

@@ -48,15 +48,5 @@ void startSanityCheckThread();
 #define w_strsignal(val) strsignal((val))
 #endif
 
-#ifndef _WIN32
-/**
- * Gets the group struct for the given group name. The return value may point
- * to a static area so it should be used immediately and not passed to free(3).
- *
- * Returns null on failure.
- */
-const struct group* w_get_group(const char* group_name);
-#endif // ndef WIN32
-
 /* vim:ts=2:sw=2:et:
  */

@@ -622,6 +622,7 @@ watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
 watchman/FlagMap.cpp
 watchman/FSDetect.cpp
+watchman/GroupLookup.cpp
 watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/Options.cpp
@@ -638,7 +639,6 @@ watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/checksock.cpp
 watchman/clientmode.cpp
-watchman/groups.cpp
 # hash.cpp (in libhash)
 watchman/ignore.cpp
 watchman/json.cpp
