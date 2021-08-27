@@ -56,7 +56,6 @@ add_fb_python_unittest(test_py
     "NODE_BIN=${NODE}"
     "HGUSER=John Smith <smith@example.com>"
     "NOSCMLOG=1"
-    "TESTING_VIA_BUCK=1"
     "WATCHMAN_EMPTY_ENV_VAR="
     "WATCHMAN_NO_SPAWN=1"
     "WATCHMAN_BINARY=$<TARGET_FILE:watchman>"

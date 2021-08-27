@@ -51,12 +51,11 @@ def getSharedInstance():
     global tls
     if hasattr(tls, "instance"):
         return tls.instance
-    if os.environ.get("TESTING_VIA_BUCK", "0") == "1":
-        # Ensure that the temporary dir is configured
-        TempDir.get_temp_dir().get_dir()
-        inst = Instance()
-        inst.start()
-        setSharedInstance(inst)
+    # Ensure that the temporary dir is configured
+    TempDir.get_temp_dir().get_dir()
+    inst = Instance()
+    inst.start()
+    setSharedInstance(inst)
     return tls.instance
 
 
