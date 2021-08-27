@@ -17,10 +17,9 @@
 #include <folly/Synchronized.h>
 #include <vector>
 #include "watchman/query/QueryContext.h"
+#include "watchman/state.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_trigger.h"
-
-#include "watchman/watchman.h"
 
 using namespace watchman;
 

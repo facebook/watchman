@@ -17,12 +17,12 @@
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
 #include "watchman/sockname.h"
+#include "watchman/state.h"
+#include "watchman/watchman.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 #include "watchman/watchman_trigger.h"
-
-#include "watchman/watchman.h"
 
 #include <memory>
 

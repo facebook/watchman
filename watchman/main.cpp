@@ -39,6 +39,7 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/listener.h"
 #include "watchman/sockname.h"
+#include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_opendir.h"
 #include "watchman/watchman_pdu.h"

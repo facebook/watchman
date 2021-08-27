@@ -15,7 +15,8 @@
  */
 
 #include <algorithm>
-#include "watchman/watchman.h"
+#include "watchman/watchman_string.h"
+#include "watchman/watchman_system.h"
 
 // Filename mapping and handling strategy
 // We'll track the utf-8 rendition of the underlying filesystem names

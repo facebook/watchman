@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_system.h"
 
 const char* win32_strerror(DWORD err) {
   static __declspec(thread) char msgbuf[1024];

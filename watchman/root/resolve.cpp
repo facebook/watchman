@@ -18,9 +18,8 @@
 #include "watchman/FSDetect.h"
 #include "watchman/FileSystem.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/state.h"
 #include "watchman/watchman_root.h"
-
-#include "watchman/watchman.h"
 
 using namespace watchman;
 

@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
+#include "watchman/state.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
-#include "watchman/watchman_pdu.h"
-#include "watchman/watchman_stream.h"
-
 #include "watchman/watchman.h"
+#include "watchman/watchman_pdu.h"
+#include "watchman/watchman_root.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
 

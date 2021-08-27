@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_system.h"
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
 #pragma warning(disable : 4091)
 

@@ -25,12 +25,13 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include "SignalHandler.h"
 #include "watchman/Constants.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/SanityCheck.h"
+#include "watchman/SignalHandler.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
+#include "watchman/state.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 

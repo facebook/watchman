@@ -14,20 +14,8 @@
  * limitations under the License.
  */
 
-#include "watchman/watchman_string.h"
-#include "watchman/watchman_system.h"
+#pragma once
 
-int mkdir(const char* path, int) {
-  auto wpath = w_string_piece(path).asWideUNC();
-  DWORD err;
-  BOOL res;
-
-  res = CreateDirectoryW(wpath.c_str(), nullptr);
-  err = GetLastError();
-
-  if (res) {
-    return 0;
-  }
-  errno = map_win32_err(err);
-  return -1;
-}
+void w_state_shutdown();
+void w_state_save();
+bool w_state_load();
