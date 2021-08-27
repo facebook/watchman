@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# no unicode literals
-from __future__ import absolute_import, division, print_function
+import os
+import sys
 
 import pywatchman
 import pywatchman.capabilities
@@ -102,4 +102,131 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertDictEqual(
             res, {"version": "3.3", "capabilities": {"relative_root": True}}
+        )
+
+    def test_full_capability_set(self):
+        client = self.getClient()
+        res = client.listCapabilities()
+
+        expected = {
+            "bser-v2",
+            "clock-sync-timeout",
+            "cmd-clock",
+            "cmd-debug-ageout",
+            "cmd-debug-contenthash",
+            "cmd-debug-drop-privs",
+            "cmd-debug-get-asserted-states",
+            "cmd-debug-get-subscriptions",
+            "cmd-debug-poison",
+            "cmd-debug-recrawl",
+            "cmd-debug-set-subscriptions-paused",
+            "cmd-debug-show-cursors",
+            "cmd-debug-status",
+            "cmd-debug-symlink-target-cache",
+            "cmd-debug-watcher-info",
+            "cmd-debug-watcher-info-clear",
+            "cmd-find",
+            "cmd-flush-subscriptions",
+            "cmd-get-config",
+            "cmd-get-pid",
+            "cmd-get-sockname",
+            "cmd-global-log-level",
+            "cmd-list-capabilities",
+            "cmd-log",
+            "cmd-log-level",
+            "cmd-query",
+            "cmd-shutdown-server",
+            "cmd-since",
+            "cmd-state-enter",
+            "cmd-state-leave",
+            "cmd-subscribe",
+            "cmd-trigger",
+            "cmd-trigger-del",
+            "cmd-trigger-list",
+            "cmd-unsubscribe",
+            "cmd-version",
+            "cmd-watch",
+            "cmd-watch-del",
+            "cmd-watch-del-all",
+            "cmd-watch-list",
+            "cmd-watch-project",
+            "dedup_results",
+            "field-atime",
+            "field-atime_f",
+            "field-atime_ms",
+            "field-atime_ns",
+            "field-atime_us",
+            "field-cclock",
+            "field-content.sha1hex",
+            "field-ctime",
+            "field-ctime_f",
+            "field-ctime_ms",
+            "field-ctime_ns",
+            "field-ctime_us",
+            "field-dev",
+            "field-exists",
+            "field-gid",
+            "field-ino",
+            "field-mode",
+            "field-mtime",
+            "field-mtime_f",
+            "field-mtime_ms",
+            "field-mtime_ns",
+            "field-mtime_us",
+            "field-name",
+            "field-new",
+            "field-nlink",
+            "field-oclock",
+            "field-size",
+            "field-symlink_target",
+            "field-type",
+            "field-uid",
+            "glob_generator",
+            "relative_root",
+            "saved-state-local",
+            "scm-git",
+            "scm-hg",
+            "scm-since",
+            "suffix-set",
+            "term-allof",
+            "term-anyof",
+            "term-dirname",
+            "term-empty",
+            "term-exists",
+            "term-false",
+            "term-idirname",
+            "term-imatch",
+            "term-iname",
+            "term-ipcre",
+            "term-match",
+            "term-name",
+            "term-not",
+            "term-pcre",
+            "term-since",
+            "term-size",
+            "term-suffix",
+            "term-true",
+            "term-type",
+            "watcher-eden",
+            "wildmatch",
+            "wildmatch-multislash",
+        }
+
+        if sys.platform == "darwin":
+            expected.add("watcher-fsevents")
+            expected.add("watcher-kqueue")
+            expected.add("watcher-kqueue+fsevents")
+            expected.add("cmd-debug-kqueue-and-fsevents-recrawl")
+            expected.add("cmd-debug-fsevents-inject-drop")
+        elif sys.platform == "linux":
+            expected.add("watcher-inotify")
+        elif sys.platform == "win32":
+            expected.add("watcher-win32")
+
+        if os.environ.get("TESTING_VIA_BUCK", "0") == "1":
+            expected.add("saved-state-manifold")
+
+        self.assertEqual(
+            expected,
+            set(res),
         )

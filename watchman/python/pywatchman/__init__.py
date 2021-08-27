@@ -1212,6 +1212,9 @@ class client(object):
 
         return res
 
+    def listCapabilities(self):
+        return self.query("list-capabilities", {})["capabilities"]
+
     def setTimeout(self, value):
         self.recvConn.setTimeout(value)
         self.sendConn.setTimeout(value)
