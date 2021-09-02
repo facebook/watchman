@@ -59,7 +59,7 @@ class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
 |  summary:     add m2
 |
 o  changeset:   3:88fea8704cd2
-|  bookmark:    TheMaster
+|  bookmark:    main
 |  parent:      1:6b3ecb11785e
 |  summary:     add m1
 |
@@ -81,9 +81,7 @@ o  changeset:   0:b08db10380dd
         self.hg(["book", "initial"], cwd=root)
         self.hg(["addremove"], cwd=root)
         self.hg(["commit", "-m", "initial"], cwd=root)
-        # Some environments prohibit locally creating "master",
-        # so we use an alternative similar name.
-        self.hg(["book", "TheMaster"], cwd=root)
+        self.hg(["book", "main"], cwd=root)
         self.touchRelative(root, "bar")
         self.touchRelative(root, "car")
         self.hg(["addremove"], cwd=root)
@@ -93,11 +91,11 @@ o  changeset:   0:b08db10380dd
         self.touchRelative(root, "a", "b", "c", "f1")
         self.hg(["addremove"], cwd=root)
         self.hg(["commit", "-m", "add f1"], cwd=root)
-        self.hg(["co", "TheMaster"], cwd=root)
+        self.hg(["co", "main"], cwd=root)
         self.hg(["book", "feature3"], cwd=root)
         self.hg(["rm", "car"], cwd=root)
         self.hg(["commit", "-m", "remove car"], cwd=root)
-        self.hg(["co", "TheMaster"], cwd=root)
+        self.hg(["co", "main"], cwd=root)
         self.touchRelative(root, "m1")
         self.hg(["addremove"], cwd=root)
         self.hg(["commit", "-m", "add m1"], cwd=root)
@@ -165,13 +163,13 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase-with": "main"}},
             },
         )
 
         self.assertNotEqual(res["clock"]["scm"]["mergebase"], "")
-        self.assertEqual(res["clock"]["scm"]["mergebase-with"], "TheMaster")
-        # The only file changed between TheMaster and feature2 is m2
+        self.assertEqual(res["clock"]["scm"]["mergebase-with"], "main")
+        # The only file changed between main and feature2 is m2
         self.assertFileListsEqual(res["files"], ["m2"])
 
         # Let's also set up a subscription for the same query
@@ -190,7 +188,7 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase-with": "main"}},
             },
         )
 
@@ -247,7 +245,7 @@ o  changeset:   0:b08db10380dd
         dat = self.getSubFatClocksOnly("scmsub", root=root)
         self.assertFileListsEqual(["w00t"], self.getConsolidatedFileList(dat))
 
-        self.hg(["co", "-C", "TheMaster"], cwd=root)
+        self.hg(["co", "-C", "main"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -333,7 +331,7 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase-with": "main"}},
             },
         )
         self.assertEqual(clock["scm"], res["clock"]["scm"])
@@ -378,7 +376,7 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         self.assertFileListsEqual(res["files"], ["car"])
@@ -390,7 +388,7 @@ o  changeset:   0:b08db10380dd
             {
                 "expression": ["name", "car"],
                 "fields": ["name", "mtime", "atime", "ctime", "content.sha1hex"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         # Since 'car' was deleted, its timestamps are reported as 0
@@ -406,7 +404,7 @@ o  changeset:   0:b08db10380dd
             {
                 "expression": ["name", "m2"],
                 "fields": ["name", "mtime", "atime", "ctime", "content.sha1hex"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         for ts in ["mtime", "atime", "ctime"]:
@@ -431,7 +429,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(res["files"], [])
 
         # Determine the bookmark hashes
-        mergeBaseMaster = self.resolveCommitHash("TheMaster", cwd=root)
+        mergeBaseMain = self.resolveCommitHash("main", cwd=root)
         mergeBaseInitial = self.resolveCommitHash("initial", cwd=root)
 
         # Checkout initial
@@ -439,13 +437,13 @@ o  changeset:   0:b08db10380dd
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         dat = self.getSubFatClocksOnly("scmsub", root=root)
 
-        # Checkout master - verify merge base change and empty file list
-        self.hg(["co", "-C", "TheMaster"], cwd=root)
+        # Checkout main - verify merge base change and empty file list
+        self.hg(["co", "-C", "main"], cwd=root)
 
         self.waitForStatesToVacate(root)
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         dat = self.getSubFatClocksOnly("scmsub", root=root)
-        self.assertEqual(dat[-1]["clock"]["scm"]["mergebase"], mergeBaseMaster)
+        self.assertEqual(dat[-1]["clock"]["scm"]["mergebase"], mergeBaseMain)
         self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
 
         # Checkout initial - verify merge base change and empty file list
@@ -482,7 +480,7 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         self.assertFileListsEqual(res["files"], ["car"])
@@ -508,7 +506,7 @@ o  changeset:   0:b08db10380dd
                     ],
                 ],
                 "fields": ["name"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         self.assertFileListsEqual(res["files"], ["a/b/c/f1"])
@@ -520,7 +518,7 @@ o  changeset:   0:b08db10380dd
             {
                 "relative_root": "bogus",
                 "fields": ["name"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         self.assertFileListsEqual(res["files"], [])
@@ -532,7 +530,7 @@ o  changeset:   0:b08db10380dd
             {
                 "relative_root": "a",
                 "fields": ["name"],
-                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+                "since": {"scm": {"mergebase": "", "mergebase-with": "main"}},
             },
         )
         self.assertFileListsEqual(res["files"], ["b/c/f1"])

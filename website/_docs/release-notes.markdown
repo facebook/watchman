@@ -15,7 +15,7 @@ in the [Compatibility Rules](compatibility.html) docs.
 
 We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
-GitHub](https://github.com/facebook/watchman/commits/master).
+GitHub](https://github.com/facebook/watchman/commits/main).
 
 ### Watchman v2020.07.13.00
 

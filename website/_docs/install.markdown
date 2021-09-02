@@ -41,8 +41,8 @@ to remove the beta label in the coming months.
 Watchman was built to support Windows Server 2012 R2 and later, but has
 had community-provided patches that enable support for Windows 7 and later.
 
-At this time, we recommend running the latest master build of watchman on
-Windows; see below for binary downloads!
+At this time, we recommend running the latest build of watchman on Windows; see
+below for binary downloads!
 
 If you encounter issues with the Windows version of watchman, please report
 them via GitHub!  [You can find the list of known Windows issues here](
@@ -50,7 +50,7 @@ https://github.com/facebook/watchman/issues?utf8=%E2%9C%93&q=is%3Aopen+Windows).
 
 ## Binary Downloads for Linux, macOS and Windows (Beta)
 
-*Note: binaries are built from master only.  We don't provide binaries for v4.9.0*
+*Note: binaries are built from the main branch only.  We don't provide binaries for v4.9.0*
 
 Watchman is continuously deployed as it passes our internal test validation
 inside Facebook and doesn't use manually assigned or "approved" version numbers.

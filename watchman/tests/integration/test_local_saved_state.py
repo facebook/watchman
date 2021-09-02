@@ -48,7 +48,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
 |    summary:     remove car
 |
 o  changeset:
-|  bookmark:    TheMaster
+|  bookmark:    main
 |  summary:     add bar and car
 |
 o  changeset:
@@ -85,9 +85,7 @@ o  changeset:
         self.touchRelative(self.root, "m2")
         self.hg(["addremove"], cwd=self.root)
         self.hg(["commit", "-m", "add m2"], cwd=self.root)
-        # Some environments prohibit locally creating "master",
-        # so we use an alternative similar name.
-        self.hg(["book", "TheMaster"], cwd=self.root)
+        self.hg(["book", "main"], cwd=self.root)
         self.touchRelative(self.root, "bar")
         self.touchRelative(self.root, "car")
         self.hg(["addremove"], cwd=self.root)
@@ -95,7 +93,7 @@ o  changeset:
         self.hg(["book", "feature2"], cwd=self.root)
         self.hg(["rm", "car"], cwd=self.root)
         self.hg(["commit", "-m", "remove car"], cwd=self.root)
-        self.hg(["co", "TheMaster"], cwd=self.root)
+        self.hg(["co", "main"], cwd=self.root)
         self.hg(["book", "feature4"], cwd=self.root)
         self.touchRelative(self.root, "f1")
         self.hg(["addremove"], cwd=self.root)
@@ -111,7 +109,7 @@ o  changeset:
             "fields": ["name"],
             "since": {
                 "scm": {
-                    "mergebase-with": "TheMaster",
+                    "mergebase-with": "main",
                     "saved-state": {"storage": "local", "config": config},
                 }
             },
@@ -179,7 +177,7 @@ o  changeset:
         config = {"local-storage-path": local_storage, "project": "does-not-exist"}
         test_query = self.getQuery(config)
         res = self.watchmanCommand("query", self.root, test_query)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertCommitIDNotPresent(res)
         self.assertEqual(self.getConfig(res), config)
@@ -204,7 +202,7 @@ o  changeset:
         self.assertSavedStateErrorEquals(res, "No suitable saved state found")
         self.assertEqual(self.getConfig(res), config)
         self.assertStorageTypeLocal(res)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
@@ -226,7 +224,7 @@ o  changeset:
         self.assertSavedStateErrorEquals(res, "No suitable saved state found")
         self.assertEqual(self.getConfig(res), config)
         self.assertStorageTypeLocal(res)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], [])
 
@@ -269,7 +267,7 @@ o  changeset:
         }
         test_query = self.getQuery(config)
         res = self.watchmanCommand("query", self.root, test_query)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertStorageTypeLocal(res)
         self.assertCommitIDEquals(res, saved_state_rev_feature3)
@@ -297,7 +295,7 @@ o  changeset:
         test_query = self.getQuery(config)
         test_query["omit_changed_files"] = True
         res = self.watchmanCommand("query", self.root, test_query)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertStorageTypeLocal(res)
         self.assertCommitIDEquals(res, saved_state_rev_feature3)
@@ -322,7 +320,7 @@ o  changeset:
         }
         test_query = self.getQuery(config)
         res = self.watchmanCommand("query", self.root, test_query)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertStorageTypeLocal(res)
         self.assertCommitIDEquals(res, saved_state_rev_feature3)
@@ -348,7 +346,7 @@ o  changeset:
         self.assertSavedStateErrorEquals(res, "No suitable saved state found")
         self.assertEqual(self.getConfig(res), config)
         self.assertStorageTypeLocal(res)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
@@ -367,7 +365,7 @@ o  changeset:
         self.assertSavedStateErrorEquals(res, "No suitable saved state found")
         self.assertEqual(self.getConfig(res), config)
         self.assertStorageTypeLocal(res)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
@@ -393,7 +391,7 @@ o  changeset:
         syncTimeout = {"sync_timeout": 1000}
         self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
         dat = self.getSubFatClocksOnly("scmsub", root=self.root)
-        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        expected_mergebase = self.resolveCommitHash("main", cwd=self.root)
         self.assertMergebaseEquals(sub, expected_mergebase)
         self.assertStorageTypeLocal(sub)
         self.assertEqual(self.getConfig(sub), config)

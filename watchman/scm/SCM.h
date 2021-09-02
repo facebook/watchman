@@ -59,7 +59,7 @@ class SCM {
   const w_string& getSCMRoot() const;
 
   // Compute the merge base between the working copy revision and the
-  // specified commitId.  The commitId is typically something like "master".
+  // specified commitId.  The commitId is typically a branch name like "main".
   virtual w_string mergeBaseWith(
       w_string_piece commitId,
       w_string requestId = nullptr) const = 0;

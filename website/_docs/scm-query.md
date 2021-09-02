@@ -32,7 +32,7 @@ and use that to locate the pre-built data and process only the delta
 between that state and the current state of the repo.
 
 An illustration may help.  Here we see that a user has a stack of two commits
-based off the symbolic `master` commit.  In this scenario, `master` is tracking
+based off the symbolic `main` commit.  In this scenario, `main` is tracking
 the tip of the repo to which the local repo is published, and the user is
 checked out at the 6b38a5 commit:
 
@@ -44,7 +44,7 @@ checked out at the 6b38a5 commit:
 | o  fa2e92  wez
 |/   Add cat.jpg
 |
-o f12345 master
+o f12345 main
 ~~~
 
 Now the user synchronizes their repo with the remote, fetching the commits but
@@ -53,7 +53,7 @@ but we are breaking it out here for the purposes of illustration.  This is
 equivalent to running `hg pull` or `git fetch`:
 
 ~~~
-o  fabf87  coworker     master
+o  fabf87  coworker     main
 .  Amazing new feature
 .
 | @  6b38a5  wez
@@ -69,8 +69,8 @@ The ellipsis portion of the DAG represents uninteresting commits to `wez`; there
 may be hundreds of files changed by those commits, but `wez` only cares about the
 work in their local branch of the DAG.
 
-Now `wez` wants to rebase their work on master.  This would be done using
-a command like `hg rebase -d master -s fa2e92`:
+Now `wez` wants to rebase their work on main.  This would be done using
+a command like `hg rebase -d main -s fa2e92`:
 
 ~~~
 | @  bbbbbb  wez
@@ -79,7 +79,7 @@ a command like `hg rebase -d master -s fa2e92`:
 | o  aaaaaa  wez
 |/   Add cat.jpg
 |
-o  fabf87  coworker     master
+o  fabf87  coworker     main
 .  Amazing new feature
 .
 ~~~
@@ -90,7 +90,7 @@ changed across the rebase and pass this information on to the tools that are sub
 or are querying for this information.
 
 If your tooling is source control aware then you can ask watchman to run since queries
-in a mode where it will return you information about the merge base with `master` and
+in a mode where it will return you information about the merge base with `main` and
 the minimized set of files that changed.
 
 To enable this mode you issue a query using a new *fat clock* as the `since` parameter
@@ -101,7 +101,7 @@ $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": {
       "scm": {
-        "mergebase-with": "master"
+        "mergebase-with": "main"
       }
   },
   "expression": ["type", "f"],
@@ -111,7 +111,7 @@ EOT
 ~~~
 
 This particular `since` value starts with an unspecified clock value and requests that
-watchman run the query in source control aware mode, using the symbolic name `master`
+watchman run the query in source control aware mode, using the symbolic name `main`
 to compute the merge base for the commit graph.
 
 If we look back to the illustrations above and rewind to the first scenario,
@@ -123,15 +123,15 @@ the results of this query will look something like this:
        "clock": "c:123:123",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
     },
     "files": ["cat.jpg", "cats.cpp"]
 }
 ~~~
 
-This result informs the client of the merge base with master (which happens to
-be master itself) and the list of changes since that merge base.
+This result informs the client of the merge base with main (which happens to
+be main itself) and the list of changes since that merge base.
 
 To get the next incremental change the client feeds that clock value back in to its
 next query.  Looking back to the second illustration above, if we were to run this query
@@ -144,7 +144,7 @@ $ watchman -j <<-EOT
        "clock": "c:123:123",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
   },
   "expression": ["type", "f"],
@@ -161,7 +161,7 @@ we'd get this result:
        "clock": "c:123:124",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
     },
     "files": []
@@ -190,7 +190,7 @@ $ watchman -j <<-EOT
        "clock": "c:123:124",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
   },
   "expression": ["type", "f"],
@@ -207,7 +207,7 @@ we'd get this result:
        "clock": "c:123:125",
        "scm": {
             "mergebase": "fabf87",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
     },
     "files": ["cat.jpg", "cats.cpp"]
@@ -247,7 +247,7 @@ To initiate a source control aware subscription:
   "fields": ["name"],
   "since": {
     "scm": {
-      "mergebase-with": "master"
+      "mergebase-with": "main"
     }
   }
 }]
@@ -263,14 +263,14 @@ will contain *fat clock* values for the `since` and `clock` fields:
     "clock": "c:1234:125",
     "scm": {
       "mergebase": "fabf87",
-      "mergebase-with": "master",
+      "mergebase-with": "main",
     }
   },
   "since": {
     "clock": "c:1234:123",
     "scm": {
       "mergebase": "f12345",
-      "mergebase-with": "master",
+      "mergebase-with": "main",
     }
   },
   "files": ["cat.jpg", "cats.cpp"],

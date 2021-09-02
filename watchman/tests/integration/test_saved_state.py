@@ -27,7 +27,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
         self.touchRelative(self.root, "car")
         self.hg(["addremove"], cwd=self.root)
         self.hg(["commit", "-m", "add bar and car"], cwd=self.root)
-        self.hg(["book", "TheMaster"], cwd=self.root)
+        self.hg(["book", "main"], cwd=self.root)
         self.watchmanCommand("watch", self.root)
 
     def get_skeleton_query(self):
@@ -37,7 +37,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
                 ["anyof", ["name", ".hg"], ["match", "hg-check*"], ["dirname", ".hg"]],
             ],
             "fields": ["name"],
-            "since": {"scm": {"mergebase-with": "TheMaster"}},
+            "since": {"scm": {"mergebase-with": "main"}},
         }
 
     def test_unsupportedStorageType(self):
