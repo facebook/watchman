@@ -387,60 +387,11 @@ else()
   # python3, python3.6 and python3.7 that will select 3.7,
   # even though python3 -> python3.6.  On such a system we
   # want the python3/python3.6 selection, not the 3.7 selection
-  find_program(PYTHON3 python3 PATHS /usr/bin)
+  find_program(Python3_EXECUTABLE python3 PATHS /usr/bin)
+  add_custom_target(Python3::Interpreter)
 endif()
 
-if(Python3_Development_FOUND OR PYTHON3)
-  set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
-  set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/watchman/python/setup.py")
-  file(GLOB PYWATCHMAN_PY_SRCS "watchman/python/pywatchman/*.py")
-  if(Python3_Development_FOUND)
-    add_custom_command(
-      COMMENT "Building pywatchman"
-      OUTPUT ${PYOUT}
-      DEPENDS ${PYWATCHMAN_PY_SRCS} "watchman/python/pywatchman/bser.c"
-      COMMAND ${CMAKE_COMMAND} -E env
-        CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
-        ${Python3_EXECUTABLE} ${SETUP_PY} build
-      COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
-    )
-    add_custom_target(pybuild ALL DEPENDS ${PYOUT})
-    install(CODE "
-      execute_process(COMMAND
-        ${CMAKE_COMMAND} -E env
-          CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-          ${Python3_EXECUTABLE} ${SETUP_PY} install
-          --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
-        RESULT_VARIABLE STATUS)
-      if (NOT STATUS STREQUAL 0)
-        message(FATAL_ERROR \"pywatchman install failed\")
-      endif()
-    ")
-  else()
-    add_custom_command(
-      COMMENT "Building pywatchman"
-      OUTPUT ${PYOUT}
-      DEPENDS ${PYWATCHMAN_PY_SRCS} "watchman/python/pywatchman/bser.c"
-      COMMAND ${CMAKE_COMMAND} -E env
-        CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-        CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
-        ${PYTHON3} ${SETUP_PY} build
-      COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
-    )
-    add_custom_target(pybuild ALL DEPENDS ${PYOUT})
-    install(CODE "
-      execute_process(COMMAND
-        ${CMAKE_COMMAND} -E env
-          CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-          ${PYTHON3} ${SETUP_PY} install
-          --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
-        RESULT_VARIABLE STATUS)
-      if (NOT STATUS STREQUAL 0)
-        message(FATAL_ERROR \"pywatchman install failed\")
-      endif()
-    ")
-  endif()
+if(TARGET Python3::Interpreter)
   include(FBPythonBinary)
   add_subdirectory(watchman/python)
   add_subdirectory(watchman/integration)
@@ -778,32 +729,21 @@ function(t_test NAME)
 endfunction()
 
 # The `check` target runs the unit tests
-add_custom_target(check
-  DEPENDS ${tests}
-  COMMAND ${CMAKE_CTEST_COMMAND})
+add_custom_target(check ${CMAKE_CTEST_COMMAND}
+  DEPENDS ${tests})
 
-if(Python3_Interpreter_FOUND OR PYTHON3)
-  if (WIN32)
-    add_executable(susres watchman/winbuild/susres.cpp)
-    add_custom_target(make_susres ALL DEPENDS susres)
-  endif()
+if (WIN32)
+  add_executable(susres watchman/winbuild/susres.cpp)
+  add_custom_target(make_susres ALL DEPENDS susres)
+endif()
 
-  if(Python3_Interpreter_FOUND)
-    # The `integration` target runs the unit tests and integration tests
-    add_custom_target(integration
-      DEPENDS pybuild check
-      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
-        --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
-        --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/watchman/python
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  else()
-    add_custom_target(integration
+if(TARGET Python3::Interpreter)
+  # The `integration` target runs the unit tests and integration tests.
+  add_custom_target(integration ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
+    --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
+    --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/watchman/python
     DEPENDS pybuild check
-    COMMAND ${PYTHON3} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
-      --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
-      --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/python
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  endif()
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 t_test(art watchman/tests/art_test.cpp)

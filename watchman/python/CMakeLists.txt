@@ -3,6 +3,38 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/setup.py")
+set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
+set(DEPS
+  "bin/watchman-make"
+  "bin/watchman-replicate-subscription"
+  "bin/watchman-wait"
+  "pywatchman/__init__.py"
+  "pywatchman/bser.c"
+  "pywatchman/capabilities.py"
+  "pywatchman/compat.py"
+  "pywatchman/encoding.py"
+  "pywatchman/load.py"
+  "pywatchman/pybser.py"
+  "pywatchman/windows.py"
+)
+
+add_custom_command(OUTPUT ${PYOUT}
+  COMMAND ${Python3_EXECUTABLE} ${SETUP_PY} build
+  COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
+  DEPENDS ${DEPS}
+  COMMENT "Building pywatchman")
+
+add_custom_target(pybuild ALL DEPENDS ${PYOUT})
+
+install(CODE
+  "execute_process(COMMAND ${Python3_EXECUTABLE} ${SETUP_PY} install
+    --root $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}
+    RESULT_VARIABLE STATUS)
+  if(NOT STATUS STREQUAL 0)
+    message(FATAL_ERROR \"pywatchman install failed\")
+  endif()")
+
 add_subdirectory(pywatchman)
 
 add_fb_python_executable(watchman-diag
