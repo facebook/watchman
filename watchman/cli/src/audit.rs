@@ -8,9 +8,14 @@
 use ahash::AHashMap;
 use jwalk::WalkDir;
 use serde::Deserialize;
+use std::convert::TryInto;
 use std::io::ErrorKind;
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -49,6 +54,14 @@ fn is_cookie<T: AsRef<Path>>(name: T) -> bool {
         .file_name()
         .and_then(|s| s.to_str())
         .map_or(false, |s| s.starts_with(".watchman-cookie-"));
+}
+
+#[cfg(windows)]
+/// Windows epoch starts at 1601-01-01 00:00:00 UTC. This function converts
+/// Windows epoch time to Unix epoch time. 0x019DB1DED53E8000 is Windows epoch
+/// fo 1970-01-01 00:00:00 UTC.
+fn from_windows_epoch(epoch: i64) -> i64 {
+    (epoch - 0x019DB1DED53E8000) / 10_000_000
 }
 
 impl AuditCmd {
@@ -257,36 +270,64 @@ impl AuditCmd {
 
             let mut diffs = Vec::new();
 
-            if *watchman_file.mode != u64::from(metadata.permissions().mode()) {
-                diffs.push(format!(
-                    "watchman mode is {} vs. fs {}",
-                    *watchman_file.mode,
-                    metadata.permissions().mode()
-                ));
+            #[cfg(unix)]
+            {
+                if *watchman_file.mode != u64::from(metadata.permissions().mode()) {
+                    diffs.push(format!(
+                        "watchman mode is {} vs. fs {}",
+                        *watchman_file.mode,
+                        metadata.permissions().mode()
+                    ));
+                }
+
+                if metadata.is_file() && *watchman_file.size != metadata.size() {
+                    diffs.push(format!(
+                        "watchman size is {} vs. fs {}",
+                        *watchman_file.size,
+                        metadata.len()
+                    ));
+                }
+
+                if metadata.is_file() && *watchman_file.mtime != metadata.mtime() {
+                    diffs.push(format!(
+                        "watchman mtime is {} vs. fs {}",
+                        *watchman_file.mtime,
+                        metadata.mtime()
+                    ));
+                }
+
+                if *watchman_file.ino != metadata.ino() {
+                    diffs.push(format!(
+                        "watchman ino is {} vs. fs {}",
+                        *watchman_file.ino,
+                        metadata.ino()
+                    ));
+                }
             }
 
-            if metadata.is_file() && *watchman_file.size != metadata.size() {
-                diffs.push(format!(
-                    "watchman size is {} vs. fs {}",
-                    *watchman_file.size,
-                    metadata.len()
-                ));
-            }
+            #[cfg(windows)]
+            {
+                // TODO: Add permission bit check for Windows.
 
-            if metadata.is_file() && *watchman_file.mtime != metadata.mtime() {
-                diffs.push(format!(
-                    "watchman mtime is {} vs. fs {}",
-                    *watchman_file.mtime,
-                    metadata.mtime()
-                ));
-            }
+                if metadata.is_file() && *watchman_file.size != metadata.file_size() {
+                    diffs.push(format!(
+                        "watchman size is {} vs. fs {}",
+                        *watchman_file.size,
+                        metadata.len()
+                    ));
+                }
 
-            if *watchman_file.ino != metadata.ino() {
-                diffs.push(format!(
-                    "watchman ino is {} vs. fs {}",
-                    *watchman_file.ino,
-                    metadata.ino()
-                ));
+                if metadata.is_file() {
+                    if let Ok(last_write_time) = metadata.last_write_time().try_into() {
+                        let last_write_time = from_windows_epoch(last_write_time);
+                        if *watchman_file.mtime != last_write_time {
+                            diffs.push(format!(
+                                "watchman mtime is {} vs. fs {}",
+                                *watchman_file.mtime, last_write_time,
+                            ));
+                        }
+                    }
+                }
             }
 
             if !diffs.is_empty() {
