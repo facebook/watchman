@@ -217,7 +217,11 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
         if os.environ.get("TESTING_VIA_BUCK", "0") == "1":
             expected.add("saved-state-manifold")
 
+        unimportant = {
+            "cmd-debug-prof-dump",
+        }
+
         self.assertEqual(
             expected,
-            set(res),
+            set(res) - unimportant,
         )
