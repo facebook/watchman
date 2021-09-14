@@ -32,7 +32,8 @@ struct Item {
   w_string path;
   PendingFlags flags;
 
-  Item(w_string&& path, PendingFlags flags) : path(std::move(path)), flags(flags) {}
+  Item(w_string&& path, PendingFlags flags)
+      : path(std::move(path)), flags(flags) {}
 };
 
 } // namespace
