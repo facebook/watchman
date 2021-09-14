@@ -18,15 +18,6 @@
 
 using namespace watchman;
 
-const w_string& w_query_ctx_get_wholename(QueryContext* ctx) {
-  if (ctx->wholename) {
-    return ctx->wholename;
-  }
-
-  ctx->wholename = ctx->computeWholeName(ctx->file.get());
-  return ctx->wholename;
-}
-
 namespace {
 std::vector<w_string> computeUnconditionalLogFilePrefixes() {
   Configuration globalConfig;
@@ -56,7 +47,9 @@ void w_query_process_file(
     w_query* query,
     QueryContext* ctx,
     std::unique_ptr<FileResult> file) {
-  ctx->wholename.reset();
+  // TODO: Should this be implicit by assigning a file to the QueryContext? It
+  // could be cleared when resetting the file.
+  ctx->resetWholeName();
   ctx->file = std::move(file);
   SCOPE_EXIT {
     ctx->file.reset();
@@ -96,7 +89,7 @@ void w_query_process_file(
   }
 
   if (ctx->query->dedup_results) {
-    auto name = w_query_ctx_get_wholename(ctx);
+    auto name = ctx->getWholeName();
 
     auto inserted = ctx->dedup.insert(name);
     if (!inserted.second) {
@@ -108,7 +101,7 @@ void w_query_process_file(
 
   auto logPrefixes = getUnconditionalLogFilePrefixes();
   if (!logPrefixes.empty()) {
-    auto name = w_query_ctx_get_wholename(ctx);
+    auto name = ctx->getWholeName();
     for (auto& prefix : logPrefixes) {
       if (name.piece().startsWith(prefix)) {
         ctx->namesToLog.push_back(name);

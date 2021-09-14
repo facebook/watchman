@@ -50,7 +50,6 @@ struct QueryContext {
   w_query* query;
   std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
-  w_string wholename;
   QuerySince since;
   // root number, ticks at start of query execution
   ClockSpec clockAtStartOfQuery;
@@ -90,6 +89,15 @@ struct QueryContext {
   int64_t getNumWalked() const {
     return numWalked_;
   }
+
+  void resetWholeName();
+
+  /**
+   * Returns a shared reference to the wholename
+   * of the file.  The caller must not delref
+   * the reference.
+   */
+  const w_string& getWholeName();
 
   // Adds `file` to the currently accumulating batch of files
   // that require data to be loaded.
@@ -132,6 +140,8 @@ struct QueryContext {
   bool dirMatchesRelativeRoot(w_string_piece fullDirectoryPath);
 
  private:
+  w_string wholename_;
+
   // Number of files considered as part of running this query
   int64_t numWalked_{0};
 

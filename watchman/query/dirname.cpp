@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
 #include <memory>
@@ -30,8 +31,7 @@ class DirNameExpr : public QueryExpr {
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
   EvaluateResult evaluate(QueryContext* ctx, FileResult*) override {
-    auto& str = w_query_ctx_get_wholename(ctx);
-    size_t i;
+    auto& str = ctx->getWholeName();
 
     if (str.size() <= dirname.size()) {
       // Either it doesn't prefix match, or file name is == dirname.
@@ -57,7 +57,7 @@ class DirNameExpr : public QueryExpr {
     // Now compute the depth of file from dirname.  We do this by
     // counting dir separators, not including the one we saw above.
     json_int_t actual_depth = 0;
-    for (i = dirname.size() + 1; i < str.size(); i++) {
+    for (size_t i = dirname.size() + 1; i < str.size(); i++) {
       if (is_dir_sep(str.data()[i])) {
         actual_depth++;
       }

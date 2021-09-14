@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
 using namespace watchman;
@@ -30,7 +31,7 @@ class NameExpr : public QueryExpr {
       w_string str;
 
       if (wholename) {
-        str = w_query_ctx_get_wholename(ctx);
+        str = ctx->getWholeName();
         if (caseSensitive == CaseSensitivity::CaseInSensitive) {
           str = str.piece().asLowerCase();
         }
@@ -48,7 +49,7 @@ class NameExpr : public QueryExpr {
     w_string_piece str;
 
     if (wholename) {
-      str = w_query_ctx_get_wholename(ctx);
+      str = ctx->getWholeName();
     } else {
       str = file->baseName();
     }

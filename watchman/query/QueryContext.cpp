@@ -50,6 +50,17 @@ json_ref QueryDebugInfo::render() const {
   });
 }
 
+void QueryContext::resetWholeName() {
+  wholename_.reset();
+}
+
+const w_string& QueryContext::getWholeName() {
+  if (!wholename_) {
+    wholename_ = computeWholeName(file.get());
+  }
+  return wholename_;
+}
+
 w_string QueryContext::computeWholeName(FileResult* file) const {
   uint32_t name_start;
 

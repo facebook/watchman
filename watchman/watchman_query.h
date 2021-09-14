@@ -176,11 +176,6 @@ watchman::QueryResult w_query_execute(
     const std::shared_ptr<watchman_root>& root,
     watchman::QueryGenerator generator);
 
-// Returns a shared reference to the wholename
-// of the file.  The caller must not delref
-// the reference.
-const w_string& w_query_ctx_get_wholename(watchman::QueryContext* ctx);
-
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
     const std::shared_ptr<watchman_root>& root,

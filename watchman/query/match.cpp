@@ -9,6 +9,7 @@
 #include <string>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman_query.h"
 
@@ -40,7 +41,7 @@ class WildMatchExpr : public QueryExpr {
     bool res;
 
     if (wholename) {
-      str = w_query_ctx_get_wholename(ctx);
+      str = ctx->getWholeName();
     } else {
       str = file->baseName();
     }

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include "watchman/Errors.h"
+#include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
 #ifdef HAVE_PCRE_H
@@ -36,7 +37,7 @@ class PcreExpr : public QueryExpr {
     int rc;
 
     if (wholename) {
-      str = w_query_ctx_get_wholename(ctx);
+      str = ctx->getWholeName();
     } else {
       str = file->baseName();
     }
