@@ -17,10 +17,10 @@
 #include "watchman/Clock.h"
 #include "watchman/FileSystem.h"
 #include "watchman/query/FileResult.h"
+#include "watchman/query/QueryExpr.h"
 
 namespace watchman {
 struct QueryContext;
-class QueryContextBase;
 } // namespace watchman
 
 struct watchman_file;
@@ -41,61 +41,12 @@ struct w_query_path {
   int depth;
 };
 
-// Describes how terms are being aggregated
-enum AggregateOp {
-  AnyOf,
-  AllOf,
-};
-
-using EvaluateResult = folly::Optional<bool>;
-
-class QueryContextBase {
- public:
-  // root number, ticks at start of query execution
-  ClockSpec clockAtStartOfQuery;
-  uint32_t lastAgeOutTickValueAtStartOfQuery;
-
-  virtual ~QueryContextBase() = default;
-
-  /**
-   * Returns the wholename of this query's current file.
-
-   * Note: The wholename is lazily computed and the returned reference is valid
-   * until the next file is set.
-   */
-  virtual const w_string& getWholeName() = 0;
-
- private:
-};
-
 } // namespace watchman
-
-using watchman::AggregateOp;
-using watchman::EvaluateResult;
-using watchman::QueryContextBase;
-
-class QueryExpr {
- protected:
-  using FileResult = watchman::FileResult;
-  using QueryContext = watchman::QueryContext;
-  using w_query_path = watchman::w_query_path;
-
- public:
-  virtual ~QueryExpr();
-  virtual EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) = 0;
-
-  // If OTHER can be aggregated with THIS, returns a new expression instance
-  // representing the combined state.  Op provides information on the containing
-  // query and can be used to determine how aggregation is done.
-  // returns nullptr if no aggregation was performed.
-  virtual std::unique_ptr<QueryExpr> aggregate(
-      const QueryExpr* other,
-      const AggregateOp op) const;
-};
 
 struct watchman_glob_tree;
 
 struct w_query {
+  using QueryExpr = watchman::QueryExpr;
   using QueryFieldList = watchman::QueryFieldList;
   using w_query_path = watchman::w_query_path;
 
@@ -142,7 +93,7 @@ struct w_query {
   bool isFieldRequested(w_string_piece name) const;
 };
 
-typedef std::unique_ptr<QueryExpr> (
+typedef std::unique_ptr<watchman::QueryExpr> (
     *w_query_expr_parser)(w_query* query, const json_ref& term);
 
 bool w_query_register_expression_parser(
@@ -153,7 +104,7 @@ std::shared_ptr<w_query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query);
 
-std::unique_ptr<QueryExpr> w_query_expr_parse(
+std::unique_ptr<watchman::QueryExpr> w_query_expr_parse(
     w_query* query,
     const json_ref& term);
 

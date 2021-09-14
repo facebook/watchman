@@ -10,8 +10,8 @@
 #include <memory>
 
 namespace watchman {
+
 class QueryContextBase;
-}
 
 class ExistsExpr : public QueryExpr {
  public:
@@ -59,6 +59,8 @@ class EmptyExpr : public QueryExpr {
   }
 };
 W_TERM_PARSER("empty", EmptyExpr::parse)
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

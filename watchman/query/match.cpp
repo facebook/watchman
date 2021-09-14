@@ -13,8 +13,7 @@
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman_query.h"
 
-using watchman::CaseSensitivity;
-using watchman::QueryParseError;
+namespace watchman {
 
 class WildMatchExpr : public QueryExpr {
   std::string pattern;
@@ -149,6 +148,8 @@ W_TERM_PARSER("match", WildMatchExpr::parseMatch)
 W_TERM_PARSER("imatch", WildMatchExpr::parseIMatch)
 W_CAP_REG("wildmatch")
 W_CAP_REG("wildmatch-multislash")
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */
