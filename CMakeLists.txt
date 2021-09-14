@@ -615,7 +615,6 @@ watchman/FlagMap.cpp
 watchman/FSDetect.cpp
 watchman/GroupLookup.cpp
 watchman/InMemoryView.cpp
-watchman/LocalFileResult.cpp
 watchman/Options.cpp
 watchman/PDU.cpp
 watchman/PendingCollection.cpp
@@ -648,6 +647,8 @@ watchman/stream_unix.cpp
 watchman/stream_stdout.cpp
 # string.cpp (in libstring)
 watchman/time.cpp
+watchman/query/FileResult.cpp
+watchman/query/LocalFileResult.cpp
 watchman/query/QueryContext.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp

@@ -8,8 +8,8 @@
 #include <folly/ScopeGuard.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
-#include "watchman/LocalFileResult.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/query/LocalFileResult.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/saved_state/SavedStateInterface.h"
@@ -17,16 +17,6 @@
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
-
-FileResult::~FileResult() {}
-
-folly::Optional<DType> FileResult::dtype() {
-  auto statInfo = stat();
-  if (!statInfo.has_value()) {
-    return folly::none;
-  }
-  return statInfo->dtype();
-}
 
 const w_string& w_query_ctx_get_wholename(QueryContext* ctx) {
   if (ctx->wholename) {

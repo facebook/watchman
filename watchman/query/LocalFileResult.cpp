@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/LocalFileResult.h"
+#include "watchman/query/LocalFileResult.h"
 #include "watchman/ContentHash.h"
 
 using folly::Optional;
