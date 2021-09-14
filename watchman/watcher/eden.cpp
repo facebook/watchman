@@ -27,6 +27,7 @@
 #include "watchman/FSDetect.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/query/GlobTree.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"

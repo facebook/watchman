@@ -7,6 +7,7 @@
 
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/GlobTree.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 

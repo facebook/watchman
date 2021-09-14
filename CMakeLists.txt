@@ -649,6 +649,7 @@ watchman/stream_stdout.cpp
 watchman/time.cpp
 watchman/query/FileResult.cpp
 watchman/query/LocalFileResult.cpp
+watchman/query/GlobTree.cpp
 watchman/query/QueryContext.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp

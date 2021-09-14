@@ -20,6 +20,7 @@
 #include "watchman/query/QueryExpr.h"
 
 namespace watchman {
+struct GlobTree;
 struct QueryContext;
 } // namespace watchman
 
@@ -43,9 +44,8 @@ struct w_query_path {
 
 } // namespace watchman
 
-struct watchman_glob_tree;
-
 struct w_query {
+  using GlobTree = watchman::GlobTree;
   using QueryExpr = watchman::QueryExpr;
   using QueryFieldList = watchman::QueryFieldList;
   using w_query_path = watchman::w_query_path;
@@ -64,7 +64,7 @@ struct w_query {
 
   folly::Optional<std::vector<w_query_path>> paths;
 
-  std::unique_ptr<watchman_glob_tree> glob_tree;
+  std::unique_ptr<GlobTree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator
   int glob_flags{0};
 
@@ -91,6 +91,8 @@ struct w_query {
   /** Returns true if the supplied name is contained in
    * the parsed fieldList in this query */
   bool isFieldRequested(w_string_piece name) const;
+
+  ~w_query();
 };
 
 typedef std::unique_ptr<watchman::QueryExpr> (
@@ -184,30 +186,6 @@ json_ref field_list_to_json_name_array(
 
 void parse_suffixes(w_query* res, const json_ref& query);
 void parse_globs(w_query* res, const json_ref& query);
-// A node in the tree of node matching rules
-struct watchman_glob_tree {
-  std::string pattern;
-
-  // The list of child rules, excluding any ** rules
-  std::vector<std::unique_ptr<watchman_glob_tree>> children;
-  // The list of ** rules that exist under this node
-  std::vector<std::unique_ptr<watchman_glob_tree>> doublestar_children;
-
-  unsigned is_leaf : 1; // if true, generate files for matches
-  unsigned had_specials : 1; // if false, can do simple string compare
-  unsigned is_doublestar : 1; // pattern begins with **
-
-  watchman_glob_tree(const char* pattern, uint32_t pattern_len);
-
-  // Produces a list of globs from the glob tree, effectively
-  // performing the reverse of the original parsing operation.
-  std::vector<std::string> unparse() const;
-
-  // A helper method for unparse
-  void unparse_into(
-      std::vector<std::string>& globStrings,
-      std::string_view relative) const;
-};
 
 #define W_TERM_PARSER1(symbol, name, func)          \
   static w_ctor_fn_type(symbol) {                   \

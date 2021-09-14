@@ -9,6 +9,7 @@
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/query/GlobTree.h"
 #include "watchman/query/LocalFileResult.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/saved_state/SavedStateFactory.h"
@@ -17,6 +18,8 @@
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
+
+w_query::~w_query() = default;
 
 namespace {
 std::vector<w_string> computeUnconditionalLogFilePrefixes() {

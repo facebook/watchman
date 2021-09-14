@@ -243,12 +243,12 @@ class InMemoryView final : public QueryableView {
       uint32_t depth) const;
   void globGeneratorTree(
       QueryContext* ctx,
-      const struct watchman_glob_tree* node,
+      const GlobTree* node,
       const struct watchman_dir* dir) const;
   void globGeneratorDoublestar(
       QueryContext* ctx,
       const struct watchman_dir* dir,
-      const struct watchman_glob_tree* node,
+      const GlobTree* node,
       const char* dir_name,
       uint32_t dir_name_len) const;
   /**

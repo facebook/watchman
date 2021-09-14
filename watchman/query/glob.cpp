@@ -10,13 +10,14 @@
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/query/GlobTree.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_file.h"
 
 using std::make_unique;
-using watchman::QueryParseError;
+using namespace watchman;
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
@@ -62,19 +63,11 @@ static inline const char* find_sep_and_specials(
   return NULL;
 }
 
-watchman_glob_tree::watchman_glob_tree(
-    const char* pattern,
-    uint32_t pattern_len)
-    : pattern(pattern, pattern_len),
-      is_leaf(0),
-      had_specials(0),
-      is_doublestar(0) {}
-
 // Simple brute force lookup of pattern within a node.
 // This is run at compile time and most glob sets are low enough cardinality
 // that this doesn't turn out to be a hot spot in practice.
-static watchman_glob_tree* lookup_node_child(
-    std::vector<std::unique_ptr<watchman_glob_tree>>* vec,
+static GlobTree* lookup_node_child(
+    std::vector<std::unique_ptr<GlobTree>>* vec,
     const char* pattern,
     uint32_t pattern_len) {
   for (auto& kid : *vec) {
@@ -86,50 +79,11 @@ static watchman_glob_tree* lookup_node_child(
   return nullptr;
 }
 
-std::vector<std::string> watchman_glob_tree::unparse() const {
-  std::vector<std::string> result;
-  unparse_into(result, "");
-  return result;
-}
-
-// Performs the heavy lifting for reversing the parse process
-// to compute a list of glob strings.
-// `globStrings` is the target array for the glob expressions.
-// `relative` is the glob-expression-so-far that the current
-// node will append to when it produces its glob string output.
-// This function recurses down the glob tree calling unparse_into
-// on its children.
-void watchman_glob_tree::unparse_into(
-    std::vector<std::string>& globStrings,
-    std::string_view relative) const {
-  auto needSlash =
-      !relative.empty() && !folly::StringPiece{relative}.endsWith('/');
-  auto optSlash = needSlash ? "/" : "";
-
-  // If there are no children of this node, it is effectively a leaf
-  // node. Leaves correspond to a concrete glob string that we need
-  // to emit, so here's where we do that.
-  if (is_leaf || children.size() + doublestar_children.size() == 0) {
-    globStrings.push_back(folly::to<std::string>(relative, optSlash, pattern));
-  }
-
-  for (auto& child : children) {
-    child->unparse_into(
-        globStrings, folly::to<std::string>(relative, optSlash, pattern));
-  }
-  for (auto& child : doublestar_children) {
-    child->unparse_into(
-        globStrings, folly::to<std::string>(relative, optSlash, pattern));
-  }
-}
-
 // Compile and add a new glob pattern to the tree.
 // Compilation splits a pattern into nodes, with one node for each directory
 // separator separated path component.
-static bool add_glob(
-    struct watchman_glob_tree* tree,
-    const w_string& glob_str) {
-  struct watchman_glob_tree* parent = tree;
+static bool add_glob(GlobTree* tree, const w_string& glob_str) {
+  GlobTree* parent = tree;
   const char* pattern = glob_str.data();
   const char* pattern_end = pattern + glob_str.size();
   bool had_specials;
@@ -145,7 +99,7 @@ static bool add_glob(
     const char* sep =
         find_sep_and_specials(pattern, pattern_end, &had_specials);
     const char* end;
-    struct watchman_glob_tree* node;
+    GlobTree* node;
     bool is_doublestar = false;
     auto* container = &parent->children;
 
@@ -170,7 +124,7 @@ static bool add_glob(
     if (!node) {
       // This is a new matching possibility.
       container->emplace_back(
-          make_unique<watchman_glob_tree>(pattern, (uint32_t)(end - pattern)));
+          make_unique<GlobTree>(pattern, (uint32_t)(end - pattern)));
       node = container->back().get();
       node->had_specials = had_specials;
       node->is_doublestar = is_doublestar;
@@ -220,7 +174,7 @@ void parse_globs(w_query* res, const json_ref& query) {
   res->glob_flags = (includedotfiles.asBool() ? 0 : WM_PERIOD) |
       (noescape.asBool() ? WM_NOESCAPE : 0);
 
-  res->glob_tree = make_unique<watchman_glob_tree>("", 0);
+  res->glob_tree = make_unique<GlobTree>("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
     const auto& ele = globs.at(i);
     const auto& pattern = json_to_w_string(ele);
@@ -265,7 +219,7 @@ void parse_suffixes(w_query* res, const json_ref& query) {
   res->dedup_results = true;
   // Suffix queries are defined as being case insensitive
   res->glob_flags = WM_CASEFOLD;
-  res->glob_tree = folly::make_unique<watchman_glob_tree>("", 0);
+  res->glob_tree = folly::make_unique<GlobTree>("", 0);
 
   for (auto& ele : suffixArray) {
     if (!ele.isString()) {
@@ -317,7 +271,7 @@ namespace watchman {
 void InMemoryView::globGeneratorDoublestar(
     QueryContext* ctx,
     const struct watchman_dir* dir,
-    const struct watchman_glob_tree* node,
+    const GlobTree* node,
     const char* dir_name,
     uint32_t dir_name_len) const {
   bool matched;
@@ -381,7 +335,7 @@ void InMemoryView::globGeneratorDoublestar(
 /* Match each child of node against the children of dir */
 void InMemoryView::globGeneratorTree(
     QueryContext* ctx,
-    const struct watchman_glob_tree* node,
+    const GlobTree* node,
     const struct watchman_dir* dir) const {
   if (!node->doublestar_children.empty()) {
     globGeneratorDoublestar(ctx, dir, node, nullptr, 0);

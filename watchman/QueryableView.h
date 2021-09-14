@@ -15,7 +15,6 @@
 
 struct watchman_file;
 struct watchman_dir;
-struct watchman_glob_tree;
 
 namespace watchman {
 
