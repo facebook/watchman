@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "SymlinkTargets.h"
+#include "watchman/SymlinkTargets.h"
 #include <folly/ScopeGuard.h>
 #include <string>
 #include "watchman/FileSystem.h"

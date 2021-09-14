@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "QueryableView.h"
+#include "watchman/QueryableView.h"
 #include "watchman/Errors.h"
 
 namespace watchman {

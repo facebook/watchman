@@ -10,8 +10,8 @@
 #include <future>
 #include <vector>
 #include "watchman/PerfSample.h"
+#include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
-#include "watchman_query.h"
 
 struct watchman_file;
 struct watchman_dir;
