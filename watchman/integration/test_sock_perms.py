@@ -16,7 +16,6 @@ import time
 
 import pywatchman
 import WatchmanInstance
-import WatchmanTestCase
 
 
 try:

@@ -348,7 +348,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
 
     def fileListContains(self, list1, list2):
         """return true if list1 contains each unique element in list2"""
-        set1 = set([norm_relative_path(f) for f in list1])
+        set1 = {norm_relative_path(f) for f in list1}
         list2 = [norm_relative_path(f) for f in list2]
         return set1.issuperset(list2)
 

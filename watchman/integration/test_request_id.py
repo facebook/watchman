@@ -16,12 +16,6 @@ import WatchmanInstance
 import WatchmanTestCase
 
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
-
 def is_hg_installed():
     with open(os.devnull, "wb") as devnull:
         try:

@@ -11,7 +11,6 @@ import os
 import unittest
 
 import pywatchman
-import WatchmanInstance
 import WatchmanSCMTestCase
 import WatchmanTestCase
 

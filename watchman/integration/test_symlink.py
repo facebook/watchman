@@ -15,12 +15,6 @@ import sys
 import WatchmanTestCase
 
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
-
 def buggy_fsevents():
     """older versions of macOS had some problems reporting changes
     when a symlink was updated to a dangling value.  This was

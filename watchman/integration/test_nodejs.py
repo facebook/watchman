@@ -15,16 +15,11 @@ import re
 import shutil
 import signal
 import subprocess
+import unittest
 
 import Interrupt
 import WatchmanInstance
 import WatchmanTestCase
-
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 
 def find_node():
