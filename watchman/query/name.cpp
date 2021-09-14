@@ -25,7 +25,7 @@ class NameExpr : public QueryExpr {
         wholename(wholename) {}
 
  public:
-  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     if (!set.empty()) {
       bool matched;
       w_string str;

@@ -22,7 +22,7 @@ class NotExpr : public QueryExpr {
   explicit NotExpr(std::unique_ptr<QueryExpr> other_expr)
       : expr(std::move(other_expr)) {}
 
-  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     auto res = expr->evaluate(ctx, file);
     if (!res.has_value()) {
       return res;
@@ -48,7 +48,7 @@ W_TERM_PARSER("not", NotExpr::parse)
 
 class TrueExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(QueryContext*, FileResult*) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult*) override {
     return true;
   }
 
@@ -61,7 +61,7 @@ W_TERM_PARSER("true", TrueExpr::parse)
 
 class FalseExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(QueryContext*, FileResult*) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult*) override {
     return false;
   }
 
@@ -80,7 +80,7 @@ class ListExpr : public QueryExpr {
   ListExpr(bool isAll, std::vector<std::unique_ptr<QueryExpr>> exprs)
       : allof(isAll), exprs(std::move(exprs)) {}
 
-  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     bool needData = false;
 
     for (auto& expr : exprs) {

@@ -9,9 +9,13 @@
 
 #include <memory>
 
+namespace watchman {
+class QueryContextBase;
+}
+
 class ExistsExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult* file) override {
     return file->exists();
   }
 
@@ -23,7 +27,7 @@ W_TERM_PARSER("exists", ExistsExpr::parse)
 
 class EmptyExpr : public QueryExpr {
  public:
-  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult* file) override {
     auto exists = file->exists();
     auto stat = file->stat();
     auto size = file->size();

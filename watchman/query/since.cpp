@@ -6,12 +6,15 @@
  */
 
 #include "watchman/Errors.h"
-#include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
 #include <memory>
 
 using namespace watchman;
+
+namespace watchman {
+class QueryContextBase;
+}
 
 enum since_what { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
 
@@ -33,7 +36,7 @@ class SinceExpr : public QueryExpr {
   explicit SinceExpr(std::unique_ptr<ClockSpec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
-  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     time_t tval = 0;
 
     auto since = spec->evaluate(

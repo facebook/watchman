@@ -10,6 +10,7 @@
 #include <folly/stop_watch.h>
 #include <unordered_set>
 #include "watchman/Clock.h"
+#include "watchman/watchman_query.h"
 
 struct w_query;
 struct watchman_file;
@@ -29,7 +30,7 @@ enum class QueryContextState {
 };
 
 // Holds state for the execution of a query
-struct QueryContext {
+struct QueryContext : QueryContextBase {
   std::chrono::time_point<std::chrono::steady_clock> created;
   folly::stop_watch<std::chrono::milliseconds> stopWatch;
   std::atomic<QueryContextState> state{QueryContextState::NotStarted};
@@ -51,9 +52,6 @@ struct QueryContext {
   std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
   QuerySince since;
-  // root number, ticks at start of query execution
-  ClockSpec clockAtStartOfQuery;
-  uint32_t lastAgeOutTickValueAtStartOfQuery;
 
   // Rendered results
   json_ref resultsArray;
@@ -97,7 +95,7 @@ struct QueryContext {
    * of the file.  The caller must not delref
    * the reference.
    */
-  const w_string& getWholeName();
+  const w_string& getWholeName() override;
 
   // Adds `file` to the currently accumulating batch of files
   // that require data to be loaded.

@@ -13,6 +13,10 @@
 
 using namespace watchman;
 
+namespace watchman {
+class QueryContextBase;
+}
+
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';
 }
@@ -30,7 +34,7 @@ class DirNameExpr : public QueryExpr {
       StartsWith startswith)
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
-  EvaluateResult evaluate(QueryContext* ctx, FileResult*) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult*) override {
     auto& str = ctx->getWholeName();
 
     if (str.size() <= dirname.size()) {

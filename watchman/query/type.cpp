@@ -18,7 +18,7 @@ class TypeExpr : public QueryExpr {
  public:
   explicit TypeExpr(char arg) : arg(arg) {}
 
-  EvaluateResult evaluate(QueryContext*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult* file) override {
     auto optionalDtype = file->dtype();
     if (!optionalDtype.has_value()) {
       return folly::none;

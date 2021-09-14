@@ -32,7 +32,7 @@ class PcreExpr : public QueryExpr {
     }
   }
 
-  EvaluateResult evaluate(QueryContext* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     w_string_piece str;
     int rc;
 
