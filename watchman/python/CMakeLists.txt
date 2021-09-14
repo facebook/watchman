@@ -20,7 +20,7 @@ set(DEPS
 )
 
 add_custom_command(OUTPUT ${PYOUT}
-  COMMAND ${Python3_EXECUTABLE} ${SETUP_PY} build
+  COMMAND ${CMAKE_COMMAND} -E env VSCMD_ARG_NO_EXT=1 ${Python3_EXECUTABLE} ${SETUP_PY} build
   COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
   DEPENDS ${DEPS}
   COMMENT "Building pywatchman")
