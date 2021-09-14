@@ -21,6 +21,7 @@
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
+#include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
 #include "watchman/ProcessLock.h"
 #include "watchman/TempDir.h"
@@ -31,7 +32,6 @@
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_pdu.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 

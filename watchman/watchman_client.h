@@ -12,8 +12,8 @@
 #include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/Logging.h"
+#include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
-#include "watchman/watchman_pdu.h"
 #include "watchman/watchman_stream.h"
 
 struct w_query;

@@ -617,6 +617,7 @@ watchman/GroupLookup.cpp
 watchman/InMemoryView.cpp
 watchman/LocalFileResult.cpp
 watchman/Options.cpp
+watchman/PDU.cpp
 watchman/PendingCollection.cpp
 watchman/PerfSample.cpp
 watchman/Pipe.cpp
@@ -634,7 +635,6 @@ watchman/bser.cpp
 watchman/clientmode.cpp
 # hash.cpp (in libhash)
 watchman/ignore.cpp
-watchman/json.cpp
 watchman/launchd.cpp
 watchman/listener-user.cpp
 watchman/listener.cpp

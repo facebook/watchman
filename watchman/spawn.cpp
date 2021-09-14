@@ -9,8 +9,8 @@
 #include <memory>
 #include "watchman/ChildProcess.h"
 #include "watchman/Errors.h"
+#include "watchman/PDU.h"
 #include "watchman/TempDir.h"
-#include "watchman/watchman_pdu.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"

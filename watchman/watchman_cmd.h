@@ -9,7 +9,7 @@
 
 #include <stdexcept>
 #include "watchman/CommandRegistry.h"
-#include "watchman/watchman_pdu.h"
+#include "watchman/PDU.h"
 #include "watchman/watchman_preprocessor.h"
 #include "watchman/watchman_system.h"
 
