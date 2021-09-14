@@ -8,6 +8,7 @@
 #include "watchman/Errors.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
+#include "watchman/query/TermRegistry.h"
 #include "watchman/watchman_query.h"
 
 #include <memory>

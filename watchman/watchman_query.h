@@ -30,13 +30,6 @@ using QueryFieldList = std::vector<QueryFieldRenderer*>;
 struct watchman_file;
 struct watchman_root;
 
-typedef std::unique_ptr<watchman::QueryExpr> (
-    *w_query_expr_parser)(watchman::Query* query, const json_ref& term);
-
-bool w_query_register_expression_parser(
-    const char* term,
-    w_query_expr_parser parser);
-
 std::shared_ptr<watchman::Query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query);
@@ -121,15 +114,6 @@ json_ref field_list_to_json_name_array(
 
 void parse_suffixes(watchman::Query* res, const json_ref& query);
 void parse_globs(watchman::Query* res, const json_ref& query);
-
-#define W_TERM_PARSER1(symbol, name, func)          \
-  static w_ctor_fn_type(symbol) {                   \
-    w_query_register_expression_parser(name, func); \
-  }                                                 \
-  w_ctor_fn_reg(symbol)
-
-#define W_TERM_PARSER(name, func) \
-  W_TERM_PARSER1(w_gen_symbol(w_term_register_), name, func)
 
 #endif
 

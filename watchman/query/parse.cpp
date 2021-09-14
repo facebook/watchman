@@ -9,31 +9,11 @@
 #include "watchman/Errors.h"
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
+#include "watchman/query/TermRegistry.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
-
-// This can't be a simple global because other compilation units
-// may try to mutate it before this compilation unit has had its
-// constructors run, leading to SIOF.
-static std::unordered_map<w_string, w_query_expr_parser>& term_hash() {
-  static std::unordered_map<w_string, w_query_expr_parser> hash;
-  return hash;
-}
-
-bool w_query_register_expression_parser(
-    const char* term,
-    w_query_expr_parser parser) {
-  char capname[128];
-  w_string name(term, W_STRING_UNICODE);
-
-  snprintf(capname, sizeof(capname), "term-%s", term);
-  capability_register(capname);
-
-  term_hash()[name] = parser;
-  return true;
-}
 
 /* parse an expression term. It can be one of:
  * "term"
@@ -57,12 +37,7 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
     throw QueryParseError("expected array or string for an expression");
   }
 
-  auto it = term_hash().find(name);
-  if (it == term_hash().end()) {
-    throw QueryParseError(
-        folly::to<std::string>("unknown expression term '", name.view(), "'"));
-  }
-  return it->second(query, exp);
+  return getQueryExprParser(name)(query, exp);
 }
 
 static bool parse_since(Query* res, const json_ref& query) {
