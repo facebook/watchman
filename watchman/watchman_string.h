@@ -252,6 +252,7 @@ class w_string {
   /* implicit */ w_string(
       const char* buf,
       w_string_type_t stringType = W_STRING_BYTE);
+  explicit w_string(std::string_view sv) : w_string{sv.data(), sv.size()} {}
 
 #ifdef _WIN32
   /** Convert a wide character path to utf-8 and return it as a w_string.

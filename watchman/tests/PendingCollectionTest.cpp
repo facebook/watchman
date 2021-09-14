@@ -12,6 +12,8 @@
 #include <folly/portability/GTest.h>
 #include <chrono>
 
+using namespace watchman;
+
 namespace {
 
 void build_list(
@@ -140,7 +142,7 @@ class NaivePendingCollection {
   void add(
       const w_string& path,
       std::chrono::system_clock::time_point now,
-      int flags) {
+      PendingFlags flags) {
     for (std::shared_ptr<watchman_pending_fs> p = head_; p; p = p->next) {
       if (w_string_startswith(path, p->path) &&
           watchman::is_path_prefix(path, p->path)) {
@@ -154,9 +156,10 @@ class NaivePendingCollection {
     for (std::shared_ptr<watchman_pending_fs> p = head_; p; p = p->next) {
       if (p->path == path) {
         // consolidateItem
-        p->flags |= flags &
+        p->flags.set(
+            flags &
             (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE |
-             W_PENDING_IS_DESYNCED);
+             W_PENDING_IS_DESYNCED));
         // TODO: should prune here
         return;
       }
@@ -207,7 +210,7 @@ TYPED_TEST_SUITE(PendingCollectionFixture, PCTypes);
 
 TYPED_TEST(PendingCollectionFixture, add_one_item) {
   w_string path{"foo/bar"};
-  int flags = 0;
+  PendingFlags flags;
 
   this->coll.add(path, this->now, flags);
 
@@ -215,11 +218,11 @@ TYPED_TEST(PendingCollectionFixture, add_one_item) {
   ASSERT_NE(nullptr, item);
   EXPECT_EQ(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/bar"}, item->path);
-  EXPECT_EQ(0, item->flags);
+  EXPECT_EQ(PendingFlags{}, item->flags);
 }
 
 TYPED_TEST(PendingCollectionFixture, add_two_items) {
-  int flags = 0;
+  PendingFlags flags;
 
   this->coll.add(w_string{"foo/bar"}, this->now, flags);
   this->coll.add(w_string{"foo/baz"}, this->now, flags);
@@ -228,17 +231,17 @@ TYPED_TEST(PendingCollectionFixture, add_two_items) {
   ASSERT_NE(nullptr, item);
   EXPECT_NE(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/baz"}, item->path);
-  EXPECT_EQ(0, item->flags);
+  EXPECT_EQ(PendingFlags{}, item->flags);
 
   item = item->next;
   ASSERT_NE(nullptr, item);
   EXPECT_EQ(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/bar"}, item->path);
-  EXPECT_EQ(0, item->flags);
+  EXPECT_EQ(PendingFlags{}, item->flags);
 }
 
 TYPED_TEST(PendingCollectionFixture, same_item_consolidates) {
-  int flags = 0;
+  PendingFlags flags;
   this->coll.add(w_string{"foo/bar"}, this->now, flags);
   this->coll.add(w_string{"foo/bar"}, this->now, flags);
 
@@ -246,7 +249,7 @@ TYPED_TEST(PendingCollectionFixture, same_item_consolidates) {
   ASSERT_NE(nullptr, item);
   EXPECT_EQ(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/bar"}, item->path);
-  EXPECT_EQ(0, item->flags);
+  EXPECT_EQ(PendingFlags{}, item->flags);
 }
 
 TYPED_TEST(PendingCollectionFixture, prune_obsoleted_children) {
@@ -289,7 +292,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(PendingCollectionFixture, unrelated_prefixes_dont_prune) {
-  int flags = 0;
+  PendingFlags flags;
   this->coll.add(w_string{"foo/bar"}, this->now, flags);
   this->coll.add(w_string{"f"}, this->now, W_PENDING_RECURSIVE);
 
@@ -303,7 +306,7 @@ TYPED_TEST(PendingCollectionFixture, unrelated_prefixes_dont_prune) {
   ASSERT_NE(nullptr, item);
   EXPECT_EQ(nullptr, item->next);
   EXPECT_EQ(w_string{"foo/bar"}, item->path);
-  EXPECT_EQ(0, item->flags);
+  EXPECT_EQ(PendingFlags{}, item->flags);
 }
 
 TYPED_TEST(PendingCollectionFixture, queue_crawl_then_notify) {
@@ -346,17 +349,19 @@ TYPED_TEST(PendingCollectionFixture, real_example) {
   this->coll.add(
       w_string{"/home/chadaustin/tmp/watchmanroots/test-root/foo/baz"},
       this->now,
-      3);
+      W_PENDING_NONRECURSIVE_SCAN | W_PENDING_RECURSIVE);
   this->coll.add(
       w_string{"/home/chadaustin/tmp/watchmanroots/test-root/foo/baz"},
       this->now,
-      2);
+      W_PENDING_NONRECURSIVE_SCAN);
   this->coll.add(
       w_string{"/home/chadaustin/tmp/watchmanroots/test-root/foo/baq"},
       this->now,
-      2);
+      W_PENDING_NONRECURSIVE_SCAN);
   this->coll.add(
-      w_string{"/home/chadaustin/tmp/watchmanroots/test-root/f"}, this->now, 3);
+      w_string{"/home/chadaustin/tmp/watchmanroots/test-root/f"},
+      this->now,
+      W_PENDING_NONRECURSIVE_SCAN | W_PENDING_RECURSIVE);
 
   EXPECT_EQ(3, this->coll.getPendingItemCount());
 

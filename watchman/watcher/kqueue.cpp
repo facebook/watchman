@@ -290,7 +290,9 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
 
     // TODO: W_PENDING_VIA_NOTIFY should always be set
     coll.add(
-        path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
+        path,
+        now,
+        is_dir ? PendingFlags{} : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
   }
 
   return {false};

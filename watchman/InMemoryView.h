@@ -365,7 +365,7 @@ class InMemoryView final : public QueryableView {
 
     // fields from PendingChange
     std::chrono::system_clock::time_point now;
-    unsigned char pending_flags;
+    PendingFlags::UnderlyingType pending_flags;
     char path_tail[kPathLength];
 
     // results of calling getFileInformation

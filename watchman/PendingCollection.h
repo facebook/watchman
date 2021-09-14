@@ -11,10 +11,18 @@
 #include <folly/futures/Promise.h>
 #include <chrono>
 #include <condition_variable>
+#include "watchman/OptionSet.h"
 #include "watchman/thirdparty/libart/src/art.h"
 #include "watchman/watchman_string.h"
 
+struct watchman_dir;
+
 namespace watchman {
+
+struct PendingFlags : OptionSet<PendingFlags, uint8_t> {
+  using OptionSet::OptionSet;
+  static const NameTable table;
+};
 
 /**
  * Set when this change requires a recursive scan of its children.
@@ -25,7 +33,8 @@ namespace watchman {
  * entry is already flagged as requiring a recursive scan, then children can be
  * pruned.
  */
-#define W_PENDING_RECURSIVE 1
+constexpr inline auto W_PENDING_RECURSIVE = PendingFlags::raw(1);
+
 /**
  * Set when this change requires a non-recursive scan of its children.
  *
@@ -34,7 +43,8 @@ namespace watchman {
  *
  * This flag indicates to the IO thread that it must do such a scan.
  */
-#define W_PENDING_NONRECURSIVE_SCAN 2
+constexpr inline auto W_PENDING_NONRECURSIVE_SCAN = PendingFlags::raw(2);
+
 /**
  * This change event came from a watcher.
  *
@@ -44,7 +54,8 @@ namespace watchman {
  * iothread uses this flag to detect whether cookie events were discovered via a
  * crawl or watcher.
  */
-#define W_PENDING_VIA_NOTIFY 4
+constexpr inline auto W_PENDING_VIA_NOTIFY = PendingFlags::raw(4);
+
 /**
  * Set by the IO thread when it adds new pending paths while crawling.
  *
@@ -53,7 +64,8 @@ namespace watchman {
  *
  * Sort of exclusive with VIA_NOTIFY...
  */
-#define W_PENDING_CRAWL_ONLY 8
+constexpr inline auto W_PENDING_CRAWL_ONLY = PendingFlags::raw(8);
+
 /**
  * Set when the watcher is desynced and may have missed filesystem events. The
  * watcher is no longer guaranteed to report every file or directory, which
@@ -61,7 +73,7 @@ namespace watchman {
  * also be set alongside it to force an recrawl of the passed in directory.
  * Cookies will not be considered when this flag is set.
  */
-#define W_PENDING_IS_DESYNCED 16
+constexpr inline auto W_PENDING_IS_DESYNCED = PendingFlags::raw(16);
 
 /**
  * Represents a change notification from the Watcher.
@@ -69,10 +81,8 @@ namespace watchman {
 struct PendingChange {
   w_string path;
   std::chrono::system_clock::time_point now;
-  int flags;
+  PendingFlags flags;
 };
-
-} // namespace watchman
 
 struct watchman_pending_fs : watchman::PendingChange {
   // We own the next entry and will destroy that chain when we
@@ -82,7 +92,7 @@ struct watchman_pending_fs : watchman::PendingChange {
   watchman_pending_fs(
       w_string path,
       std::chrono::system_clock::time_point now,
-      int flags)
+      PendingFlags flags)
       : PendingChange{std::move(path), now, flags} {}
 
  private:
@@ -115,12 +125,12 @@ class PendingChanges {
   void add(
       const w_string& path,
       std::chrono::system_clock::time_point now,
-      int flags);
+      PendingFlags flags);
   void add(
-      struct watchman_dir* dir,
+      watchman_dir* dir,
       const char* name,
       std::chrono::system_clock::time_point now,
-      int flags);
+      PendingFlags flags);
 
   /**
    * Add a sync request. The consumer of this sync should fulfill it after
@@ -161,8 +171,8 @@ class PendingChanges {
   std::vector<folly::Promise<folly::Unit>> syncs_;
 
  private:
-  void maybePruneObsoletedChildren(w_string path, int flags);
-  inline void consolidateItem(watchman_pending_fs* p, int flags);
+  void maybePruneObsoletedChildren(w_string path, PendingFlags flags);
+  inline void consolidateItem(watchman_pending_fs* p, PendingFlags flags);
   bool isObsoletedByContainingDir(const w_string& path);
   inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
   inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
@@ -208,8 +218,6 @@ class PendingCollection
   // Notified on ping().
   std::condition_variable cond_;
 };
-
-namespace watchman {
 
 // Since the tree has no internal knowledge about path structures, when we
 // search for "foo/bar" it may return a prefix match for an existing node

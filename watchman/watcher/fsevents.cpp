@@ -770,20 +770,20 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
         continue;
       }
 
-      int flags = W_PENDING_VIA_NOTIFY;
+      PendingFlags flags = W_PENDING_VIA_NOTIFY;
 
       if (item.flags &
           (kFSEventStreamEventFlagMustScanSubDirs |
            kFSEventStreamEventFlagItemRenamed)) {
-        flags |= W_PENDING_RECURSIVE;
+        flags.set(W_PENDING_RECURSIVE);
       } else if (!hasFileWatching_) {
-        flags |= W_PENDING_NONRECURSIVE_SCAN;
+        flags.set(W_PENDING_NONRECURSIVE_SCAN);
       }
 
       if (item.flags &
           (kFSEventStreamEventFlagUserDropped |
            kFSEventStreamEventFlagKernelDropped)) {
-        flags |= W_PENDING_IS_DESYNCED;
+        flags.set(W_PENDING_IS_DESYNCED);
       }
 
       coll.add(item.path, now, flags);

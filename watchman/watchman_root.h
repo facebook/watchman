@@ -74,7 +74,10 @@ class ClientStateAssertions {
 } // namespace watchman
 
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
+  // TODO: Remove these when watchman_root is moved into the watchman
+  // namespace;.
   using QueryContext = watchman::QueryContext;
+  using PendingCollection = watchman::PendingCollection;
 
   /* path to root */
   w_string root_path;

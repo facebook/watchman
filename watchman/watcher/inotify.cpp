@@ -263,7 +263,7 @@ bool InotifyWatcher::process_inotify_event(
   } else if (ine->wd != -1) {
     w_string name;
     char buf[WATCHMAN_NAME_MAX];
-    int pending_flags = W_PENDING_VIA_NOTIFY;
+    PendingFlags pending_flags = W_PENDING_VIA_NOTIFY;
     w_string dir_name;
 
     {
@@ -359,7 +359,7 @@ bool InotifyWatcher::process_inotify_event(
       }
 
       if (ine->mask & (IN_CREATE | IN_DELETE)) {
-        pending_flags |= W_PENDING_RECURSIVE;
+        pending_flags.set(W_PENDING_RECURSIVE);
       }
 
       logf(

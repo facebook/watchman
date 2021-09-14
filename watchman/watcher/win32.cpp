@@ -30,9 +30,9 @@ namespace {
 
 struct Item {
   w_string path;
-  int flags;
+  PendingFlags flags;
 
-  Item(w_string&& path, int flags) : path(std::move(path)), flags(flags) {}
+  Item(w_string&& path, PendingFlags flags) : path(std::move(path)), flags(flags) {}
 };
 
 } // namespace
@@ -64,8 +64,6 @@ struct WinWatcher : public Watcher {
 
 WinWatcher::WinWatcher(watchman_root* root)
     : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-  int err;
-
   auto wpath = root->root_path.piece().asWideUNC();
 
   // Create an overlapped handle so that we can avoid blocking forever
@@ -309,8 +307,6 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
 }
 
 bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
-  int err;
-
   // Spin up the changes reading thread; it owns a ref on the root
 
   try {
@@ -386,7 +382,7 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
         "readchanges: add pending ",
         item.path,
         " ",
-        item.flags,
+        item.flags.format(),
         "\n");
     coll.add(item.path, now, W_PENDING_VIA_NOTIFY | item.flags);
   }

@@ -8,7 +8,6 @@
 #include "watchman/PendingCollection.h"
 #include <folly/Synchronized.h>
 #include "watchman/Cookie.h"
-#include "watchman/FlagMap.h"
 #include "watchman/Logging.h"
 #include "watchman/watchman_dir.h"
 
@@ -16,16 +15,13 @@ using namespace watchman;
 
 namespace watchman {
 
-namespace {
-constexpr flag_map kFlags[] = {
+const PendingFlags::NameTable PendingFlags::table = {
     {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
     {W_PENDING_RECURSIVE, "RECURSIVE"},
     {W_PENDING_NONRECURSIVE_SCAN, "NONRECURSIVE_SCAN"},
     {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
     {W_PENDING_IS_DESYNCED, "IS_DESYNCED"},
-    {0, NULL},
 };
-}
 
 bool is_path_prefix(
     const char* path,
@@ -64,9 +60,7 @@ void PendingChanges::clear() {
 void PendingChanges::add(
     const w_string& path,
     std::chrono::system_clock::time_point now,
-    int flags) {
-  char flags_label[128];
-
+    PendingFlags flags) {
   auto existing = tree_.search(path);
   if (existing) {
     /* Entry already exists: consolidate */
@@ -84,18 +78,17 @@ void PendingChanges::add(
 
   maybePruneObsoletedChildren(path, flags);
 
-  w_expand_flags(kFlags, flags, flags_label, sizeof(flags_label));
-  logf(DBG, "add_pending: {} {}\n", path, flags_label);
+  logf(DBG, "add_pending: {} {}\n", path, flags.format());
 
   tree_.insert(path, p);
   linkHead(std::move(p));
 }
 
 void PendingChanges::add(
-    struct watchman_dir* dir,
+    watchman_dir* dir,
     const char* name,
     std::chrono::system_clock::time_point now,
-    int flags) {
+    PendingFlags flags) {
   return add(dir->getFullPathToChild(name), now, flags);
 }
 
@@ -157,7 +150,9 @@ uint32_t PendingChanges::getPendingItemCount() const {
 
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
-void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
+void PendingChanges::maybePruneObsoletedChildren(
+    w_string path,
+    PendingFlags flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
     uint32_t pruned = 0;
@@ -185,7 +180,8 @@ void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
           p,
           "Pending changes should be removed from both the list and the tree.");
 
-      if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > path.size() &&
+      if (!p->flags.contains(W_PENDING_CRAWL_ONLY) &&
+          key.size() > path.size() &&
           is_path_prefix(
               (const char*)key.data(), key.size(), path.data(), path.size()) &&
           !watchman::isPossiblyACookie(p->path)) {
@@ -229,15 +225,18 @@ void PendingChanges::maybePruneObsoletedChildren(w_string path, int flags) {
   }
 }
 
-void PendingChanges::consolidateItem(watchman_pending_fs* p, int flags) {
+void PendingChanges::consolidateItem(
+    watchman_pending_fs* p,
+    PendingFlags flags) {
   // Increase the strength of the pending item if either of these
   // flags are set.
   // We upgrade crawl-only as well as recursive; it indicates that
   // we've recently just performed the stat and we want to avoid
   // infinitely trying to stat-and-crawl
-  p->flags |= flags &
+  p->flags.set(
+      flags &
       (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE |
-       W_PENDING_NONRECURSIVE_SCAN | W_PENDING_IS_DESYNCED);
+       W_PENDING_NONRECURSIVE_SCAN | W_PENDING_IS_DESYNCED));
 
   maybePruneObsoletedChildren(p->path, p->flags);
 }

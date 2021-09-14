@@ -29,7 +29,7 @@ void InMemoryView::crawler(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending) {
-  bool recursive = pending.flags & W_PENDING_RECURSIVE;
+  bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
 
   bool stat_all;
   if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
@@ -41,7 +41,7 @@ void InMemoryView::crawler(
     // need to look at the files again when we crawl. To avoid recursing into
     // all the subdirectories, only stat all the files/directories when this
     // directory was added by the watcher.
-    stat_all = pending.flags & W_PENDING_NONRECURSIVE_SCAN;
+    stat_all = pending.flags.contains(W_PENDING_NONRECURSIVE_SCAN);
   }
 
   auto dir = view.resolveDir(pending.path, true);
@@ -148,20 +148,20 @@ void InMemoryView::crawler(
       if (!file || !file->exists || stat_all || recursive) {
         auto full_path = dir->getFullPathToChild(name);
 
-        int newFlags = 0;
+        PendingFlags newFlags;
         if (recursive || !file || !file->exists) {
-          newFlags |= W_PENDING_RECURSIVE;
+          newFlags.set(W_PENDING_RECURSIVE);
         }
         if (pending.flags & W_PENDING_IS_DESYNCED) {
-          newFlags |= W_PENDING_IS_DESYNCED;
+          newFlags.set(W_PENDING_IS_DESYNCED);
         }
 
         logf(
             DBG,
             "in crawler calling processPath on {} oldflags={} newflags={}\n",
             full_path,
-            pending.flags,
-            newFlags);
+            pending.flags.asRaw(),
+            newFlags.asRaw());
 
         processPath(
             root,
@@ -178,7 +178,7 @@ void InMemoryView::crawler(
         ": ",
         exc.what(),
         ", re-adding to pending list to re-assess\n");
-    coll.add(path, pending.now, 0);
+    coll.add(path, pending.now, {});
   }
   osdir.reset();
 
@@ -192,7 +192,7 @@ void InMemoryView::crawler(
           dir,
           file->getName().data(),
           pending.now,
-          recursive ? W_PENDING_RECURSIVE : 0);
+          recursive ? W_PENDING_RECURSIVE : PendingFlags{});
     }
   }
 }

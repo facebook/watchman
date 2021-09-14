@@ -53,7 +53,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
      * otherwise we'll only do so if the directory has
      * observably changed via stat().
      */
-    coll.add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : 0);
+    coll.add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : PendingFlags{});
     return true;
   }
   return false;
@@ -65,9 +65,9 @@ void InMemoryView::statPath(
     PendingChanges& coll,
     const PendingChange& pending,
     const watchman_dir_ent* pre_stat) {
-  bool recursive = pending.flags & W_PENDING_RECURSIVE;
-  const bool via_notify = pending.flags & W_PENDING_VIA_NOTIFY;
-  const int desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
+  bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
+  const bool via_notify = pending.flags.contains(W_PENDING_VIA_NOTIFY);
+  const PendingFlags desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
 
   if (root.ignore.isIgnoreDir(pending.path)) {
     logf(DBG, "{} matches ignore_dir rules\n", pending.path);
@@ -244,7 +244,7 @@ void InMemoryView::statPath(
     // check for symbolic link
     if (st.isSymlink() && root.config.getBool("watch_symlinks", false)) {
       root.inner.pending_symlink_targets.lock()->add(
-          pending.path, pending.now, 0);
+          pending.path, pending.now, {});
     }
 
     if (st.isDir()) {

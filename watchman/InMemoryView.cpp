@@ -416,7 +416,7 @@ InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
     std::error_code errcode,
     const FileInformation& st) noexcept {
   this->now = pc.now;
-  this->pending_flags = pc.flags;
+  this->pending_flags = pc.flags.asRaw();
   storeTruncatedTail(this->path_tail, pc.path);
 
   this->errcode = errcode.value();
@@ -428,7 +428,8 @@ InMemoryView::PendingChangeLogEntry::PendingChangeLogEntry(
 json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
   return json_object({
       {"now", json_integer(now.time_since_epoch().count())},
-      {"pending_flags", json_integer(pending_flags)},
+      {"pending_flags",
+       typed_string_to_json(PendingFlags::raw(pending_flags).format())},
       {"path",
        w_string_to_json(w_string{path_tail, strnlen(path_tail, kPathLength)})},
       {"errcode", json_integer(errcode)},
