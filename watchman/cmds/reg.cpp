@@ -9,6 +9,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
 #include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/Poison.h"

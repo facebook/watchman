@@ -71,8 +71,6 @@ class QueryExpr {
 struct watchman_glob_tree;
 
 struct w_query {
-  using FileResult = watchman::FileResult;
-  using QueryContext = watchman::QueryContext;
   using QueryFieldList = watchman::QueryFieldList;
 
   watchman::CaseSensitivity case_sensitive{

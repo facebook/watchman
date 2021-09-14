@@ -38,15 +38,6 @@ struct command_handler_def {
   cli_cmd_validate_func cli_validate;
 };
 
-class CommandValidationError : public std::runtime_error {
- public:
-  template <typename... Args>
-  explicit CommandValidationError(Args&&... args)
-      : std::runtime_error(folly::to<std::string>(
-            "failed to validate command: ",
-            std::forward<Args>(args)...)) {}
-};
-
 void register_command(command_handler_def& defs);
 
 /**

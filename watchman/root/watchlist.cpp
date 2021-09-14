@@ -7,10 +7,10 @@
 
 #include <folly/Synchronized.h>
 #include <vector>
+#include "watchman/TriggerCommand.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/state.h"
 #include "watchman/watchman_root.h"
-#include "watchman/watchman_trigger.h"
 
 using namespace watchman;
 
@@ -344,7 +344,7 @@ bool w_root_load_state(const json_ref& state) {
         }
 
         try {
-          auto cmd = std::make_unique<watchman_trigger_command>(root, tobj);
+          auto cmd = std::make_unique<TriggerCommand>(root, tobj);
           cmd->start(root);
           auto& mapEntry = map[cmd->triggername];
           mapEntry = std::move(cmd);

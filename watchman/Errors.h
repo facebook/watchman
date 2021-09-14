@@ -96,6 +96,15 @@ class inotify_category : public std::error_category {
 // Obtain a ref to the above error category
 const std::error_category& inotify_category();
 
+class CommandValidationError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit CommandValidationError(Args&&... args)
+      : std::runtime_error(folly::to<std::string>(
+            "failed to validate command: ",
+            std::forward<Args>(args)...)) {}
+};
+
 /**
  * Represents an error parsing a query.
  */

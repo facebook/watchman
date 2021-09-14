@@ -629,6 +629,7 @@ watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/TempDir.cpp
 watchman/ThreadPool.cpp
+watchman/TriggerCommand.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/clientmode.cpp
@@ -640,7 +641,6 @@ watchman/listener.cpp
 watchman/main.cpp
 watchman/opendir.cpp
 watchman/sockname.cpp
-watchman/spawn.cpp
 watchman/state.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp

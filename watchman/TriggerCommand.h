@@ -6,17 +6,21 @@
  */
 
 #pragma once
+
 #include <thread>
+
 #include "watchman/ChildProcess.h"
 #include "watchman/PubSub.h"
-
-enum trigger_input_style { input_dev_null, input_json, input_name_list };
 
 class watchman_event;
 struct watchman_root;
 struct w_query;
 
-struct watchman_trigger_command {
+namespace watchman {
+
+enum trigger_input_style { input_dev_null, input_json, input_name_list };
+
+struct TriggerCommand {
   w_string triggername;
   std::shared_ptr<w_query> query;
   json_ref definition;
@@ -36,16 +40,21 @@ struct watchman_trigger_command {
    * of the running process */
   std::unique_ptr<watchman::ChildProcess> current_proc;
 
-  watchman_trigger_command(
+  TriggerCommand(
       const std::shared_ptr<watchman_root>& root,
       const json_ref& trig);
-  watchman_trigger_command(const watchman_trigger_command&) = delete;
-  ~watchman_trigger_command();
+  ~TriggerCommand();
 
   void stop();
   void start(const std::shared_ptr<watchman_root>& root);
 
  private:
+  TriggerCommand(const TriggerCommand&) = delete;
+  TriggerCommand(TriggerCommand&&) = delete;
+
+  TriggerCommand& operator=(const TriggerCommand&) = delete;
+  TriggerCommand& operator=(TriggerCommand&&) = delete;
+
   std::thread triggerThread_;
   std::shared_ptr<watchman::Publisher::Subscriber> subscriber_;
   std::unique_ptr<watchman_event> ping_;
@@ -55,3 +64,5 @@ struct watchman_trigger_command {
   bool maybeSpawn(const std::shared_ptr<watchman_root>& root);
   bool waitNoIntr();
 };
+
+} // namespace watchman

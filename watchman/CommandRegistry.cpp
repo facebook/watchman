@@ -5,10 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/CommandRegistry.h"
 #include <unordered_map>
 #include <unordered_set>
-
-#include "CommandRegistry.h"
+#include "watchman/Errors.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace {

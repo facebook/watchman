@@ -15,9 +15,9 @@
 #include "watchman/PendingCollection.h"
 #include "watchman/PubSub.h"
 #include "watchman/QueryableView.h"
+#include "watchman/TriggerCommand.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_ignore.h"
-#include "watchman/watchman_trigger.h"
 
 #define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -78,6 +78,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // namespace;.
   using QueryContext = watchman::QueryContext;
   using PendingCollection = watchman::PendingCollection;
+  using TriggerCommand = watchman::TriggerCommand;
 
   /* path to root */
   w_string root_path;
@@ -85,9 +86,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   const w_string fs_type;
   watchman::CaseSensitivity case_sensitive;
 
-  /* map of rule id => struct watchman_trigger_command */
+  /* map of rule id => struct TriggerCommand */
   folly::Synchronized<
-      std::unordered_map<w_string, std::unique_ptr<watchman_trigger_command>>>
+      std::unordered_map<w_string, std::unique_ptr<TriggerCommand>>>
       triggers;
 
   watchman::CookieSync cookies;

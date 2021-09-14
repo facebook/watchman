@@ -6,9 +6,9 @@
  */
 
 #include "watchman/QueryableView.h"
+#include "watchman/TriggerCommand.h"
 #include "watchman/state.h"
 #include "watchman/watchman_root.h"
-#include "watchman/watchman_trigger.h"
 
 std::shared_ptr<watchman::QueryableView> watchman_root::view() const {
   // We grab a read lock on the recrawl info to ensure that we
