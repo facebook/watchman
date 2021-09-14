@@ -355,7 +355,10 @@ QueryResult w_query_execute(
             // to see a directory returned from that call; we're only going
             // to enumerate !dirs for this case.
             w_query_process_file(
-                q, c, std::make_unique<LocalFileResult>(r, fullPath, clock));
+                q,
+                c,
+                std::make_unique<LocalFileResult>(
+                    fullPath, clock, r->case_sensitive));
           }
         };
       } else if (query->fail_if_no_saved_state) {

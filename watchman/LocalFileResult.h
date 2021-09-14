@@ -6,9 +6,11 @@
  */
 
 #pragma once
+
+#include "watchman/FileSystem.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
-#include "watchman_query.h"
 
 namespace watchman {
 
@@ -27,9 +29,9 @@ namespace watchman {
 class LocalFileResult : public FileResult {
  public:
   LocalFileResult(
-      const std::shared_ptr<watchman_root>& root_,
       w_string fullPath,
-      w_clock_t clock);
+      w_clock_t clock,
+      CaseSensitivity caseSensitivity);
 
   // Returns stat-like information about this file.  If the file doesn't
   // exist the stat information will be largely useless (it will be zeroed
@@ -68,9 +70,9 @@ class LocalFileResult : public FileResult {
 
   bool exists_{true};
   folly::Optional<FileInformation> info_;
-  std::shared_ptr<watchman_root> root_;
   w_string fullPath_;
   w_clock_t clock_;
+  CaseSensitivity caseSensitivity_;
   folly::Optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };

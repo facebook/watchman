@@ -7,25 +7,25 @@
 
 #include "watchman/LocalFileResult.h"
 #include "watchman/ContentHash.h"
-#include "watchman/Errors.h"
-#include "watchman/watchman_root.h"
 
 using folly::Optional;
 
 namespace watchman {
 
 LocalFileResult::LocalFileResult(
-    const std::shared_ptr<watchman_root>& root,
     w_string fullPath,
-    w_clock_t clock)
-    : root_(root), fullPath_(fullPath), clock_(clock) {}
+    w_clock_t clock,
+    CaseSensitivity caseSensitivity)
+    : fullPath_(std::move(fullPath)),
+      clock_(clock),
+      caseSensitivity_(caseSensitivity) {}
 
 void LocalFileResult::getInfo() {
   if (info_.has_value()) {
     return;
   }
   try {
-    info_ = getFileInformation(fullPath_.c_str(), root_->case_sensitive);
+    info_ = getFileInformation(fullPath_.c_str(), caseSensitivity_);
     exists_ = true;
   } catch (const std::exception&) {
     // Treat any error as effectively deleted
