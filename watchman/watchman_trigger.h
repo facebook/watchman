@@ -55,11 +55,3 @@ struct watchman_trigger_command {
   bool maybeSpawn(const std::shared_ptr<watchman_root>& root);
   bool waitNoIntr();
 };
-
-void w_assess_trigger(
-    const std::shared_ptr<watchman_root>& root,
-    struct watchman_trigger_command* cmd);
-std::unique_ptr<watchman_trigger_command> w_build_trigger_from_def(
-    const std::shared_ptr<watchman_root>& root,
-    const json_ref& trig,
-    char** errmsg);
