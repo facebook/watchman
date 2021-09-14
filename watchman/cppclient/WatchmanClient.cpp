@@ -88,7 +88,7 @@ SemiFuture<dynamic> WatchmanClient::run(const dynamic& cmd) {
   return conn_->run(cmd);
 }
 
-Future<WatchPathPtr> WatchmanClient::watchImpl(StringPiece path) {
+Future<WatchPathPtr> WatchmanClient::watchImpl(std::string_view path) {
   return conn_->run(dynamic::array("watch-project", path))
       .thenValue([=](dynamic&& data) {
         auto relative_path = data["relative_path"];
@@ -101,7 +101,7 @@ Future<WatchPathPtr> WatchmanClient::watchImpl(StringPiece path) {
       });
 }
 
-SemiFuture<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
+SemiFuture<WatchPathPtr> WatchmanClient::watch(std::string_view path) {
   return watchImpl(path).semi();
 }
 
@@ -150,7 +150,7 @@ SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
 
 SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     const dynamic& query,
-    StringPiece path,
+    std::string_view path,
     Executor* executor,
     SubscriptionCallback&& callback,
     std::string subscriptionName) {

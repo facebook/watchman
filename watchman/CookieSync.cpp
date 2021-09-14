@@ -121,7 +121,7 @@ folly::Future<folly::Unit> CookieSync::sync(
         std::generic_category(),
         folly::to<std::string>(
             "sync: creat(",
-            std::get<w_string>(*lastError),
+            std::get<w_string>(*lastError).view(),
             ") failed: ",
             folly::errnoStr(errCode)));
   }

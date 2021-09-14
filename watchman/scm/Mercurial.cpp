@@ -42,15 +42,15 @@ struct MercurialResult {
 };
 
 MercurialResult runMercurial(
-    std::vector<w_string_piece> cmdline,
+    std::vector<std::string_view> cmdline,
     ChildProcess::Options options,
-    folly::StringPiece description) {
+    std::string_view description) {
   ChildProcess proc{cmdline, std::move(options)};
   auto outputs = proc.communicate();
   auto status = proc.wait();
   if (status) {
-    auto output = folly::StringPiece{outputs.first}.str();
-    auto error = folly::StringPiece{outputs.second}.str();
+    auto output = std::string{outputs.first.view()};
+    auto error = std::string{outputs.second.view()};
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
     throw SCMError{
@@ -162,7 +162,7 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
 
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
-      dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
+      dirStatePath_(to<std::string>(getSCMRoot().view(), "/.hg/dirstate")),
       commitsPrior_(Configuration(), "scm_hg_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
       filesChangedBetweenCommits_(
@@ -195,9 +195,9 @@ struct timespec Mercurial::getDirStateMtime() const {
 w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     const {
   auto mtime = getDirStateMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commit = folly::to<std::string>(commitId);
+  auto key = folly::to<std::string>(
+      commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commit = std::string{commitId.view()};
 
   return mergeBases_
       .get(
@@ -212,7 +212,7 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
             if (result.output.size() != 40) {
               throw SCMError(
                   "expected merge base to be a 40 character string, got ",
-                  result.output);
+                  result.output.view());
             }
 
             return folly::makeFuture(result.output);
@@ -225,9 +225,9 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
     w_string requestId) const {
   auto mtime = getDirStateMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+  auto key = folly::to<std::string>(
+      commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = std::string{commitId.view()};
 
   return filesChangedSinceMergeBaseWith_
       .get(
@@ -341,8 +341,8 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
     w_string requestId) const {
   auto mtime = getDirStateMtime();
   auto key = folly::to<std::string>(
-      commitId, ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+      commitId.view(), ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = std::string{commitId.view()};
 
   return commitsPrior_
       .get(

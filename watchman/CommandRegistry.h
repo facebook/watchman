@@ -55,7 +55,7 @@ void register_command(command_handler_def& defs);
  * This is not thread-safe and should only be invoked from main()
  */
 command_handler_def* lookup_command(
-    folly::StringPiece cmd_name,
+    std::string_view cmd_name,
     CommandFlags mode);
 
 std::vector<command_handler_def*> get_all_commands();
@@ -80,7 +80,7 @@ std::vector<command_handler_def*> get_all_commands();
 #define W_CAP_REG(name) W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
 
 void capability_register(const char* name);
-bool capability_supported(folly::StringPiece name);
+bool capability_supported(std::string_view name);
 json_ref capability_get_list();
 
 } // namespace watchman

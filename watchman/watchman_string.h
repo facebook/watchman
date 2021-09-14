@@ -209,8 +209,8 @@ class w_string_piece {
     }
   }
 
-  operator folly::StringPiece() const {
-    return folly::StringPiece(s_, e_);
+  std::string string() const {
+    return std::string{view()};
   }
 
   std::string_view view() const {
@@ -287,15 +287,15 @@ class w_string {
     return str_;
   }
 
-  operator w_string_piece() const {
-    return piece();
+  std::string string() const {
+    return std::string{view()};
   }
 
-  operator folly::StringPiece() const {
+  std::string_view view() const {
     if (str_ == nullptr) {
-      return folly::StringPiece();
+      return {};
     }
-    return folly::StringPiece(data(), size());
+    return std::string_view(data(), size());
   }
 
   inline w_string_piece piece() const {
@@ -440,7 +440,7 @@ struct formatter<w_string> {
 
   template <typename FormatContext>
   auto format(const w_string& s, FormatContext& ctx) {
-    return format_to(ctx.out(), "{}", folly::StringPiece(s));
+    return format_to(ctx.out(), "{}", s.view());
   }
 };
 
@@ -453,7 +453,7 @@ struct formatter<w_string_piece> {
 
   template <typename FormatContext>
   auto format(const w_string_piece& s, FormatContext& ctx) {
-    return format_to(ctx.out(), "{}", folly::StringPiece(s));
+    return format_to(ctx.out(), "{}", s.view());
   }
 };
 } // namespace fmt

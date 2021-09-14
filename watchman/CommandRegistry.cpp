@@ -11,8 +11,6 @@
 #include "CommandRegistry.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
-using folly::StringPiece;
-
 namespace {
 using namespace watchman;
 
@@ -44,9 +42,10 @@ void register_command(command_handler_def& def) {
 }
 
 command_handler_def* lookup_command(
-    folly::StringPiece cmd_name,
+    std::string_view cmd_name,
     CommandFlags mode) {
-  auto it = get_reg().commands.find(cmd_name.str());
+  // TODO: Eliminate this copy in the lookup.
+  auto it = get_reg().commands.find(std::string{cmd_name});
   auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
   if (def) {
@@ -76,8 +75,9 @@ void capability_register(const char* name) {
   get_reg().capabilities.emplace(name);
 }
 
-bool capability_supported(folly::StringPiece name) {
-  return get_reg().capabilities.find(name.str()) !=
+bool capability_supported(std::string_view name) {
+  // TODO: Eliminate this copy.
+  return get_reg().capabilities.find(std::string{name}) !=
       get_reg().capabilities.end();
 }
 

@@ -36,7 +36,7 @@ command_handler_def* lookup(const json_ref& args, CommandFlags mode) {
         "invalid command: expected element 0 to be the command name");
   }
 
-  return lookup_command(json_to_w_string(jstr), mode);
+  return lookup_command(json_to_w_string(jstr).view(), mode);
 }
 } // namespace
 

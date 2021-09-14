@@ -120,7 +120,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
   HANDLE handles[2] = {olapEvent, ping};
   DWORD bytes;
 
-  w_set_thread_name("readchange ", root->root_path);
+  w_set_thread_name("readchange ", root->root_path.view());
   watchman::log(watchman::DBG, "initializing\n");
 
   // Artificial extra latency to impose around processing changes.

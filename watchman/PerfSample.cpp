@@ -229,11 +229,11 @@ void PerfLogThread::loop() noexcept {
           sample_batch,
           samples,
           [&](std::vector<std::string> sample_args) {
-            std::vector<w_string_piece> cmd;
+            std::vector<std::string_view> cmd;
             cmd.reserve(perf_cmd.array().size() + sample_args.size());
 
             for (auto& c : perf_cmd.array()) {
-              cmd.push_back(json_to_w_string(c));
+              cmd.push_back(json_to_w_string(c).view());
             }
             for (auto& sample : sample_args) {
               cmd.push_back(sample);

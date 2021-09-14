@@ -119,7 +119,7 @@ class ChildProcess {
     friend class ChildProcess;
   };
 
-  ChildProcess(std::vector<w_string_piece> args, Options&& options);
+  ChildProcess(std::vector<std::string_view> args, Options&& options);
   ChildProcess(const json_ref& args, Options&& options);
   ~ChildProcess();
 

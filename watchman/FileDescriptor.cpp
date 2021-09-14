@@ -249,9 +249,9 @@ static void checkCanonicalBaseName(const char* path) {
             "checkCanonicalBaseName(",
             path,
             "): (",
-            name,
+            name.view(),
             ") doesn't match canonical base (",
-            base,
+            base.view(),
             ")"));
   }
 #else
@@ -404,7 +404,7 @@ FileDescriptor openFileHandle(
           "open(",
           path,
           "): opened path doesn't match canonical path ",
-          opened));
+          opened.view()));
 }
 
 FileInformation FileDescriptor::getInfo() const {

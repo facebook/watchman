@@ -674,12 +674,12 @@ bool w_is_path_absolute_cstr_len(const char* path, uint32_t len) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const w_string& a) {
-  stream << folly::StringPiece(a);
+  stream << a.view();
   return stream;
 }
 
 std::ostream& operator<<(std::ostream& stream, const w_string_piece& a) {
-  stream << folly::StringPiece(a);
+  stream << a.view();
   return stream;
 }
 

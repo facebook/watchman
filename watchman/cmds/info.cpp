@@ -26,7 +26,7 @@ static bool query_caps(
   for (i = 0; i < json_array_size(arr); i++) {
     const auto& ele = arr.at(i);
     const char* capname = json_string_value(ele);
-    bool have = capability_supported(json_to_w_string(ele));
+    bool have = capability_supported(json_to_w_string(ele).view());
     if (!have) {
       have_all = false;
     }

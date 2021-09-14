@@ -252,12 +252,12 @@ void ChildProcess::Options::chdir(w_string_piece path) {
 #endif
 }
 
-static std::vector<w_string_piece> json_args_to_string_vec(
+static std::vector<std::string_view> json_args_to_string_vec(
     const json_ref& args) {
-  std::vector<w_string_piece> vec;
+  std::vector<std::string_view> vec;
 
   for (auto& arg : args.array()) {
-    vec.emplace_back(json_to_w_string(arg));
+    vec.emplace_back(json_to_w_string(arg).view());
   }
 
   return vec;
@@ -266,7 +266,9 @@ static std::vector<w_string_piece> json_args_to_string_vec(
 ChildProcess::ChildProcess(const json_ref& args, Options&& options)
     : ChildProcess(json_args_to_string_vec(args), std::move(options)) {}
 
-ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
+ChildProcess::ChildProcess(
+    std::vector<std::string_view> args,
+    Options&& options)
     : pipes_(std::move(options.pipes_)) {
   std::vector<char*> argv;
   std::vector<std::string> argStrings;

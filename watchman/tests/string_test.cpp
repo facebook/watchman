@@ -123,7 +123,8 @@ TEST(String, double) {
 }
 
 TEST(String, concat) {
-  auto str = w_string::build("one", 2, "three", 1.2, false, w_string(nullptr));
+  auto str =
+      w_string::build("one", 2, "three", 1.2, false, w_string(nullptr).view());
   EXPECT_EQ(str, w_string("one2three1.2false"));
 }
 

@@ -71,6 +71,7 @@ class Log {
 
     char timebuf[64];
 
+    auto message = fmt::format(format_str, std::forward<Args>(args)...);
     auto payload = json_object(
         {{"log",
           typed_string_to_json(w_string::build(
@@ -78,7 +79,7 @@ class Log {
               ": [",
               getThreadName(),
               "] ",
-              fmt::format(format_str, std::forward<Args>(args)...)))},
+              std::move(message)))},
          {"unilateral", json_true()},
          {"level", typed_string_to_json(logLevelToLabel(level))}});
 

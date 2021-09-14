@@ -326,7 +326,7 @@ static SpawnResult spawn_win32() {
   opts.dup2(STDOUT_FILENO, STDERR_FILENO);
   opts.chdir("/");
 
-  std::vector<w_string_piece> args{module_name, "--foreground"};
+  std::vector<std::string_view> args{module_name, "--foreground"};
   for (size_t i = 0; daemon_argv[i]; i++) {
     args.push_back(daemon_argv[i]);
   }
@@ -352,7 +352,7 @@ static SpawnResult spawn_win32() {
 // We'll pass along any daemon-appropriate arguments that
 // we noticed during argument parsing.
 static SpawnResult spawn_site_specific(const char* spawner) {
-  std::vector<w_string_piece> args{
+  std::vector<std::string_view> args{
       spawner,
   };
 
@@ -698,7 +698,7 @@ static std::string get_watchman_appdata_path() {
   // Perform path mapping from wide string to our preferred UTF8
   w_string temp_location(local_app_data, wcslen(local_app_data));
   // and use the watchman subdir of LOCALAPPDATA
-  auto watchmanDir = folly::to<std::string>(temp_location, "/watchman");
+  auto watchmanDir = folly::to<std::string>(temp_location.view(), "/watchman");
   if (mkdir(watchmanDir.c_str(), 0700) == 0 || errno == EEXIST) {
     return watchmanDir;
   }
@@ -787,7 +787,7 @@ static std::string compute_user_name() {
   if (GetUserNameW(userW, &size) && size > 0) {
     // Constructing a w_string from a WCHAR* will convert to UTF-8
     w_string user(userW, size);
-    return folly::to<std::string>(user);
+    return user.string();
   }
 
   log(FATAL,
@@ -987,10 +987,8 @@ static void parse_cmdline(int* argcp, char*** argvp) {
     // removed once TLS authentication is added to the TCP listener.
     // TODO: When this code is removed, lookup() can be changed to return a
     // const pointer.
-    lookup_command(w_string("state-enter"), CMD_DAEMON)
-        ->flags.set(CMD_ALLOW_ANY_USER);
-    lookup_command(w_string("state-leave"), CMD_DAEMON)
-        ->flags.set(CMD_ALLOW_ANY_USER);
+    lookup_command("state-enter", CMD_DAEMON)->flags.set(CMD_ALLOW_ANY_USER);
+    lookup_command("state-leave", CMD_DAEMON)->flags.set(CMD_ALLOW_ANY_USER);
   }
 }
 

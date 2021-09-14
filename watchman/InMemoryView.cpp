@@ -711,7 +711,8 @@ void InMemoryView::startThreads(const std::shared_ptr<watchman_root>& root) {
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
   logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), rootPath_);
   std::thread notifyThreadInstance([self, root]() {
-    w_set_thread_name("notify ", uintptr_t(self.get()), " ", self->rootPath_);
+    w_set_thread_name(
+        "notify ", uintptr_t(self.get()), " ", self->rootPath_.view());
     try {
       self->notifyThread(root);
     } catch (const std::exception& e) {
@@ -728,7 +729,8 @@ void InMemoryView::startThreads(const std::shared_ptr<watchman_root>& root) {
 
   // And now start the IO thread
   std::thread ioThreadInstance([self, root]() {
-    w_set_thread_name("io ", uintptr_t(self.get()), " ", self->rootPath_);
+    w_set_thread_name(
+        "io ", uintptr_t(self.get()), " ", self->rootPath_.view());
     try {
       self->ioThread(root);
     } catch (const std::exception& e) {

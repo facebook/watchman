@@ -34,15 +34,15 @@ struct GitResult {
 };
 
 GitResult runGit(
-    std::vector<w_string_piece> cmdline,
+    std::vector<std::string_view> cmdline,
     ChildProcess::Options options,
-    folly::StringPiece description) {
+    std::string_view description) {
   ChildProcess proc{cmdline, std::move(options)};
   auto outputs = proc.communicate();
   auto status = proc.wait();
   if (status) {
-    auto output = folly::StringPiece{outputs.first}.str();
-    auto error = folly::StringPiece{outputs.second}.str();
+    auto output = std::string{outputs.first.view()};
+    auto error = std::string{outputs.second.view()};
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
     throw SCMError{
@@ -107,7 +107,7 @@ SCM::StatusResult GitStatusAccumulator::finalize() const {
 
 Git::Git(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
-      indexPath_(to<std::string>(getSCMRoot(), "/.git/index")),
+      indexPath_(to<std::string>(getSCMRoot().view(), "/.git/index")),
       commitsPrior_(Configuration(), "scm_git_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_git_mergebase", 32, 10),
       filesChangedBetweenCommits_(
@@ -149,9 +149,9 @@ struct timespec Git::getIndexMtime() const {
 
 w_string Git::mergeBaseWith(w_string_piece commitId, w_string requestId) const {
   auto mtime = getIndexMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commit = folly::to<std::string>(commitId);
+  auto key = folly::to<std::string>(
+      commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commit = std::string{commitId.view()};
 
   return mergeBases_
       .get(
@@ -162,7 +162,7 @@ w_string Git::mergeBaseWith(w_string_piece commitId, w_string requestId) const {
                 makeGitOptions(requestId),
                 "query for the merge base");
 
-            auto output = to<std::string>(result.output);
+            auto output = std::string{result.output.view()};
             if (!output.empty() && output.back() == '\n') {
               output.pop_back();
             }
@@ -184,9 +184,9 @@ std::vector<w_string> Git::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
     w_string requestId) const {
   auto mtime = getIndexMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+  auto key = folly::to<std::string>(
+      commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = std::string{commitId.view()};
   return filesChangedSinceMergeBaseWith_
       .get(
           key,
@@ -242,13 +242,15 @@ std::chrono::time_point<std::chrono::system_clock> Git::getCommitDate(
     w_string_piece commitId,
     w_string requestId) const {
   auto result = runGit(
-      {gitExecutablePath(), "log", "--format:%ct", "-n", "1", commitId},
+      {gitExecutablePath(), "log", "--format:%ct", "-n", "1", commitId.view()},
       makeGitOptions(requestId),
       "get commit date");
   double timestamp;
   if (std::sscanf(result.output.c_str(), "%lf", &timestamp) != 1) {
     throw std::runtime_error(to<std::string>(
-        "failed to parse date value `", result.output, "` into a double"));
+        "failed to parse date value `",
+        result.output.view(),
+        "` into a double"));
   }
   return system_clock::from_time_t(timestamp);
 }
@@ -259,8 +261,8 @@ std::vector<w_string> Git::getCommitsPriorToAndIncluding(
     w_string requestId) const {
   auto mtime = getIndexMtime();
   auto key = folly::to<std::string>(
-      commitId, ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+      commitId.view(), ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto commitCopy = std::string{commitId.view()};
 
   return commitsPrior_
       .get(

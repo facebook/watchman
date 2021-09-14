@@ -28,7 +28,7 @@ void set_poison_state(
       ": ",
       syscall,
       "(",
-      dir,
+      dir.view(),
       ") -> ",
       err.message(),
       "\n"

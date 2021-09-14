@@ -105,8 +105,8 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
   // Check for error in the response
   auto error = result.get_default("error");
   if (error) {
-    throw std::runtime_error(
-        folly::to<std::string>("Clock error : ", json_to_w_string(error)));
+    throw std::runtime_error(folly::to<std::string>(
+        "Clock error : ", json_to_w_string(error).view()));
   }
 
   // We use presence of "clock" as success

@@ -236,7 +236,7 @@ struct watchman_glob_tree {
   // A helper method for unparse
   void unparse_into(
       std::vector<std::string>& globStrings,
-      folly::StringPiece relative) const;
+      std::string_view relative) const;
 };
 
 #define W_TERM_PARSER1(symbol, name, func)          \

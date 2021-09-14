@@ -31,24 +31,24 @@
 // based on the linux style /proc/mounts data provided.
 // It will return nullptr for paths that don't have a match.
 w_string find_fstype_in_linux_proc_mounts(
-    folly::StringPiece path,
-    folly::StringPiece procMountsData) {
-  std::vector<folly::StringPiece> lines;
-  folly::StringPiece bestMountPoint, bestVfsType;
+    std::string_view path,
+    std::string_view procMountsData) {
+  std::vector<std::string_view> lines;
+  std::string_view bestMountPoint, bestVfsType;
 
   folly::split("\n", procMountsData, lines);
   for (auto& line : lines) {
-    folly::StringPiece device, mountPoint, vfstype, opts, freq, passno;
+    std::string_view device, mountPoint, vfstype, opts, freq, passno;
     if (folly::split(
             " ", line, device, mountPoint, vfstype, opts, freq, passno)) {
       // Look for the mountPoint that matches the longest prefix of path
       if (mountPoint.size() > bestMountPoint.size() &&
-          path.startsWith(mountPoint)) {
+          folly::StringPiece{path}.startsWith(mountPoint)) {
         if (
             // mount point matches path exactly
             path.size() == mountPoint.size() ||
             // prefix ends with a slash
-            mountPoint.endsWith('/') ||
+            folly::StringPiece{mountPoint}.endsWith('/') ||
             // the byte after the mount point prefix is a slash and thus is
             // not an ambiguous prefix match
             (path.size() > mountPoint.size() &&

@@ -254,7 +254,7 @@ static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
       "` or any of its "
       "parent directories.  root_files is defined by the "
       "`",
-      cfg_get_global_config_file_path(),
+      cfg_get_global_config_file_path().view(),
       "` config file and includes ",
       root_files_list,
       ".  "

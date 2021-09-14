@@ -101,8 +101,9 @@ std::vector<std::string> watchman_glob_tree::unparse() const {
 // on its children.
 void watchman_glob_tree::unparse_into(
     std::vector<std::string>& globStrings,
-    folly::StringPiece relative) const {
-  auto needSlash = !relative.empty() && !relative.endsWith('/');
+    std::string_view relative) const {
+  auto needSlash =
+      !relative.empty() && !folly::StringPiece{relative}.endsWith('/');
   auto optSlash = needSlash ? "/" : "";
 
   // If there are no children of this node, it is effectively a leaf
@@ -136,7 +137,7 @@ static bool add_glob(
   if (glob_str.piece().pathIsAbsolute()) {
     throw QueryParseError(folly::to<std::string>(
         "glob `",
-        glob_str,
+        glob_str.view(),
         "` is an absolute path.  All globs must be relative paths!"));
   }
 
@@ -495,7 +496,7 @@ void InMemoryView::globGenerator(w_query* query, QueryContext* ctx) const {
   if (!dir) {
     throw QueryExecError(folly::to<std::string>(
         "glob_generator could not resolve ",
-        relative_root,
+        relative_root.view(),
         ", check your "
         "relative_root parameter!"));
   }

@@ -345,7 +345,7 @@ void parse_field_list(json_ref field_list, QueryFieldList* selected) {
     auto& defs = field_defs();
     auto it = defs.find(name);
     if (it == defs.end()) {
-      throw QueryParseError("unknown field name '", name, "'");
+      throw QueryParseError("unknown field name '", name.view(), "'");
     }
     selected->push_back(&it->second);
   }

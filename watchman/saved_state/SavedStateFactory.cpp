@@ -30,7 +30,7 @@ std::unique_ptr<SavedStateInterface> getInterface(
   if (storageType == "local") {
     return std::make_unique<LocalSavedStateInterface>(savedStateConfig, scm);
   }
-  throw QueryParseError("invalid storage type '", storageType, "'");
+  throw QueryParseError("invalid storage type '", storageType.view(), "'");
 }
 
 } // namespace watchman

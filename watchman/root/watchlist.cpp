@@ -181,7 +181,7 @@ json_ref watchman_root::getStatus() const {
     } else if (info->shouldRecrawl) {
       crawl_status = folly::to<std::string>(
           "needs recrawl: ",
-          info->warning,
+          info->warning.view(),
           ". Last crawl was ",
           std::chrono::duration_cast<std::chrono::milliseconds>(
               now - info->crawlFinish)

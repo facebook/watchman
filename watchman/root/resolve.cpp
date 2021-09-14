@@ -96,7 +96,7 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
 
     throw RootResolveError(
         "path uses the \"",
-        fs_type,
+        fs_type.view(),
         "\" filesystem "
         "and is disallowed by global config illegal_fstypes: ",
         advice);
@@ -137,7 +137,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
             "\"",
             filename,
             "\" resolved to \"",
-            root_str,
+            root_str.view(),
             "\" but we were "
             "unable to examine \"",
             filename,
@@ -172,7 +172,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
 
   if (root || !auto_watch) {
     if (!root) {
-      throw RootResolveError("directory ", root_str, " is not watched");
+      throw RootResolveError("directory ", root_str.view(), " is not watched");
     }
 
     // Treat this as new activity for aging purposes; this roughly maps
@@ -201,12 +201,12 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
     throw RootResolveError(
         "Your watchman administrator has configured watchman "
         "to prevent watching path `",
-        root_str,
+        root_str.view(),
         "`.  None of the files "
         "listed in global config root_files are "
         "present and enforce_root_files is set to true.  "
         "root_files is defined by the `",
-        cfg_get_global_config_file_path(),
+        cfg_get_global_config_file_path().view(),
         "` config file and "
         "includes ",
         root_files_list,

@@ -486,7 +486,7 @@ void FSEventsWatcher::FSEventsThread(
   CFFileDescriptorRef fdref;
   auto fdctx = CFFileDescriptorContext();
 
-  w_set_thread_name("fsevents ", root->root_path);
+  w_set_thread_name("fsevents ", root->root_path.view());
 
   {
     // Block until fsevents_root_start is waiting for our initialization

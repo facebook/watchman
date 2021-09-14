@@ -67,6 +67,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <folly/Executor.h>
@@ -175,7 +176,7 @@ struct WatchmanClient {
    * See https://facebook.github.io/watchman/docs/cmd/watch-project.html for
    * details.
    */
-  folly::SemiFuture<WatchPathPtr> watch(folly::StringPiece path);
+  folly::SemiFuture<WatchPathPtr> watch(std::string_view path);
 
   /**
    * Ask Watchman for its current clock in a given root.
@@ -207,7 +208,7 @@ struct WatchmanClient {
    */
   folly::SemiFuture<SubscriptionPtr> subscribe(
       const folly::dynamic& query,
-      folly::StringPiece path,
+      std::string_view path,
       folly::Executor* executor,
       SubscriptionCallback&& callback,
       std::string subscriptionName = std::string{});
@@ -232,7 +233,7 @@ struct WatchmanClient {
  private:
   void connectionCallback(folly::Try<folly::dynamic>&& try_data);
 
-  folly::Future<WatchPathPtr> watchImpl(folly::StringPiece path);
+  folly::Future<WatchPathPtr> watchImpl(std::string_view path);
 
   std::shared_ptr<WatchmanConnection> conn_;
   ErrorCallback errorCallback_;

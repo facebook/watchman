@@ -67,7 +67,7 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
   auto it = term_hash().find(name);
   if (it == term_hash().end()) {
     throw QueryParseError(
-        folly::to<std::string>("unknown expression term '", name, "'"));
+        folly::to<std::string>("unknown expression term '", name.view(), "'"));
   }
   return it->second(query, exp);
 }

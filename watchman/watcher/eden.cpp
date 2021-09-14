@@ -137,16 +137,16 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
 // the toml config file with the path to the socket.
 std::string resolveSocketPath(w_string_piece rootPath) {
 #ifdef _WIN32
-  auto configPath = to<std::string>(rootPath, "/.eden/config");
+  auto configPath = to<std::string>(rootPath.view(), "/.eden/config");
   auto config = cpptoml::parse_file(configPath);
 
   return *config->get_qualified_as<std::string>("Config.socket");
 #else
-  auto path = to<std::string>(rootPath, "/.eden/socket");
+  auto path = to<std::string>(rootPath.view(), "/.eden/socket");
   // It is important to resolve the link because the path in the eden mount
   // may exceed the maximum permitted unix domain socket path length.
   // This is actually how things our in our integration test environment.
-  return to<std::string>(readSymbolicLink(path.c_str()));
+  return readSymbolicLink(path.c_str()).string();
 #endif
 }
 
@@ -416,7 +416,7 @@ class EdenFileResult : public FileResult {
 
     if (!getShaFiles.empty()) {
       std::vector<SHA1Result> sha1s;
-      client->sync_getSHA1(sha1s, to<std::string>(rootPath_), getShaNames);
+      client->sync_getSHA1(sha1s, std::string{rootPath_.view()}, getShaNames);
 
       if (sha1s.size() != getShaFiles.size()) {
         watchman::log(
@@ -505,7 +505,7 @@ class EdenFileResult : public FileResult {
       std::vector<EntryInformationOrError> info;
       try {
         client->sync_getEntryInformation(
-            info, to<std::string>(rootPath), names);
+            info, std::string{rootPath.view()}, names);
         applyResults(info);
         return;
       } catch (const TApplicationException& ex) {
@@ -519,7 +519,7 @@ class EdenFileResult : public FileResult {
     }
 
     std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, to<std::string>(rootPath), names);
+    client->sync_getFileInformation(info, std::string{rootPath.view()}, names);
     applyResults(info);
   }
 
@@ -605,7 +605,7 @@ class EdenWrappedSCM : public SCM {
   explicit EdenWrappedSCM(std::unique_ptr<SCM> inner)
       : SCM(inner->getRootPath(), inner->getSCMRoot()),
         inner_(std::move(inner)),
-        mountPoint_(to<std::string>(getRootPath())) {}
+        mountPoint_(std::string{getRootPath().view()}) {}
 
   w_string mergeBaseWith(w_string_piece commitId, w_string requestId = nullptr)
       const override {
@@ -756,7 +756,7 @@ class EdenView final : public QueryableView {
             rootPath_,
             root->config.getInt("eden_retry_connection_count", 3))),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
-        mountPoint_(to<std::string>(root->root_path)),
+        mountPoint_(std::string{root->root_path.view()}),
         subscribeReadyFuture_(subscribeReadyPromise_.get_future()),
         splitGlobPattern_(
             root->config.getBool("eden_split_glob_pattern", false)) {
@@ -908,14 +908,14 @@ class EdenView final : public QueryableView {
           }
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {
-            mergedFileList.insert(to<std::string>(fileName));
+            mergedFileList.insert(std::string{fileName.view()});
           }
           for (auto& fileName : changedBetweenCommits.removedFiles) {
-            mergedFileList.insert(to<std::string>(fileName));
+            mergedFileList.insert(std::string{fileName.view()});
           }
           for (auto& fileName : changedBetweenCommits.addedFiles) {
-            mergedFileList.insert(to<std::string>(fileName));
-            createdFileNames.insert(to<std::string>(fileName));
+            mergedFileList.insert(std::string{fileName.view()});
+            createdFileNames.insert(std::string{fileName.view()});
           }
 
           // We don't know whether the unclean paths are added, removed
@@ -1080,8 +1080,9 @@ class EdenView final : public QueryableView {
       // to a simple * wildcard.
       auto glob = path.depth == -1 ? "**/*" : "*";
 
-      globStrings.emplace_back(to<std::string>(
-          w_string::pathCat({rel, escapeGlobSpecialChars(path.name), glob})));
+      globStrings.emplace_back(std::string{
+          w_string::pathCat({rel, escapeGlobSpecialChars(path.name), glob})
+              .view()});
     }
     executeGlobBasedQuery(globStrings, query, ctx);
   }
@@ -1101,7 +1102,8 @@ class EdenView final : public QueryableView {
 
     std::vector<std::string> globStrings;
     for (auto& glob : query->glob_tree->unparse()) {
-      globStrings.emplace_back(to<std::string>(w_string::pathCat({rel, glob})));
+      globStrings.emplace_back(
+          std::string{w_string::pathCat({rel, glob}).view()});
     }
 
     // More glob flags/functionality:
@@ -1264,7 +1266,7 @@ class EdenView final : public QueryableView {
       root->cancel();
     };
 
-    w_set_thread_name("edensub ", root->root_path);
+    w_set_thread_name("edensub ", root->root_path.view());
     watchman::log(watchman::DBG, "Started subscription thread\n");
 
     try {
@@ -1340,7 +1342,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
   if (edenRoot) {
     if (isEdenStopped(root->root_path)) {
       throw TerminalWatcherError(to<std::string>(
-          root->root_path,
+          root->root_path.view(),
           " appears to be an offline EdenFS mount. "
           "Try running `edenfsctl start` to bring it back online and "
           "then retry your watch"));
@@ -1352,7 +1354,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
     if (edenRoot == homeDotEden) {
       throw std::runtime_error(to<std::string>(
           "Not considering HOME/.eden as a valid Eden repo (found ",
-          edenRoot,
+          edenRoot.view(),
           ")"));
     }
     try {
@@ -1366,14 +1368,14 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
   }
 
   throw std::runtime_error(
-      to<std::string>("Not an Eden clone: ", root->root_path));
+      to<std::string>("Not an Eden clone: ", root->root_path.view()));
 
 #else
   if (!is_edenfs_fs_type(root->fs_type) && root->fs_type != "fuse" &&
       root->fs_type != "osxfuse_eden" && root->fs_type != "macfuse_eden" &&
       root->fs_type != "edenfs_eden") {
     // Not an active EdenFS mount.  Perhaps it isn't mounted yet?
-    auto readme = to<std::string>(root->root_path, "/README_EDEN.txt");
+    auto readme = to<std::string>(root->root_path.view(), "/README_EDEN.txt");
     try {
       (void)getFileInformation(readme.c_str());
     } catch (const std::exception&) {
@@ -1383,7 +1385,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
       // this as an EdenFS mount so record the issue and allow falling
       // back to one of the other watchers.
       throw std::runtime_error(
-          to<std::string>(root->fs_type, " is not a FUSE file system"));
+          to<std::string>(root->fs_type.view(), " is not a FUSE file system"));
     }
 
     // If we get here, then the readme file/symlink exists.
@@ -1392,14 +1394,14 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
     // and we don't want to allow falling back to inotify as that
     // will be horribly slow.
     throw TerminalWatcherError(to<std::string>(
-        root->root_path,
+        root->root_path.view(),
         " appears to be an offline EdenFS mount. "
         "Try running `eden doctor` to bring it back online and "
         "then retry your watch"));
   }
 
-  auto edenRoot =
-      readSymbolicLink(to<std::string>(root->root_path, "/.eden/root").c_str());
+  auto edenRoot = readSymbolicLink(
+      to<std::string>(root->root_path.view(), "/.eden/root").c_str());
   if (edenRoot != root->root_path) {
     // We aren't at the root of the eden mount.
     // Throw a TerminalWatcherError to indicate that the Eden watcher is the
@@ -1408,7 +1410,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
     throw TerminalWatcherError(to<std::string>(
         "you may only watch from the root of an eden mount point. "
         "Try again using ",
-        edenRoot));
+        edenRoot.view()));
   }
 #endif
   // Given that the readlink() succeeded, assume this is an Eden mount.
