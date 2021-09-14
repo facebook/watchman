@@ -11,6 +11,7 @@
 #include <folly/Range.h>
 #include <stdexcept>
 
+#include "watchman/OptionSet.h"
 #include "watchman/watchman_preprocessor.h"
 
 class json_ref;
@@ -23,16 +24,17 @@ using command_func = void (*)(watchman_client* client, const json_ref& args);
 // fails
 using cli_cmd_validate_func = void (*)(json_ref& args);
 
-using command_flags = int;
-constexpr int CMD_DAEMON = 1;
-constexpr int CMD_CLIENT = 2;
-constexpr int CMD_POISON_IMMUNE = 4;
-constexpr int CMD_ALLOW_ANY_USER = 8;
+struct CommandFlags : OptionSet<CommandFlags, uint8_t> {};
+
+inline constexpr auto CMD_DAEMON = CommandFlags::raw(1);
+inline constexpr auto CMD_CLIENT = CommandFlags::raw(2);
+inline constexpr auto CMD_POISON_IMMUNE = CommandFlags::raw(4);
+inline constexpr auto CMD_ALLOW_ANY_USER = CommandFlags::raw(8);
 
 struct command_handler_def {
   const char* name;
   command_func func;
-  command_flags flags;
+  CommandFlags flags;
   cli_cmd_validate_func cli_validate;
 };
 
@@ -52,7 +54,9 @@ void register_command(command_handler_def& defs);
  *
  * This is not thread-safe and should only be invoked from main()
  */
-command_handler_def* lookup_command(folly::StringPiece cmd_name, int mode);
+command_handler_def* lookup_command(
+    folly::StringPiece cmd_name,
+    CommandFlags mode);
 
 std::vector<command_handler_def*> get_all_commands();
 

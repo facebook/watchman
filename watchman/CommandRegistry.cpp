@@ -43,12 +43,14 @@ void register_command(command_handler_def& def) {
   capability_register(capname);
 }
 
-command_handler_def* lookup_command(folly::StringPiece cmd_name, int mode) {
+command_handler_def* lookup_command(
+    folly::StringPiece cmd_name,
+    CommandFlags mode) {
   auto it = get_reg().commands.find(cmd_name.str());
   auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
   if (def) {
-    if (mode && ((def->flags & mode) == 0)) {
+    if (mode && def->flags.containsNoneOf(mode)) {
       throw CommandValidationError(
           "command ", cmd_name, " not available in this mode");
     }

@@ -39,7 +39,7 @@ void preprocess_command(
 bool dispatch_command(
     struct watchman_client* client,
     const json_ref& args,
-    int mode);
+    watchman::CommandFlags mode);
 bool try_client_mode_command(const json_ref& cmd, bool pretty);
 
 void send_error_response(

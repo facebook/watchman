@@ -20,7 +20,8 @@
 
 using namespace watchman;
 
-command_handler_def* lookup(const json_ref& args, int mode) {
+namespace {
+command_handler_def* lookup(const json_ref& args, CommandFlags mode) {
   const char* cmd_name;
 
   if (!json_array_size(args)) {
@@ -37,6 +38,7 @@ command_handler_def* lookup(const json_ref& args, int mode) {
 
   return lookup_command(json_to_w_string(jstr), mode);
 }
+} // namespace
 
 void preprocess_command(
     json_ref& args,
@@ -45,7 +47,7 @@ void preprocess_command(
   command_handler_def* def;
 
   try {
-    def = lookup(args, 0);
+    def = lookup(args, CommandFlags{});
 
     if (!def) {
       // Nothing known about it, pass the command on anyway for forwards
@@ -72,7 +74,7 @@ void preprocess_command(
 bool dispatch_command(
     struct watchman_client* client,
     const json_ref& args,
-    int mode) {
+    CommandFlags mode) {
   command_handler_def* def;
   char sample_name[128];
 
@@ -91,12 +93,12 @@ bool dispatch_command(
     }
 
     if (!poisoned_reason.rlock()->empty() &&
-        (def->flags & CMD_POISON_IMMUNE) == 0) {
+        !def->flags.contains(CMD_POISON_IMMUNE)) {
       send_error_response(client, "%s", poisoned_reason.rlock()->c_str());
       return false;
     }
 
-    if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
+    if (!client->client_is_owner && !def->flags.contains(CMD_ALLOW_ANY_USER)) {
       send_error_response(
           client, "you must be the process owner to execute '%s'", def->name);
       return false;
