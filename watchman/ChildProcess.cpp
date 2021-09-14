@@ -394,6 +394,9 @@ int ChildProcess::wait() {
     }
 
     if (errno != EINTR) {
+      // Pretend that we've successfully waited the child. Otherwise the
+      // destructor will abort the process due to waited_ not being set.
+      waited_ = true;
       throw std::system_error(errno, std::generic_category(), "waitpid");
     }
   }
