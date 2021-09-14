@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/Query.h"
 #include "watchman/watchman_query.h"
 
 #include <memory>
@@ -88,7 +89,7 @@ class SinceExpr : public QueryExpr {
     return tval >= since.timestamp;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref& term) {
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
 

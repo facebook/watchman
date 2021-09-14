@@ -28,6 +28,7 @@
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/query/GlobTree.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
@@ -775,7 +776,7 @@ class EdenView final : public QueryableView {
     crawlInfo->crawlFinish = crawlInfo->crawlStart;
   }
 
-  void timeGenerator(w_query* query, QueryContext* ctx) const override {
+  void timeGenerator(Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     auto client = getEdenClient(thriftChannel_);
 
@@ -1015,7 +1016,7 @@ class EdenView final : public QueryableView {
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
-      w_query* query,
+      Query* query,
       QueryContext* ctx) const {
     auto client = getEdenClient(thriftChannel_);
 
@@ -1060,7 +1061,7 @@ class EdenView final : public QueryableView {
   }
 
   /** Walks files that match the supplied set of paths */
-  void pathGenerator(w_query* query, QueryContext* ctx) const override {
+  void pathGenerator(Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
@@ -1088,7 +1089,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  void globGenerator(w_query* query, QueryContext* ctx) const override {
+  void globGenerator(Query* query, QueryContext* ctx) const override {
     if (!query->glob_tree) {
       // If we are called via the codepath in the query evaluator that
       // just speculatively executes queries then `glob` may not be
@@ -1116,7 +1117,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  void allFilesGenerator(w_query* query, QueryContext* ctx) const override {
+  void allFilesGenerator(Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden

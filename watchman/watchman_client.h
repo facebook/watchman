@@ -16,12 +16,12 @@
 #include "watchman/PerfSample.h"
 #include "watchman/watchman_stream.h"
 
-struct w_query;
 struct watchman_client_subscription;
 struct watchman_root;
 
 namespace watchman {
 
+struct Query;
 struct QueryResult;
 
 enum ClientStateDisposition {
@@ -84,6 +84,8 @@ enum class OnStateTransition { QueryAnyway, DontAdvance };
 
 struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
+  using Query = watchman::Query;
+
   struct LoggedResponse {
     // TODO: also track the time when the response was enqueued
     std::chrono::system_clock::time_point written;
@@ -95,7 +97,7 @@ struct watchman_client_subscription
   /* whether this subscription is paused */
   bool debug_paused = false;
 
-  std::shared_ptr<w_query> query;
+  std::shared_ptr<Query> query;
   bool vcs_defer;
   uint32_t last_sub_tick{0};
   // map of statename => bool.  If true, policy is drop, else defer

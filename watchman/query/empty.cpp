@@ -19,7 +19,7 @@ class ExistsExpr : public QueryExpr {
     return file->exists();
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref&) {
     return std::make_unique<ExistsExpr>();
   }
 };
@@ -54,7 +54,7 @@ class EmptyExpr : public QueryExpr {
     return false;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref&) {
     return std::make_unique<EmptyExpr>();
   }
 };

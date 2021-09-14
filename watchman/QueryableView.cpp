@@ -9,24 +9,25 @@
 #include "watchman/Errors.h"
 
 namespace watchman {
-QueryableView::~QueryableView() {}
+
+QueryableView::~QueryableView() = default;
 
 /** Perform a time-based (since) query and emit results to the supplied
  * query context */
-void QueryableView::timeGenerator(w_query*, QueryContext*) const {
+void QueryableView::timeGenerator(Query*, QueryContext*) const {
   throw QueryExecError("timeGenerator not implemented");
 }
 
 /** Walks files that match the supplied set of paths */
-void QueryableView::pathGenerator(w_query*, QueryContext*) const {
+void QueryableView::pathGenerator(Query*, QueryContext*) const {
   throw QueryExecError("pathGenerator not implemented");
 }
 
-void QueryableView::globGenerator(w_query*, QueryContext*) const {
+void QueryableView::globGenerator(Query*, QueryContext*) const {
   throw QueryExecError("globGenerator not implemented");
 }
 
-void QueryableView::allFilesGenerator(w_query*, QueryContext*) const {
+void QueryableView::allFilesGenerator(Query*, QueryContext*) const {
   throw QueryExecError("allFilesGenerator not implemented");
 }
 
@@ -45,4 +46,5 @@ bool QueryableView::isVCSOperationInProgress() const {
   static const std::vector<w_string> lockFiles{".hg/wlock", ".git/index.lock"};
   return doAnyOfTheseFilesExist(lockFiles);
 }
+
 } // namespace watchman

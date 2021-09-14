@@ -7,7 +7,11 @@
 
 #include <memory>
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
+#include "watchman/query/QueryExpr.h"
+
 #include "watchman/watchman_query.h"
 
 #ifdef HAVE_PCRE_H
@@ -55,7 +59,7 @@ class PcreExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
+  parse(Query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *pattern, *scope = "basename";
     const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "ipcre" : "pcre";
@@ -112,12 +116,12 @@ class PcreExpr : public QueryExpr {
         re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename"));
   }
   static std::unique_ptr<QueryExpr> parsePcre(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIPcre(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }

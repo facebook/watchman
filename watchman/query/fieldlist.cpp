@@ -7,6 +7,7 @@
 
 #include "watchman/Errors.h"
 #include "watchman/query/FileResult.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_query.h"

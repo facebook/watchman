@@ -7,6 +7,7 @@
 
 #include "watchman/query/QueryContext.h"
 
+#include "watchman/query/Query.h"
 #include "watchman/watchman_file.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
@@ -114,7 +115,7 @@ bool QueryContext::fileMatchesRelativeRoot(const watchman_file* f) {
 }
 
 QueryContext::QueryContext(
-    w_query* q,
+    Query* q,
     const std::shared_ptr<watchman_root>& root,
     bool disableFreshInstance)
     : created(std::chrono::steady_clock::now()),

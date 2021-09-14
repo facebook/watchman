@@ -9,6 +9,7 @@
 #include <string>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman_query.h"
@@ -65,7 +66,7 @@ class WildMatchExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
+  parse(Query*, const json_ref& term, CaseSensitivity case_sensitive) {
     const char *pattern, *scope = "basename";
     const char* which =
         case_sensitive == CaseSensitivity::CaseInSensitive ? "imatch" : "match";
@@ -134,12 +135,12 @@ class WildMatchExpr : public QueryExpr {
         includedotfiles);
   }
   static std::unique_ptr<QueryExpr> parseMatch(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIMatch(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }

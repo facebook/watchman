@@ -8,6 +8,7 @@
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
+#include "watchman/query/Query.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_root.h"
@@ -505,7 +506,7 @@ static void cmd_subscribe(
   json_ref resp, initial_subscription_results;
   json_ref jfield_list;
   json_ref jname;
-  std::shared_ptr<w_query> query;
+  std::shared_ptr<Query> query;
   json_ref query_spec;
   json_ref defer_list;
   json_ref drop_list;

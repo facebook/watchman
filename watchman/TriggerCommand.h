@@ -14,15 +14,16 @@
 
 class watchman_event;
 struct watchman_root;
-struct w_query;
 
 namespace watchman {
+
+struct Query;
 
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
 
 struct TriggerCommand {
   w_string triggername;
-  std::shared_ptr<w_query> query;
+  std::shared_ptr<Query> query;
   json_ref definition;
   json_ref command;
   watchman::ChildProcess::Environment env;

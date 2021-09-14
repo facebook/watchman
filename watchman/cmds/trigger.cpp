@@ -9,6 +9,7 @@
 #include "watchman/Logging.h"
 #include "watchman/Shutdown.h"
 #include "watchman/TriggerCommand.h"
+#include "watchman/query/Query.h"
 #include "watchman/sockname.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"

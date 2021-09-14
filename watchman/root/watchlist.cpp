@@ -8,6 +8,7 @@
 #include <folly/Synchronized.h>
 #include <vector>
 #include "watchman/TriggerCommand.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/state.h"
 #include "watchman/watchman_root.h"

@@ -11,6 +11,7 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/LocalFileResult.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/saved_state/SavedStateInterface.h"
@@ -18,8 +19,6 @@
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
-
-w_query::~w_query() = default;
 
 namespace {
 std::vector<w_string> computeUnconditionalLogFilePrefixes() {
@@ -47,7 +46,7 @@ const std::vector<w_string>& getUnconditionalLogFilePrefixes() {
 
 /* Query evaluator */
 void w_query_process_file(
-    w_query* query,
+    Query* query,
     QueryContext* ctx,
     std::unique_ptr<FileResult> file) {
   // TODO: Should this be implicit by assigning a file to the QueryContext? It
@@ -116,14 +115,14 @@ void w_query_process_file(
 }
 
 void time_generator(
-    w_query* query,
+    Query* query,
     const std::shared_ptr<watchman_root>& root,
     QueryContext* ctx) {
   root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
-    w_query* query,
+    Query* query,
     const std::shared_ptr<watchman_root>& root,
     QueryContext* ctx) {
   bool generated = false;
@@ -232,7 +231,7 @@ static void execute_common(
 W_CAP_REG("scm-since")
 
 QueryResult w_query_execute(
-    w_query* query,
+    Query* query,
     const std::shared_ptr<watchman_root>& root,
     QueryGenerator generator) {
   QueryResult res;
@@ -313,7 +312,7 @@ QueryResult w_query_execute(
       if (modifiedMergebase) {
         disableFreshInstance = true;
         generator = [root, modifiedMergebase, requestId](
-                        w_query* q,
+                        Query* q,
                         const std::shared_ptr<watchman_root>& r,
                         QueryContext* c) {
           auto changedFiles =
@@ -369,7 +368,7 @@ QueryResult w_query_execute(
   // generator.
   if (query->omit_changed_files) {
     generator =
-        [](w_query*, const std::shared_ptr<watchman_root>&, QueryContext*) {};
+        [](Query*, const std::shared_ptr<watchman_root>&, QueryContext*) {};
   }
   QueryContext ctx{query, root, disableFreshInstance};
 

@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
@@ -72,7 +73,7 @@ class DirNameExpr : public QueryExpr {
 
   // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
+  parse(Query*, const json_ref& term, CaseSensitivity case_sensitive) {
     const char* which = case_sensitive == CaseSensitivity::CaseInSensitive
         ? "idirname"
         : "dirname";
@@ -125,12 +126,12 @@ class DirNameExpr : public QueryExpr {
             : w_string_startswith);
   }
   static std::unique_ptr<QueryExpr> parseDirName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIDirName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }

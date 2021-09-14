@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/query/Query.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_query.h"

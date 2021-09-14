@@ -11,6 +11,7 @@
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/query/GlobTree.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watchman_dir.h"
@@ -145,7 +146,7 @@ static bool add_glob(GlobTree* tree, const w_string& glob_str) {
   return true;
 }
 
-void parse_globs(w_query* res, const json_ref& query) {
+void parse_globs(Query* res, const json_ref& query) {
   size_t i;
 
   auto globs = query.get_default("glob");
@@ -195,7 +196,7 @@ static w_string parse_suffix(const json_ref& ele) {
   return str.piece().asLowerCase(str.type());
 }
 
-void parse_suffixes(w_query* res, const json_ref& query) {
+void parse_suffixes(Query* res, const json_ref& query) {
   auto suffixes = query.get_default("suffix");
   if (!suffixes) {
     return;
@@ -435,7 +436,7 @@ void InMemoryView::globGeneratorTree(
   }
 }
 
-void InMemoryView::globGenerator(w_query* query, QueryContext* ctx) const {
+void InMemoryView::globGenerator(Query* query, QueryContext* ctx) const {
   w_string relative_root;
 
   if (query->relative_root) {

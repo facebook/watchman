@@ -651,6 +651,7 @@ watchman/query/FileResult.cpp
 watchman/query/LocalFileResult.cpp
 watchman/query/GlobTree.cpp
 watchman/query/QueryContext.cpp
+watchman/query/Query.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp
 watchman/query/empty.cpp

@@ -7,6 +7,7 @@
 
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/Query.h"
 #include "watchman/watchman_query.h"
 
 #include <memory>
@@ -35,7 +36,7 @@ class SuffixExpr : public QueryExpr {
     return suffix && (suffixSet_.find(suffix) != suffixSet_.end());
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref& term) {
     std::unordered_set<w_string> suffixSet;
 
     if (!term.isArray()) {

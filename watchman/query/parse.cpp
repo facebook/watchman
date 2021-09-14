@@ -8,6 +8,7 @@
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/query/GlobTree.h"
+#include "watchman/query/Query.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
@@ -39,7 +40,7 @@ bool w_query_register_expression_parser(
  * ["term" <parameters>]
  */
 std::unique_ptr<QueryExpr> w_query_expr_parse(
-    w_query* query,
+    Query* query,
     const json_ref& exp) {
   w_string name;
 
@@ -64,7 +65,7 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
   return it->second(query, exp);
 }
 
-static bool parse_since(w_query* res, const json_ref& query) {
+static bool parse_since(Query* res, const json_ref& query) {
   auto since = query.get_default("since");
   if (!since) {
     return true;
@@ -80,7 +81,7 @@ static bool parse_since(w_query* res, const json_ref& query) {
   throw QueryParseError("invalid value for 'since'");
 }
 
-static bool parse_paths(w_query* res, const json_ref& query) {
+static bool parse_paths(Query* res, const json_ref& query) {
   size_t i;
 
   auto paths = query.get_default("path");
@@ -95,7 +96,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
   auto size = json_array_size(paths);
 
   res->paths.emplace();
-  std::vector<w_query_path>& res_paths = *res->paths;
+  std::vector<QueryPath>& res_paths = *res->paths;
   res_paths.resize(size);
 
   for (i = 0; i < size; i++) {
@@ -130,7 +131,7 @@ W_CAP_REG("relative_root")
 
 static void parse_relative_root(
     const std::shared_ptr<watchman_root>& root,
-    w_query* res,
+    Query* res,
     const json_ref& query) {
   auto relative_root = query.get_default("relative_root");
   if (!relative_root) {
@@ -155,7 +156,7 @@ static void parse_relative_root(
   res->relative_root_slash = w_string::build(res->relative_root, "/");
 }
 
-static void parse_query_expression(w_query* res, const json_ref& query) {
+static void parse_query_expression(Query* res, const json_ref& query) {
   auto exp = query.get_default("expression");
   if (!exp) {
     // Empty expression means that we emit all generated files
@@ -165,7 +166,7 @@ static void parse_query_expression(w_query* res, const json_ref& query) {
   res->expr = w_query_expr_parse(res, exp);
 }
 
-static void parse_request_id(w_query* res, const json_ref& query) {
+static void parse_request_id(Query* res, const json_ref& query) {
   auto request_id = query.get_default("request_id");
   if (!request_id) {
     return;
@@ -178,7 +179,7 @@ static void parse_request_id(w_query* res, const json_ref& query) {
   res->request_id = json_to_w_string(request_id);
 }
 
-static void parse_sync(w_query* res, const json_ref& query) {
+static void parse_sync(Query* res, const json_ref& query) {
   auto sync_timeout = query.get_default(
       "sync_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
 
@@ -195,7 +196,7 @@ static void parse_sync(w_query* res, const json_ref& query) {
   res->sync_timeout = std::chrono::milliseconds(value);
 }
 
-static void parse_lock_timeout(w_query* res, const json_ref& query) {
+static void parse_lock_timeout(Query* res, const json_ref& query) {
   auto lock_timeout = query.get_default(
       "lock_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
 
@@ -224,26 +225,26 @@ parse_bool_param(const json_ref& query, const char* name, bool default_value) {
 
 W_CAP_REG("dedup_results")
 
-static void parse_dedup(w_query* res, const json_ref& query) {
+static void parse_dedup(Query* res, const json_ref& query) {
   res->dedup_results = parse_bool_param(query, "dedup_results", false);
 }
 
-static void parse_fail_if_no_saved_state(w_query* res, const json_ref& query) {
+static void parse_fail_if_no_saved_state(Query* res, const json_ref& query) {
   res->fail_if_no_saved_state =
       parse_bool_param(query, "fail_if_no_saved_state", false);
 }
 
-static void parse_omit_changed_files(w_query* res, const json_ref& query) {
+static void parse_omit_changed_files(Query* res, const json_ref& query) {
   res->omit_changed_files =
       parse_bool_param(query, "omit_changed_files", false);
 }
 
-static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
+static void parse_empty_on_fresh_instance(Query* res, const json_ref& query) {
   res->empty_on_fresh_instance =
       parse_bool_param(query, "empty_on_fresh_instance", false);
 }
 
-static void parse_benchmark(w_query* res, const json_ref& query) {
+static void parse_benchmark(Query* res, const json_ref& query) {
   // Preserve behavior by supporting a boolean value. Also support int values.
   auto bench = query.get_default("bench");
   if (bench) {
@@ -256,7 +257,7 @@ static void parse_benchmark(w_query* res, const json_ref& query) {
 }
 
 static void parse_case_sensitive(
-    w_query* res,
+    Query* res,
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query) {
   auto case_sensitive = parse_bool_param(
@@ -268,10 +269,10 @@ static void parse_case_sensitive(
                                        : CaseSensitivity::CaseInSensitive;
 }
 
-std::shared_ptr<w_query> w_query_parse(
+std::shared_ptr<Query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query) {
-  auto result = std::make_shared<w_query>();
+  auto result = std::make_shared<Query>();
   auto res = result.get();
 
   parse_benchmark(res, query);
@@ -307,15 +308,6 @@ std::shared_ptr<w_query> w_query_parse(
   return result;
 }
 
-bool w_query::isFieldRequested(w_string_piece name) const {
-  for (auto& f : fieldList) {
-    if (f->name.piece() == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void w_query_legacy_field_list(QueryFieldList* flist) {
   static const char* names[] = {
       "name",
@@ -346,7 +338,7 @@ void w_query_legacy_field_list(QueryFieldList* flist) {
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
-std::shared_ptr<w_query> w_query_parse_legacy(
+std::shared_ptr<Query> w_query_parse_legacy(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& args,
     int start,

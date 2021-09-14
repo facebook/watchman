@@ -30,9 +30,7 @@ class NotExpr : public QueryExpr {
     return !*res;
   }
 
-  static std::unique_ptr<QueryExpr> parse(
-      w_query* query,
-      const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(Query* query, const json_ref& term) {
     /* rigidly require ["not", expr] */
     if (!term.isArray() || json_array_size(term) != 2) {
       throw QueryParseError("must use [\"not\", expr]");
@@ -52,7 +50,7 @@ class TrueExpr : public QueryExpr {
     return true;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref&) {
     return std::make_unique<TrueExpr>();
   }
 };
@@ -65,7 +63,7 @@ class FalseExpr : public QueryExpr {
     return false;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref&) {
     return std::make_unique<FalseExpr>();
   }
 };
@@ -115,7 +113,7 @@ class ListExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, const json_ref& term, bool allof) {
+  parse(Query* query, const json_ref& term, bool allof) {
     std::vector<std::unique_ptr<QueryExpr>> list;
 
     /* don't allow "allof" on its own */
@@ -151,12 +149,12 @@ class ListExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parseAllOf(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, true);
   }
   static std::unique_ptr<QueryExpr> parseAnyOf(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, false);
   }

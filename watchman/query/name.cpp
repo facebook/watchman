@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/watchman_query.h"
 
@@ -61,7 +62,7 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
+  parse(Query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *pattern = nullptr, *scope = "basename";
     const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "iname" : "name";
@@ -139,12 +140,12 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parseName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }

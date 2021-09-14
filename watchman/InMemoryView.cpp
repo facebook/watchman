@@ -12,6 +12,7 @@
 #include <memory>
 #include <thread>
 #include "watchman/ThreadPool.h"
+#include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/watcher/Watcher.h"
@@ -546,7 +547,7 @@ void InMemoryView::ageOut(PerfSample& sample, std::chrono::seconds minAge) {
            {"dirs", json_integer(dirs_to_erase.size())}}));
 }
 
-void InMemoryView::timeGenerator(w_query* query, QueryContext* ctx) const {
+void InMemoryView::timeGenerator(Query* query, QueryContext* ctx) const {
   struct watchman_file* f;
 
   // Walk back in time until we hit the boundary
@@ -576,7 +577,7 @@ void InMemoryView::timeGenerator(w_query* query, QueryContext* ctx) const {
   }
 }
 
-void InMemoryView::pathGenerator(w_query* query, QueryContext* ctx) const {
+void InMemoryView::pathGenerator(Query* query, QueryContext* ctx) const {
   w_string_t* relative_root;
   struct watchman_file* f;
 
@@ -647,7 +648,7 @@ void InMemoryView::pathGenerator(w_query* query, QueryContext* ctx) const {
 }
 
 void InMemoryView::dirGenerator(
-    w_query* query,
+    Query* query,
     QueryContext* ctx,
     const watchman_dir* dir,
     uint32_t depth) const {
@@ -668,7 +669,7 @@ void InMemoryView::dirGenerator(
   }
 }
 
-void InMemoryView::allFilesGenerator(w_query* query, QueryContext* ctx) const {
+void InMemoryView::allFilesGenerator(Query* query, QueryContext* ctx) const {
   struct watchman_file* f;
   auto view = view_.rlock();
   ctx->generationStarted();

@@ -12,13 +12,13 @@
 #include "watchman/Clock.h"
 #include "watchman/watchman_query.h"
 
-struct w_query;
 struct watchman_file;
 struct watchman_root;
 
 namespace watchman {
 
 class FileResult;
+struct Query;
 
 enum class QueryContextState {
   NotStarted,
@@ -48,7 +48,7 @@ struct QueryContext : QueryContextBase {
     state = QueryContextState::Generating;
   }
 
-  w_query* query;
+  Query* query;
   std::shared_ptr<watchman_root> root;
   std::unique_ptr<FileResult> file;
   QuerySince since;
@@ -73,7 +73,7 @@ struct QueryContext : QueryContextBase {
   bool disableFreshInstance{false};
 
   QueryContext(
-      w_query* q,
+      Query* q,
       const std::shared_ptr<watchman_root>& root,
       bool disableFreshInstance);
   QueryContext(const QueryContext&) = delete;
