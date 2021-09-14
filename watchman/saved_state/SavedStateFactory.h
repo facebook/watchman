@@ -7,13 +7,13 @@
 
 #pragma once
 
+#include "watchman/WatchmanConfig.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 
-struct watchman_root;
-
 namespace watchman {
 
+class PerfSample;
 class SCM;
 class SavedStateInterface;
 
@@ -28,6 +28,7 @@ std::unique_ptr<SavedStateInterface> getInterface(
     w_string_piece storageType,
     const json_ref& savedStateConfig,
     const SCM* scm,
-    const std::shared_ptr<watchman_root> root);
+    Configuration config,
+    std::function<void(PerfSample&)> extraSampleMetadata);
 
 } // namespace watchman

@@ -288,7 +288,10 @@ QueryResult w_query_execute(
             query->since_spec->savedStateStorageType,
             query->since_spec->savedStateConfig,
             scm,
-            root);
+            root->config,
+            [root](PerfSample& sample) {
+              root->addPerfSampleMetadata(sample);
+            });
         auto savedStateResult = savedStateInterface->getMostRecentSavedState(
             resultClock.scmMergeBase);
         res.savedStateInfo = savedStateResult.savedStateInfo;

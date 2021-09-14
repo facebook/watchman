@@ -19,12 +19,17 @@ std::unique_ptr<SavedStateInterface> getInterface(
     w_string_piece storageType,
     const json_ref& savedStateConfig,
     const SCM* scm,
-    const std::shared_ptr<watchman_root> root) {
-  unused_parameter(root);
+    Configuration config,
+    std::function<void(PerfSample&)> extraSampleMetadata) {
+  unused_parameter(config);
+  unused_parameter(extraSampleMetadata);
 #if HAVE_MANIFOLD
   if (storageType == "manifold") {
     return std::make_unique<ManifoldSavedStateInterface>(
-        savedStateConfig, scm, root);
+        savedStateConfig,
+        scm,
+        std::move(config),
+        std::move(extraSampleMetadata));
   }
 #endif
   if (storageType == "local") {

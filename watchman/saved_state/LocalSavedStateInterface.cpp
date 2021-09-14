@@ -11,8 +11,6 @@
 #include "watchman/FileInformation.h"
 #include "watchman/Logging.h"
 #include "watchman/scm/SCM.h"
-#include "watchman/watchman_cmd.h"
-#include "watchman/watchman_root.h"
 
 static const int kDefaultMaxCommits{10};
 
