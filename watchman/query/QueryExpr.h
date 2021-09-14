@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include "watchman/Clock.h"
+#include "watchman/watchman_string.h"
+
 namespace watchman {
 
 using EvaluateResult = folly::Optional<bool>;
