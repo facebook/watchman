@@ -31,7 +31,7 @@ and notes on the public API features.
 For a simple example of API usage, sending simple request-response commands
 to Watchman, see `cppclient/CLI.cpp` in the Watchman source tree. For a more
 extensive example of the API including use of subscriptions, see the integration
-test `tests/integration/cppclient.cpp` also in the Watchman source.
+test `integration/cppclient.cpp` also in the Watchman source.
 
 The C++ client library and its API make heavy use of the Folly library and as
 such familiarity with this is highly recommended. Specifically, the client

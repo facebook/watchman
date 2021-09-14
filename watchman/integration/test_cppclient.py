@@ -18,7 +18,7 @@ WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 TEST_BINARY = (
     os.environ["WATCHMAN_CPPCLIENT_BINARY"]
     if "WATCHMAN_CPPCLIENT_BINARY" in os.environ.keys()
-    else os.path.join(WATCHMAN_SRC_DIR, "tests/integration/cppclient.t")
+    else os.path.join(WATCHMAN_SRC_DIR, "integration/cppclient.t")
 )
 
 

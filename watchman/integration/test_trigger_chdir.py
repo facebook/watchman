@@ -17,7 +17,7 @@ import WatchmanTestCase
 
 
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
-THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
+THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
 
 
 @WatchmanTestCase.expand_matrix

@@ -443,7 +443,7 @@ if(Python3_Development_FOUND OR PYTHON3)
   endif()
   include(FBPythonBinary)
   add_subdirectory(watchman/python)
-  add_subdirectory(watchman/tests/integration)
+  add_subdirectory(watchman/integration)
 
   if(NODE AND YARN)
     add_subdirectory(watchman/node/bser)

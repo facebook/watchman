@@ -17,7 +17,7 @@ import WatchmanTestCase
 
 
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
-THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
+THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
 
 
 @WatchmanTestCase.expand_matrix
@@ -220,7 +220,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             # b ar.c has changed.  What we're testing here is that
             # the trigger is run again, and it is ok if it notifies
             # about more files on win32, so just adjust expec:tations
-            # here in the test to accomodate that difference.
+            # here in the test to accommodate that difference.
             expect = ["foo.c", "b ar.c"]
 
         self.validate_trigger_output(root, expect, "after recrawl")

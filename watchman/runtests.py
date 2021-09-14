@@ -43,8 +43,8 @@ except ImportError:
 # with sys.path).
 if __name__ == "__main__":
     sys.path.insert(0, os.path.join(os.getcwd(), "python"))
-    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration"))
-    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration", "facebook"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "integration"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "integration", "facebook"))
 
 
 # Only Python 3.5+ supports native asyncio
@@ -373,8 +373,8 @@ class Loader(unittest.TestLoader):
 loader = Loader()
 suite = unittest.TestSuite()
 
-directories = ["python/tests", "tests/integration"]
-facebook_directory = "tests/integration/facebook"
+directories = ["python/tests", "integration"]
+facebook_directory = "integration/facebook"
 if os.path.exists(facebook_directory):
     # the facebook dir isn't sync'd to github, but it
     # is present internally, so it should remain in this list
