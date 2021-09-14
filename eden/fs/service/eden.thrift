@@ -777,6 +777,12 @@ struct GlobParams {
   // When set, the globs list must be empty and the globbing pattern will be obtained
   // from an online service.
   11: optional PredictiveFetch predictiveGlob;
+  // Normally the returned file list will contain both files and directories.
+  // Some clients would like to see only lists of files, this option tells us
+  // wether to filter or not.
+  // Note for Eden developers: when this is false the matchingFiles fileList
+  // will not actually be the list that is fed into the backing store to prefetch.
+  12: bool listOnlyFiles = false;
 }
 
 struct Glob {
