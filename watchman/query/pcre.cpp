@@ -16,7 +16,7 @@
 
 #ifdef HAVE_PCRE_H
 
-#include <pcre.h>
+#include <pcre.h> // @manual
 
 using namespace watchman;
 
@@ -128,8 +128,13 @@ class PcreExpr : public QueryExpr {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
-W_TERM_PARSER("pcre", PcreExpr::parsePcre)
-W_TERM_PARSER("ipcre", PcreExpr::parseIPcre)
+W_TERM_PARSER(pcre, PcreExpr::parsePcre);
+W_TERM_PARSER(ipcre, PcreExpr::parseIPcre);
+
+#else
+
+W_TERM_PARSER_UNSUPPORTED(pcre);
+W_TERM_PARSER_UNSUPPORTED(ipcre);
 
 #endif
 

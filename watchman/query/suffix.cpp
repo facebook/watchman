@@ -7,11 +7,13 @@
 
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/query/Query.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
+#include <unordered_set>
 
 using namespace watchman;
 
@@ -87,7 +89,7 @@ class SuffixExpr : public QueryExpr {
     return std::make_unique<SuffixExpr>(std::move(suffixSet));
   }
 };
-W_TERM_PARSER("suffix", SuffixExpr::parse)
+W_TERM_PARSER(suffix, SuffixExpr::parse);
 W_CAP_REG("suffix-set")
 
 /* vim:ts=2:sw=2:et:

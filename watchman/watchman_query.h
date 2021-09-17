@@ -34,10 +34,6 @@ std::shared_ptr<watchman::Query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query);
 
-std::unique_ptr<watchman::QueryExpr> w_query_expr_parse(
-    watchman::Query* query,
-    const json_ref& term);
-
 // Allows a generator to process a file node
 // through the query engine
 void w_query_process_file(
@@ -92,21 +88,6 @@ std::shared_ptr<watchman::Query> w_query_parse_legacy(
     const char* clockspec,
     json_ref* expr_p);
 void w_query_legacy_field_list(watchman::QueryFieldList* flist);
-
-enum w_query_icmp_op {
-  W_QUERY_ICMP_EQ,
-  W_QUERY_ICMP_NE,
-  W_QUERY_ICMP_GT,
-  W_QUERY_ICMP_GE,
-  W_QUERY_ICMP_LT,
-  W_QUERY_ICMP_LE,
-};
-struct w_query_int_compare {
-  enum w_query_icmp_op op;
-  json_int_t operand;
-};
-void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp);
-bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp);
 
 void parse_field_list(json_ref field_list, watchman::QueryFieldList* selected);
 json_ref field_list_to_json_name_array(

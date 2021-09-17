@@ -7,17 +7,13 @@
 
 #include "watchman/Errors.h"
 #include "watchman/query/Query.h"
-#include "watchman/query/QueryContext.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
+#include "watchman/query/intcompare.h"
 
 #include <memory>
 
 using namespace watchman;
-
-namespace watchman {
-class QueryContextBase;
-}
 
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';
@@ -138,8 +134,8 @@ class DirNameExpr : public QueryExpr {
   }
 };
 
-W_TERM_PARSER("dirname", DirNameExpr::parseDirName)
-W_TERM_PARSER("idirname", DirNameExpr::parseIDirName)
+W_TERM_PARSER(dirname, DirNameExpr::parseDirName);
+W_TERM_PARSER(idirname, DirNameExpr::parseIDirName);
 
 /* vim:ts=2:sw=2:et:
  */

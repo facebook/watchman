@@ -5,13 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/query/intcompare.h"
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
 
-using namespace watchman;
+namespace watchman {
 
 // Helper functions for integer comparisons in query expressions
 
@@ -118,7 +120,9 @@ class SizeExpr : public QueryExpr {
     return std::make_unique<SizeExpr>(comp);
   }
 };
-W_TERM_PARSER("size", SizeExpr::parse)
+W_TERM_PARSER(size, SizeExpr::parse);
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

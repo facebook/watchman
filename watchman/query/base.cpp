@@ -6,8 +6,8 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
 #include <vector>
@@ -38,12 +38,12 @@ class NotExpr : public QueryExpr {
     }
 
     const auto& other = term.at(1);
-    auto other_expr = w_query_expr_parse(query, other);
+    auto other_expr = parseQueryExpr(query, other);
     return std::make_unique<NotExpr>(std::move(other_expr));
   }
 };
 
-W_TERM_PARSER("not", NotExpr::parse)
+W_TERM_PARSER(not, NotExpr::parse);
 
 class TrueExpr : public QueryExpr {
  public:
@@ -56,7 +56,7 @@ class TrueExpr : public QueryExpr {
   }
 };
 
-W_TERM_PARSER("true", TrueExpr::parse)
+W_TERM_PARSER(true, TrueExpr::parse);
 
 class FalseExpr : public QueryExpr {
  public:
@@ -69,7 +69,7 @@ class FalseExpr : public QueryExpr {
   }
 };
 
-W_TERM_PARSER("false", FalseExpr::parse)
+W_TERM_PARSER(false, FalseExpr::parse);
 
 class ListExpr : public QueryExpr {
   bool allof;
@@ -132,7 +132,7 @@ class ListExpr : public QueryExpr {
       const auto& exp = term.at(i + 1);
 
       auto op = allof ? AggregateOp::AllOf : AggregateOp::AnyOf;
-      auto parsed = w_query_expr_parse(query, exp);
+      auto parsed = parseQueryExpr(query, exp);
       if (list.empty()) {
         list.emplace_back(std::move(parsed));
       } else {
@@ -161,8 +161,8 @@ class ListExpr : public QueryExpr {
   }
 };
 
-W_TERM_PARSER("anyof", ListExpr::parseAnyOf)
-W_TERM_PARSER("allof", ListExpr::parseAllOf)
+W_TERM_PARSER(anyof, ListExpr::parseAnyOf);
+W_TERM_PARSER(allof, ListExpr::parseAllOf);
 
 /* vim:ts=2:sw=2:et:
  */

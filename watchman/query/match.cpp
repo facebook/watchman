@@ -9,11 +9,11 @@
 #include <string>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/query/Query.h"
-#include "watchman/query/QueryContext.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
-#include "watchman/watchman_query.h"
 
 namespace watchman {
 
@@ -146,8 +146,8 @@ class WildMatchExpr : public QueryExpr {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
-W_TERM_PARSER("match", WildMatchExpr::parseMatch)
-W_TERM_PARSER("imatch", WildMatchExpr::parseIMatch)
+W_TERM_PARSER(match, WildMatchExpr::parseMatch);
+W_TERM_PARSER(imatch, WildMatchExpr::parseIMatch);
 W_CAP_REG("wildmatch")
 W_CAP_REG("wildmatch-multislash")
 

@@ -6,10 +6,12 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/query/Query.h"
-#include "watchman/query/QueryContext.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
+
+#include <unordered_set>
 
 using namespace watchman;
 
@@ -152,8 +154,8 @@ class NameExpr : public QueryExpr {
   }
 };
 
-W_TERM_PARSER("name", NameExpr::parseName)
-W_TERM_PARSER("iname", NameExpr::parseIName)
+W_TERM_PARSER(name, NameExpr::parseName);
+W_TERM_PARSER(iname, NameExpr::parseIName);
 
 /* vim:ts=2:sw=2:et:
  */

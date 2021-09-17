@@ -8,35 +8,67 @@
 #include "watchman/query/TermRegistry.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/query/QueryExpr.h"
 
 namespace watchman {
 
-// This can't be a simple global because other compilation units
-// may try to mutate it before this compilation unit has had its
-// constructors run, leading to SIOF.
-static std::unordered_map<w_string, QueryExprParser>& term_hash() {
-  static std::unordered_map<w_string, QueryExprParser> hash;
-  return hash;
-}
+namespace {
 
-bool registerExpressionParser(const char* term, QueryExprParser parser) {
-  char capname[128];
-  w_string name(term, W_STRING_UNICODE);
+struct RegisteredParser {
+  std::string_view name;
+  const QueryExprParser* parser;
+};
 
-  snprintf(capname, sizeof(capname), "term-%s", term);
-  capability_register(capname);
+constexpr RegisteredParser kParserTable[] = {
+#define WATCHMAN_REGISTER_PARSER(name) {#name, &parsers::name##_parser},
+    WATCHMAN_EXPRESSION_PARSER_LIST(WATCHMAN_REGISTER_PARSER)
+#undef WATCHMAN_REGISTER_PARSER
+};
 
-  term_hash()[name] = parser;
-  return true;
-}
+// TODO: We could export the list of names and have CommandRegistry read it.
+static struct Init {
+  Init() {
+    std::string prefix{"term-"};
+    for (auto [parserName, parserp] : kParserTable) {
+      // std::string_view concatenation is not actually nicer than sprintf, jeez
+      capability_register((prefix + std::string{parserName}).c_str());
+    }
+  }
+} init;
+
+} // namespace
 
 QueryExprParser getQueryExprParser(const w_string& name) {
-  auto it = term_hash().find(name);
-  if (it == term_hash().end()) {
-    throw QueryParseError(
-        folly::to<std::string>("unknown expression term '", name.view(), "'"));
+  for (auto [parserName, parserp] : kParserTable) {
+    if (parserName == name.view()) {
+      if (auto* parser = *parserp) {
+        return parser;
+      }
+      throw QueryParseError(folly::to<std::string>(
+          "unsupported expression term '", name.view(), "'"));
+    }
   }
-  return it->second;
+  throw QueryParseError(
+      folly::to<std::string>("unknown expression term '", name.view(), "'"));
+}
+
+std::unique_ptr<QueryExpr> parseQueryExpr(Query* query, const json_ref& exp) {
+  w_string name;
+
+  if (exp.isString()) {
+    name = json_to_w_string(exp);
+  } else if (exp.isArray() && json_array_size(exp) > 0) {
+    const auto& first = exp.at(0);
+
+    if (!first.isString()) {
+      throw QueryParseError("first element of an expression must be a string");
+    }
+    name = json_to_w_string(first);
+  } else {
+    throw QueryParseError("expected array or string for an expression");
+  }
+
+  return getQueryExprParser(name)(query, exp);
 }
 
 } // namespace watchman

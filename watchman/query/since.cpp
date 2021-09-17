@@ -6,9 +6,10 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/query/Query.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
 
@@ -154,7 +155,7 @@ class SinceExpr : public QueryExpr {
     return std::make_unique<SinceExpr>(std::move(spec), selected_field);
   }
 };
-W_TERM_PARSER("since", SinceExpr::parse)
+W_TERM_PARSER(since, SinceExpr::parse);
 
 /* vim:ts=2:sw=2:et:
  */

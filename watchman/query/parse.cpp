@@ -10,35 +10,9 @@
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
-
-/* parse an expression term. It can be one of:
- * "term"
- * ["term" <parameters>]
- */
-std::unique_ptr<QueryExpr> w_query_expr_parse(
-    Query* query,
-    const json_ref& exp) {
-  w_string name;
-
-  if (exp.isString()) {
-    name = json_to_w_string(exp);
-  } else if (exp.isArray() && json_array_size(exp) > 0) {
-    const auto& first = exp.at(0);
-
-    if (!first.isString()) {
-      throw QueryParseError("first element of an expression must be a string");
-    }
-    name = json_to_w_string(first);
-  } else {
-    throw QueryParseError("expected array or string for an expression");
-  }
-
-  return getQueryExprParser(name)(query, exp);
-}
 
 static bool parse_since(Query* res, const json_ref& query) {
   auto since = query.get_default("since");
@@ -138,7 +112,7 @@ static void parse_query_expression(Query* res, const json_ref& query) {
     return;
   }
 
-  res->expr = w_query_expr_parse(res, exp);
+  res->expr = parseQueryExpr(res, exp);
 }
 
 static void parse_request_id(Query* res, const json_ref& query) {

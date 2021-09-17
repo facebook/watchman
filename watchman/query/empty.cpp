@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/query/FileResult.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
 
@@ -24,7 +25,7 @@ class ExistsExpr : public QueryExpr {
     return std::make_unique<ExistsExpr>();
   }
 };
-W_TERM_PARSER("exists", ExistsExpr::parse)
+W_TERM_PARSER(exists, ExistsExpr::parse);
 
 class EmptyExpr : public QueryExpr {
  public:
@@ -59,7 +60,7 @@ class EmptyExpr : public QueryExpr {
     return std::make_unique<EmptyExpr>();
   }
 };
-W_TERM_PARSER("empty", EmptyExpr::parse)
+W_TERM_PARSER(empty, EmptyExpr::parse);
 
 } // namespace watchman
 

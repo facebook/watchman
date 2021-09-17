@@ -6,8 +6,10 @@
  */
 
 #include "watchman/Errors.h"
+#include "watchman/FileInformation.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 
 #include <memory>
 
@@ -100,7 +102,7 @@ class TypeExpr : public QueryExpr {
     return std::make_unique<TypeExpr>(arg);
   }
 };
-W_TERM_PARSER("type", TypeExpr::parse)
+W_TERM_PARSER(type, TypeExpr::parse);
 
 /* vim:ts=2:sw=2:et:
  */
