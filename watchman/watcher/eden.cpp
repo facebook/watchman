@@ -49,7 +49,6 @@ using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
 using folly::AsyncSocket;
-using folly::Optional;
 using folly::to;
 using std::make_unique;
 
@@ -216,15 +215,15 @@ class EdenFileResult : public FileResult {
     }
   }
 
-  Optional<FileInformation> stat() override {
+  std::optional<FileInformation> stat() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::FullFileInformation);
-      return folly::none;
+      return std::nullopt;
     }
     return stat_;
   }
 
-  Optional<watchman::DType> dtype() override {
+  std::optional<watchman::DType> dtype() override {
     // We're using Unknown as the default value to avoid also wrapping
     // this value up in an Optional in our internal storage.
     // In theory this is ambiguous, but in practice Eden will never
@@ -237,37 +236,37 @@ class EdenFileResult : public FileResult {
       return stat_->dtype();
     }
     accessorNeedsProperties(FileResult::Property::FileDType);
-    return folly::none;
+    return std::nullopt;
   }
 
-  Optional<size_t> size() override {
+  std::optional<size_t> size() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::Size);
-      return folly::none;
+      return std::nullopt;
     }
     return stat_->size;
   }
 
-  Optional<struct timespec> accessedTime() override {
+  std::optional<struct timespec> accessedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return folly::none;
+      return std::nullopt;
     }
     return stat_->atime;
   }
 
-  Optional<struct timespec> modifiedTime() override {
+  std::optional<struct timespec> modifiedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return folly::none;
+      return std::nullopt;
     }
     return stat_->mtime;
   }
 
-  Optional<struct timespec> changedTime() override {
+  std::optional<struct timespec> changedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return folly::none;
+      return std::nullopt;
     }
     return stat_->ctime;
   }
@@ -287,34 +286,34 @@ class EdenFileResult : public FileResult {
     }
   }
 
-  Optional<bool> exists() override {
+  std::optional<bool> exists() override {
     if (!exists_.has_value()) {
       accessorNeedsProperties(FileResult::Property::Exists);
-      return folly::none;
+      return std::nullopt;
     }
     return exists_;
   }
 
-  Optional<w_string> readLink() override {
+  std::optional<w_string> readLink() override {
     if (symlinkTarget_.has_value()) {
       return symlinkTarget_;
     }
     accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-    return folly::none;
+    return std::nullopt;
   }
 
-  Optional<w_clock_t> ctime() override {
+  std::optional<w_clock_t> ctime() override {
     return ctime_;
   }
 
-  Optional<w_clock_t> otime() override {
+  std::optional<w_clock_t> otime() override {
     return otime_;
   }
 
-  Optional<FileResult::ContentHash> getContentSha1() override {
+  std::optional<FileResult::ContentHash> getContentSha1() override {
     if (!sha1_.has_value()) {
       accessorNeedsProperties(FileResult::Property::ContentSha1);
-      return folly::none;
+      return std::nullopt;
     }
     switch (sha1_->getType()) {
       // Copy thrift SHA1Result aka (std::string) into
@@ -441,12 +440,12 @@ class EdenFileResult : public FileResult {
   w_string rootPath_;
   std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
   w_string fullName_;
-  Optional<FileInformation> stat_;
-  Optional<bool> exists_;
+  std::optional<FileInformation> stat_;
+  std::optional<bool> exists_;
   w_clock_t ctime_;
   w_clock_t otime_;
-  Optional<SHA1Result> sha1_;
-  Optional<w_string> symlinkTarget_;
+  std::optional<SHA1Result> sha1_;
+  std::optional<w_string> symlinkTarget_;
   DType dtype_{DType::Unknown};
 
   // Read the symlink targets for each of the provided `files`.  The files

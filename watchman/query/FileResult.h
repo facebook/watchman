@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <folly/Optional.h>
+#include <optional>
 #include <vector>
 #include "watchman/Clock.h"
 #include "watchman/FileInformation.h"
@@ -25,20 +25,20 @@ class FileResult {
 
   // Maybe returns the file information.
   // Returns folly::none if the file information is not yet known.
-  virtual folly::Optional<FileInformation> stat() = 0;
+  virtual std::optional<FileInformation> stat() = 0;
 
   // Returns the stat.st_atime field
-  virtual folly::Optional<struct timespec> accessedTime() = 0;
+  virtual std::optional<struct timespec> accessedTime() = 0;
 
   // Returns the stat.st_mtime field
-  virtual folly::Optional<struct timespec> modifiedTime() = 0;
+  virtual std::optional<struct timespec> modifiedTime() = 0;
 
   // Returns the stat.st_ctime field
-  virtual folly::Optional<struct timespec> changedTime() = 0;
+  virtual std::optional<struct timespec> changedTime() = 0;
 
   // Returns the size of the file in bytes, as reported in
   // the stat.st_size field.
-  virtual folly::Optional<size_t> size() = 0;
+  virtual std::optional<size_t> size() = 0;
 
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() = 0;
@@ -48,29 +48,29 @@ class FileResult {
 
   // Maybe return the file existence status.
   // Returns folly::none if the information is not currently known.
-  virtual folly::Optional<bool> exists() = 0;
+  virtual std::optional<bool> exists() = 0;
 
   // Returns the symlink target
-  virtual folly::Optional<w_string> readLink() = 0;
+  virtual std::optional<w_string> readLink() = 0;
 
   // Maybe return the change time.
   // Returns folly::none if ctime is not currently known
-  virtual folly::Optional<w_clock_t> ctime() = 0;
+  virtual std::optional<w_clock_t> ctime() = 0;
 
   // Maybe return the observed time.
   // Returns folly::none if otime is not currently known
-  virtual folly::Optional<w_clock_t> otime() = 0;
+  virtual std::optional<w_clock_t> otime() = 0;
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;
-  virtual folly::Optional<ContentHash> getContentSha1() = 0;
+  virtual std::optional<ContentHash> getContentSha1() = 0;
 
   // Maybe return the dtype.
   // Returns folly::none if the dtype is not currently known.
   // Returns DType::Unknown if we have dtype data but it doesn't
   // tell us the dtype (this is common on some older filesystems
   // on linux).
-  virtual folly::Optional<DType> dtype();
+  virtual std::optional<DType> dtype();
 
   // A bitset of Property values
   using Properties = uint_least16_t;

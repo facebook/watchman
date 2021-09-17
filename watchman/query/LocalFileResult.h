@@ -39,11 +39,11 @@ class LocalFileResult : public FileResult {
   // today because the only source of LocalFileResult instances today is
   // based on the list of files returned from source control, and scm
   // of today only reports files, never dirs.
-  folly::Optional<watchman::FileInformation> stat() override;
-  folly::Optional<struct timespec> accessedTime() override;
-  folly::Optional<struct timespec> modifiedTime() override;
-  folly::Optional<struct timespec> changedTime() override;
-  folly::Optional<size_t> size() override;
+  std::optional<watchman::FileInformation> stat() override;
+  std::optional<struct timespec> accessedTime() override;
+  std::optional<struct timespec> modifiedTime() override;
+  std::optional<struct timespec> changedTime() override;
+  std::optional<size_t> size() override;
 
   // Returns the name of the file in its containing dir
   w_string_piece baseName() override;
@@ -51,15 +51,15 @@ class LocalFileResult : public FileResult {
   // VFS root
   w_string_piece dirName() override;
   // Returns true if the file currently exists
-  folly::Optional<bool> exists() override;
+  std::optional<bool> exists() override;
   // Returns the symlink target
-  folly::Optional<w_string> readLink() override;
+  std::optional<w_string> readLink() override;
 
-  folly::Optional<w_clock_t> ctime() override;
-  folly::Optional<w_clock_t> otime() override;
+  std::optional<w_clock_t> ctime() override;
+  std::optional<w_clock_t> otime() override;
 
   // Returns the SHA-1 hash of the file contents
-  folly::Optional<FileResult::ContentHash> getContentSha1() override;
+  std::optional<FileResult::ContentHash> getContentSha1() override;
 
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
@@ -69,11 +69,11 @@ class LocalFileResult : public FileResult {
   w_string getFullPath();
 
   bool exists_{true};
-  folly::Optional<FileInformation> info_;
+  std::optional<FileInformation> info_;
   w_string fullPath_;
   w_clock_t clock_;
   CaseSensitivity caseSensitivity_;
-  folly::Optional<w_string> symlinkTarget_;
+  std::optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };
 

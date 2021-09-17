@@ -7,12 +7,13 @@
 
 #pragma once
 
+#include <optional>
 #include "watchman/Clock.h"
 #include "watchman/watchman_string.h"
 
 namespace watchman {
 
-using EvaluateResult = folly::Optional<bool>;
+using EvaluateResult = std::optional<bool>;
 class FileResult;
 
 class QueryContextBase {

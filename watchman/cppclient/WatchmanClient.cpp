@@ -16,15 +16,16 @@ using namespace folly;
 
 WatchmanClient::WatchmanClient(
     EventBase* eventBase,
-    Optional<std::string>&& socketPath,
+    std::optional<std::string>&& socketPath,
     folly::Executor* cpuExecutor,
     ErrorCallback errorCallback)
     : conn_(std::make_shared<WatchmanConnection>(
           eventBase,
           std::move(socketPath),
-          Optional<WatchmanConnection::Callback>([this](Try<dynamic>&& data) {
-            connectionCallback(std::move(data));
-          }),
+          std::optional<WatchmanConnection::Callback>(
+              [this](Try<dynamic>&& data) {
+                connectionCallback(std::move(data));
+              }),
           cpuExecutor)),
       errorCallback_(errorCallback) {}
 
@@ -92,9 +93,9 @@ Future<WatchPathPtr> WatchmanClient::watchImpl(std::string_view path) {
   return conn_->run(dynamic::array("watch-project", path))
       .thenValue([=](dynamic&& data) {
         auto relative_path = data["relative_path"];
-        Optional<std::string> relative_path_optional;
+        std::optional<std::string> relative_path_optional;
         if (relative_path != nullptr) {
-          relative_path_optional.assign(relative_path.asString());
+          relative_path_optional = relative_path.asString();
         }
         return std::make_shared<WatchPath>(
             data["watch"].asString(), relative_path_optional);
@@ -205,7 +206,7 @@ Subscription::Subscription(
 
 WatchPath::WatchPath(
     const std::string& root,
-    const Optional<std::string>& relativePath)
+    const std::optional<std::string>& relativePath)
     : root_(root), relativePath_(relativePath) {}
 
 } // namespace watchman

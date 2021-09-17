@@ -92,7 +92,7 @@ class SizeExpr : public QueryExpr {
     auto size = file->size();
 
     if (!exists.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     // Removed files never match
@@ -101,7 +101,7 @@ class SizeExpr : public QueryExpr {
     }
 
     if (!size.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     return eval_int_compare(size.value(), &comp);

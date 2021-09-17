@@ -20,8 +20,6 @@
 #include "watchman/watchman_file.h"
 #include "watchman/watchman_root.h"
 
-using folly::Optional;
-
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
 static std::atomic<long> next_root_number{1};
@@ -128,23 +126,23 @@ void InMemoryFileResult::batchFetchProperties(
   }
 }
 
-Optional<FileInformation> InMemoryFileResult::stat() {
+std::optional<FileInformation> InMemoryFileResult::stat() {
   return file_->stat;
 }
 
-Optional<size_t> InMemoryFileResult::size() {
+std::optional<size_t> InMemoryFileResult::size() {
   return file_->stat.size;
 }
 
-Optional<struct timespec> InMemoryFileResult::accessedTime() {
+std::optional<struct timespec> InMemoryFileResult::accessedTime() {
   return file_->stat.atime;
 }
 
-Optional<struct timespec> InMemoryFileResult::modifiedTime() {
+std::optional<struct timespec> InMemoryFileResult::modifiedTime() {
   return file_->stat.mtime;
 }
 
-Optional<struct timespec> InMemoryFileResult::changedTime() {
+std::optional<struct timespec> InMemoryFileResult::changedTime() {
   return file_->stat.ctime;
 }
 
@@ -159,19 +157,19 @@ w_string_piece InMemoryFileResult::dirName() {
   return dirName_;
 }
 
-Optional<bool> InMemoryFileResult::exists() {
+std::optional<bool> InMemoryFileResult::exists() {
   return file_->exists;
 }
 
-Optional<w_clock_t> InMemoryFileResult::ctime() {
+std::optional<w_clock_t> InMemoryFileResult::ctime() {
   return file_->ctime;
 }
 
-Optional<w_clock_t> InMemoryFileResult::otime() {
+std::optional<w_clock_t> InMemoryFileResult::otime() {
   return file_->otime;
 }
 
-Optional<w_string> InMemoryFileResult::readLink() {
+std::optional<w_string> InMemoryFileResult::readLink() {
   if (!symlinkTarget_.has_value()) {
     if (!file_->stat.isSymlink()) {
       // If this file is not a symlink then we immediately yield
@@ -183,12 +181,12 @@ Optional<w_string> InMemoryFileResult::readLink() {
     }
     // Need to load the symlink target; batch that up
     accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-    return folly::none;
+    return std::nullopt;
   }
   return symlinkTarget_;
 }
 
-Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
+std::optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
   if (!file_->exists) {
     // Don't return hashes for files that we believe to be deleted.
     throw std::system_error(
@@ -202,7 +200,7 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 
   if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
-    return folly::none;
+    return std::nullopt;
   }
   return contentSha1_.value();
 }

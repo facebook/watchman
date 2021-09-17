@@ -108,7 +108,7 @@ class ListExpr : public QueryExpr {
 
     if (needData) {
       // We're not sure yet
-      return folly::none;
+      return std::nullopt;
     }
     return allof;
   }

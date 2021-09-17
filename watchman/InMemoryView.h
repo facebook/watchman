@@ -45,18 +45,18 @@ struct InMemoryViewCaches {
 class InMemoryFileResult final : public FileResult {
  public:
   InMemoryFileResult(const watchman_file* file, InMemoryViewCaches& caches);
-  folly::Optional<FileInformation> stat() override;
-  folly::Optional<struct timespec> accessedTime() override;
-  folly::Optional<struct timespec> modifiedTime() override;
-  folly::Optional<struct timespec> changedTime() override;
-  folly::Optional<size_t> size() override;
+  std::optional<FileInformation> stat() override;
+  std::optional<struct timespec> accessedTime() override;
+  std::optional<struct timespec> modifiedTime() override;
+  std::optional<struct timespec> changedTime() override;
+  std::optional<size_t> size() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
-  folly::Optional<bool> exists() override;
-  folly::Optional<w_string> readLink() override;
-  folly::Optional<w_clock_t> ctime() override;
-  folly::Optional<w_clock_t> otime() override;
-  folly::Optional<FileResult::ContentHash> getContentSha1() override;
+  std::optional<bool> exists() override;
+  std::optional<w_string> readLink() override;
+  std::optional<w_clock_t> ctime() override;
+  std::optional<w_clock_t> otime() override;
+  std::optional<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
 
@@ -64,7 +64,7 @@ class InMemoryFileResult final : public FileResult {
   const watchman_file* file_;
   w_string dirName_;
   InMemoryViewCaches& caches_;
-  folly::Optional<w_string> symlinkTarget_;
+  std::optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };
 

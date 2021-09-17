@@ -66,6 +66,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -86,11 +87,11 @@ struct WatchPath {
 
   WatchPath(
       const std::string& root,
-      const folly::Optional<std::string>& relativePath);
+      const std::optional<std::string>& relativePath);
 
  private:
   const std::string root_;
-  const folly::Optional<std::string> relativePath_;
+  const std::optional<std::string> relativePath_;
 };
 
 using Clock = std::string;
@@ -127,9 +128,20 @@ using SubscriptionPtr = std::shared_ptr<Subscription>;
 struct WatchmanClient {
   explicit WatchmanClient(
       folly::EventBase* eventBase,
-      folly::Optional<std::string>&& sockPath = {},
+      std::optional<std::string>&& sockPath = {},
       folly::Executor* cpuExecutor = {},
       ErrorCallback errCb = {});
+
+  [[deprecated("use std::optional instead")]] explicit WatchmanClient(
+      folly::EventBase* eventBase,
+      folly::Optional<std::string>&& sockPath,
+      folly::Executor* cpuExecutor = {},
+      ErrorCallback errCb = {})
+      : WatchmanClient(
+            eventBase,
+            std::optional<std::string>{std::move(sockPath)},
+            cpuExecutor,
+            std::move(errCb)) {}
 
   /**
    * Establishes a connection, returning version and capability information per

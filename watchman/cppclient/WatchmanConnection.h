@@ -10,9 +10,9 @@
 #include <atomic>
 #include <deque>
 #include <memory>
+#include <optional>
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/Optional.h>
 #include <folly/dynamic.h>
 #include <folly/futures/Future.h>
 #include <folly/io/IOBufQueue.h>
@@ -50,8 +50,8 @@ class WatchmanConnection
 
   explicit WatchmanConnection(
       folly::EventBase* eventBase,
-      folly::Optional<std::string>&& sockPath = {},
-      folly::Optional<Callback>&& callback = {},
+      std::optional<std::string>&& sockPath = {},
+      std::optional<Callback>&& callback = {},
       // You really should provide an executor that runs in a different
       // thread to avoid blocking your event base for large responses
       folly::Executor* cpuExecutor = nullptr);
@@ -119,8 +119,8 @@ class WatchmanConnection
   void readErr(const folly::AsyncSocketException& ex) noexcept override;
 
   folly::Executor::KeepAlive<folly::EventBase> eventBase_;
-  folly::Optional<std::string> sockPath_;
-  folly::Optional<Callback> callback_;
+  std::optional<std::string> sockPath_;
+  std::optional<Callback> callback_;
   folly::Executor::KeepAlive<folly::Executor> cpuExecutor_;
   folly::Promise<folly::dynamic> connectPromise_;
   folly::dynamic versionCmd_;

@@ -34,18 +34,18 @@ class EmptyExpr : public QueryExpr {
     auto size = file->size();
 
     if (!exists.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
     if (!exists.value()) {
       return false;
     }
 
     if (!stat.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     if (!size.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     if (stat->isDir() || stat->isFile()) {

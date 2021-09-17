@@ -5,22 +5,25 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <array>
-#include <limits>
-#include <sstream>
-#ifdef __APPLE__
-#include <pthread.h>
-#endif
-#include <folly/Optional.h>
+#include "watchman/Logging.h"
+
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/system/ThreadName.h>
-#include "watchman/Logging.h"
+
+#include <array>
+#include <limits>
+#include <optional>
+#include <sstream>
+
+#ifdef __APPLE__
+#include <pthread.h>
+#endif
 
 using namespace watchman;
 
-static folly::ThreadLocal<folly::Optional<std::string>> threadName;
+static folly::ThreadLocal<std::optional<std::string>> threadName;
 
 namespace {
 template <typename String>
@@ -134,19 +137,20 @@ const char* Log::setThreadName(std::string&& name) {
     // our local thread name for the purposes of Watchman's log messages.
     folly::setThreadName(name);
   }
-  threadName->assign(name);
+
+  threadName->emplace(name);
   return threadName->value().c_str();
 }
 
 const char* Log::getThreadName() {
-  if (!threadName->hasValue()) {
+  if (!threadName->has_value()) {
     auto name = folly::getCurrentThreadName();
     if (name.hasValue()) {
-      threadName->assign(name);
+      threadName->emplace(name.value());
     } else {
       std::stringstream ss;
       ss << std::this_thread::get_id();
-      threadName->assign(ss.str());
+      threadName->emplace(ss.str());
     }
   }
   return threadName->value().c_str();

@@ -8,8 +8,6 @@
 #include "watchman/query/LocalFileResult.h"
 #include "watchman/ContentHash.h"
 
-using folly::Optional;
-
 namespace watchman {
 
 LocalFileResult::LocalFileResult(
@@ -34,42 +32,42 @@ void LocalFileResult::getInfo() {
   }
 }
 
-Optional<FileInformation> LocalFileResult::stat() {
+std::optional<FileInformation> LocalFileResult::stat() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::FullFileInformation);
-    return folly::none;
+    return std::nullopt;
   }
   return info_;
 }
 
-Optional<size_t> LocalFileResult::size() {
+std::optional<size_t> LocalFileResult::size() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::Size);
-    return folly::none;
+    return std::nullopt;
   }
   return info_->size;
 }
 
-Optional<struct timespec> LocalFileResult::accessedTime() {
+std::optional<struct timespec> LocalFileResult::accessedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return folly::none;
+    return std::nullopt;
   }
   return info_->atime;
 }
 
-Optional<struct timespec> LocalFileResult::modifiedTime() {
+std::optional<struct timespec> LocalFileResult::modifiedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return folly::none;
+    return std::nullopt;
   }
   return info_->mtime;
 }
 
-Optional<struct timespec> LocalFileResult::changedTime() {
+std::optional<struct timespec> LocalFileResult::changedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return folly::none;
+    return std::nullopt;
   }
   return info_->ctime;
 }
@@ -82,34 +80,34 @@ w_string_piece LocalFileResult::dirName() {
   return w_string_piece(fullPath_).dirName();
 }
 
-Optional<bool> LocalFileResult::exists() {
+std::optional<bool> LocalFileResult::exists() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::Exists);
-    return folly::none;
+    return std::nullopt;
   }
   return exists_;
 }
 
-Optional<w_string> LocalFileResult::readLink() {
+std::optional<w_string> LocalFileResult::readLink() {
   if (symlinkTarget_.has_value()) {
     return symlinkTarget_;
   }
   accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-  return folly::none;
+  return std::nullopt;
 }
 
-Optional<w_clock_t> LocalFileResult::ctime() {
+std::optional<w_clock_t> LocalFileResult::ctime() {
   return clock_;
 }
 
-Optional<w_clock_t> LocalFileResult::otime() {
+std::optional<w_clock_t> LocalFileResult::otime() {
   return clock_;
 }
 
-Optional<FileResult::ContentHash> LocalFileResult::getContentSha1() {
+std::optional<FileResult::ContentHash> LocalFileResult::getContentSha1() {
   if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
-    return folly::none;
+    return std::nullopt;
   }
   return contentSha1_.value();
 }

@@ -14,26 +14,31 @@
 #include "watchman/watchman_time.h"
 
 using namespace watchman;
-using folly::Optional;
 
-static Optional<json_ref> make_name(FileResult* file, const QueryContext* ctx) {
+static std::optional<json_ref> make_name(
+    FileResult* file,
+    const QueryContext* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static Optional<json_ref> make_symlink(FileResult* file, const QueryContext*) {
+static std::optional<json_ref> make_symlink(
+    FileResult* file,
+    const QueryContext*) {
   auto target = file->readLink();
   if (!target.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return *target ? w_string_to_json(*target) : json_null();
 }
 
-static Optional<json_ref> make_sha1_hex(FileResult* file, const QueryContext*) {
+static std::optional<json_ref> make_sha1_hex(
+    FileResult* file,
+    const QueryContext*) {
   try {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
       // Need to load it still
-      return folly::none;
+      return std::nullopt;
     }
     char buf[40];
     static const char* hexDigit = "0123456789abcdef";
@@ -62,23 +67,29 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const QueryContext*) {
   }
 }
 
-static Optional<json_ref> make_size(FileResult* file, const QueryContext*) {
+static std::optional<json_ref> make_size(
+    FileResult* file,
+    const QueryContext*) {
   auto size = file->size();
   if (!size.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return json_integer(size.value());
 }
 
-static Optional<json_ref> make_exists(FileResult* file, const QueryContext*) {
+static std::optional<json_ref> make_exists(
+    FileResult* file,
+    const QueryContext*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return json_boolean(exists.value());
 }
 
-static Optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
+static std::optional<json_ref> make_new(
+    FileResult* file,
+    const QueryContext* ctx) {
   bool is_new = false;
 
   if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
@@ -87,7 +98,7 @@ static Optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
     auto ctime = file->ctime();
     if (!ctime.has_value()) {
       // Reconsider this one later
-      return folly::none;
+      return std::nullopt;
     }
     if (ctx->since.is_timestamp) {
       is_new = ctx->since.timestamp > ctime->timestamp;
@@ -100,13 +111,13 @@ static Optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
 }
 
 #define MAKE_CLOCK_FIELD(name, member)                      \
-  static Optional<json_ref> make_##name(                    \
+  static std::optional<json_ref> make_##name(               \
       FileResult* file, const QueryContext* ctx) {          \
     char buf[128];                                          \
     auto clock = file->member();                            \
     if (!clock.has_value()) {                               \
       /* need to load data */                               \
-      return folly::none;                                   \
+      return std::nullopt;                                  \
     }                                                       \
     if (clock_id_string(                                    \
             ctx->clockAtStartOfQuery.position().rootNumber, \
@@ -128,23 +139,23 @@ static_assert(
     "json_int_t isn't large enough to hold a time_t");
 
 #define MAKE_INT_FIELD(name, member)           \
-  static Optional<json_ref> make_##name(       \
+  static std::optional<json_ref> make_##name(  \
       FileResult* file, const QueryContext*) { \
     auto stat = file->stat();                  \
     if (!stat.has_value()) {                   \
       /* need to load data */                  \
-      return folly::none;                      \
+      return std::nullopt;                     \
     }                                          \
     return json_integer(stat->member);         \
   }
 
 #define MAKE_TIME_INT_FIELD(name, member, scale)                  \
-  static Optional<json_ref> make_##name(                          \
+  static std::optional<json_ref> make_##name(                     \
       FileResult* file, const QueryContext*) {                    \
     auto spec = file->member();                                   \
     if (!spec.has_value()) {                                      \
       /* need to load data */                                     \
-      return folly::none;                                         \
+      return std::nullopt;                                        \
     }                                                             \
     return json_integer(                                          \
         ((int64_t)spec->tv_sec * scale) +                         \
@@ -152,12 +163,12 @@ static_assert(
   }
 
 #define MAKE_TIME_DOUBLE_FIELD(name, member)               \
-  static Optional<json_ref> make_##name(                   \
+  static std::optional<json_ref> make_##name(              \
       FileResult* file, const QueryContext*) {             \
     auto spec = file->member();                            \
     if (!spec.has_value()) {                               \
       /* need to load data */                              \
-      return folly::none;                                  \
+      return std::nullopt;                                 \
     }                                                      \
     return json_real(spec->tv_sec + 1e-9 * spec->tv_nsec); \
   }
@@ -195,7 +206,7 @@ MAKE_INT_FIELD(nlink, nlink)
   { #type "time_f", make_##type##time_f}
 // clang-format on
 
-static Optional<json_ref> make_type_field(
+static std::optional<json_ref> make_type_field(
     FileResult* file,
     const QueryContext*) {
   auto dtype = file->dtype();
@@ -230,7 +241,7 @@ static Optional<json_ref> make_type_field(
   // Bias towards the more common file types first
   auto optionalStat = file->stat();
   if (!optionalStat.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
 
   auto stat = optionalStat.value();
@@ -269,7 +280,7 @@ static Optional<json_ref> make_type_field(
 static std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
   struct {
     const char* name;
-    Optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
+    std::optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
   } defs[] = {
       {"name", make_name},
       {"symlink_target", make_symlink},

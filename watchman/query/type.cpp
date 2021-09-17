@@ -22,7 +22,7 @@ class TypeExpr : public QueryExpr {
   EvaluateResult evaluate(QueryContextBase*, FileResult* file) override {
     auto optionalDtype = file->dtype();
     if (!optionalDtype.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
     auto dtype = *optionalDtype;
     if (dtype != DType::Unknown) {
@@ -46,7 +46,7 @@ class TypeExpr : public QueryExpr {
 
     auto stat = file->stat();
     if (!stat.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     switch (arg) {

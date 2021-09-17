@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <optional>
 #include "watchman/Clock.h"
 #include "watchman/FileSystem.h"
 #include "watchman/thirdparty/jansson/jansson.h"
@@ -21,7 +22,7 @@ class QueryExpr;
 
 struct QueryFieldRenderer {
   w_string name;
-  folly::Optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
+  std::optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
 };
 
 using QueryFieldList = std::vector<QueryFieldRenderer*>;
@@ -43,7 +44,7 @@ struct Query {
   w_string relative_root;
   w_string relative_root_slash;
 
-  folly::Optional<std::vector<QueryPath>> paths;
+  std::optional<std::vector<QueryPath>> paths;
 
   std::unique_ptr<GlobTree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator

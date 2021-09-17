@@ -40,8 +40,8 @@ static InlineExecutor inlineExecutor;
 
 WatchmanConnection::WatchmanConnection(
     EventBase* eventBase,
-    Optional<std::string>&& sockPath,
-    Optional<WatchmanConnection::Callback>&& callback,
+    std::optional<std::string>&& sockPath,
+    std::optional<WatchmanConnection::Callback>&& callback,
     Executor* cpuExecutor)
     : eventBase_(eventBase),
       sockPath_(std::move(sockPath)),

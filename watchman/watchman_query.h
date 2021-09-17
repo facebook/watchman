@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#ifndef WATCHMAN_QUERY_H
-#define WATCHMAN_QUERY_H
-#include <folly/Optional.h>
+#pragma once
+
 #include <array>
 #include <deque>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -114,8 +114,6 @@ json_ref field_list_to_json_name_array(
 
 void parse_suffixes(watchman::Query* res, const json_ref& query);
 void parse_globs(watchman::Query* res, const json_ref& query);
-
-#endif
 
 /* vim:ts=2:sw=2:et:
  */

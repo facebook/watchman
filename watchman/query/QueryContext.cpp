@@ -18,7 +18,7 @@ namespace {
 
 constexpr size_t kMaximumRenderBatchSize = 1024;
 
-folly::Optional<json_ref> file_result_to_json(
+std::optional<json_ref> file_result_to_json(
     const QueryFieldList& fieldList,
     const std::unique_ptr<FileResult>& file,
     const QueryContext* ctx) {
@@ -31,7 +31,7 @@ folly::Optional<json_ref> file_result_to_json(
     auto ele = f->make(file.get(), ctx);
     if (!ele.has_value()) {
       // Need data to be loaded
-      return folly::none;
+      return std::nullopt;
     }
     value.set(f->name, std::move(ele.value()));
   }

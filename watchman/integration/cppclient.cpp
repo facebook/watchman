@@ -34,10 +34,7 @@ int main(int argc, char** argv) {
 
   Promise<Unit> errorCallbackTrigger;
   WatchmanClient c(
-      eb,
-      Optional<std::string>(),
-      nullptr,
-      [&errorCallbackTrigger](exception_wrapper&) {
+      eb, std::nullopt, nullptr, [&errorCallbackTrigger](exception_wrapper&) {
         LOG(INFO) << "Expected global error caught";
         errorCallbackTrigger.setValue();
       });

@@ -11,10 +11,10 @@ namespace watchman {
 
 FileResult::~FileResult() {}
 
-folly::Optional<DType> FileResult::dtype() {
+std::optional<DType> FileResult::dtype() {
   auto statInfo = stat();
   if (!statInfo.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return statInfo->dtype();
 }

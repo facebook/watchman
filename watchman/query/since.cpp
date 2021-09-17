@@ -57,7 +57,7 @@ class SinceExpr : public QueryExpr {
         const auto clock =
             (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
         if (!clock.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
 
         if (since.is_timestamp) {
@@ -71,7 +71,7 @@ class SinceExpr : public QueryExpr {
       case since_what::SINCE_MTIME: {
         auto stat = file->stat();
         if (!stat.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
         tval = stat->mtime.tv_sec;
         break;
@@ -79,7 +79,7 @@ class SinceExpr : public QueryExpr {
       case since_what::SINCE_CTIME: {
         auto stat = file->stat();
         if (!stat.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
         tval = stat->ctime.tv_sec;
         break;

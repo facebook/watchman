@@ -8,13 +8,13 @@
 #include "watchman/listener.h"
 #include <folly/Exception.h>
 #include <folly/MapUtil.h>
-#include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <folly/net/NetworkSocket.h>
 #include <atomic>
 #include <chrono>
+#include <optional>
 #include <thread>
 #include "watchman/Constants.h"
 #include "watchman/GroupLookup.h"
@@ -822,16 +822,16 @@ bool w_start_listener() {
 #endif
   setup_signal_handlers();
 
-  folly::Optional<AcceptLoop> tcp_loop;
-  folly::Optional<AcceptLoop> unix_loop;
+  std::optional<AcceptLoop> tcp_loop;
+  std::optional<AcceptLoop> unix_loop;
 
   // When we unwind, ensure that we stop the accept threads
   SCOPE_EXIT {
     if (!w_is_stopping()) {
       w_request_shutdown();
     }
-    unix_loop.clear();
-    tcp_loop.clear();
+    unix_loop.reset();
+    tcp_loop.reset();
   };
 
   if (listener_fd) {
@@ -846,11 +846,11 @@ bool w_start_listener() {
   }
 
   if (listener_fd && !disable_unix_socket) {
-    unix_loop.assign(AcceptLoop("unix-listener", std::move(listener_fd)));
+    unix_loop = AcceptLoop("unix-listener", std::move(listener_fd));
   }
 
   if (Configuration().getBool("tcp-listener-enable", false)) {
-    tcp_loop.assign(AcceptLoop("tcp-listener", get_listener_tcp_socket()));
+    tcp_loop = AcceptLoop("tcp-listener", get_listener_tcp_socket());
   }
 
   startSanityCheckThread();
@@ -867,8 +867,8 @@ bool w_start_listener() {
   // so the next two lines will block until the server
   // shutdown is initiated, rather than cause the server
   // to shutdown.
-  unix_loop.clear();
-  tcp_loop.clear();
+  unix_loop.reset();
+  tcp_loop.reset();
 
   // Wait for clients, waking any sleeping clients up in the process
   {
