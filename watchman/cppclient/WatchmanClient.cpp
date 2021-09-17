@@ -7,7 +7,6 @@
 
 #include "WatchmanClient.h"
 
-#include <folly/Format.h>
 #include <glog/logging.h>
 
 namespace watchman {
