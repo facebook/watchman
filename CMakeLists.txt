@@ -556,7 +556,6 @@ watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/ignore.cpp
 watchman/opendir.cpp
-watchman/time.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/root/dir.cpp
@@ -646,7 +645,6 @@ watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/stream_stdout.cpp
 # string.cpp (in libstring)
-watchman/time.cpp
 watchman/query/FileResult.cpp
 watchman/query/LocalFileResult.cpp
 watchman/query/GlobTree.cpp

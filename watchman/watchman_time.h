@@ -37,8 +37,6 @@ inline timespec systemClockToTimeSpec(
   return durationToTimeSpecDuration(p.time_since_epoch());
 }
 
-void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec* deadline);
-
 /* compare two timevals and return -1 if a is < b, 0 if a == b,
  * or 1 if b > a */
 static inline int w_timeval_compare(struct timeval a, struct timeval b) {
