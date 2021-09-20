@@ -71,7 +71,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(a_dir, "foo")
 
         wmwait = self.spawnWatchmanWait(
-            ["--relative", root, "-m", "8", "-t", "3", root]
+            ["--relative", root, "--max-events", "8", "-t", "3", root]
         )
         self.assertWaitForWmWaitWatch(root)
 
@@ -96,7 +96,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         os.mkdir(b_dir)
 
         wmwait = self.spawnWatchmanWait(
-            ["--relative", b_dir, "-m", "8", "-t", "6", a_dir, b_dir]
+            ["--relative", b_dir, "--max-events", "8", "-t", "6", a_dir, b_dir]
         )
 
         self.assertWaitForWmWaitWatch(b_dir)
