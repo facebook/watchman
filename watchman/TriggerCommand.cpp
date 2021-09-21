@@ -13,6 +13,7 @@
 #include "watchman/TempDir.h"
 #include "watchman/query/Query.h"
 #include "watchman/sockname.h"
+#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 

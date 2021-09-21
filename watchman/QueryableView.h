@@ -9,15 +9,18 @@
 
 #include <future>
 #include <vector>
+#include "watchman/Clock.h"
 #include "watchman/PerfSample.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
 
 struct watchman_file;
 struct watchman_dir;
+struct watchman_root;
 
 namespace watchman {
 
+struct Query;
+struct QueryContext;
 class SCM;
 
 class QueryableView : public std::enable_shared_from_this<QueryableView> {

@@ -10,6 +10,7 @@
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/TermRegistry.h"
+#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
