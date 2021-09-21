@@ -14,40 +14,16 @@
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
+#include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 
 struct watchman_client_subscription;
-struct watchman_root;
 
 namespace watchman {
 
 struct Query;
 struct QueryResult;
 
-enum ClientStateDisposition {
-  PendingEnter,
-  Asserted,
-  PendingLeave,
-  Done,
-};
-
-class ClientStateAssertion {
- public:
-  const std::shared_ptr<watchman_root> root; // Holds a ref on the root
-  const w_string name;
-  // locking: You must hold root->assertedStates lock to access this member
-  ClientStateDisposition disposition{PendingEnter};
-
-  // Deferred payload to send when this assertion makes it to the front
-  // of the queue.
-  // locking: You must hold root->assertedStates lock to access this member.
-  json_ref enterPayload;
-
-  ClientStateAssertion(
-      const std::shared_ptr<watchman_root>& root,
-      const w_string& name)
-      : root(root), name(name) {}
-};
 } // namespace watchman
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {

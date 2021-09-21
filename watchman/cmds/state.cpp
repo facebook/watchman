@@ -14,9 +14,6 @@
 
 using namespace watchman;
 using ms = std::chrono::milliseconds;
-using folly::to;
-using watchman::ClientStateAssertion;
-using watchman::ClientStateDisposition;
 
 struct state_arg {
   w_string name;
@@ -67,118 +64,6 @@ static bool parse_state_arg(
 }
 
 namespace watchman {
-
-void ClientStateAssertions::queueAssertion(
-    std::shared_ptr<ClientStateAssertion> assertion) {
-  // Check to see if someone else has or had a pending claim for this
-  // state and reject the attempt in that case
-  auto state_q = states_.find(assertion->name);
-  if (state_q != states_.end() && !state_q->second.empty()) {
-    auto disp = state_q->second.back()->disposition;
-    if (disp == ClientStateDisposition::PendingEnter ||
-        disp == ClientStateDisposition::Asserted) {
-      throw std::runtime_error(to<std::string>(
-          "state ",
-          assertion->name.view(),
-          " is already Asserted or PendingEnter"));
-    }
-  }
-  states_[assertion->name].push_back(assertion);
-}
-
-json_ref ClientStateAssertions::debugStates() const {
-  auto states = json_array();
-  for (const auto& state_q : states_) {
-    for (const auto& state : state_q.second) {
-      auto obj = json_object();
-      obj.set("name", w_string_to_json(state->name));
-      switch (state->disposition) {
-        case ClientStateDisposition::PendingEnter:
-          obj.set("state", w_string_to_json("PendingEnter"));
-          break;
-        case ClientStateDisposition::Asserted:
-          obj.set("state", w_string_to_json("Asserted"));
-          break;
-        case ClientStateDisposition::PendingLeave:
-          obj.set("state", w_string_to_json("PendingLeave"));
-          break;
-        case ClientStateDisposition::Done:
-          obj.set("state", w_string_to_json("Done"));
-          break;
-      }
-      json_array_append(states, obj);
-    }
-  }
-  return states;
-}
-
-bool ClientStateAssertions::removeAssertion(
-    const std::shared_ptr<ClientStateAssertion>& assertion) {
-  auto it = states_.find(assertion->name);
-  if (it == states_.end()) {
-    return false;
-  }
-
-  auto& queue = it->second;
-  for (auto assertionIter = queue.begin(); assertionIter != queue.end();
-       ++assertionIter) {
-    if (*assertionIter == assertion) {
-      assertion->disposition = ClientStateDisposition::Done;
-      queue.erase(assertionIter);
-
-      // If there are no more entries queued with this name, remove
-      // the name from the states map.
-      if (queue.empty()) {
-        states_.erase(it);
-      } else {
-        // Now check to see who is at the front of the queue.  If
-        // they are set to asserted and have a payload assigned, they
-        // are a state-enter that is pending broadcast of the assertion.
-        // We couldn't send it earlier without risking out of order
-        // delivery wrt. vacating states.
-        auto front = queue.front();
-        if (front->disposition == ClientStateDisposition::Asserted &&
-            front->enterPayload) {
-          front->root->unilateralResponses->enqueue(
-              std::move(front->enterPayload));
-          front->enterPayload = nullptr;
-        }
-      }
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool ClientStateAssertions::isFront(
-    const std::shared_ptr<ClientStateAssertion>& assertion) const {
-  auto it = states_.find(assertion->name);
-  if (it == states_.end()) {
-    return false;
-  }
-  auto& queue = it->second;
-  if (queue.empty()) {
-    return false;
-  }
-  return queue.front() == assertion;
-}
-
-bool ClientStateAssertions::isStateAsserted(w_string stateName) const {
-  auto it = states_.find(stateName);
-  if (it == states_.end()) {
-    return false;
-  }
-  auto& queue = it->second;
-  for (auto& state : queue) {
-    if (state->disposition == Asserted) {
-      return true;
-    }
-  }
-  return false;
-}
-
-} // namespace watchman
 
 static void cmd_state_enter(
     struct watchman_client* clientbase,
@@ -266,6 +151,9 @@ static void cmd_state_enter(
         }
       });
 }
+
+} // namespace watchman
+
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
 static void leave_state(
