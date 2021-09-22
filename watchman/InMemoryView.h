@@ -142,7 +142,10 @@ class ViewDatabase {
  */
 class InMemoryView final : public QueryableView {
  public:
-  InMemoryView(watchman_root* root, std::shared_ptr<Watcher> watcher);
+  InMemoryView(
+      const w_string& root_path,
+      const Configuration& config,
+      std::shared_ptr<Watcher> watcher);
   ~InMemoryView() override;
 
   InMemoryView(InMemoryView&&) = delete;
@@ -293,7 +296,7 @@ class InMemoryView final : public QueryableView {
       const watchman_dir* parentDir,
       bool isUnlink);
 
-  Configuration& config_;
+  const Configuration& config_;
 
   folly::Synchronized<ViewDatabase> view_;
   // The most recently observed tick value of an item in the view

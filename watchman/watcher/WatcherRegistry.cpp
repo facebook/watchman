@@ -13,12 +13,8 @@
 
 using namespace watchman;
 
-WatcherRegistry::WatcherRegistry(
-    const std::string& name,
-    std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)>
-        init,
-    int priority)
-    : name_(name), init_(init), pri_(priority) {
+WatcherRegistry::WatcherRegistry(std::string name, Init init, int priority)
+    : name_(std::move(name)), init_(std::move(init)), pri_(priority) {
   registerFactory(*this);
 }
 
@@ -50,7 +46,7 @@ const WatcherRegistry* WatcherRegistry::getWatcherByName(
 // Helper to DRY in the two success paths in the function below
 static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
     const std::string& watcherName,
-    watchman_root* root,
+    const w_string& root_path,
     std::shared_ptr<watchman::QueryableView>&& watcher) {
   if (!watcher) {
     throw std::runtime_error(folly::to<std::string>(
@@ -62,7 +58,7 @@ static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
   watchman::log(
       watchman::ERR,
       "root ",
-      root->root_path,
+      root_path,
       " using watcher mechanism ",
       watcher->getName(),
       " (",
@@ -72,9 +68,11 @@ static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
 }
 
 std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
-    watchman_root* root) {
+    const w_string& root_path,
+    const w_string& fstype,
+    const Configuration& config) {
   std::string failureReasons;
-  std::string watcherName = root->config.getString("watcher", "auto");
+  std::string watcherName = config.getString("watcher", "auto");
 
   if (watcherName != "auto") {
     // If they asked for a specific one, let's try to find it
@@ -85,7 +83,8 @@ std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
           std::string("no watcher named ") + watcherName + std::string(". "));
     } else {
       try {
-        return reportWatcher(watcherName, root, watcher->init_(root));
+        return reportWatcher(
+            watcherName, root_path, watcher->init_(root_path, fstype, config));
       } catch (const std::exception& e) {
         failureReasons.append(
             watcherName + std::string(": ") + e.what() + std::string(". "));
@@ -118,9 +117,10 @@ std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
           "attempting to use watcher ",
           watcher->getName(),
           " on ",
-          root->root_path,
+          root_path,
           "\n");
-      return reportWatcher(watcherName, root, watcher->init_(root));
+      return reportWatcher(
+          watcherName, root_path, watcher->init_(root_path, fstype, config));
     } catch (const watchman::TerminalWatcherError& e) {
       failureReasons.append(
           watcher->getName() + std::string(": ") + e.what() +

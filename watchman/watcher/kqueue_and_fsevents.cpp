@@ -83,7 +83,9 @@ class PendingEventsCond {
  */
 class KQueueAndFSEventsWatcher : public Watcher {
  public:
-  explicit KQueueAndFSEventsWatcher(Root* root);
+  explicit KQueueAndFSEventsWatcher(
+      const w_string& root_path,
+      const Configuration& config);
 
   bool start(const std::shared_ptr<Root>& root) override;
 
@@ -120,9 +122,11 @@ class KQueueAndFSEventsWatcher : public Watcher {
   folly::Synchronized<std::optional<w_string>> injectedRecrawl_;
 };
 
-KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(Root* root)
+KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(
+    const w_string& root_path,
+    const Configuration& config)
     : Watcher("kqueue+fsevents", WATCHER_HAS_SPLIT_WATCH),
-      kqueueWatcher_(std::make_shared<KQueueWatcher>(root, false)),
+      kqueueWatcher_(std::make_shared<KQueueWatcher>(root_path, config, false)),
       pendingCondition_(std::make_shared<PendingEventsCond>()) {}
 
 namespace {
@@ -279,10 +283,15 @@ void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {
 }
 
 namespace {
-std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(Root* root) {
-  if (root->config.getBool("prefer_split_fsevents_watcher", false)) {
+std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(
+    const w_string& root_path,
+    const w_string& /*fstype*/,
+    const Configuration& config) {
+  if (config.getBool("prefer_split_fsevents_watcher", false)) {
     return std::make_shared<InMemoryView>(
-        root, std::make_shared<KQueueAndFSEventsWatcher>(root));
+        root_path,
+        config,
+        std::make_shared<KQueueAndFSEventsWatcher>(root_path, config));
   } else {
     throw std::runtime_error(
         "Not using the kqueue+fsevents watcher as the \"prefer_split_fsevents_watcher\" config isn't set");

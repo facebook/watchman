@@ -24,9 +24,6 @@
 #ifdef HAVE_INOTIFY_INIT
 
 using namespace watchman;
-using watchman::FileDescriptor;
-using watchman::inotify_category;
-using watchman::Pipe;
 
 #ifndef IN_EXCL_UNLINK
 /* defined in <linux/inotify.h> but we can't include that without
@@ -154,7 +151,7 @@ struct InotifyWatcher : public Watcher {
   char ibuf
       [WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + (NAME_MAX + 1))];
 
-  explicit InotifyWatcher(watchman_root* root);
+  explicit InotifyWatcher(const Configuration& config);
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
@@ -182,7 +179,7 @@ struct InotifyWatcher : public Watcher {
   void clearDebugInfo() override;
 };
 
-InotifyWatcher::InotifyWatcher(watchman_root* root)
+InotifyWatcher::InotifyWatcher(const Configuration& config)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
   infd = FileDescriptor(
@@ -197,12 +194,10 @@ InotifyWatcher::InotifyWatcher(watchman_root* root)
 
   {
     auto wlock = maps.wlock();
-    wlock->wd_to_name.reserve(
-        root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
+    wlock->wd_to_name.reserve(config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
   }
 
-  json_int_t inotify_ring_log_size =
-      root->config.getInt("inotify_ring_log_size", 0);
+  json_int_t inotify_ring_log_size = config.getInt("inotify_ring_log_size", 0);
   if (inotify_ring_log_size) {
     ringBuffer_ =
         std::make_unique<RingBuffer<InotifyLogEntry>>(inotify_ring_log_size);
@@ -507,14 +502,17 @@ void InotifyWatcher::clearDebugInfo() {
 }
 
 namespace {
-std::shared_ptr<watchman::QueryableView> detectInotify(watchman_root* root) {
-  if (is_edenfs_fs_type(root->fs_type)) {
+std::shared_ptr<QueryableView> detectInotify(
+    const w_string& root_path,
+    const w_string& fstype,
+    const Configuration& config) {
+  if (is_edenfs_fs_type(fstype)) {
     // inotify is effectively O(repo) and we know that that access
     // pattern is undesirable when running on top of EdenFS
     throw std::runtime_error("cannot watch EdenFS file systems with inotify");
   }
-  return std::make_shared<watchman::InMemoryView>(
-      root, std::make_shared<InotifyWatcher>(root));
+  return std::make_shared<InMemoryView>(
+      root_path, config, std::make_shared<InotifyWatcher>(config));
 }
 } // namespace
 

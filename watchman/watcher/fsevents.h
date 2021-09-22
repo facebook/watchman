@@ -34,11 +34,12 @@ class FSEventsWatcher : public Watcher {
  public:
   explicit FSEventsWatcher(
       bool hasFileWatching,
-      Configuration& config,
+      const Configuration& config,
       std::optional<w_string> dir = std::nullopt);
 
   explicit FSEventsWatcher(
-      Root* root,
+      const w_string& root_path,
+      const Configuration& config,
       std::optional<w_string> dir = std::nullopt);
   ~FSEventsWatcher();
 

@@ -57,9 +57,12 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-KQueueWatcher::KQueueWatcher(watchman_root* root, bool recursive)
+KQueueWatcher::KQueueWatcher(
+    const w_string& /*root_path*/,
+    const Configuration& config,
+    bool recursive)
     : Watcher("kqueue", 0),
-      maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
+      maps_(maps(config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
       recursive_(recursive) {
   kq_fd = FileDescriptor(kqueue(), "kqueue", FileDescriptor::FDType::Generic);
   kq_fd.setCloExec();

@@ -751,17 +751,16 @@ class EdenView final : public QueryableView {
   bool splitGlobPattern_;
 
  public:
-  explicit EdenView(watchman_root* root)
+  explicit EdenView(const w_string& root_path, const Configuration& config)
       : QueryableView{/*requiresCrawl=*/false},
-        rootPath_(root->root_path),
+        rootPath_(root_path),
         thriftChannel_(makeThriftChannel(
             rootPath_,
-            root->config.getInt("eden_retry_connection_count", 3))),
-        scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
-        mountPoint_(std::string{root->root_path.view()}),
+            config.getInt("eden_retry_connection_count", 3))),
+        scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root_path))),
+        mountPoint_(root_path.string()),
         subscribeReadyFuture_(subscribeReadyPromise_.get_future()),
-        splitGlobPattern_(
-            root->config.getBool("eden_split_glob_pattern", false)) {
+        splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
     auto client = getEdenClient(thriftChannel_);
@@ -1329,14 +1328,17 @@ bool isEdenStopped(w_string root) {
 }
 #endif
 
-std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
+std::shared_ptr<watchman::QueryableView> detectEden(
+    const w_string& root_path,
+    const w_string& fstype,
+    const Configuration& config) {
 #ifdef _WIN32
   static const w_string_piece kDotEden{".eden"};
-  auto edenRoot = findFileInDirTree(root->root_path, {kDotEden});
+  auto edenRoot = findFileInDirTree(root_path, {kDotEden});
   if (edenRoot) {
-    if (isEdenStopped(root->root_path)) {
+    if (isEdenStopped(root_path)) {
       throw TerminalWatcherError(to<std::string>(
-          root->root_path.view(),
+          root_path.view(),
           " appears to be an offline EdenFS mount. "
           "Try running `edenfsctl start` to bring it back online and "
           "then retry your watch"));
@@ -1352,7 +1354,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
           ")"));
     }
     try {
-      return std::make_shared<EdenView>(root);
+      return std::make_shared<EdenView>(root_path, config);
     } catch (const std::exception& exc) {
       throw TerminalWatcherError(to<std::string>(
           "Failed to initialize eden watcher, and since this is an Eden "
@@ -1362,14 +1364,14 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
   }
 
   throw std::runtime_error(
-      to<std::string>("Not an Eden clone: ", root->root_path.view()));
+      to<std::string>("Not an Eden clone: ", root_path.view()));
 
 #else
-  if (!is_edenfs_fs_type(root->fs_type) && root->fs_type != "fuse" &&
-      root->fs_type != "osxfuse_eden" && root->fs_type != "macfuse_eden" &&
-      root->fs_type != "edenfs_eden") {
+  if (!is_edenfs_fs_type(fstype) && fstype != "fuse" &&
+      fstype != "osxfuse_eden" && fstype != "macfuse_eden" &&
+      fstype != "edenfs_eden") {
     // Not an active EdenFS mount.  Perhaps it isn't mounted yet?
-    auto readme = to<std::string>(root->root_path.view(), "/README_EDEN.txt");
+    auto readme = to<std::string>(root_path.view(), "/README_EDEN.txt");
     try {
       (void)getFileInformation(readme.c_str());
     } catch (const std::exception&) {
@@ -1379,7 +1381,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
       // this as an EdenFS mount so record the issue and allow falling
       // back to one of the other watchers.
       throw std::runtime_error(
-          to<std::string>(root->fs_type.view(), " is not a FUSE file system"));
+          to<std::string>(fstype.view(), " is not a FUSE file system"));
     }
 
     // If we get here, then the readme file/symlink exists.
@@ -1388,15 +1390,15 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
     // and we don't want to allow falling back to inotify as that
     // will be horribly slow.
     throw TerminalWatcherError(to<std::string>(
-        root->root_path.view(),
+        root_path.view(),
         " appears to be an offline EdenFS mount. "
         "Try running `eden doctor` to bring it back online and "
         "then retry your watch"));
   }
 
   auto edenRoot = readSymbolicLink(
-      to<std::string>(root->root_path.view(), "/.eden/root").c_str());
-  if (edenRoot != root->root_path) {
+      to<std::string>(root_path.view(), "/.eden/root").c_str());
+  if (edenRoot != root_path) {
     // We aren't at the root of the eden mount.
     // Throw a TerminalWatcherError to indicate that the Eden watcher is the
     // correct watcher type for this directory (so don't try other watcher
@@ -1408,7 +1410,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(watchman_root* root) {
   }
 #endif
   // Given that the readlink() succeeded, assume this is an Eden mount.
-  return std::make_shared<EdenView>(root);
+  return std::make_shared<EdenView>(root_path, config);
 }
 
 } // namespace

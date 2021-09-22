@@ -45,7 +45,7 @@ struct WinWatcher : public Watcher {
   std::condition_variable cond;
   folly::Synchronized<std::list<Item>, std::mutex> changedItems;
 
-  explicit WinWatcher(watchman_root* root);
+  explicit WinWatcher(const w_string& root_path, const Configuration& config);
   ~WinWatcher();
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
@@ -63,9 +63,9 @@ struct WinWatcher : public Watcher {
   void readChangesThread(const std::shared_ptr<watchman_root>& root);
 };
 
-WinWatcher::WinWatcher(watchman_root* root)
+WinWatcher::WinWatcher(const w_string& root_path, const Configuration& config)
     : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-  auto wpath = root->root_path.piece().asWideUNC();
+  auto wpath = root_path.piece().asWideUNC();
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
@@ -82,7 +82,7 @@ WinWatcher::WinWatcher(watchman_root* root)
 
   if (!dir_handle) {
     throw std::runtime_error(
-        std::string("failed to open dir ") + root->root_path.c_str() + ": " +
+        std::string("failed to open dir ") + root_path.c_str() + ": " +
         win32_strerror(GetLastError()));
   }
 

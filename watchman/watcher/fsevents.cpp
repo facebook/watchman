@@ -548,7 +548,7 @@ done:
 
 FSEventsWatcher::FSEventsWatcher(
     bool hasFileWatching,
-    Configuration& config,
+    const Configuration& config,
     std::optional<w_string> dir)
     : Watcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
@@ -563,14 +563,15 @@ FSEventsWatcher::FSEventsWatcher(
 }
 
 FSEventsWatcher::FSEventsWatcher(
-    watchman_root* root,
+    const w_string& /*root_path*/,
+    const Configuration& config,
     std::optional<w_string> dir)
     : FSEventsWatcher(
-          root->config.getBool("fsevents_watch_files", true),
-          root->config,
+          config.getBool("fsevents_watch_files", true),
+          config,
           dir) {
   json_int_t fsevents_ring_log_size =
-      root->config.getInt("fsevents_ring_log_size", 0);
+      config.getInt("fsevents_ring_log_size", 0);
   if (fsevents_ring_log_size) {
     ringBuffer_ =
         std::make_unique<RingBuffer<FSEventsLogEntry>>(fsevents_ring_log_size);

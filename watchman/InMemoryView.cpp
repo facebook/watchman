@@ -439,16 +439,17 @@ json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
 }
 
 InMemoryView::InMemoryView(
-    watchman_root* root,
+    const w_string& root_path,
+    const Configuration& config,
     std::shared_ptr<Watcher> watcher)
     : QueryableView{/*requiresRecrawl=*/true},
-      config_(root->config),
-      view_(folly::in_place, root->root_path),
+      config_(config),
+      view_(folly::in_place, root_path),
       rootNumber_(next_root_number++),
-      rootPath_(root->root_path),
-      watcher_(watcher),
+      rootPath_(root_path),
+      watcher_(std::move(watcher)),
       caches_(
-          root->root_path,
+          root_path,
           config_.getInt("content_hash_max_items", 128 * 1024),
           config_.getInt("symlink_target_max_items", 32 * 1024),
           std::chrono::milliseconds(
@@ -459,7 +460,7 @@ InMemoryView::InMemoryView(
           size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
       syncContentCacheWarming_(
           config_.getBool("content_hash_warm_wait_before_settle", false)),
-      scm_(SCM::scmForPath(root->root_path)) {
+      scm_(SCM::scmForPath(root_path)) {
   json_int_t in_memory_view_ring_log_size =
       config_.getInt("in_memory_view_ring_log_size", 0);
   if (in_memory_view_ring_log_size) {

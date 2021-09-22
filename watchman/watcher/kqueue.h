@@ -14,6 +14,8 @@
 
 namespace watchman {
 
+class Configuration;
+
 struct KQueueWatcher : public Watcher {
   FileDescriptor kq_fd;
   Pipe terminatePipe_;
@@ -33,7 +35,10 @@ struct KQueueWatcher : public Watcher {
 
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 
-  explicit KQueueWatcher(Root* root, bool recursive = true);
+  explicit KQueueWatcher(
+      const w_string& root_path,
+      const Configuration& config,
+      bool recursive = true);
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<Root>& root,
