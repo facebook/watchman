@@ -13,8 +13,8 @@
 #include "watchman/UserDir.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
+#include "watchman/query/parse.h"
 #include "watchman/sockname.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 

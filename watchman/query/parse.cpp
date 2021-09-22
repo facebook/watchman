@@ -5,13 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/query/parse.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;

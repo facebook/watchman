@@ -10,9 +10,9 @@
 #include "watchman/MapUtil.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
+#include "watchman/query/parse.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;

@@ -16,12 +16,12 @@
 #include "watchman/PendingCollection.h"
 #include "watchman/PerfSample.h"
 #include "watchman/QueryableView.h"
+#include "watchman/Result.h"
 #include "watchman/RingBuffer.h"
 #include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/query/FileResult.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_query.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
