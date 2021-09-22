@@ -25,6 +25,12 @@ class SCM;
 
 class QueryableView : public std::enable_shared_from_this<QueryableView> {
  public:
+  /**
+   * Set if this view requires crawling the filesystem.
+   */
+  const bool requiresCrawl;
+
+  explicit QueryableView(bool requiresCrawl) : requiresCrawl{requiresCrawl} {}
   virtual ~QueryableView();
 
   /**

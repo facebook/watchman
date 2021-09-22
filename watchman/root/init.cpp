@@ -190,6 +190,15 @@ Root::Root(const w_string& root_path, const w_string& fs_type)
   inner.view_ = WatcherRegistry::initWatcher(this);
 
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();
+
+  if (!inner.view_->requiresCrawl) {
+    // This watcher can resolve queries without needing a crawl.
+    inner.done_initial = true;
+    auto crawlInfo = recrawlInfo.wlock();
+    crawlInfo->shouldRecrawl = false;
+    crawlInfo->crawlStart = std::chrono::steady_clock::now();
+    crawlInfo->crawlFinish = crawlInfo->crawlStart;
+  }
 }
 
 Root::~Root() {

@@ -752,7 +752,8 @@ class EdenView final : public QueryableView {
 
  public:
   explicit EdenView(watchman_root* root)
-      : rootPath_(root->root_path),
+      : QueryableView{/*requiresCrawl=*/false},
+        rootPath_(root->root_path),
         thriftChannel_(makeThriftChannel(
             rootPath_,
             root->config.getInt("eden_retry_connection_count", 3))),
@@ -765,14 +766,6 @@ class EdenView final : public QueryableView {
     // cookie file changes
     auto client = getEdenClient(thriftChannel_);
     client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
-    // We don't run an iothread so we never need to crawl and
-    // thus should be considered to have "completed" the initial
-    // exploration of the root
-    root->inner.done_initial = true;
-    auto crawlInfo = root->recrawlInfo.wlock();
-    crawlInfo->shouldRecrawl = false;
-    crawlInfo->crawlStart = std::chrono::steady_clock::now();
-    crawlInfo->crawlFinish = crawlInfo->crawlStart;
   }
 
   void timeGenerator(Query* query, QueryContext* ctx) const override {
