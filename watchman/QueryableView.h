@@ -13,9 +13,6 @@
 #include "watchman/PerfSample.h"
 #include "watchman/watchman_string.h"
 
-struct watchman_file;
-struct watchman_dir;
-
 namespace watchman {
 
 struct Query;

@@ -10,7 +10,7 @@
 #include <folly/stop_watch.h>
 #include <unordered_set>
 #include "watchman/Clock.h"
-#include "watchman/watchman_query.h"
+#include "watchman/query/QueryExpr.h"
 
 struct watchman_file;
 
