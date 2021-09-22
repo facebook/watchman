@@ -164,22 +164,6 @@ void Root::applyIgnoreConfiguration() {
   }
 }
 
-// internal initialization for root
-void Root::init() {
-  // This just opens and releases the dir.  If an exception is thrown
-  // it will bubble up.
-  w_dir_open(root_path.c_str());
-  // We can't use shared_from_this() here as we are being called from
-  // inside the constructor and we'd hit a bad_weak_ptr exception.
-  inner.init(this);
-
-  inner.last_cmd_timestamp = std::chrono::steady_clock::now();
-}
-
-void Root::Inner::init(Root* root) {
-  view_ = WatcherRegistry::initWatcher(root);
-}
-
 Root::Root(const w_string& root_path, const w_string& fs_type)
     : root_path(root_path),
       fs_type(fs_type),
@@ -197,7 +181,15 @@ Root::Root(const w_string& root_path, const w_string& fs_type)
   ++live_roots;
   applyIgnoreConfiguration();
   applyIgnoreVCSConfiguration();
-  init();
+
+  // This just opens and releases the dir.  If an exception is thrown
+  // it will bubble up.
+  w_dir_open(root_path.c_str());
+  // We can't use shared_from_this() here as we are being called from
+  // inside the constructor and we'd hit a bad_weak_ptr exception.
+  inner.view_ = WatcherRegistry::initWatcher(this);
+
+  inner.last_cmd_timestamp = std::chrono::steady_clock::now();
 }
 
 Root::~Root() {

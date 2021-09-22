@@ -163,8 +163,6 @@ class Root : public std::enable_shared_from_this<Root> {
 
     /// Only accessed on the iothread.
     std::chrono::steady_clock::time_point last_reap_timestamp;
-
-    void init(Root* root);
   } inner;
 
   // For debugging and diagnostic purposes, this set references
@@ -200,7 +198,6 @@ class Root : public std::enable_shared_from_this<Root> {
 
   // Returns true if the caller should stop the watch.
   bool considerReap();
-  void init();
   bool removeFromWatched();
   void applyIgnoreVCSConfiguration();
   void signalThreads();
