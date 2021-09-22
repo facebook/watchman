@@ -626,9 +626,9 @@ watchman/SanityCheck.cpp
 watchman/Shutdown.cpp
 watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
-watchman/TempDir.cpp
 watchman/ThreadPool.cpp
 watchman/TriggerCommand.cpp
+watchman/UserDir.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/clientmode.cpp

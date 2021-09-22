@@ -24,8 +24,8 @@
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
 #include "watchman/ProcessLock.h"
-#include "watchman/TempDir.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/UserDir.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/listener.h"
 #include "watchman/sockname.h"
@@ -59,7 +59,6 @@ static struct sockaddr_un un;
 #include <mach-o/dyld.h> // @manual
 #endif
 
-static std::string compute_user_name();
 static void compute_file_name(
     std::string& str,
     const std::string& user,
@@ -72,7 +71,7 @@ const std::string& get_pid_file() {
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
-  compute_file_name(flags.pid_file, compute_user_name(), "pid", "pidfile");
+  compute_file_name(flags.pid_file, computeUserName(), "pid", "pidfile");
   return flags.pid_file;
 }
 } // namespace
@@ -465,7 +464,7 @@ static SpawnResult spawn_via_launchd() {
         "\n");
   }
 
-  compute_file_name(flags.pid_file, compute_user_name(), "pid", "pidfile");
+  compute_file_name(flags.pid_file, computeUserName(), "pid", "pidfile");
 
   auto plist_content = folly::to<std::string>(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -566,23 +565,6 @@ static void parse_encoding(const std::string& enc, enum w_pdu_type* pdu) {
   exit(EX_USAGE);
 }
 
-static const char* get_env_with_fallback(
-    const char* name1,
-    const char* name2,
-    const char* fallback) {
-  const char* val;
-
-  val = getenv(name1);
-  if (!val || *val == 0) {
-    val = getenv(name2);
-  }
-  if (!val || *val == 0) {
-    val = fallback;
-  }
-
-  return val;
-}
-
 static void verify_dir_ownership(const std::string& state_dir) {
 #ifndef _WIN32
   // verify ownership
@@ -681,60 +663,6 @@ bail:
 #endif
 }
 
-#ifdef _WIN32
-static std::string get_watchman_appdata_path() {
-  PWSTR local_app_data = nullptr;
-  auto res =
-      SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data);
-  if (res != S_OK) {
-    logf(
-        FATAL,
-        "SHGetKnownFolderPath FOLDERID_LocalAppData failed: {}\n",
-        win32_strerror(res));
-  }
-  SCOPE_EXIT {
-    CoTaskMemFree(local_app_data);
-  };
-  // Perform path mapping from wide string to our preferred UTF8
-  w_string temp_location(local_app_data, wcslen(local_app_data));
-  // and use the watchman subdir of LOCALAPPDATA
-  auto watchmanDir = folly::to<std::string>(temp_location.view(), "/watchman");
-  if (mkdir(watchmanDir.c_str(), 0700) == 0 || errno == EEXIST) {
-    return watchmanDir;
-  }
-  logf(
-      ERR,
-      "failed to create directory {}: {}\n",
-      watchmanDir,
-      folly::errnoStr(errno));
-  exit(1);
-}
-
-static const std::string& cached_watchman_appdata_path() {
-  static std::string path = get_watchman_appdata_path();
-  return path;
-}
-#endif
-
-static std::string compute_per_user_state_dir(const std::string& user) {
-  if (!flags.test_state_dir.empty()) {
-    return folly::to<std::string>(flags.test_state_dir, "/", user, "-state");
-  }
-
-#ifdef _WIN32
-  return cached_watchman_appdata_path();
-#else
-  auto state_parent =
-#ifdef WATCHMAN_STATE_DIR
-      WATCHMAN_STATE_DIR
-#else
-      watchman_tmp_dir.c_str()
-#endif
-      ;
-  return folly::to<std::string>(state_parent, "/", user, "-state");
-#endif
-}
-
 static void compute_file_name(
     std::string& str,
     const std::string& user,
@@ -746,7 +674,7 @@ static void compute_file_name(
     str_computed = true;
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
-    auto state_dir = compute_per_user_state_dir(user);
+    auto state_dir = computeWatchmanStateDirectory(user);
 
     if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
       verify_dir_ownership(state_dir.c_str());
@@ -774,51 +702,6 @@ static void compute_file_name(
         str_computed ? " computed." : " provided.",
         "\n");
   }
-#endif
-}
-
-static std::string compute_user_name() {
-#ifdef _WIN32
-  // We don't trust the environment on win32 because in some situations
-  // the environment may contain the domain name like `WORKGROUP\user`
-  // which can confuse some path construction we do later on.
-  WCHAR userW[1 + UNLEN];
-  DWORD size = static_cast<DWORD>(std::size(userW));
-  if (GetUserNameW(userW, &size) && size > 0) {
-    // Constructing a w_string from a WCHAR* will convert to UTF-8
-    w_string user(userW, size);
-    return user.string();
-  }
-
-  log(FATAL,
-      "GetUserName failed: ",
-      win32_strerror(GetLastError()),
-      ". I don't know who you are!?\n");
-#else
-  const char* user = get_env_with_fallback("USER", "LOGNAME", NULL);
-
-  if (!user) {
-    uid_t uid = getuid();
-    struct passwd* pw;
-
-    pw = getpwuid(uid);
-    if (!pw) {
-      log(FATAL,
-          "getpwuid(",
-          uid,
-          ") failed: ",
-          folly::errnoStr(errno),
-          ". I don't know who you are\n");
-    }
-
-    user = pw->pw_name;
-
-    if (!user) {
-      log(FATAL, "watchman requires that you set $USER in your env\n");
-    }
-  }
-
-  return user;
 #endif
 }
 
@@ -860,17 +743,11 @@ static void setup_sock_name() {
   }
 #endif
 
-  auto user = compute_user_name();
+  auto user = computeUserName();
 
-#ifdef _WIN32
-  if (!flags.test_state_dir.empty()) {
-    watchman_tmp_dir = flags.test_state_dir;
-  } else {
-    watchman_tmp_dir = cached_watchman_appdata_path();
-  }
-#else
-  watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
-#endif
+  // Precompute the temporary directory path in case this process's environment
+  // changes.
+  (void)getTemporaryDirectory();
 
 #ifdef _WIN32
   // On Windows, if an application uses --sockname to override the named
