@@ -93,9 +93,9 @@ void InMemoryView::syncToNowCookies(
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
   try {
-    cookies_.syncToNow(timeout, cookieFileNames);
+    root->cookies.syncToNow(timeout, cookieFileNames);
   } catch (const std::system_error& exc) {
-    auto cookieDirs = cookies_.cookieDirs();
+    auto cookieDirs = root->cookies.cookieDirs();
 
     if (exc.code() == watchman::error_code::no_such_file_or_directory ||
         exc.code() == watchman::error_code::permission_denied ||
@@ -116,8 +116,8 @@ void InMemoryView::syncToNowCookies(
         } else {
           // The cookie dir was a VCS subdir and it got deleted.  Let's
           // focus instead on the parent dir and recursively retry.
-          cookies_.setCookieDir(rootPath_);
-          return cookies_.syncToNow(timeout, cookieFileNames);
+          root->cookies.setCookieDir(rootPath_);
+          return root->cookies.syncToNow(timeout, cookieFileNames);
         }
       } else {
         // Split watchers have one watch on the root and watches for nested

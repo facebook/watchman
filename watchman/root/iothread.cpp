@@ -322,7 +322,7 @@ void InMemoryView::processPath(
    *
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
-  if (cookies_.isCookiePrefix(pending.path)) {
+  if (root->cookies.isCookiePrefix(pending.path)) {
     bool consider_cookie;
     if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
       // The watcher gives us file level notification, thus only consider
@@ -340,7 +340,7 @@ void InMemoryView::processPath(
     }
 
     if (consider_cookie) {
-      cookies_.notifyCookie(pending.path);
+      root->cookies.notifyCookie(pending.path);
     }
 
     // Never allow cookie files to show up in the tree

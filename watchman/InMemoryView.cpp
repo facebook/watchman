@@ -442,7 +442,6 @@ InMemoryView::InMemoryView(
     watchman_root* root,
     std::shared_ptr<Watcher> watcher)
     : QueryableView{/*requiresRecrawl=*/true},
-      cookies_(root->cookies),
       config_(root->config),
       view_(folly::in_place, root->root_path),
       rootNumber_(next_root_number++),

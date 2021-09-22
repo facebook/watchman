@@ -293,7 +293,6 @@ class InMemoryView final : public QueryableView {
       const watchman_dir* parentDir,
       bool isUnlink);
 
-  CookieSync& cookies_;
   Configuration& config_;
 
   folly::Synchronized<ViewDatabase> view_;
