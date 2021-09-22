@@ -11,6 +11,10 @@
 #include <unordered_map>
 #include "watchman/CookieSync.h"
 #include "watchman/FileSystem.h"
+#include "watchman/PendingCollection.h"
+#include "watchman/PubSub.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_ignore.h"
 #include "watchman/watchman_string.h"
 
@@ -19,6 +23,12 @@
 #define DEFAULT_GC_INTERVAL 86400
 
 namespace watchman {
+
+class Root;
+struct TriggerCommand;
+class QueryableView;
+struct QueryContext;
+class PerfSample;
 
 enum ClientStateDisposition {
   PendingEnter,
@@ -178,7 +188,12 @@ class Root : public std::enable_shared_from_this<Root> {
    */
   std::shared_ptr<QueryableView> view() const;
 
-  Root(const w_string& root_path, const w_string& fs_type);
+  Root(
+      const w_string& root_path,
+      const w_string& fs_type,
+      json_ref config_file,
+      Configuration config,
+      std::shared_ptr<QueryableView> view);
   ~Root();
 
   void considerAgeOut();

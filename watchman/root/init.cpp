@@ -7,7 +7,6 @@
 
 #include <folly/String.h>
 #include "watchman/InMemoryView.h"
-#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
@@ -122,23 +121,6 @@ bool ClientStateAssertions::isStateAsserted(w_string stateName) const {
   return false;
 }
 
-static json_ref load_root_config(const char* path) {
-  char cfgfilename[WATCHMAN_NAME_MAX];
-
-  snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
-
-  if (!w_path_exists(cfgfilename)) {
-    if (errno == ENOENT) {
-      return nullptr;
-    }
-    logf(
-        ERR, "{} is not accessible: {}\n", cfgfilename, folly::errnoStr(errno));
-    return nullptr;
-  }
-
-  return json_load_file(cfgfilename, 0);
-}
-
 void Root::applyIgnoreConfiguration() {
   auto ignores = config.get("ignore_dirs");
   if (!ignores) {
@@ -164,13 +146,18 @@ void Root::applyIgnoreConfiguration() {
   }
 }
 
-Root::Root(const w_string& root_path, const w_string& fs_type)
+Root::Root(
+    const w_string& root_path,
+    const w_string& fs_type,
+    json_ref config_file,
+    Configuration config_,
+    std::shared_ptr<QueryableView> view)
     : root_path(root_path),
       fs_type(fs_type),
       case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
       cookies(root_path),
-      config_file(load_root_config(root_path.c_str())),
-      config(config_file),
+      config_file(std::move(config_file)),
+      config(std::move(config_)),
       trigger_settle(int(config.getInt("settle", DEFAULT_SETTLE_PERIOD))),
       gc_interval(
           int(config.getInt("gc_interval_seconds", DEFAULT_GC_INTERVAL))),
@@ -185,7 +172,7 @@ Root::Root(const w_string& root_path, const w_string& fs_type)
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
   w_dir_open(root_path.c_str());
-  inner.view_ = WatcherRegistry::initWatcher(root_path, fs_type, config);
+  inner.view_ = std::move(view);
 
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();
 

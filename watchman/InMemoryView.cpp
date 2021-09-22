@@ -441,10 +441,10 @@ json_ref InMemoryView::PendingChangeLogEntry::asJsonValue() const {
 
 InMemoryView::InMemoryView(
     const w_string& root_path,
-    const Configuration& config,
+    Configuration config,
     std::shared_ptr<Watcher> watcher)
     : QueryableView{/*requiresRecrawl=*/true},
-      config_(config),
+      config_(std::move(config)),
       view_(folly::in_place, root_path),
       rootNumber_(next_root_number++),
       rootPath_(root_path),

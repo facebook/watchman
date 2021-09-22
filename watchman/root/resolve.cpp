@@ -5,18 +5,22 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <folly/String.h>
 #include "watchman/Errors.h"
 #include "watchman/FSDetect.h"
 #include "watchman/FileSystem.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/state.h"
+#include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
 
+namespace {
+
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
-static bool root_check_restrict(const char* watch_path) {
+bool root_check_restrict(const char* watch_path) {
   uint32_t i;
   bool enforcing;
 
@@ -102,6 +106,24 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
         advice);
   }
 }
+
+json_ref load_root_config(const char* path) {
+  char cfgfilename[WATCHMAN_NAME_MAX];
+  snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
+
+  if (!w_path_exists(cfgfilename)) {
+    if (errno == ENOENT) {
+      return nullptr;
+    }
+    logf(
+        ERR, "{} is not accessible: {}\n", cfgfilename, folly::errnoStr(errno));
+    return nullptr;
+  }
+
+  return json_load_file(cfgfilename, 0);
+}
+
+} // namespace
 
 std::shared_ptr<watchman_root>
 root_resolve(const char* filename, bool auto_watch, bool* created) {
@@ -215,7 +237,14 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
         "and checking out a newer version of the project?");
   }
 
-  root = std::make_shared<watchman_root>(root_str, fs_type);
+  auto config_file = load_root_config(root_str.c_str());
+  Configuration config{config_file};
+  root = std::make_shared<watchman_root>(
+      root_str,
+      fs_type,
+      config_file,
+      config,
+      WatcherRegistry::initWatcher(root_str, fs_type, config));
 
   {
     auto wlock = watched_roots.wlock();
