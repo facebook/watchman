@@ -650,6 +650,7 @@ watchman/query/LocalFileResult.cpp
 watchman/query/GlobTree.cpp
 watchman/query/QueryContext.cpp
 watchman/query/Query.cpp
+watchman/query/QueryResult.cpp
 watchman/query/TermRegistry.cpp
 watchman/query/base.cpp
 watchman/query/dirname.cpp

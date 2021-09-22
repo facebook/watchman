@@ -35,51 +35,6 @@ std::shared_ptr<watchman::Query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,
     const json_ref& query);
 
-// Allows a generator to process a file node
-// through the query engine
-void w_query_process_file(
-    watchman::Query* query,
-    watchman::QueryContext* ctx,
-    std::unique_ptr<watchman::FileResult> file);
-
-void time_generator(
-    watchman::Query* query,
-    const std::shared_ptr<watchman_root>& root,
-    watchman::QueryContext* ctx);
-
-namespace watchman {
-
-struct QueryDebugInfo {
-  std::vector<w_string> cookieFileNames;
-
-  json_ref render() const;
-};
-
-struct QueryResult {
-  bool isFreshInstance;
-  json_ref resultsArray;
-  // Only populated if the query was set to dedup_results
-  std::unordered_set<w_string> dedupedFileNames;
-  ClockSpec clockAtStartOfQuery;
-  uint32_t stateTransCountAtStartOfQuery;
-  json_ref savedStateInfo;
-  QueryDebugInfo debugInfo;
-};
-
-// Generator callback, used to plug in an alternate
-// generator when used in triggers or subscriptions
-using QueryGenerator = std::function<void(
-    watchman::Query* query,
-    const std::shared_ptr<watchman_root>& root,
-    watchman::QueryContext* ctx)>;
-
-} // namespace watchman
-
-watchman::QueryResult w_query_execute(
-    watchman::Query* query,
-    const std::shared_ptr<watchman_root>& root,
-    watchman::QueryGenerator generator);
-
 // parse the old style since and find queries
 std::shared_ptr<watchman::Query> w_query_parse_legacy(
     const std::shared_ptr<watchman_root>& root,

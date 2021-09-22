@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/query/eval.h"
 #include <folly/ScopeGuard.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"

@@ -12,6 +12,7 @@
 #include "watchman/Shutdown.h"
 #include "watchman/UserDir.h"
 #include "watchman/query/Query.h"
+#include "watchman/query/eval.h"
 #include "watchman/sockname.h"
 #include "watchman/watchman_query.h"
 #include "watchman/watchman_root.h"
