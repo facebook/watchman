@@ -13,12 +13,13 @@
 #include "watchman/watchman_opendir.h"
 
 struct watchman_file;
-struct watchman_root;
 
 namespace watchman {
 
 class QueryableView;
 class InMemoryView;
+class Root;
+
 class TerminalWatcherError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
@@ -48,7 +49,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Start up threads or similar.  Called in the context of the
   // notify thread
-  virtual bool start(const std::shared_ptr<watchman_root>& root);
+  virtual bool start(const std::shared_ptr<Root>& root);
 
   // Perform watcher-specific cleanup for a watched root when it is freed
   virtual ~Watcher();
@@ -76,7 +77,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   virtual std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) = 0;
 
@@ -102,7 +103,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
    * Notifications are inserted into `coll`.
    */
   virtual ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) = 0;
 
   /**

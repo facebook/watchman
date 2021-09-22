@@ -5,16 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#ifndef WATCHMAN_IGNORE_H
-#define WATCHMAN_IGNORE_H
+#pragma once
 
 #include <unordered_set>
 #include "watchman/thirdparty/libart/src/art.h"
 #include "watchman/watchman_string.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct watchman_ignore {
   /* if the map has an entry for a given dir, we're ignoring it */
@@ -44,12 +39,6 @@ struct watchman_ignore {
   // Test whether path is listed in ignore dir config
   bool isIgnoreDir(const w_string& path) const;
 };
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
 
 /* vim:ts=2:sw=2:et:
  */

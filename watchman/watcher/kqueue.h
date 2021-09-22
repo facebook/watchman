@@ -33,17 +33,17 @@ struct KQueueWatcher : public Watcher {
 
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 
-  explicit KQueueWatcher(watchman_root* root, bool recursive = true);
+  explicit KQueueWatcher(Root* root, bool recursive = true);
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;

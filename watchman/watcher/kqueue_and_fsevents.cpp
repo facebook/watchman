@@ -83,21 +83,21 @@ class PendingEventsCond {
  */
 class KQueueAndFSEventsWatcher : public Watcher {
  public:
-  explicit KQueueAndFSEventsWatcher(watchman_root* root);
+  explicit KQueueAndFSEventsWatcher(Root* root);
 
-  bool start(const std::shared_ptr<watchman_root>& root) override;
+  bool start(const std::shared_ptr<Root>& root) override;
 
   folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
@@ -120,14 +120,14 @@ class KQueueAndFSEventsWatcher : public Watcher {
   folly::Synchronized<std::optional<w_string>> injectedRecrawl_;
 };
 
-KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(watchman_root* root)
+KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(Root* root)
     : Watcher("kqueue+fsevents", WATCHER_HAS_SPLIT_WATCH),
       kqueueWatcher_(std::make_shared<KQueueWatcher>(root, false)),
       pendingCondition_(std::make_shared<PendingEventsCond>()) {}
 
 namespace {
 bool startThread(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     const std::shared_ptr<Watcher>& watcher,
     const std::shared_ptr<PendingEventsCond>& cond) {
   std::weak_ptr<Watcher> weakWatcher(watcher);
@@ -151,8 +151,7 @@ bool startThread(
 }
 } // namespace
 
-bool KQueueAndFSEventsWatcher::start(
-    const std::shared_ptr<watchman_root>& root) {
+bool KQueueAndFSEventsWatcher::start(const std::shared_ptr<Root>& root) {
   root->cookies.addCookieDir(root->root_path);
   return startThread(root, kqueueWatcher_, pendingCondition_);
 }
@@ -181,7 +180,7 @@ folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
 }
 
 std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     struct watchman_dir* dir,
     const char* path) {
   if (!dir->parent) {
@@ -226,7 +225,7 @@ bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   {
     auto guard = injectedRecrawl_.wlock();
@@ -280,8 +279,7 @@ void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {
 }
 
 namespace {
-std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(
-    watchman_root* root) {
+std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(Root* root) {
   if (root->config.getBool("prefer_split_fsevents_watcher", false)) {
     return std::make_shared<InMemoryView>(
         root, std::make_shared<KQueueAndFSEventsWatcher>(root));
@@ -297,7 +295,7 @@ static WatcherRegistry reg("kqueue+fsevents", makeKQueueAndFSEventsWatcher, 5);
 namespace {
 
 std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
-    const std::shared_ptr<watchman_root>& root) {
+    const std::shared_ptr<Root>& root) {
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     return nullptr;

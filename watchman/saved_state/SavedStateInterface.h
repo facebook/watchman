@@ -9,8 +9,6 @@
 
 #include "watchman/thirdparty/jansson/jansson.h"
 
-struct watchman_root;
-
 namespace watchman {
 
 class SCM;

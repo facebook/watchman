@@ -13,12 +13,12 @@
 #include "watchman/watchman_query.h"
 
 struct watchman_file;
-struct watchman_root;
 
 namespace watchman {
 
 class FileResult;
 struct Query;
+class Root;
 
 enum class QueryContextState {
   NotStarted,
@@ -49,7 +49,7 @@ struct QueryContext : QueryContextBase {
   }
 
   Query* query;
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<Root> root;
   std::unique_ptr<FileResult> file;
   QuerySince since;
 
@@ -74,7 +74,7 @@ struct QueryContext : QueryContextBase {
 
   QueryContext(
       Query* q,
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       bool disableFreshInstance);
   QueryContext(const QueryContext&) = delete;
   QueryContext& operator=(const QueryContext&) = delete;

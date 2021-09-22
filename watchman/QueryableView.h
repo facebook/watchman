@@ -15,12 +15,12 @@
 
 struct watchman_file;
 struct watchman_dir;
-struct watchman_root;
 
 namespace watchman {
 
 struct Query;
 struct QueryContext;
+class Root;
 class SCM;
 
 class QueryableView : public std::enable_shared_from_this<QueryableView> {
@@ -48,7 +48,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
   virtual void ageOut(PerfSample& sample, std::chrono::seconds minAge);
   virtual void syncToNow(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout,
       std::vector<w_string>& cookieFileNames) = 0;
 
@@ -64,7 +64,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   /**
    * Start up any helper threads.
    */
-  virtual void startThreads(const std::shared_ptr<watchman_root>& /*root*/) {}
+  virtual void startThreads(const std::shared_ptr<Root>& /*root*/) {}
   /**
    * Request that helper threads shutdown (but does not join them).
    */
@@ -78,7 +78,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual json_ref getWatcherDebugInfo() const = 0;
   virtual void clearWatcherDebugInfo() = 0;
   virtual std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<watchman_root>& root) = 0;
+      const std::shared_ptr<Root>& root) = 0;
 
   // Return the SCM detected for this watched root
   virtual SCM* getSCM() const = 0;

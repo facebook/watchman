@@ -12,12 +12,11 @@
 #include <string>
 #include <unordered_map>
 
-struct watchman_root;
-
 namespace watchman {
 
 class InMemoryView;
 class QueryableView;
+class Root;
 
 /**
  * Maintains the list of available watchers.
@@ -35,13 +34,11 @@ class WatcherRegistry {
  public:
   WatcherRegistry(
       const std::string& name,
-      std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)>
-          init,
+      std::function<std::shared_ptr<watchman::QueryableView>(Root*)> init,
       int priority = 0);
 
   /** Locate the appropriate watcher for root and initialize it */
-  static std::shared_ptr<watchman::QueryableView> initWatcher(
-      watchman_root* root);
+  static std::shared_ptr<watchman::QueryableView> initWatcher(Root* root);
 
   const std::string& getName() const {
     return name_;
@@ -49,7 +46,7 @@ class WatcherRegistry {
 
  private:
   std::string name_;
-  std::function<std::shared_ptr<watchman::QueryableView>(watchman_root*)> init_;
+  std::function<std::shared_ptr<watchman::QueryableView>(Root*)> init_;
   int pri_;
 
   static std::unordered_map<std::string, WatcherRegistry>& getRegistry();
@@ -67,8 +64,8 @@ class RegisterWatcher : public WatcherRegistry {
   explicit RegisterWatcher(const std::string& name, int priority = 0)
       : WatcherRegistry(
             name,
-            [](watchman_root* root) {
-              return std::make_shared<watchman::InMemoryView>(
+            [](Root* root) {
+              return std::make_shared<InMemoryView>(
                   root, std::make_shared<WATCHER>(root));
             },
             priority) {}

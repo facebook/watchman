@@ -38,26 +38,26 @@ class FSEventsWatcher : public Watcher {
       std::optional<w_string> dir = std::nullopt);
 
   explicit FSEventsWatcher(
-      watchman_root* root,
+      Root* root,
       std::optional<w_string> dir = std::nullopt);
   ~FSEventsWatcher();
 
-  bool start(const std::shared_ptr<watchman_root>& root) override;
+  bool start(const std::shared_ptr<Root>& root) override;
 
   folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& changes) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
-  void FSEventsThread(const std::shared_ptr<watchman_root>& root);
+  void FSEventsThread(const std::shared_ptr<Root>& root);
 
   json_ref getDebugInfo() override;
   void clearDebugInfo() override;
@@ -68,7 +68,7 @@ class FSEventsWatcher : public Watcher {
 
  private:
   static fse_stream* fse_stream_make(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       FSEventsWatcher* watcher,
       FSEventStreamEventId since,
       w_string& failure_reason);

@@ -139,7 +139,7 @@ static json_ref load_root_config(const char* path) {
   return json_load_file(cfgfilename, 0);
 }
 
-void watchman_root::applyIgnoreConfiguration() {
+void Root::applyIgnoreConfiguration() {
   auto ignores = config.get("ignore_dirs");
   if (!ignores) {
     return;
@@ -165,7 +165,7 @@ void watchman_root::applyIgnoreConfiguration() {
 }
 
 // internal initialization for root
-void watchman_root::init() {
+void Root::init() {
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
   w_dir_open(root_path.c_str());
@@ -176,11 +176,11 @@ void watchman_root::init() {
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();
 }
 
-void watchman_root::Inner::init(watchman_root* root) {
+void Root::Inner::init(Root* root) {
   view_ = WatcherRegistry::initWatcher(root);
 }
 
-watchman_root::watchman_root(const w_string& root_path, const w_string& fs_type)
+Root::Root(const w_string& root_path, const w_string& fs_type)
     : root_path(root_path),
       fs_type(fs_type),
       case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
@@ -200,12 +200,12 @@ watchman_root::watchman_root(const w_string& root_path, const w_string& fs_type)
   init();
 }
 
-watchman_root::~watchman_root() {
+Root::~Root() {
   logf(DBG, "root: final ref on {}\n", root_path);
   --live_roots;
 }
 
-void watchman_root::addPerfSampleMetadata(PerfSample& sample) const {
+void Root::addPerfSampleMetadata(PerfSample& sample) const {
   // Note: if the root lock isn't held, we may read inaccurate numbers for
   // some of these properties.  We're ok with that, and don't want to force
   // the root lock to be re-acquired just for this.

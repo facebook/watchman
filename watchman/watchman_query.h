@@ -25,10 +25,11 @@ struct Query;
 struct QueryContext;
 struct QueryFieldRenderer;
 using QueryFieldList = std::vector<QueryFieldRenderer*>;
+class Root;
 } // namespace watchman
 
 struct watchman_file;
-struct watchman_root;
+using watchman_root = watchman::Root;
 
 std::shared_ptr<watchman::Query> w_query_parse(
     const std::shared_ptr<watchman_root>& root,

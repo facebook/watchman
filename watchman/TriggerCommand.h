@@ -13,10 +13,10 @@
 #include "watchman/PubSub.h"
 
 class watchman_event;
-struct watchman_root;
 
 namespace watchman {
 
+class Root;
 struct Query;
 
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
@@ -41,13 +41,11 @@ struct TriggerCommand {
    * of the running process */
   std::unique_ptr<watchman::ChildProcess> current_proc;
 
-  TriggerCommand(
-      const std::shared_ptr<watchman_root>& root,
-      const json_ref& trig);
+  TriggerCommand(const std::shared_ptr<Root>& root, const json_ref& trig);
   ~TriggerCommand();
 
   void stop();
-  void start(const std::shared_ptr<watchman_root>& root);
+  void start(const std::shared_ptr<Root>& root);
 
  private:
   TriggerCommand(const TriggerCommand&) = delete;
@@ -61,8 +59,8 @@ struct TriggerCommand {
   std::unique_ptr<watchman_event> ping_;
   bool stopTrigger_{false};
 
-  void run(const std::shared_ptr<watchman_root>& root);
-  bool maybeSpawn(const std::shared_ptr<watchman_root>& root);
+  void run(const std::shared_ptr<Root>& root);
+  bool maybeSpawn(const std::shared_ptr<Root>& root);
   bool waitNoIntr();
 };
 

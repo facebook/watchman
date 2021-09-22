@@ -13,7 +13,11 @@
 #include "watchman/watchman_preprocessor.h"
 #include "watchman/watchman_system.h"
 
-struct watchman_root;
+namespace watchman {
+class Root;
+}
+
+using watchman_root = watchman::Root;
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
