@@ -71,6 +71,4 @@ void handle_open_errno(
     const char* syscall,
     const std::error_code& err);
 
-bool w_root_save_state(json_ref& state);
-bool w_root_load_state(const json_ref& state);
 json_ref w_root_watch_list_to_json();

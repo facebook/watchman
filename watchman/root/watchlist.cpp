@@ -137,34 +137,6 @@ json_ref watchman_root::getStatusForAllRoots() {
   return arr;
 }
 
-bool w_root_save_state(json_ref& state) {
-  bool result = true;
-
-  auto watched_dirs = json_array();
-
-  logf(DBG, "saving state\n");
-
-  {
-    auto map = watched_roots.rlock();
-    for (const auto& it : *map) {
-      auto root = it.second;
-
-      auto obj = json_object();
-
-      json_object_set_new(obj, "path", w_string_to_json(root->root_path));
-
-      auto triggers = root->triggerListToJson();
-      json_object_set_new(obj, "triggers", std::move(triggers));
-
-      json_array_append_new(watched_dirs, std::move(obj));
-    }
-  }
-
-  json_object_set_new(state, "watched", std::move(watched_dirs));
-
-  return result;
-}
-
 json_ref watchman_root::getStatus() const {
   auto obj = json_object();
   auto now = std::chrono::steady_clock::now();
@@ -313,84 +285,6 @@ json_ref watchman_root::triggerListToJson() const {
   }
 
   return arr;
-}
-
-bool w_root_load_state(const json_ref& state) {
-  size_t i;
-
-  auto watched = state.get_default("watched");
-  if (!watched) {
-    return true;
-  }
-
-  if (!watched.isArray()) {
-    return false;
-  }
-
-  for (i = 0; i < json_array_size(watched); i++) {
-    const auto& obj = watched.at(i);
-    bool created = false;
-    const char* filename;
-    size_t j;
-
-    auto triggers = obj.get_default("triggers");
-    filename = json_string_value(json_object_get(obj, "path"));
-
-    std::shared_ptr<watchman_root> root;
-    try {
-      root = root_resolve(filename, true, &created);
-    } catch (const std::exception&) {
-      continue;
-    }
-
-    {
-      auto wlock = root->triggers.wlock();
-      auto& map = *wlock;
-
-      /* re-create the trigger configuration */
-      for (j = 0; j < json_array_size(triggers); j++) {
-        const auto& tobj = triggers.at(j);
-
-        // Legacy rules format
-        auto rarray = tobj.get_default("rules");
-        if (rarray) {
-          continue;
-        }
-
-        try {
-          auto cmd = std::make_unique<TriggerCommand>(root, tobj);
-          cmd->start(root);
-          auto& mapEntry = map[cmd->triggername];
-          mapEntry = std::move(cmd);
-        } catch (const std::exception& exc) {
-          watchman::log(
-              watchman::ERR,
-              "loading trigger for ",
-              root->root_path,
-              ": ",
-              exc.what(),
-              "\n");
-        }
-      }
-    }
-
-    if (created) {
-      try {
-        root->view()->startThreads(root);
-      } catch (const std::exception& e) {
-        watchman::log(
-            watchman::ERR,
-            "root_start(",
-            root->root_path,
-            ") failed: ",
-            e.what(),
-            "\n");
-        root->cancel();
-      }
-    }
-  }
-
-  return true;
 }
 
 void w_root_free_watched_roots() {
