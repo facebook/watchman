@@ -10,7 +10,6 @@
 #include "watchman/TriggerCommand.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
-#include "watchman/state.h"
 #include "watchman/watchman_root.h"
 
 using namespace watchman;
@@ -74,6 +73,8 @@ json_ref w_root_stop_watch_all() {
   std::vector<watchman_root*> roots;
   json_ref stopped = json_array();
 
+  Root::SaveGlobalStateHook saveGlobalStateHook = nullptr;
+
   // Funky looking loop because root->cancel() needs to acquire the
   // watched_roots wlock and will invalidate any iterators we might
   // otherwise have held.  Therefore we just loop until the map is
@@ -92,10 +93,22 @@ json_ref w_root_stop_watch_all() {
     }
 
     root->cancel();
+    if (!saveGlobalStateHook) {
+      saveGlobalStateHook = root->getSaveGlobalStateHook();
+    } else {
+      // This assumes there is only one hook per application, rather than
+      // independent hooks per root. That's true today because every root holds
+      // w_state_save.
+      w_assert(
+          saveGlobalStateHook == root->getSaveGlobalStateHook(),
+          "all roots must contain the same saveGlobalStateHook");
+    }
     json_array_append_new(stopped, w_string_to_json(root->root_path));
   }
 
-  w_state_save();
+  if (saveGlobalStateHook) {
+    saveGlobalStateHook();
+  }
 
   return stopped;
 }

@@ -244,7 +244,8 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
       fs_type,
       config_file,
       config,
-      WatcherRegistry::initWatcher(root_str, fs_type, config));
+      WatcherRegistry::initWatcher(root_str, fs_type, config),
+      &w_state_save);
 
   {
     auto wlock = watched_roots.wlock();

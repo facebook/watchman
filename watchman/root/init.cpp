@@ -151,7 +151,8 @@ Root::Root(
     const w_string& fs_type,
     json_ref config_file,
     Configuration config_,
-    std::shared_ptr<QueryableView> view)
+    std::shared_ptr<QueryableView> view,
+    SaveGlobalStateHook saveGlobalStateHook)
     : root_path(root_path),
       fs_type(fs_type),
       case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
@@ -164,7 +165,8 @@ Root::Root(
       gc_age(int(config.getInt("gc_age_seconds", DEFAULT_GC_AGE))),
       idle_reap_age(
           int(config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE))),
-      unilateralResponses(std::make_shared<watchman::Publisher>()) {
+      unilateralResponses(std::make_shared<watchman::Publisher>()),
+      saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
   ++live_roots;
   applyIgnoreConfiguration();
   applyIgnoreVCSConfiguration();

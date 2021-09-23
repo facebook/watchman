@@ -88,7 +88,7 @@ bool watchman_root::stopWatch() {
 
   if (stopped) {
     cancel();
-    w_state_save();
+    saveGlobalStateHook_();
   }
   signalThreads();
 

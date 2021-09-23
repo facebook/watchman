@@ -90,6 +90,8 @@ class ClientStateAssertions {
 
 class Root : public std::enable_shared_from_this<Root> {
  public:
+  using SaveGlobalStateHook = void (*)();
+
   /* path to root */
   w_string root_path;
   /* filesystem type name, as returned by w_fstype() */
@@ -193,7 +195,8 @@ class Root : public std::enable_shared_from_this<Root> {
       const w_string& fs_type,
       json_ref config_file,
       Configuration config,
-      std::shared_ptr<QueryableView> view);
+      std::shared_ptr<QueryableView> view,
+      SaveGlobalStateHook saveGlobalStateHook);
   ~Root();
 
   void considerAgeOut();
@@ -225,8 +228,16 @@ class Root : public std::enable_shared_from_this<Root> {
   // Annotate the sample with some standard metadata taken from a root.
   void addPerfSampleMetadata(PerfSample& sample) const;
 
+  SaveGlobalStateHook getSaveGlobalStateHook() const {
+    return saveGlobalStateHook_;
+  }
+
  private:
   void applyIgnoreConfiguration();
+
+  /// A hook that allows saving Watchman's state after key operations. Usually
+  /// holds w_state_save.
+  SaveGlobalStateHook saveGlobalStateHook_;
 };
 
 } // namespace watchman
