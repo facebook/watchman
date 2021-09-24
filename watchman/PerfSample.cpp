@@ -269,20 +269,27 @@ void PerfLogThread::loop() noexcept {
 
             try {
               ChildProcess proc({perf_cmd}, std::move(opts));
-
               auto stdinPipe = proc.takeStdin();
 
-              const char* data = sample_stdin.data();
-              size_t size = sample_stdin.size();
+              try {
+                const char* data = sample_stdin.data();
+                size_t size = sample_stdin.size();
 
-              size_t total_written = 0;
-              while (total_written < sample_stdin.size()) {
-                auto result = stdinPipe->write.write(data, size);
-                result.throwIfError();
-                auto written = result.value();
-                data += written;
-                size -= written;
-                total_written += written;
+                size_t total_written = 0;
+                while (total_written < sample_stdin.size()) {
+                  auto result = stdinPipe->write.write(data, size);
+                  result.throwIfError();
+                  auto written = result.value();
+                  data += written;
+                  size -= written;
+                  total_written += written;
+                }
+              } catch (const std::exception& exc) {
+                watchman::log(
+                    watchman::ERR,
+                    "failed to send data to perf logger: ",
+                    exc.what(),
+                    "\n");
               }
 
               // close stdin to allow the process to terminate
