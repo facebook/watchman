@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <vector>
 #include "watchman/watchman_system.h"
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
 #pragma warning(disable : 4091)
