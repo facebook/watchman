@@ -104,6 +104,12 @@ struct ClockSpec {
 
 } // namespace watchman
 
+bool clock_id_string(
+    uint32_t root_number,
+    uint32_t ticks,
+    char* buf,
+    size_t bufsize);
+
 // Legacy exports into global namespace.
 // TODO: remove these.
 using w_query_since = watchman::QuerySince;

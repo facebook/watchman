@@ -6,10 +6,12 @@
  */
 
 #include <folly/String.h>
-#include "watchman/InMemoryView.h"
+#include "watchman/Logging.h"
+#include "watchman/root/Root.h"
+#include "watchman/watchman_opendir.h"
 #include "watchman/watchman_root.h"
 
-using namespace watchman;
+namespace watchman {
 
 void ClientStateAssertions::queueAssertion(
     std::shared_ptr<ClientStateAssertion> assertion) {
@@ -213,5 +215,4 @@ void Root::addPerfSampleMetadata(PerfSample& sample) const {
   sample.add_meta("root", std::move(meta));
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

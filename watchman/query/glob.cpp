@@ -9,7 +9,6 @@
 #include <memory>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
-#include "watchman/InMemoryView.h"
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"

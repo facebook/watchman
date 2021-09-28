@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/InMemoryView.h"
 #include "watchman/watchman_root.h"
 
 static json_ref config_get_ignore_vcs(watchman_root* root) {

@@ -74,11 +74,5 @@ void add_root_warnings_to_response(
     json_ref& response,
     const std::shared_ptr<watchman_root>& root);
 
-bool clock_id_string(
-    uint32_t root_number,
-    uint32_t ticks,
-    char* buf,
-    size_t bufsize);
-
 /* vim:ts=2:sw=2:et:
  */

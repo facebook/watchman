@@ -7,7 +7,6 @@
 
 #include "watchman/QueryableView.h"
 #include "watchman/TriggerCommand.h"
-#include "watchman/state.h"
 #include "watchman/watchman_root.h"
 
 std::shared_ptr<watchman::QueryableView> watchman_root::view() const {
