@@ -36,8 +36,5 @@ std::shared_ptr<watchman::Root> w_root_resolve(
 std::shared_ptr<watchman::Root> w_root_resolve_for_client_mode(
     const char* filename);
 
-bool did_file_change(
-    const watchman::FileInformation* saved,
-    const watchman::FileInformation* fresh);
 std::shared_ptr<watchman::Root>
 root_resolve(const char* filename, bool auto_watch, bool* created);

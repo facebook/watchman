@@ -10,48 +10,6 @@
 #include <sys/attr.h> // @manual
 #endif
 
-bool did_file_change(
-    const watchman::FileInformation* saved,
-    const watchman::FileInformation* fresh) {
-  /* we have to compare this way because the stat structure
-   * may contain fields that vary and that don't impact our
-   * understanding of the file */
-
-#define FIELD_CHG(name)             \
-  if (saved->name != fresh->name) { \
-    return true;                    \
-  }
-
-  // Can't compare with memcmp due to padding and garbage in the struct
-  // on OpenBSD, which has a 32-bit tv_sec + 64-bit tv_nsec
-#define TIMESPEC_FIELD_CHG(wat)                           \
-  {                                                       \
-    struct timespec a = saved->wat##time;                 \
-    struct timespec b = fresh->wat##time;                 \
-    if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
-      return true;                                        \
-    }                                                     \
-  }
-
-  FIELD_CHG(mode);
-
-  if (!saved->isDir()) {
-    FIELD_CHG(size);
-    FIELD_CHG(nlink);
-  }
-  FIELD_CHG(dev);
-  FIELD_CHG(ino);
-  FIELD_CHG(uid);
-  FIELD_CHG(gid);
-  // Don't care about st_blocks
-  // Don't care about st_blksize
-  // Don't care about st_atimespec
-  TIMESPEC_FIELD_CHG(m);
-  TIMESPEC_FIELD_CHG(c);
-
-  return false;
-}
-
 void watchman_file::removeFromFileList() {
   if (next) {
     next->prev = prev;
