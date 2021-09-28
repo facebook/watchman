@@ -103,8 +103,6 @@ static bool do_settle_things(InMemoryView& view, Root& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
-  root.processPendingSymlinkTargets();
-
   if (!root.inner.done_initial.load(std::memory_order_acquire)) {
     // we need to recrawl, stop what we're doing here
     return false;

@@ -164,11 +164,6 @@ class Root : public std::enable_shared_from_this<Root> {
     /* map of cursor name => last observed tick value */
     folly::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
 
-    /* Collection of symlink targets that we try to watch.
-     * Reads and writes on this collection are only safe if done from the IO
-     * thread; this collection is not protected by the root lock. */
-    PendingCollection pending_symlink_targets;
-
     /// Set by connection threads and read on the iothread.
     std::atomic<std::chrono::steady_clock::time_point> last_cmd_timestamp{
         std::chrono::steady_clock::time_point{}};
@@ -211,8 +206,6 @@ class Root : public std::enable_shared_from_this<Root> {
   // Returns true if this request caused the root cancellation, false
   // if it was already in the process of being cancelled.
   bool cancel();
-
-  void processPendingSymlinkTargets();
 
   // Returns true if the caller should stop the watch.
   bool considerReap();

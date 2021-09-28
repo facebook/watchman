@@ -689,7 +689,6 @@ watchman/# root/poison.cpp (in liberr)
 watchman/root/reap.cpp
 watchman/root/resolve.cpp
 watchman/root/stat.cpp
-watchman/root/symlink.cpp
 watchman/root/sync.cpp
 watchman/root/threading.cpp
 watchman/root/vcs.cpp

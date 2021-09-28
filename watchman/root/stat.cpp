@@ -285,12 +285,6 @@ void InMemoryView::statPath(
 
     memcpy(&file->stat, &st, sizeof(file->stat));
 
-    // check for symbolic link
-    if (st.isSymlink() && root.config.getBool("watch_symlinks", false)) {
-      root.inner.pending_symlink_targets.lock()->add(
-          pending.path, pending.now, {});
-    }
-
     if (st.isDir()) {
       if (dir_ent == NULL) {
         recursive = true;
