@@ -407,8 +407,10 @@ fse_stream* FSEventsWatcher::fse_stream_make(
       fse_stream->stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
   if (root->config.getBool("_use_fsevents_exclusions", true)) {
+    auto& dirs_vec = root->ignore.getIgnoredDirs();
+
     CFMutableArrayRef ignarray;
-    size_t nitems = std::min(root->ignore.dirs_vec.size(), MAX_EXCLUSIONS);
+    size_t nitems = std::min(dirs_vec.size(), MAX_EXCLUSIONS);
     size_t appended = 0;
 
     ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
@@ -418,7 +420,7 @@ fse_stream* FSEventsWatcher::fse_stream_make(
       goto fail;
     }
 
-    for (const auto& path : root->ignore.dirs_vec) {
+    for (const auto& path : dirs_vec) {
       if (const auto& subdir = watcher->subdir) {
         if (!w_string_startswith(path, *subdir)) {
           continue;

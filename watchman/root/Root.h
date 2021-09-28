@@ -11,11 +11,11 @@
 #include <unordered_map>
 #include "watchman/CookieSync.h"
 #include "watchman/FileSystem.h"
+#include "watchman/IgnoreSet.h"
 #include "watchman/PendingCollection.h"
 #include "watchman/PubSub.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman_ignore.h"
 #include "watchman/watchman_string.h"
 
 /* Prune out nodes that were deleted roughly 12-36 hours ago */
@@ -108,7 +108,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
 
   CookieSync cookies;
 
-  watchman_ignore ignore;
+  IgnoreSet ignore;
 
   /* config options loaded via json file */
   json_ref config_file;

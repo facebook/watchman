@@ -549,12 +549,12 @@ watchman/ChildProcess.cpp
 watchman/FileDescriptor.cpp
 watchman/FileInformation.cpp
 watchman/FlagMap.cpp
+watchman/IgnoreSet.cpp
 watchman/PendingCollection.cpp
 watchman/Pipe.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/ignore.cpp
 watchman/opendir.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
@@ -613,6 +613,7 @@ watchman/FileInformation.cpp
 watchman/FlagMap.cpp
 watchman/FSDetect.cpp
 watchman/GroupLookup.cpp
+watchman/IgnoreSet.cpp
 watchman/InMemoryView.cpp
 watchman/Options.cpp
 watchman/PDU.cpp
@@ -633,7 +634,6 @@ watchman/WatchmanConfig.cpp
 watchman/bser.cpp
 watchman/clientmode.cpp
 # hash.cpp (in libhash)
-watchman/ignore.cpp
 watchman/launchd.cpp
 watchman/listener-user.cpp
 watchman/listener.cpp

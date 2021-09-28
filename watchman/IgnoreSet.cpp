@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/watchman_ignore.h"
+#include "watchman/IgnoreSet.h"
 
 // The path and everything below it is ignored.
 #define FULL_IGNORE 0x1
@@ -13,7 +13,9 @@
 // or its direct children.
 #define VCS_IGNORE 0x2
 
-void watchman_ignore::add(const w_string& path, bool is_vcs_ignore) {
+namespace watchman {
+
+void IgnoreSet::add(const w_string& path, bool is_vcs_ignore) {
   (is_vcs_ignore ? ignore_vcs : ignore_dirs).insert(path);
 
   tree.insert(path, is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
@@ -23,7 +25,7 @@ void watchman_ignore::add(const w_string& path, bool is_vcs_ignore) {
   }
 }
 
-bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
+bool IgnoreSet::isIgnored(const char* path, uint32_t pathlen) const {
   const char* skip_prefix;
   uint32_t len;
   auto leaf = tree.longestMatch((const unsigned char*)path, (int)pathlen);
@@ -92,13 +94,12 @@ bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
 #endif
 }
 
-bool watchman_ignore::isIgnoreVCS(const w_string& path) const {
+bool IgnoreSet::isIgnoreVCS(const w_string& path) const {
   return ignore_vcs.find(path) != ignore_vcs.end();
 }
 
-bool watchman_ignore::isIgnoreDir(const w_string& path) const {
+bool IgnoreSet::isIgnoreDir(const w_string& path) const {
   return ignore_dirs.find(path) != ignore_dirs.end();
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman
