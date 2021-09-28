@@ -7,6 +7,7 @@
 
 #include "watchman/MapUtil.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/query/parse.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_root.h"

@@ -12,6 +12,9 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_opendir.h"
 
+#define HINT_NUM_DIRS 128 * 1024
+#define CFG_HINT_NUM_DIRS "hint_num_dirs"
+
 struct watchman_file;
 
 namespace watchman {

@@ -11,6 +11,8 @@
 #include "watchman/Clock.h"
 #include "watchman/FileSystem.h"
 
+constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
+
 namespace watchman {
 struct Query;
 struct QueryFieldRenderer;

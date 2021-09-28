@@ -14,6 +14,12 @@
 
 namespace watchman {
 
+namespace {
+/// Idle out watches that haven't had activity in several days
+inline constexpr json_int_t kDefaultReapAge = 86400 * 5;
+inline constexpr json_int_t kDefaultSettlePeriod = 20;
+} // namespace
+
 void ClientStateAssertions::queueAssertion(
     std::shared_ptr<ClientStateAssertion> assertion) {
   // Check to see if someone else has or had a pending claim for this
@@ -162,12 +168,12 @@ Root::Root(
       cookies(root_path),
       config_file(std::move(config_file)),
       config(std::move(config_)),
-      trigger_settle(int(config.getInt("settle", DEFAULT_SETTLE_PERIOD))),
+      trigger_settle(int(config.getInt("settle", kDefaultSettlePeriod))),
       gc_interval(
           int(config.getInt("gc_interval_seconds", DEFAULT_GC_INTERVAL))),
       gc_age(int(config.getInt("gc_age_seconds", DEFAULT_GC_AGE))),
       idle_reap_age(
-          int(config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE))),
+          int(config.getInt("idle_reap_age_seconds", kDefaultReapAge))),
       unilateralResponses(std::make_shared<watchman::Publisher>()),
       saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
   ++live_roots;

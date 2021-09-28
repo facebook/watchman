@@ -20,15 +20,6 @@
 #include "watchman/root/Root.h"
 #include "watchman/watchman_ignore.h"
 
-#define HINT_NUM_DIRS 128 * 1024
-#define CFG_HINT_NUM_DIRS "hint_num_dirs"
-
-#define DEFAULT_SETTLE_PERIOD 20
-constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
-
-/* Idle out watches that haven't had activity in several days */
-#define DEFAULT_REAP_AGE (86400 * 5)
-
 std::shared_ptr<watchman::Root> w_root_resolve(
     const char* path,
     bool auto_watch);
