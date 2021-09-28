@@ -11,7 +11,6 @@
 #include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/root/Root.h"
 
 #include <algorithm>
 #include <condition_variable>
