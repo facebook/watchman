@@ -6,19 +6,12 @@
  */
 
 #pragma once
-#include <folly/Synchronized.h>
-#include <atomic>
-#include <condition_variable>
-#include <unordered_map>
-#include "watchman/CookieSync.h"
-#include "watchman/FileSystem.h"
-#include "watchman/PendingCollection.h"
-#include "watchman/PubSub.h"
-#include "watchman/QueryableView.h"
-#include "watchman/TriggerCommand.h"
-#include "watchman/WatchmanConfig.h"
-#include "watchman/root/Root.h"
-#include "watchman/watchman_ignore.h"
+
+#include <memory>
+
+namespace watchman {
+class Root;
+}
 
 std::shared_ptr<watchman::Root> w_root_resolve(
     const char* path,

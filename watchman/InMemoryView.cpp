@@ -17,12 +17,12 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/query/eval.h"
+#include "watchman/root/Root.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_file.h"
-#include "watchman/watchman_root.h"
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.

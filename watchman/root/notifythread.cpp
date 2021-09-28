@@ -7,8 +7,8 @@
 
 #include "watchman/Constants.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman_root.h"
 
 namespace watchman {
 

@@ -31,11 +31,11 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
 #include "watchman/query/eval.h"
+#include "watchman/root/Root.h"
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman_root.h"
 
 using apache::thrift::TApplicationException;
 using facebook::eden::EdenError;

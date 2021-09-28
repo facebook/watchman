@@ -10,9 +10,9 @@
 #include "watchman/TriggerCommand.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/parse.h"
+#include "watchman/root/Root.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 
 #include <memory>

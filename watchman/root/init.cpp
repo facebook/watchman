@@ -7,10 +7,11 @@
 
 #include <folly/String.h>
 #include "watchman/Logging.h"
+#include "watchman/QueryableView.h"
+#include "watchman/TriggerCommand.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_root.h"
 
 namespace watchman {
 

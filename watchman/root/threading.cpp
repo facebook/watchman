@@ -7,7 +7,7 @@
 
 #include "watchman/QueryableView.h"
 #include "watchman/TriggerCommand.h"
-#include "watchman/watchman_root.h"
+#include "watchman/root/Root.h"
 
 using namespace watchman;
 

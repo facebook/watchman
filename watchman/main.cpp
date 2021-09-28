@@ -17,6 +17,7 @@
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
+#include "watchman/FileSystem.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
@@ -33,7 +34,6 @@
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_opendir.h"
-#include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 
 #ifdef _WIN32

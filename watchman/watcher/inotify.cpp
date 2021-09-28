@@ -17,9 +17,9 @@
 #include "watchman/Pipe.h"
 #include "watchman/Poison.h"
 #include "watchman/RingBuffer.h"
+#include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman_root.h"
 
 #ifdef HAVE_INOTIFY_INIT
 

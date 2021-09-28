@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/watchman_root.h"
+#include "watchman/Logging.h"
+#include "watchman/root/Root.h"
 
 using namespace watchman;
 

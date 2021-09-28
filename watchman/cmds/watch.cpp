@@ -8,9 +8,10 @@
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/LogConfig.h"
+#include "watchman/QueryableView.h"
+#include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

@@ -9,9 +9,10 @@
 #include <iomanip>
 #include "watchman/Logging.h"
 #include "watchman/Poison.h"
+#include "watchman/QueryableView.h"
+#include "watchman/root/Root.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

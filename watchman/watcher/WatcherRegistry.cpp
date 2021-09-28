@@ -8,8 +8,10 @@
 #include "watchman/watcher/WatcherRegistry.h"
 #include <folly/Conv.h>
 #include "watchman/CommandRegistry.h"
+#include "watchman/Logging.h"
+#include "watchman/QueryableView.h"
+#include "watchman/WatchmanConfig.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

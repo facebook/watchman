@@ -12,7 +12,7 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
-#include "watchman/watchman_root.h"
+#include "watchman/root/Root.h"
 
 using namespace watchman;
 

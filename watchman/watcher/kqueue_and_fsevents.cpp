@@ -9,12 +9,12 @@
 #include <condition_variable>
 #include <mutex>
 #include "watchman/InMemoryView.h"
+#include "watchman/root/Root.h"
 #include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watcher/fsevents.h"
 #include "watchman/watcher/kqueue.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_file.h"
-#include "watchman/watchman_root.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)
 namespace watchman {

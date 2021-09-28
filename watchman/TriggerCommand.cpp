@@ -9,13 +9,14 @@
 #include <folly/String.h>
 #include "watchman/Errors.h"
 #include "watchman/PDU.h"
+#include "watchman/QueryableView.h"
 #include "watchman/Shutdown.h"
 #include "watchman/UserDir.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
+#include "watchman/root/Root.h"
 #include "watchman/sockname.h"
-#include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 
 namespace watchman {

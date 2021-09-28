@@ -8,13 +8,14 @@
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
+#include "watchman/QueryableView.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
+#include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

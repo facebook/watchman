@@ -10,10 +10,10 @@
 #include "watchman/FSDetect.h"
 #include "watchman/FileSystem.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/state.h"
 #include "watchman/watcher/WatcherRegistry.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

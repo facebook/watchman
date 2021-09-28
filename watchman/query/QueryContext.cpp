@@ -10,8 +10,8 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
+#include "watchman/root/Root.h"
 #include "watchman/watchman_file.h"
-#include "watchman/watchman_root.h"
 
 using namespace watchman;
 

@@ -7,10 +7,10 @@
 
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_file.h"
-#include "watchman/watchman_root.h"
 
 namespace watchman {
 

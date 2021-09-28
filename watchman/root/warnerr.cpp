@@ -7,9 +7,10 @@
 
 #include "watchman/root/warnerr.h"
 #include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/Poison.h"
+#include "watchman/root/Root.h"
 #include "watchman/watchman_dir.h"
-#include "watchman/watchman_root.h"
 
 namespace watchman {
 

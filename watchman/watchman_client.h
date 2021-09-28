@@ -14,13 +14,14 @@
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
-#include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 
 struct watchman_client_subscription;
 
 namespace watchman {
 
+class ClientStateAssertion;
+class Root;
 struct Query;
 struct QueryResult;
 

@@ -13,11 +13,11 @@
 #include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/Pipe.h"
+#include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_file.h"
-#include "watchman/watchman_root.h"
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)
