@@ -21,7 +21,6 @@
 #include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watcher/Watcher.h"
-#include "watchman/watchman_cmd.h"
 #include "watchman/watchman_file.h"
 
 // Each root gets a number that uniquely identifies it within the process. This
