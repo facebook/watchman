@@ -88,15 +88,18 @@ class ClientStateAssertions {
           states_;
 };
 
-class Root : public std::enable_shared_from_this<Root> {
+class RootConfig {
  public:
-  using SaveGlobalStateHook = void (*)();
-
   /* path to root */
-  w_string root_path;
+  const w_string root_path;
   /* filesystem type name, as returned by w_fstype() */
   const w_string fs_type;
-  CaseSensitivity case_sensitive;
+  const CaseSensitivity case_sensitive;
+};
+
+class Root : public RootConfig, public std::enable_shared_from_this<Root> {
+ public:
+  using SaveGlobalStateHook = void (*)();
 
   /* map of rule id => struct TriggerCommand */
   folly::Synchronized<

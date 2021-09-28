@@ -30,6 +30,7 @@ struct watchman_file;
 
 namespace watchman {
 
+class RootConfig;
 struct GlobTree;
 class Watcher;
 
@@ -287,7 +288,7 @@ class InMemoryView final : public QueryableView {
       const watchman_dir_ent* pre_stat);
 
   bool propagateToParentDirIfAppropriate(
-      const Root& root,
+      const RootConfig& root,
       PendingChanges& coll,
       std::chrono::system_clock::time_point now,
       const FileInformation& entryStat,

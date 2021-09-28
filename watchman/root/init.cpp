@@ -163,9 +163,7 @@ Root::Root(
     Configuration config_,
     std::shared_ptr<QueryableView> view,
     SaveGlobalStateHook saveGlobalStateHook)
-    : root_path(root_path),
-      fs_type(fs_type),
-      case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
+    : RootConfig{root_path, fs_type, watchman::getCaseSensitivityForPath(root_path.c_str())},
       cookies(root_path),
       config_file(std::move(config_file)),
       config(std::move(config_)),

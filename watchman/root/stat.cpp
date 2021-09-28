@@ -68,7 +68,7 @@ bool did_file_change(
  * returns false.
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
-    const Root& root,
+    const RootConfig& root,
     PendingChanges& coll,
     std::chrono::system_clock::time_point now,
     const FileInformation& entryStat,
