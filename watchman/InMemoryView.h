@@ -200,14 +200,12 @@ class InMemoryView final : public QueryableView {
 
   // If content cache warming is configured, do the warm up now
   void warmContentCache();
-  static void debugContentHashCache(
-      struct watchman_client* client,
-      const json_ref& args);
-  static void debugSymlinkTargetCache(
-      struct watchman_client* client,
-      const json_ref& args);
 
   SCM* getSCM() const override;
+
+  InMemoryViewCaches& debugAccessCaches() const {
+    return caches_;
+  }
 
  private:
   void syncToNowCookies(

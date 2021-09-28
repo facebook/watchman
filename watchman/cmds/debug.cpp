@@ -7,6 +7,8 @@
 
 #include <folly/chrono/Conv.h>
 #include <iomanip>
+#include "watchman/InMemoryView.h"
+#include "watchman/LRUCache.h"
 #include "watchman/Logging.h"
 #include "watchman/Poison.h"
 #include "watchman/QueryableView.h"
@@ -290,6 +292,81 @@ W_CMD_REG(
     cmd_debug_watcher_info_clear,
     CMD_DAEMON,
     NULL)
+
+namespace {
+
+void addCacheStats(json_ref& resp, const CacheStats& stats) {
+  resp.set(
+      {{"cacheHit", json_integer(stats.cacheHit)},
+       {"cacheShare", json_integer(stats.cacheShare)},
+       {"cacheMiss", json_integer(stats.cacheMiss)},
+       {"cacheEvict", json_integer(stats.cacheEvict)},
+       {"cacheStore", json_integer(stats.cacheStore)},
+       {"cacheLoad", json_integer(stats.cacheLoad)},
+       {"cacheErase", json_integer(stats.cacheErase)},
+       {"clearCount", json_integer(stats.clearCount)},
+       {"size", json_integer(stats.size)}});
+}
+
+void debugContentHashCache(
+    struct watchman_client* client,
+    const json_ref& args) {
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-contenthash'");
+    return;
+  }
+
+  auto root = resolveRoot(client, args);
+
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  if (!view) {
+    send_error_response(client, "root is not an InMemoryView watcher");
+    return;
+  }
+
+  auto stats = view->debugAccessCaches().contentHashCache.stats();
+  auto resp = make_response();
+  addCacheStats(resp, stats);
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "debug-contenthash",
+    debugContentHashCache,
+    CMD_DAEMON,
+    w_cmd_realpath_root)
+
+void debugSymlinkTargetCache(
+    struct watchman_client* client,
+    const json_ref& args) {
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-symlink-target-cache'");
+    return;
+  }
+
+  auto root = resolveRoot(client, args);
+
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  if (!view) {
+    send_error_response(client, "root is not an InMemoryView watcher");
+    return;
+  }
+
+  auto stats = view->debugAccessCaches().symlinkTargetCache.stats();
+  auto resp = make_response();
+  addCacheStats(resp, stats);
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "debug-symlink-target-cache",
+    debugSymlinkTargetCache,
+    CMD_DAEMON,
+    w_cmd_realpath_root)
+
+} // namespace
 
 /* vim:ts=2:sw=2:et:
  */
