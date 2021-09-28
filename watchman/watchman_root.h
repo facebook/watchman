@@ -41,10 +41,3 @@ bool did_file_change(
     const watchman::FileInformation* fresh);
 std::shared_ptr<watchman::Root>
 root_resolve(const char* filename, bool auto_watch, bool* created);
-
-void handle_open_errno(
-    watchman::Root& root,
-    struct watchman_dir* dir,
-    std::chrono::system_clock::time_point now,
-    const char* syscall,
-    const std::error_code& err);

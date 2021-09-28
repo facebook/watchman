@@ -10,6 +10,7 @@
 #include <folly/Synchronized.h>
 #include <chrono>
 #include <string>
+#include "watchman/watchman_string.h"
 
 namespace watchman {
 

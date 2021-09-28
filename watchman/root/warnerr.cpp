@@ -5,17 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/root/warnerr.h"
 #include "watchman/Errors.h"
-#include "watchman/InMemoryView.h"
 #include "watchman/Poison.h"
 #include "watchman/watchman_dir.h"
 #include "watchman/watchman_root.h"
 
-using namespace watchman;
+namespace watchman {
 
 void handle_open_errno(
     Root& root,
-    struct watchman_dir* dir,
+    watchman_dir* dir,
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err) {
@@ -72,5 +72,4 @@ void handle_open_errno(
   }
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman
