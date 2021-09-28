@@ -87,7 +87,7 @@ static void cmd_trigger_list(
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_ref build_legacy_trigger(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     struct watchman_client* client,
     const json_ref& args) {
   uint32_t next_arg = 0;

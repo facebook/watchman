@@ -103,9 +103,7 @@ struct NameAndDType {
  */
 class SettleCallback : public folly::HHWheelTimer::Callback {
  public:
-  SettleCallback(
-      folly::EventBase* eventBase,
-      std::shared_ptr<watchman_root> root)
+  SettleCallback(folly::EventBase* eventBase, std::shared_ptr<Root> root)
       : eventBase_(eventBase), root_(std::move(root)) {}
 
   void timeoutExpired() noexcept override {
@@ -130,7 +128,7 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
 
  private:
   folly::EventBase* eventBase_;
-  std::shared_ptr<watchman_root> root_;
+  std::shared_ptr<Root> root_;
 };
 
 // Resolve the eden socket; On POSIX systems we use the .eden dir that is
@@ -998,7 +996,7 @@ class EdenView final : public QueryableView {
   }
 
   void syncToNow(
-      const std::shared_ptr<watchman_root>&,
+      const std::shared_ptr<Root>&,
       std::chrono::milliseconds,
       std::vector<w_string>& /*cookieFileNames*/) override {
     // TODO: on FUSE and NFS, where all writes give synchronous notifications to
@@ -1144,7 +1142,7 @@ class EdenView final : public QueryableView {
     return scm_.get();
   }
 
-  void startThreads(const std::shared_ptr<watchman_root>& root) override {
+  void startThreads(const std::shared_ptr<Root>& root) override {
     auto self = shared_from_this();
     std::thread thr([self, this, root]() { subscriberThread(root); });
     thr.detach();
@@ -1163,7 +1161,7 @@ class EdenView final : public QueryableView {
   // Called by the subscriberThread to scan for cookie file creation
   // events.  These are used to manage sequencing for state-enter and
   // state-leave in eden.
-  void checkCookies(const std::shared_ptr<watchman_root>& root) {
+  void checkCookies(const std::shared_ptr<Root>& root) {
     // Obtain the list of changes since our last request, or since we started
     // up the watcher (we set the initial value of lastCookiePosition_ during
     // construction).
@@ -1201,7 +1199,7 @@ class EdenView final : public QueryableView {
   }
 
   std::unique_ptr<StreamingEdenServiceAsyncClient> rocketSubscribe(
-      std::shared_ptr<watchman_root> root,
+      std::shared_ptr<Root> root,
       SettleCallback& settleCallback,
       std::chrono::milliseconds& settleTimeout) {
     auto client = getRocketEdenClient(root->root_path, &subscriberEventBase_);
@@ -1253,7 +1251,7 @@ class EdenView final : public QueryableView {
 
   // This is the thread that we use to listen to the stream of
   // changes coming in from the Eden server
-  void subscriberThread(std::shared_ptr<watchman_root> root) noexcept {
+  void subscriberThread(std::shared_ptr<Root> root) noexcept {
     SCOPE_EXIT {
       // ensure that the root gets torn down,
       // otherwise we'd leave it in a broken state.
@@ -1292,7 +1290,7 @@ class EdenView final : public QueryableView {
   }
 
   std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<watchman_root>& /*root*/) override {
+      const std::shared_ptr<Root>& /*root*/) override {
     return subscribeReadyFuture_;
   }
 };

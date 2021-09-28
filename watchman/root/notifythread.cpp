@@ -17,7 +17,7 @@ namespace watchman {
 // so we do this as a blocking thread that reads the inotify
 // descriptor and then queues the filesystem IO work until after
 // we have drained the inotify descriptor
-void InMemoryView::notifyThread(const std::shared_ptr<watchman_root>& root) {
+void InMemoryView::notifyThread(const std::shared_ptr<Root>& root) {
   PendingChanges fromWatcher;
 
   if (!watcher_->start(root)) {

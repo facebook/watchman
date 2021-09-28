@@ -125,10 +125,10 @@ json_ref load_root_config(const char* path) {
 
 } // namespace
 
-std::shared_ptr<watchman_root>
+std::shared_ptr<Root>
 root_resolve(const char* filename, bool auto_watch, bool* created) {
   std::error_code realpath_err;
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<Root> root;
 
   *created = false;
 
@@ -239,7 +239,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
 
   auto config_file = load_root_config(root_str.c_str());
   Configuration config{config_file};
-  root = std::make_shared<watchman_root>(
+  root = std::make_shared<Root>(
       root_str,
       fs_type,
       config_file,
@@ -264,9 +264,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
   return root;
 }
 
-std::shared_ptr<watchman_root> w_root_resolve(
-    const char* filename,
-    bool auto_watch) {
+std::shared_ptr<Root> w_root_resolve(const char* filename, bool auto_watch) {
   bool created = false;
   auto root = root_resolve(filename, auto_watch, &created);
 
@@ -286,8 +284,7 @@ std::shared_ptr<watchman_root> w_root_resolve(
   return root;
 }
 
-std::shared_ptr<watchman_root> w_root_resolve_for_client_mode(
-    const char* filename) {
+std::shared_ptr<Root> w_root_resolve_for_client_mode(const char* filename) {
   bool created = false;
   auto root = root_resolve(filename, true, &created);
 

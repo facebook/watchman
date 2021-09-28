@@ -14,7 +14,7 @@
 using namespace watchman;
 
 void handle_open_errno(
-    watchman_root& root,
+    Root& root,
     struct watchman_dir* dir,
     std::chrono::system_clock::time_point now,
     const char* syscall,

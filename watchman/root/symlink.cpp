@@ -144,7 +144,7 @@ static void watch_symlinks(const w_string& path, json_t* root_files) {
 
 /** Process the list of observed changed symlinks and arrange to establish
  * watches for their new targets */
-void watchman_root::processPendingSymlinkTargets() {
+void Root::processPendingSymlinkTargets() {
   bool enforcing;
 
   auto pendingLock = inner.pending_symlink_targets.lock();

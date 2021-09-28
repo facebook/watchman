@@ -7,7 +7,9 @@
 
 #include "watchman/watchman_root.h"
 
-bool watchman_root::considerReap() {
+using namespace watchman;
+
+bool Root::considerReap() {
   if (idle_reap_age == 0) {
     return false;
   }

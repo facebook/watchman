@@ -106,7 +106,7 @@ bool QueryContext::fileMatchesRelativeRoot(const watchman_file* f) {
 
 QueryContext::QueryContext(
     Query* q,
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     bool disableFreshInstance)
     : created(std::chrono::steady_clock::now()),
       query(q),

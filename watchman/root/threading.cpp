@@ -9,7 +9,9 @@
 #include "watchman/TriggerCommand.h"
 #include "watchman/watchman_root.h"
 
-std::shared_ptr<watchman::QueryableView> watchman_root::view() const {
+using namespace watchman;
+
+std::shared_ptr<QueryableView> Root::view() const {
   // We grab a read lock on the recrawl info to ensure that we
   // can't race with scheduleRecrawl and observe a nullptr for
   // the view_.
@@ -17,14 +19,13 @@ std::shared_ptr<watchman::QueryableView> watchman_root::view() const {
   return inner.view_;
 }
 
-void watchman_root::recrawlTriggered(const char* why) {
+void Root::recrawlTriggered(const char* why) {
   recrawlInfo.wlock()->recrawlCount++;
 
-  watchman::log(
-      watchman::ERR, root_path, ": ", why, ": tree recrawl triggered\n");
+  log(ERR, root_path, ": ", why, ": tree recrawl triggered\n");
 }
 
-void watchman_root::scheduleRecrawl(const char* why) {
+void Root::scheduleRecrawl(const char* why) {
   {
     auto info = recrawlInfo.wlock();
 
@@ -41,26 +42,25 @@ void watchman_root::scheduleRecrawl(const char* why) {
             "#recrawl");
       }
 
-      watchman::log(
-          watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
+      log(ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
     }
     info->shouldRecrawl = true;
   }
   view()->wakeThreads();
 }
 
-void watchman_root::signalThreads() {
+void Root::signalThreads() {
   view()->signalThreads();
 }
 
 // Cancels a watch.
-bool watchman_root::cancel() {
+bool Root::cancel() {
   bool cancelled = false;
 
   if (!inner.cancelled) {
     cancelled = true;
 
-    watchman::log(watchman::DBG, "marked ", root_path, " cancelled\n");
+    log(DBG, "marked ", root_path, " cancelled\n");
     inner.cancelled = true;
 
     // The client will fan this out to all matching subscriptions.
@@ -82,7 +82,7 @@ bool watchman_root::cancel() {
   return cancelled;
 }
 
-bool watchman_root::stopWatch() {
+bool Root::stopWatch() {
   bool stopped = removeFromWatched();
 
   if (stopped) {

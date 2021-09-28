@@ -68,7 +68,7 @@ struct watchman_client_subscription
     json_ref response;
   };
 
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<watchman::Root> root;
   w_string name;
   /* whether this subscription is paused */
   bool debug_paused = false;
@@ -83,14 +83,14 @@ struct watchman_client_subscription
   std::deque<LoggedResponse> lastResponses;
 
   explicit watchman_client_subscription(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<watchman::Root>& root,
       std::weak_ptr<watchman_client> client);
   ~watchman_client_subscription();
   void processSubscription();
 
   std::shared_ptr<watchman_user_client> lockClient();
   json_ref buildSubscriptionResults(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<watchman::Root>& root,
       ClockSpec& position,
       OnStateTransition onStateTransition);
 
@@ -99,7 +99,7 @@ struct watchman_client_subscription
 
   ClockSpec runSubscriptionRules(
       watchman_user_client* client,
-      const std::shared_ptr<watchman_root>& root);
+      const std::shared_ptr<watchman::Root>& root);
   void updateSubscriptionTicks(QueryResult* res);
   void processSubscriptionImpl();
 };

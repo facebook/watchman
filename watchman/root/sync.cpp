@@ -9,7 +9,7 @@
 
 using namespace watchman;
 
-void watchman_root::syncToNow(
+void Root::syncToNow(
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
   PerfSample sample("sync_to_now");

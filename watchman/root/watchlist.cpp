@@ -14,12 +14,11 @@
 
 using namespace watchman;
 
-folly::Synchronized<
-    std::unordered_map<w_string, std::shared_ptr<watchman_root>>>
+folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<Root>>>
     watched_roots;
 std::atomic<long> live_roots{0};
 
-bool watchman_root::removeFromWatched() {
+bool Root::removeFromWatched() {
   auto map = watched_roots.wlock();
   auto it = map->find(root_path);
   if (it == map->end()) {
@@ -45,7 +44,7 @@ bool findEnclosingRoot(
     const w_string& fileName,
     w_string_piece& prefix,
     w_string_piece& relativePath) {
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<Root> root;
   auto name = fileName.piece();
   {
     auto map = watched_roots.rlock();
@@ -70,7 +69,7 @@ bool findEnclosingRoot(
 }
 
 json_ref w_root_stop_watch_all() {
-  std::vector<watchman_root*> roots;
+  std::vector<Root*> roots;
   json_ref stopped = json_array();
 
   Root::SaveGlobalStateHook saveGlobalStateHook = nullptr;
@@ -80,7 +79,7 @@ json_ref w_root_stop_watch_all() {
   // otherwise have held.  Therefore we just loop until the map is
   // empty.
   while (true) {
-    std::shared_ptr<watchman_root> root;
+    std::shared_ptr<Root> root;
 
     {
       auto map = watched_roots.wlock();
@@ -125,7 +124,7 @@ json_ref w_root_watch_list_to_json() {
   return arr;
 }
 
-json_ref watchman_root::getStatusForAllRoots() {
+json_ref Root::getStatusForAllRoots() {
   auto arr = json_array();
 
   auto map = watched_roots.rlock();
@@ -137,7 +136,7 @@ json_ref watchman_root::getStatusForAllRoots() {
   return arr;
 }
 
-json_ref watchman_root::getStatus() const {
+json_ref Root::getStatus() const {
   auto obj = json_object();
   auto now = std::chrono::steady_clock::now();
 
@@ -274,7 +273,7 @@ json_ref watchman_root::getStatus() const {
   return obj;
 }
 
-json_ref watchman_root::triggerListToJson() const {
+json_ref Root::triggerListToJson() const {
   auto arr = json_array();
   {
     auto map = triggers.rlock();
@@ -290,7 +289,7 @@ json_ref watchman_root::triggerListToJson() const {
 void w_root_free_watched_roots() {
   int last, interval;
   time_t started;
-  std::vector<std::shared_ptr<watchman_root>> roots;
+  std::vector<std::shared_ptr<Root>> roots;
 
   // We want to cancel the list of roots, but need to be careful to avoid
   // deadlock; make a copy of the set of roots under the lock...

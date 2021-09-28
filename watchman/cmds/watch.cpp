@@ -41,7 +41,7 @@ W_CAP_REG("clock-sync-timeout")
 
 /* Add the current clock value to the response */
 static void annotate_with_clock(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     json_ref& resp) {
   resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
 }

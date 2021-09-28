@@ -17,8 +17,6 @@ namespace watchman {
 class Root;
 }
 
-using watchman_root = watchman::Root;
-
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
 // argument list
@@ -59,20 +57,20 @@ bool enqueue_response(
     bool ping);
 
 // Resolve the root. Failure will throw a RootResolveError exception
-std::shared_ptr<watchman_root> resolveRoot(
+std::shared_ptr<watchman::Root> resolveRoot(
     struct watchman_client* client,
     const json_ref& args);
 
 // Resolve the root, or if not found and the configuration permits,
 // attempt to create it. throws RootResolveError on failure.
-std::shared_ptr<watchman_root> resolveOrCreateRoot(
+std::shared_ptr<watchman::Root> resolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args);
 
 json_ref make_response();
 void add_root_warnings_to_response(
     json_ref& response,
-    const std::shared_ptr<watchman_root>& root);
+    const std::shared_ptr<watchman::Root>& root);
 
 /* vim:ts=2:sw=2:et:
  */

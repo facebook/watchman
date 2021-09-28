@@ -117,14 +117,14 @@ void w_query_process_file(
 
 void time_generator(
     Query* query,
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     QueryContext* ctx) {
   root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
     Query* query,
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     QueryContext* ctx) {
   bool generated = false;
 
@@ -233,7 +233,7 @@ W_CAP_REG("scm-since")
 
 QueryResult w_query_execute(
     Query* query,
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     QueryGenerator generator) {
   QueryResult res;
   ClockSpec resultClock(ClockPosition{});
@@ -312,44 +312,43 @@ QueryResult w_query_execute(
       // case.
       if (modifiedMergebase) {
         disableFreshInstance = true;
-        generator = [root, modifiedMergebase, requestId](
-                        Query* q,
-                        const std::shared_ptr<watchman_root>& r,
-                        QueryContext* c) {
-          auto changedFiles =
-              root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
-                  modifiedMergebase, requestId);
+        generator =
+            [root, modifiedMergebase, requestId](
+                Query* q, const std::shared_ptr<Root>& r, QueryContext* c) {
+              auto changedFiles =
+                  root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
+                      modifiedMergebase, requestId);
 
-          auto pathList = json_array_of_size(changedFiles.size());
-          for (auto& f : changedFiles) {
-            json_array_append_new(pathList, w_string_to_json(f));
-          }
+              auto pathList = json_array_of_size(changedFiles.size());
+              for (auto& f : changedFiles) {
+                json_array_append_new(pathList, w_string_to_json(f));
+              }
 
-          auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-          w_clock_t clock{0, 0};
-          clock.ticks = spec.ticks;
-          time(&clock.timestamp);
-          for (auto& pathEntry : pathList.array()) {
-            auto path = json_to_w_string(pathEntry);
+              auto spec = r->view()->getMostRecentRootNumberAndTickValue();
+              w_clock_t clock{0, 0};
+              clock.ticks = spec.ticks;
+              time(&clock.timestamp);
+              for (auto& pathEntry : pathList.array()) {
+                auto path = json_to_w_string(pathEntry);
 
-            auto fullPath = w_string::pathCat({r->root_path, path});
-            if (!c->fileMatchesRelativeRoot(fullPath)) {
-              continue;
-            }
-            // Note well!  At the time of writing the LocalFileResult class
-            // assumes that removed entries must have been regular files.
-            // We don't have enough information returned from
-            // getFilesChangedSinceMergeBaseWith() to distinguish between
-            // deleted files and deleted symlinks.  Also, it is not possible
-            // to see a directory returned from that call; we're only going
-            // to enumerate !dirs for this case.
-            w_query_process_file(
-                q,
-                c,
-                std::make_unique<LocalFileResult>(
-                    fullPath, clock, r->case_sensitive));
-          }
-        };
+                auto fullPath = w_string::pathCat({r->root_path, path});
+                if (!c->fileMatchesRelativeRoot(fullPath)) {
+                  continue;
+                }
+                // Note well!  At the time of writing the LocalFileResult class
+                // assumes that removed entries must have been regular files.
+                // We don't have enough information returned from
+                // getFilesChangedSinceMergeBaseWith() to distinguish between
+                // deleted files and deleted symlinks.  Also, it is not possible
+                // to see a directory returned from that call; we're only going
+                // to enumerate !dirs for this case.
+                w_query_process_file(
+                    q,
+                    c,
+                    std::make_unique<LocalFileResult>(
+                        fullPath, clock, r->case_sensitive));
+              }
+            };
       } else if (query->fail_if_no_saved_state) {
         throw QueryExecError(
             "The merge base changed but no corresponding saved state was "
@@ -368,8 +367,7 @@ QueryResult w_query_execute(
   // indicated to omit those. To do so, lets just make an empty
   // generator.
   if (query->omit_changed_files) {
-    generator =
-        [](Query*, const std::shared_ptr<watchman_root>&, QueryContext*) {};
+    generator = [](Query*, const std::shared_ptr<Root>&, QueryContext*) {};
   }
   QueryContext ctx{query, root, disableFreshInstance};
 

@@ -157,7 +157,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     struct watchman_dir* dir,
     const char* path) {
   struct stat st, osdirst;
@@ -225,7 +225,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 }
 
 Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   struct timespec ts = {0, 0};
 

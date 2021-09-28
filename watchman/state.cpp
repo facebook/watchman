@@ -195,7 +195,7 @@ bool w_root_load_state(const json_ref& state) {
     auto triggers = obj.get_default("triggers");
     filename = json_string_value(json_object_get(obj, "path"));
 
-    std::shared_ptr<watchman_root> root;
+    std::shared_ptr<Root> root;
     try {
       root = root_resolve(filename, true, &created);
     } catch (const std::exception&) {

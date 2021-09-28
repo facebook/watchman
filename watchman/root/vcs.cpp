@@ -7,7 +7,9 @@
 
 #include "watchman/watchman_root.h"
 
-static json_ref config_get_ignore_vcs(watchman_root* root) {
+using namespace watchman;
+
+static json_ref config_get_ignore_vcs(Root* root) {
   json_ref ignores = root->config.get("ignore_vcs");
   if (ignores && !ignores.isArray()) {
     return nullptr;
@@ -23,7 +25,7 @@ static json_ref config_get_ignore_vcs(watchman_root* root) {
   return ignores;
 }
 
-void watchman_root::applyIgnoreVCSConfiguration() {
+void Root::applyIgnoreVCSConfiguration() {
   auto ignores = config_get_ignore_vcs(this);
   if (!ignores) {
     throw std::runtime_error("ignore_vcs must be an array of strings");

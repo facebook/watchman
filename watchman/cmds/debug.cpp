@@ -173,7 +173,7 @@ W_CMD_REG(
     CMD_DAEMON,
     nullptr)
 
-static json_ref getDebugSubscriptionInfo(watchman_root* root) {
+static json_ref getDebugSubscriptionInfo(Root* root) {
   auto subscriptions = json_array();
   for (const auto& c : *::clients.rlock()) {
     auto* user_client = dynamic_cast<watchman_user_client*>(c.get());
@@ -252,7 +252,7 @@ W_CMD_REG(
 
 static void cmd_debug_status(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
-  auto roots = watchman_root::getStatusForAllRoots();
+  auto roots = Root::getStatusForAllRoots();
   resp.set("roots", std::move(roots));
   send_and_dispose_response(client, std::move(resp));
 }

@@ -24,7 +24,7 @@ namespace watchman {
  * returns false.
  */
 bool InMemoryView::propagateToParentDirIfAppropriate(
-    const watchman_root& root,
+    const Root& root,
     PendingChanges& coll,
     std::chrono::system_clock::time_point now,
     const FileInformation& entryStat,
@@ -60,7 +60,7 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
 }
 
 void InMemoryView::statPath(
-    watchman_root& root,
+    Root& root,
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,

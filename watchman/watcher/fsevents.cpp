@@ -30,7 +30,7 @@ namespace watchman {
 
 struct fse_stream {
   FSEventStreamRef stream{nullptr};
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<Root> root;
   FSEventsWatcher* watcher;
   FSEventStreamEventId last_good{0};
   FSEventStreamEventId since{0};
@@ -40,7 +40,7 @@ struct fse_stream {
   CFUUIDRef uuid;
 
   fse_stream(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       FSEventsWatcher* watcher,
       FSEventStreamEventId since)
       : root(root), watcher(watcher), since(since) {}
@@ -98,7 +98,7 @@ struct FSEventsLogEntry {
 static_assert(64 == sizeof(FSEventsLogEntry));
 
 std::shared_ptr<FSEventsWatcher> watcherFromRoot(
-    const std::shared_ptr<watchman_root>& root) {
+    const std::shared_ptr<Root>& root) {
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     return nullptr;
@@ -109,7 +109,7 @@ std::shared_ptr<FSEventsWatcher> watcherFromRoot(
 
 /** Generate a perf event for the drop */
 static void log_drop_event(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     bool isKernel) {
   PerfSample sample(isKernel ? "KernelDropped" : "UserDropped");
   root->addPerfSampleMetadata(sample);
@@ -296,7 +296,7 @@ fse_stream::~fse_stream() {
 }
 
 fse_stream* FSEventsWatcher::fse_stream_make(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     FSEventsWatcher* watcher,
     FSEventStreamEventId since,
     w_string& failure_reason) {
@@ -482,7 +482,7 @@ fail:
 }
 
 void FSEventsWatcher::FSEventsThread(
-    const std::shared_ptr<watchman_root>& root) {
+    const std::shared_ptr<Root>& root) {
   CFFileDescriptorRef fdref;
   auto fdctx = CFFileDescriptorContext();
 
@@ -580,7 +580,7 @@ FSEventsWatcher::FSEventsWatcher(
 
 FSEventsWatcher::~FSEventsWatcher() = default;
 
-bool FSEventsWatcher::start(const std::shared_ptr<watchman_root>& root) {
+bool FSEventsWatcher::start(const std::shared_ptr<Root>& root) {
   // Spin up the fsevents processing thread; it owns a ref on the root
 
   auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
@@ -698,7 +698,7 @@ bool isRootRemoved(
 } // namespace
 
 Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   char flags_label[128];
   std::vector<std::vector<watchman_fsevent>> items;
@@ -803,7 +803,7 @@ void FSEventsWatcher::signalThreads() {
 }
 
 std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>&,
+    const std::shared_ptr<Root>&,
     watchman_dir*,
     const char* path) {
   return w_dir_open(path);

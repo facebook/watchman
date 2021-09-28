@@ -7,7 +7,9 @@
 
 #include "watchman/watchman_root.h"
 
-void watchman_root::considerAgeOut() {
+using namespace watchman;
+
+void Root::considerAgeOut() {
   if (gc_interval.count() == 0) {
     return;
   }
@@ -21,7 +23,7 @@ void watchman_root::considerAgeOut() {
   performAgeOut(gc_age);
 }
 
-void watchman_root::performAgeOut(std::chrono::seconds min_age) {
+void Root::performAgeOut(std::chrono::seconds min_age) {
   // Find deleted nodes older than the gc_age setting.
   // This is particularly useful in cases where your tree observes a
   // large number of creates and deletes for many unique filenames in

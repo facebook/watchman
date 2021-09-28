@@ -154,12 +154,12 @@ struct InotifyWatcher : public Watcher {
   explicit InotifyWatcher(const Configuration& config);
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
@@ -168,7 +168,7 @@ struct InotifyWatcher : public Watcher {
   // needed. Returns true if the root directory was removed and the watch needs
   // to be cancelled.
   bool process_inotify_event(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll,
       struct inotify_event* ine,
       std::chrono::system_clock::time_point now);
@@ -205,7 +205,7 @@ InotifyWatcher::InotifyWatcher(const Configuration& config)
 }
 
 std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>&,
+    const std::shared_ptr<Root>&,
     struct watchman_dir*,
     const char* path) {
   // Carry out our very strict opendir first to ensure that we're not
@@ -233,7 +233,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
 }
 
 bool InotifyWatcher::process_inotify_event(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll,
     struct inotify_event* ine,
     std::chrono::system_clock::time_point now) {
@@ -394,7 +394,7 @@ bool InotifyWatcher::process_inotify_event(
 }
 
 Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {

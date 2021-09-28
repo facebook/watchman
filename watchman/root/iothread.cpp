@@ -13,7 +13,7 @@
 namespace watchman {
 
 std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
-    const std::shared_ptr<watchman_root>& root) {
+    const std::shared_ptr<Root>& root) {
   auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
 
   if (lockPair.second->promise && lockPair.second->future.valid()) {
@@ -36,7 +36,7 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 }
 
 void InMemoryView::fullCrawl(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& pending) {
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
@@ -99,7 +99,7 @@ void InMemoryView::fullCrawl(
 
 // Performs settle-time actions.
 // Returns true if the root was reaped and the io thread should terminate.
-static bool do_settle_things(InMemoryView& view, watchman_root& root) {
+static bool do_settle_things(InMemoryView& view, Root& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
@@ -123,12 +123,12 @@ static bool do_settle_things(InMemoryView& view, watchman_root& root) {
   return false;
 }
 
-void InMemoryView::clientModeCrawl(const std::shared_ptr<watchman_root>& root) {
+void InMemoryView::clientModeCrawl(const std::shared_ptr<Root>& root) {
   PendingChanges pending;
   fullCrawl(root, pending);
 }
 
-bool InMemoryView::handleShouldRecrawl(watchman_root& root) {
+bool InMemoryView::handleShouldRecrawl(Root& root) {
   {
     auto info = root.recrawlInfo.rlock();
     if (!info->shouldRecrawl) {
@@ -145,7 +145,7 @@ bool InMemoryView::handleShouldRecrawl(watchman_root& root) {
   return true;
 }
 
-void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
+void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
   PendingChanges localPending;
 
   int timeoutms = root->trigger_settle;
@@ -238,7 +238,7 @@ void InMemoryView::ioThread(const std::shared_ptr<watchman_root>& root) {
 }
 
 InMemoryView::IsDesynced InMemoryView::processAllPending(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     ViewDatabase& view,
     PendingChanges& coll) {
   auto desyncState = IsDesynced::No;
@@ -299,7 +299,7 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
 }
 
 void InMemoryView::processPath(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,

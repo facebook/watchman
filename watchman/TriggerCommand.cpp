@@ -134,7 +134,7 @@ std::unique_ptr<watchman_stream> prepare_stdin(
 }
 
 void spawn_command(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     struct TriggerCommand* cmd,
     QueryResult* res,
     ClockSpec* since_spec) {
@@ -290,7 +290,7 @@ void spawn_command(
 } // namespace
 
 TriggerCommand::TriggerCommand(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     const json_ref& trig)
     : definition(trig),
       append_files(false),
@@ -384,7 +384,7 @@ TriggerCommand::~TriggerCommand() {
   }
 }
 
-void TriggerCommand::run(const std::shared_ptr<watchman_root>& root) {
+void TriggerCommand::run(const std::shared_ptr<Root>& root) {
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
   w_set_thread_name(
       "trigger ", triggername.view(), " ", root->root_path.view());
@@ -443,7 +443,7 @@ void TriggerCommand::stop() {
   }
 }
 
-void TriggerCommand::start(const std::shared_ptr<watchman_root>& root) {
+void TriggerCommand::start(const std::shared_ptr<Root>& root) {
   subscriber_ =
       root->unilateralResponses->subscribe([this] { ping_->notify(); });
   triggerThread_ = std::thread([this, root] {
@@ -456,7 +456,7 @@ void TriggerCommand::start(const std::shared_ptr<watchman_root>& root) {
   });
 }
 
-bool TriggerCommand::maybeSpawn(const std::shared_ptr<watchman_root>& root) {
+bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
   bool didRun = false;
 
   // If it looks like we're in a repo undergoing a rebase or

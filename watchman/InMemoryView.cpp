@@ -937,7 +937,7 @@ std::chrono::system_clock::time_point InMemoryView::getLastAgeOutTimeStamp()
   return lastAgeOutTimestamp_;
 }
 
-void InMemoryView::startThreads(const std::shared_ptr<watchman_root>& root) {
+void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
   // Start a thread to call into the watcher API for filesystem notifications
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
   logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), rootPath_);
@@ -995,7 +995,7 @@ void InMemoryView::wakeThreads() {
  * a runtime_error if the root has been deleted or rendered
  * inaccessible. */
 void InMemoryView::syncToNow(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
   syncToNowCookies(root, timeout, cookieFileNames);
@@ -1027,7 +1027,7 @@ void InMemoryView::syncToNow(
 }
 
 void InMemoryView::syncToNowCookies(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     std::chrono::milliseconds timeout,
     std::vector<w_string>& cookieFileNames) {
   try {
