@@ -29,36 +29,16 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 /* Idle out watches that haven't had activity in several days */
 #define DEFAULT_REAP_AGE (86400 * 5)
 
-namespace watchman {
-
-class PerfSample;
-
-} // namespace watchman
-
 std::shared_ptr<watchman::Root> w_root_resolve(
     const char* path,
     bool auto_watch);
 
 std::shared_ptr<watchman::Root> w_root_resolve_for_client_mode(
     const char* filename);
-bool findEnclosingRoot(
-    const w_string& fileName,
-    w_string_piece& prefix,
-    w_string_piece& relativePath);
-
-void w_root_free_watched_roots();
-json_ref w_root_stop_watch_all();
-void w_root_reap();
 
 bool did_file_change(
     const watchman::FileInformation* saved,
     const watchman::FileInformation* fresh);
-extern std::atomic<long> live_roots;
-
-extern folly::Synchronized<
-    std::unordered_map<w_string, std::shared_ptr<watchman::Root>>>
-    watched_roots;
-
 std::shared_ptr<watchman::Root>
 root_resolve(const char* filename, bool auto_watch, bool* created);
 
@@ -68,5 +48,3 @@ void handle_open_errno(
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err);
-
-json_ref w_root_watch_list_to_json();

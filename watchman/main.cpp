@@ -28,6 +28,7 @@
 #include "watchman/UserDir.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/listener.h"
+#include "watchman/root/watchlist.h"
 #include "watchman/sockname.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"

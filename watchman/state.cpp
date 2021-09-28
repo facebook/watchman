@@ -13,6 +13,7 @@
 #include "watchman/Options.h"
 #include "watchman/PDU.h"
 #include "watchman/Shutdown.h"
+#include "watchman/root/watchlist.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_stream.h"
 

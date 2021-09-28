@@ -11,6 +11,7 @@
 #include "watchman/FileSystem.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
+#include "watchman/root/watchlist.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_root.h"
 #include "watchman/watchman_system.h"

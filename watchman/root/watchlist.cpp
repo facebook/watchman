@@ -5,14 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/root/watchlist.h"
 #include <folly/Synchronized.h>
 #include <vector>
 #include "watchman/TriggerCommand.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
-#include "watchman/watchman_root.h"
+#include "watchman/root/Root.h"
 
 using namespace watchman;
+
+namespace watchman {
 
 folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<Root>>>
     watched_roots;
@@ -335,6 +338,8 @@ void w_root_free_watched_roots() {
 
   logf(DBG, "all roots are gone\n");
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */
