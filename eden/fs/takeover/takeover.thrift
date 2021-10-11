@@ -27,8 +27,7 @@ struct SerializedInodeMap {
   2: list<SerializedInodeMapEntry> unloadedInodes;
 }
 
-struct SerializedFileHandleMap {
-}
+struct SerializedFileHandleMap {}
 
 struct SerializedMountInfo {
   1: string mountPath;
