@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Logging.h"
 #include "watchman/root/Root.h"
 
 using namespace watchman;
@@ -26,6 +27,16 @@ static json_ref config_get_ignore_vcs(Root* root) {
 }
 
 void Root::applyIgnoreVCSConfiguration() {
+  auto cookieDirs = cookies.cookieDirs();
+  w_check(
+      cookieDirs.size() == 1 && cookieDirs.count(root_path) == 1,
+      fmt::format(
+          "cookie was already initialized with {}: {}\n",
+          cookieDirs.size(),
+          *cookieDirs.begin()));
+
+  bool default_cookie = true;
+
   auto ignores = config_get_ignore_vcs(this);
   if (!ignores) {
     throw std::runtime_error("ignore_vcs must be an array of strings");
@@ -46,11 +57,7 @@ void Root::applyIgnoreVCSConfiguration() {
 
     ignore.add(fullname, true);
 
-    // Since we do not have a watcher just yet, we can't test if the watcher
-    // will have WATCHER_HAS_SPLIT_WATCH, thus, rely on whether only the root
-    // is present in the cookies dirs.
-    auto cookieDirs = cookies.cookieDirs();
-    if (cookieDirs.size() == 1 && cookieDirs.count(root_path) == 1) {
+    if (default_cookie) {
       // While we're at it, see if we can find out where to put our
       // query cookie information
       try {
@@ -58,6 +65,7 @@ void Root::applyIgnoreVCSConfiguration() {
         if (info.isDir()) {
           // root/{.hg,.git,.svn}
           cookies.setCookieDir(fullname);
+          default_cookie = false;
         }
       } catch (...) {
         // Don't care
