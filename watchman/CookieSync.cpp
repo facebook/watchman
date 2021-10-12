@@ -219,7 +219,7 @@ void CookieSync::notifyCookie(const w_string& path) {
   }
 }
 
-bool CookieSync::isCookiePrefix(w_string_piece path) {
+bool CookieSync::isCookiePrefix(w_string_piece path) const {
   auto cookieDirs = cookieDirs_.rlock();
   for (const auto& dir : cookieDirs->dirs_) {
     if (path.startsWith(dir) &&
@@ -230,7 +230,7 @@ bool CookieSync::isCookiePrefix(w_string_piece path) {
   return false;
 }
 
-bool CookieSync::isCookieDir(w_string_piece path) {
+bool CookieSync::isCookieDir(w_string_piece path) const {
   auto cookieDirs = cookieDirs_.rlock();
   for (const auto& dir : cookieDirs->dirs_) {
     if (path == dir) {

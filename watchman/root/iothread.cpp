@@ -349,7 +349,7 @@ void InMemoryView::processPath(
       (pending.flags & W_PENDING_CRAWL_ONLY)) {
     crawler(root, view, coll, pending);
   } else {
-    statPath(*root, view, coll, pending, pre_stat);
+    statPath(*root, root->cookies, view, coll, pending, pre_stat);
   }
 }
 

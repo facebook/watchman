@@ -104,7 +104,8 @@ bool InMemoryView::propagateToParentDirIfAppropriate(
 }
 
 void InMemoryView::statPath(
-    Root& root,
+    const RootConfig& root,
+    const CookieSync& cookies,
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
@@ -297,7 +298,7 @@ void InMemoryView::statPath(
       if (!root.ignore.isIgnoreVCS(dir_name) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
-          root.cookies.isCookieDir(pending.path)) {
+          cookies.isCookieDir(pending.path)) {
         if (recursive) {
           /* we always need to crawl if we're recursive, this can happen when a
            * directory is created */
