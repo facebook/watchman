@@ -691,7 +691,6 @@ watchman/root/resolve.cpp
 watchman/root/stat.cpp
 watchman/root/sync.cpp
 watchman/root/threading.cpp
-watchman/root/vcs.cpp
 # root/warnerr.cpp (in liberr)
 watchman/root/watchlist.cpp
 watchman/saved_state/LocalSavedStateInterface.cpp

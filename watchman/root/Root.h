@@ -95,7 +95,18 @@ class RootConfig {
   /* filesystem type name, as returned by w_fstype() */
   const w_string fs_type;
   const CaseSensitivity case_sensitive;
+  const IgnoreSet ignore;
 };
+
+/**
+ * Given the ignore_dirs and ignore_vcs configuration arrays, return a
+ * configured IgnoreSet.
+ *
+ * Normally an implementation detail, but exposed for testing.
+ */
+IgnoreSet computeIgnoreSet(
+    const w_string& root_path,
+    const Configuration& config);
 
 class Root : public RootConfig, public std::enable_shared_from_this<Root> {
  public:
@@ -107,8 +118,6 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
       triggers;
 
   CookieSync cookies;
-
-  IgnoreSet ignore;
 
   /* config options loaded via json file */
   json_ref config_file;
@@ -213,7 +222,6 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   // Returns true if the caller should stop the watch.
   bool considerReap();
   bool removeFromWatched();
-  void applyIgnoreVCSConfiguration();
   void signalThreads();
   bool stopWatch();
   json_ref triggerListToJson() const;
@@ -229,8 +237,6 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   }
 
  private:
-  void applyIgnoreConfiguration();
-
   /// A hook that allows saving Watchman's state after key operations. Usually
   /// holds w_state_save.
   SaveGlobalStateHook saveGlobalStateHook_;

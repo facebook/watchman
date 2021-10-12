@@ -131,29 +131,107 @@ bool ClientStateAssertions::isStateAsserted(w_string stateName) const {
   return false;
 }
 
-void Root::applyIgnoreConfiguration() {
-  auto ignores = config.get("ignore_dirs");
+namespace {
+
+json_ref getIgnoreVcs(const Configuration& config) {
+  json_ref ignores = config.get("ignore_vcs");
   if (!ignores) {
-    return;
+    // default to a well-known set of vcs's
+    return json_array(
+        {typed_string_to_json(".git"),
+         typed_string_to_json(".svn"),
+         typed_string_to_json(".hg")});
   }
+
   if (!ignores.isArray()) {
-    logf(ERR, "ignore_dirs must be an array of strings\n");
-    return;
+    throw std::runtime_error("ignore_vcs must be an array of strings");
   }
 
-  for (size_t i = 0; i < json_array_size(ignores); i++) {
-    auto jignore = json_array_get(ignores, i);
+  return ignores;
+}
 
+/**
+ * Returns which directory should be used for cookies. Returns the first
+ * directory in ignore_vcs that exists. Otherwise, returns the root_path.
+ */
+w_string computeCookieDir(
+    const w_string& root_path,
+    const Configuration& config,
+    CaseSensitivity case_sensitive,
+    const IgnoreSet& ignore) {
+  auto ignores = getIgnoreVcs(config);
+  for (auto& jignore : ignores.array()) {
     if (!jignore.isString()) {
-      logf(ERR, "ignore_dirs must be an array of strings\n");
+      throw std::runtime_error("ignore_vcs must be an array of strings");
+    }
+
+    auto fullname = w_string::pathCat({root_path, json_to_w_string(jignore)});
+    // if we are completely ignoring this dir, we have nothing more to
+    // do here
+    if (ignore.isIgnoreDir(fullname)) {
       continue;
     }
 
-    auto name = json_to_w_string(jignore);
-    auto fullname = w_string::pathCat({root_path, name});
-    ignore.add(fullname, false);
-    logf(DBG, "ignoring {} recursively\n", fullname);
+    FileInformation info;
+    try {
+      info = getFileInformation(fullname.c_str(), case_sensitive);
+    } catch (const std::exception&) {
+      continue;
+    }
+
+    if (info.isDir()) {
+      // root/{.hg,.git,.svn}
+      return fullname;
+    }
   }
+
+  return root_path;
+}
+
+} // namespace
+
+IgnoreSet computeIgnoreSet(
+    const w_string& root_path,
+    const Configuration& config) {
+  IgnoreSet result;
+
+  if (auto ignores = config.get("ignore_dirs")) {
+    if (!ignores.isArray()) {
+      logf(ERR, "ignore_dirs must be an array of strings\n");
+    } else {
+      for (size_t i = 0; i < json_array_size(ignores); i++) {
+        auto jignore = json_array_get(ignores, i);
+
+        if (!jignore.isString()) {
+          logf(ERR, "ignore_dirs must be an array of strings\n");
+          continue;
+        }
+
+        auto name = json_to_w_string(jignore);
+        auto fullname = w_string::pathCat({root_path, name});
+        result.add(fullname, false);
+        logf(DBG, "ignoring {} recursively\n", fullname);
+      }
+    }
+  }
+
+  auto ignores = getIgnoreVcs(config);
+  for (auto& jignore : ignores.array()) {
+    if (!jignore.isString()) {
+      throw std::runtime_error("ignore_vcs must be an array of strings");
+    }
+
+    auto fullname = w_string::pathCat({root_path, json_to_w_string(jignore)});
+
+    // if we are completely ignoring this dir, we have nothing more to
+    // do here
+    if (result.isIgnoreDir(fullname)) {
+      continue;
+    }
+    result.add(fullname, true);
+  }
+
+  return result;
 }
 
 Root::Root(
@@ -163,8 +241,8 @@ Root::Root(
     Configuration config_,
     std::shared_ptr<QueryableView> view,
     SaveGlobalStateHook saveGlobalStateHook)
-    : RootConfig{root_path, fs_type, watchman::getCaseSensitivityForPath(root_path.c_str())},
-      cookies(root_path),
+    : RootConfig{root_path, fs_type, getCaseSensitivityForPath(root_path.c_str()), computeIgnoreSet(root_path, config_)},
+      cookies(computeCookieDir(root_path, config_, case_sensitive, ignore)),
       config_file(std::move(config_file)),
       config(std::move(config_)),
       trigger_settle(int(config.getInt("settle", kDefaultSettlePeriod))),
@@ -173,11 +251,9 @@ Root::Root(
       gc_age(int(config.getInt("gc_age_seconds", DEFAULT_GC_AGE))),
       idle_reap_age(
           int(config.getInt("idle_reap_age_seconds", kDefaultReapAge))),
-      unilateralResponses(std::make_shared<watchman::Publisher>()),
+      unilateralResponses(std::make_shared<Publisher>()),
       saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
   ++live_roots;
-  applyIgnoreConfiguration();
-  applyIgnoreVCSConfiguration();
 
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
