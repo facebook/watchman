@@ -7,6 +7,7 @@
 
 #pragma once
 #include "watchman/Result.h"
+#include "watchman/fs/DirHandle.h"
 #include "watchman/fs/FileDescriptor.h"
 #include "watchman/fs/FileInformation.h"
 
@@ -24,6 +25,17 @@
  */
 
 namespace watchman {
+
+class FileSystem {
+ public:
+  virtual ~FileSystem() = default;
+
+  virtual std::unique_ptr<DirHandle> openDir(
+      const char* path,
+      bool strict = true) = 0;
+};
+
+extern FileSystem& realFileSystem;
 
 /** equivalent to open(2)
  * This function is not intended to be used to create files,

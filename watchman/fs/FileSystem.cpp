@@ -23,6 +23,22 @@
 
 namespace watchman {
 
+namespace {
+
+class RealFileSystem : public FileSystem {
+ public:
+  std::unique_ptr<DirHandle> openDir(const char* path, bool strict = true)
+      override {
+    return watchman::openDir(path, strict);
+  }
+};
+
+RealFileSystem gRealFileSystem;
+
+} // namespace
+
+FileSystem& realFileSystem = gRealFileSystem;
+
 #if !CAN_OPEN_SYMLINKS
 
 namespace {
