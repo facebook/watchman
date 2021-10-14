@@ -6,7 +6,7 @@
  */
 
 #pragma once
-#include "watchman/FileDescriptor.h"
+#include "watchman/fs/FileDescriptor.h"
 
 namespace watchman {
 

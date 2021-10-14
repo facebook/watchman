@@ -6,8 +6,8 @@
  */
 
 #include <folly/String.h>
-#include "watchman/FileDescriptor.h"
 #include "watchman/Logging.h"
+#include "watchman/fs/FileDescriptor.h"
 
 #ifdef __APPLE__
 #include <launch.h> // @manual

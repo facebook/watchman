@@ -8,7 +8,7 @@
 #pragma once
 
 #include "watchman/Clock.h"
-#include "watchman/FileInformation.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/watchman_dir.h"
 
 struct watchman_file {

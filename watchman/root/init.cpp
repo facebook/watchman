@@ -6,10 +6,11 @@
  */
 
 #include <folly/String.h>
-#include "watchman/DirHandle.h"
 #include "watchman/Logging.h"
 #include "watchman/QueryableView.h"
 #include "watchman/TriggerCommand.h"
+#include "watchman/fs/DirHandle.h"
+#include "watchman/fs/FSDetect.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 

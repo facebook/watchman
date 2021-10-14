@@ -8,8 +8,8 @@
 #include "watchman/saved_state/LocalSavedStateInterface.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
-#include "watchman/FileInformation.h"
 #include "watchman/Logging.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/scm/SCM.h"
 
 static const int kDefaultMaxCommits{10};

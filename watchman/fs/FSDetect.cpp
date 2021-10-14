@@ -5,10 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/FSDetect.h"
+#include "watchman/fs/FSDetect.h"
 #include <folly/FileUtil.h>
 #include <folly/String.h>
-#include "watchman/FileDescriptor.h"
+#include "watchman/fs/FileDescriptor.h"
 #include "watchman/watchman_system.h"
 
 #ifdef HAVE_SYS_VFS_H
@@ -26,6 +26,23 @@
 #ifdef __linux__
 #include <linux/magic.h>
 #endif
+
+namespace watchman {
+
+CaseSensitivity getCaseSensitivityForPath(const char* path) {
+#ifdef __APPLE__
+  return pathconf(path, _PC_CASE_SENSITIVE) ? CaseSensitivity::CaseSensitive
+                                            : CaseSensitivity::CaseInSensitive;
+#elif defined(_WIN32)
+  unused_parameter(path);
+  return CaseSensitivity::CaseInSensitive;
+#else
+  unused_parameter(path);
+  return CaseSensitivity::CaseSensitive;
+#endif
+}
+
+} // namespace watchman
 
 // This function is used to return the fstype for a given path
 // based on the linux style /proc/mounts data provided.

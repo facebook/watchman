@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/DirHandle.h"
+#include "watchman/fs/DirHandle.h"
 
 #include <folly/ScopeGuard.h>
-#include "watchman/FileDescriptor.h"
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 

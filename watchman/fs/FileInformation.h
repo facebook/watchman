@@ -6,8 +6,10 @@
  */
 
 #pragma once
+
 #include <sys/stat.h>
 #include "watchman/watchman_system.h"
+
 #ifndef _WIN32
 #include <dirent.h>
 #endif

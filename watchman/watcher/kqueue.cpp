@@ -9,10 +9,10 @@
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <array>
-#include "watchman/FileDescriptor.h"
 #include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
-#include "watchman/Pipe.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"

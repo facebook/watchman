@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <watchman/FileDescriptor.h>
+#include "watchman/fs/FileDescriptor.h"
 
 #ifdef __APPLE__
 watchman::FileDescriptor w_get_listener_socket_from_launchd();

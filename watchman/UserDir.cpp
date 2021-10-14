@@ -7,9 +7,9 @@
 
 #include "watchman/UserDir.h"
 #include <folly/String.h>
-#include "watchman/FileSystem.h"
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
+#include "watchman/fs/FileSystem.h"
 
 #ifdef _WIN32
 #include <Lmcons.h> // @manual

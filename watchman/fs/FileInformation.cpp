@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/FileInformation.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/watchman_time.h"
 
 namespace watchman {

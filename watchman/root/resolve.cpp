@@ -7,9 +7,9 @@
 
 #include <folly/String.h>
 #include "watchman/Errors.h"
-#include "watchman/FSDetect.h"
-#include "watchman/FileSystem.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/fs/FSDetect.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/state.h"

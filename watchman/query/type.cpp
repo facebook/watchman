@@ -6,7 +6,7 @@
  */
 
 #include "watchman/Errors.h"
-#include "watchman/FileInformation.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/query/FileResult.h"
 #include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"

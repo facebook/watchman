@@ -9,8 +9,8 @@
 #include <folly/String.h>
 #include "watchman/ChildProcess.h"
 #include "watchman/CommandRegistry.h"
-#include "watchman/FileSystem.h"
 #include "watchman/Logging.h"
+#include "watchman/fs/FileSystem.h"
 
 // Capability indicating support for the git SCM
 W_CAP_REG("scm-git")

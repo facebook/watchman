@@ -17,8 +17,6 @@
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
-#include "watchman/DirHandle.h"
-#include "watchman/FileSystem.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
@@ -29,6 +27,8 @@
 #include "watchman/ThreadPool.h"
 #include "watchman/UserDir.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/fs/DirHandle.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/listener.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/sockname.h"

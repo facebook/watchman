@@ -8,8 +8,8 @@
 #pragma once
 #include <folly/futures/Future.h>
 #include <stdexcept>
-#include "watchman/DirHandle.h"
 #include "watchman/PendingCollection.h"
+#include "watchman/fs/DirHandle.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 #define HINT_NUM_DIRS 128 * 1024

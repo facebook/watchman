@@ -8,8 +8,8 @@
 #pragma once
 
 #include <optional>
-#include "watchman/Pipe.h"
 #include "watchman/RingBuffer.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/watcher/Watcher.h"
 
 #if HAVE_FSEVENTS

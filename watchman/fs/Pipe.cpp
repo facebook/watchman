@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/Pipe.h"
+#include "watchman/fs/Pipe.h"
 #ifdef _WIN32
 #include <event2/util.h> // @manual
 #endif

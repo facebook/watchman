@@ -7,7 +7,7 @@
 
 #include "watchman/InMemoryView.h"
 #include <folly/portability/GTest.h>
-#include "watchman/FSDetect.h"
+#include "watchman/fs/FSDetect.h"
 #include "watchman/watcher/Watcher.h"
 
 namespace {

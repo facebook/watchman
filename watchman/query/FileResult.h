@@ -10,7 +10,7 @@
 #include <optional>
 #include <vector>
 #include "watchman/Clock.h"
-#include "watchman/FileInformation.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/watchman_string.h"
 
 namespace watchman {

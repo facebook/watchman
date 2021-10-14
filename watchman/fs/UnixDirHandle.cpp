@@ -5,14 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/DirHandle.h"
+#include "watchman/fs/DirHandle.h"
 
 #include <folly/String.h>
 #include <system_error>
-#include "watchman/FileDescriptor.h"
-#include "watchman/FileSystem.h"
 #include "watchman/Logging.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/FileSystem.h"
 
 #ifndef _WIN32
 #include <dirent.h>

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/query/FileResult.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"

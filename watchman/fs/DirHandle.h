@@ -8,7 +8,7 @@
 #pragma once
 
 #include <memory>
-#include "watchman/FileInformation.h"
+#include "watchman/fs/FileInformation.h"
 
 namespace watchman {
 

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/FSDetect.h"
+#include "watchman/fs/FSDetect.h"
 #include <folly/portability/GTest.h>
 #include <string>
 

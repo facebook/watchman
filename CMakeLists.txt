@@ -546,17 +546,18 @@ target_link_libraries(jansson string third_party_deps)
 
 list(APPEND testsupport_sources
 watchman/ChildProcess.cpp
-watchman/FileDescriptor.cpp
-watchman/FileInformation.cpp
+watchman/fs/FileDescriptor.cpp
+watchman/fs/FileInformation.cpp
+watchman/fs/FSDetect.cpp
 watchman/FlagMap.cpp
 watchman/IgnoreSet.cpp
 watchman/PendingCollection.cpp
-watchman/Pipe.cpp
+watchman/fs/Pipe.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/UnixDirHandle.cpp
-watchman/WinDirHandle.cpp
+watchman/fs/UnixDirHandle.cpp
+watchman/fs/WinDirHandle.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/root/dir.cpp
@@ -609,10 +610,10 @@ watchman/CommandRegistry.cpp
 watchman/ContentHash.cpp
 watchman/CookieSync.cpp
 watchman/Errors.cpp
-watchman/FileDescriptor.cpp
-watchman/FileInformation.cpp
+watchman/fs/FileDescriptor.cpp
+watchman/fs/FileInformation.cpp
 watchman/FlagMap.cpp
-watchman/FSDetect.cpp
+watchman/fs/FSDetect.cpp
 watchman/GroupLookup.cpp
 watchman/IgnoreSet.cpp
 watchman/InMemoryView.cpp
@@ -620,7 +621,7 @@ watchman/Options.cpp
 watchman/PDU.cpp
 watchman/PendingCollection.cpp
 watchman/PerfSample.cpp
-watchman/Pipe.cpp
+watchman/fs/Pipe.cpp
 watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)
 watchman/QueryableView.cpp
@@ -630,10 +631,10 @@ watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/ThreadPool.cpp
 watchman/TriggerCommand.cpp
-watchman/UnixDirHandle.cpp
+watchman/fs/UnixDirHandle.cpp
 watchman/UserDir.cpp
 watchman/WatchmanConfig.cpp
-watchman/WinDirHandle.cpp
+watchman/fs/WinDirHandle.cpp
 watchman/bser.cpp
 watchman/clientmode.cpp
 # hash.cpp (in libhash)

@@ -6,8 +6,8 @@
  */
 
 #include "watchman/Constants.h"
-#include "watchman/FileDescriptor.h"
-#include "watchman/Pipe.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/watcher/Watcher.h"
 
 #ifdef HAVE_KQUEUE

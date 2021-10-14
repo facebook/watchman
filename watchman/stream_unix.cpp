@@ -9,9 +9,9 @@
 #include <folly/net/NetworkSocket.h>
 #include <memory>
 #include "watchman/Constants.h"
-#include "watchman/FileDescriptor.h"
 #include "watchman/Logging.h"
-#include "watchman/Pipe.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/watchman_stream.h"
 
 #ifdef HAVE_UCRED_H

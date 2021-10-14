@@ -9,7 +9,7 @@
 
 #include <vector>
 #include "watchman/Clock.h"
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FileSystem.h"
 
 constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 

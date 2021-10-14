@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "watchman/FileDescriptor.h"
+#include "watchman/fs/FileDescriptor.h"
 
 #include <chrono>
 #include <variant>

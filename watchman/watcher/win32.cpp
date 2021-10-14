@@ -6,8 +6,8 @@
  */
 
 #include <folly/Synchronized.h>
-#include "watchman/FileDescriptor.h"
 #include "watchman/InMemoryView.h"
+#include "watchman/fs/FileDescriptor.h"
 #include "watchman/root/Root.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watcher/WatcherRegistry.h"

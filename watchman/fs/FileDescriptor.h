@@ -16,6 +16,66 @@ namespace watchman {
 
 struct FileInformation;
 
+enum class CaseSensitivity {
+  // The caller knows that the filesystem path(s) in question are
+  // case insensitive.
+  CaseInSensitive,
+  // The caller knows that the filesystem path(s) in question are
+  // case sensitive.
+  CaseSensitive,
+  // The caller does not know if the path(s) are case sensitive
+  Unknown,
+};
+
+/** Windows doesn't have equivalent bits for all of the various
+ * open(2) flags, so we abstract it out here */
+struct OpenFileHandleOptions {
+  unsigned followSymlinks : 1; // O_NOFOLLOW
+  unsigned closeOnExec : 1; // O_CLOEXEC
+  unsigned metaDataOnly : 1; // avoid accessing file contents
+  unsigned readContents : 1; // the read portion of O_RDONLY or O_RDWR
+  unsigned writeContents : 1; // the write portion of O_WRONLY or O_RDWR
+  unsigned create : 1; // O_CREAT
+  unsigned exclusiveCreate : 1; // O_EXCL
+  unsigned truncate : 1; // O_TRUNC
+  unsigned strictNameChecks : 1;
+  CaseSensitivity caseSensitive;
+
+  OpenFileHandleOptions()
+      : followSymlinks(0),
+        closeOnExec(1),
+        metaDataOnly(0),
+        readContents(0),
+        writeContents(0),
+        create(0),
+        exclusiveCreate(0),
+        truncate(0),
+        strictNameChecks(1),
+        caseSensitive(CaseSensitivity::Unknown) {}
+
+  static inline OpenFileHandleOptions queryFileInfo() {
+    OpenFileHandleOptions opts;
+    opts.metaDataOnly = 1;
+    return opts;
+  }
+
+  static inline OpenFileHandleOptions openDir() {
+    OpenFileHandleOptions opts;
+    opts.readContents = 1;
+    opts.strictNameChecks = false;
+    opts.followSymlinks = 1;
+    return opts;
+  }
+
+  static inline OpenFileHandleOptions strictOpenDir() {
+    OpenFileHandleOptions opts;
+    opts.readContents = 1;
+    opts.strictNameChecks = true;
+    opts.followSymlinks = 0;
+    return opts;
+  }
+};
+
 // Manages the lifetime of a system independent file descriptor.
 // On POSIX systems this is a posix file descriptor.
 // On Win32 systems this is a Win32 HANDLE object.

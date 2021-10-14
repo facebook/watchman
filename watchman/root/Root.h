@@ -10,11 +10,11 @@
 #include <memory>
 #include <unordered_map>
 #include "watchman/CookieSync.h"
-#include "watchman/FileSystem.h"
 #include "watchman/IgnoreSet.h"
 #include "watchman/PendingCollection.h"
 #include "watchman/PubSub.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 

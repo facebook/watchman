@@ -15,7 +15,7 @@
 #include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/LogConfig.h"
-#include "watchman/Pipe.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/root/Root.h"
 #include "watchman/watcher/WatcherRegistry.h"
 #include "watchman/watchman_cmd.h"

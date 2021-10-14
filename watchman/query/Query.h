@@ -9,7 +9,7 @@
 
 #include <optional>
 #include "watchman/Clock.h"
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 

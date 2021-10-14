@@ -12,8 +12,8 @@
 #include <string>
 #include <unordered_map>
 #include "watchman/ChildProcess.h"
-#include "watchman/FileInformation.h"
 #include "watchman/LRUCache.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/scm/SCM.h"
 
 namespace watchman {

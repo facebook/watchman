@@ -7,7 +7,7 @@
 
 #include <memory>
 #include "watchman/Errors.h"
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/query/FileResult.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryExpr.h"

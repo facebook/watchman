@@ -12,7 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "watchman/Pipe.h"
+#include "watchman/fs/Pipe.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"

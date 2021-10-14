@@ -12,8 +12,8 @@
 #include <cstdio>
 #include "watchman/ChildProcess.h"
 #include "watchman/CommandRegistry.h"
-#include "watchman/FileSystem.h"
 #include "watchman/Logging.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/sockname.h"
 
 // Capability indicating support for the mercurial SCM

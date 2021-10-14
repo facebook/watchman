@@ -5,12 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/FileDescriptor.h"
+#include "watchman/fs/FileDescriptor.h"
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/system/Pid.h>
 #include <system_error>
-#include "watchman/FileSystem.h"
+#include "watchman/fs/FSDetect.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/watchman_string.h"
 
 #ifdef __APPLE__
@@ -781,19 +782,6 @@ FileInformation getFileInformation(
   }
 
   return FileInformation(st);
-#endif
-}
-
-CaseSensitivity getCaseSensitivityForPath(const char* path) {
-#ifdef __APPLE__
-  return pathconf(path, _PC_CASE_SENSITIVE) ? CaseSensitivity::CaseSensitive
-                                            : CaseSensitivity::CaseInSensitive;
-#elif defined(_WIN32)
-  unused_parameter(path);
-  return CaseSensitivity::CaseInSensitive;
-#else
-  unused_parameter(path);
-  return CaseSensitivity::CaseSensitive;
 #endif
 }
 
