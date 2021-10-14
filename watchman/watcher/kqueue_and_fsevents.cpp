@@ -67,8 +67,8 @@ class PendingEventsCond {
 
  private:
   struct Inner {
-    bool shouldStop{};
-    bool hasPending{};
+    bool shouldStop = false;
+    bool hasPending = false;
   };
 
   folly::Synchronized<Inner, std::mutex> stop_;
@@ -103,7 +103,7 @@ class KQueueAndFSEventsWatcher : public Watcher {
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
+  void stopThreads() override;
 
   /**
    * Force a recrawl to be injected in the stream. Used in the
@@ -251,7 +251,7 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
     for (auto& [watchpath, fsevent] : *fseventWatches) {
       auto [cancelSelf] = fsevent->consumeNotify(root, coll);
       if (cancelSelf) {
-        fsevent->signalThreads();
+        fsevent->stopThreads();
         root->cookies.removeCookieDir(watchpath);
         fseventWatches->erase(watchpath);
         continue;
@@ -266,15 +266,15 @@ bool KQueueAndFSEventsWatcher::waitNotify(int timeoutms) {
   return pendingCondition_->waitAndClear(timeoutms);
 }
 
-void KQueueAndFSEventsWatcher::signalThreads() {
+void KQueueAndFSEventsWatcher::stopThreads() {
   pendingCondition_->stopAll();
   {
     auto fseventWatches = fseventWatchers_.rlock();
     for (auto& [_, fsevent] : *fseventWatches) {
-      fsevent->signalThreads();
+      fsevent->stopThreads();
     }
   }
-  kqueueWatcher_->signalThreads();
+  kqueueWatcher_->stopThreads();
 }
 
 void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {

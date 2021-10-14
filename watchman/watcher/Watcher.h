@@ -84,8 +84,11 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
       struct watchman_dir* dir,
       const char* path) = 0;
 
-  // Signal any threads to terminate.  Do not join them here.
-  virtual void signalThreads() {}
+  /**
+   * Signal any threads to terminate.  Does not join them, but the reference
+   * count on the root will not fall to zero until the threads stop.
+   */
+  virtual void stopThreads() {}
 
   /**
    * Wait for an inotify event to become available.

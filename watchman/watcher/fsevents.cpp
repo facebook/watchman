@@ -797,7 +797,7 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
   return {cancelSelf};
 }
 
-void FSEventsWatcher::signalThreads() {
+void FSEventsWatcher::stopThreads() {
   write(fsePipe_.write.fd(), "X", 1);
 }
 

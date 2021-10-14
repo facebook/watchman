@@ -71,7 +71,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   /**
    * Request that helper threads shutdown (but does not join them).
    */
-  virtual void signalThreads() {}
+  virtual void stopThreads() {}
   /**
    * Request that helper threads wake up and re-evaluate their state.
    */

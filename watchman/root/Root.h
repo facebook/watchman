@@ -108,6 +108,16 @@ IgnoreSet computeIgnoreSet(
     const w_string& root_path,
     const Configuration& config);
 
+/**
+ * Represents a watched root directory.
+ *
+ * Lifetime is managed by a shared_ptr. The root is tracked in `watched_roots`
+ * until it is cancelled. The count of live roots is tracked by `live_roots`.
+ *
+ * Watcher threads are detached, and thus cannot be joined. However, they
+ * maintain strong references to roots, so we know the threads are stopped when
+ * the root becomes unreferenced.
+ */
 class Root : public RootConfig, public std::enable_shared_from_this<Root> {
  public:
   using SaveGlobalStateHook = void (*)();
@@ -222,7 +232,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   // Returns true if the caller should stop the watch.
   bool considerReap();
   bool removeFromWatched();
-  void signalThreads();
+  void stopThreads();
   bool stopWatch();
   json_ref triggerListToJson() const;
 

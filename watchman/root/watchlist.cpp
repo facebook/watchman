@@ -306,7 +306,7 @@ void w_root_free_watched_roots() {
   // ... and cancel them outside of the lock
   for (auto& root : roots) {
     if (!root->cancel()) {
-      root->signalThreads();
+      root->stopThreads();
     }
   }
 

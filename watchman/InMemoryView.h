@@ -188,7 +188,7 @@ class InMemoryView final : public QueryableView {
       const std::shared_ptr<Root>& root) override;
 
   void startThreads(const std::shared_ptr<Root>& root) override;
-  void signalThreads() override;
+  void stopThreads() override;
   void wakeThreads() override;
   void clientModeCrawl(const std::shared_ptr<Root>& root);
 

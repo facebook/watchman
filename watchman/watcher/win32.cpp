@@ -59,7 +59,7 @@ struct WinWatcher : public Watcher {
 
   bool waitNotify(int timeoutms) override;
   bool start(const std::shared_ptr<Root>& root) override;
-  void signalThreads() override;
+  void stopThreads() override;
   void readChangesThread(const std::shared_ptr<Root>& root);
 };
 
@@ -109,7 +109,7 @@ WinWatcher::~WinWatcher() {
   }
 }
 
-void WinWatcher::signalThreads() {
+void WinWatcher::stopThreads() {
   SetEvent(ping);
 }
 

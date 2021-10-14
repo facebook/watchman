@@ -322,7 +322,7 @@ bool KQueueWatcher::waitNotify(int timeoutms) {
   return false;
 }
 
-void KQueueWatcher::signalThreads() {
+void KQueueWatcher::stopThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 

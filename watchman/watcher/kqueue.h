@@ -52,7 +52,7 @@ struct KQueueWatcher : public Watcher {
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
+  void stopThreads() override;
 };
 
 } // namespace watchman

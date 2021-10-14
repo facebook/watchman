@@ -49,8 +49,8 @@ void Root::scheduleRecrawl(const char* why) {
   view()->wakeThreads();
 }
 
-void Root::signalThreads() {
-  view()->signalThreads();
+void Root::stopThreads() {
+  view()->stopThreads();
 }
 
 // Cancels a watch.
@@ -68,7 +68,7 @@ bool Root::cancel() {
     unilateralResponses->enqueue(json_object(
         {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
 
-    signalThreads();
+    stopThreads();
     removeFromWatched();
 
     {
@@ -89,7 +89,7 @@ bool Root::stopWatch() {
     cancel();
     saveGlobalStateHook_();
   }
-  signalThreads();
+  stopThreads();
 
   return stopped;
 }

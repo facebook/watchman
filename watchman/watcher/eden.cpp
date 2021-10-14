@@ -1148,7 +1148,7 @@ class EdenView final : public QueryableView {
     thr.detach();
   }
 
-  void signalThreads() override {
+  void stopThreads() override {
     subscriberEventBase_.terminateLoopSoon();
   }
 

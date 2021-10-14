@@ -173,7 +173,7 @@ struct InotifyWatcher : public Watcher {
       struct inotify_event* ine,
       std::chrono::system_clock::time_point now);
 
-  void signalThreads() override;
+  void stopThreads() override;
 
   json_ref getDebugInfo() override;
   void clearDebugInfo() override;
@@ -473,7 +473,7 @@ bool InotifyWatcher::waitNotify(int timeoutms) {
   return false;
 }
 
-void InotifyWatcher::signalThreads() {
+void InotifyWatcher::stopThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 
