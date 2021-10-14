@@ -16,7 +16,7 @@ std::shared_ptr<QueryableView> Root::view() const {
   // can't race with scheduleRecrawl and observe a nullptr for
   // the view_.
   auto info = recrawlInfo.rlock();
-  return inner.view_;
+  return view_;
 }
 
 void Root::recrawlTriggered(const char* why) {

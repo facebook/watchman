@@ -171,8 +171,6 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   folly::Synchronized<ClientStateAssertions> assertedStates;
 
   struct Inner {
-    std::shared_ptr<QueryableView> view_;
-
     /**
      * Initially false and set to false by the iothread after scheduleRecrawl.
      * Set true after fullCrawl is done.
@@ -248,6 +246,8 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   }
 
  private:
+  const std::shared_ptr<QueryableView> view_;
+
   /// A hook that allows saving Watchman's state after key operations. Usually
   /// holds w_state_save.
   SaveGlobalStateHook saveGlobalStateHook_;

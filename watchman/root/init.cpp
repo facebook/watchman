@@ -254,6 +254,7 @@ Root::Root(
       idle_reap_age(
           int(config.getInt("idle_reap_age_seconds", kDefaultReapAge))),
       unilateralResponses(std::make_shared<Publisher>()),
+      view_{std::move(view)},
       saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
@@ -263,11 +264,9 @@ Root::Root(
   // unlikely to throw. Switch to some sort of RAII handle instead.
   ++live_roots;
 
-  inner.view_ = std::move(view);
-
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();
 
-  if (!inner.view_->requiresCrawl) {
+  if (!view_->requiresCrawl) {
     // This watcher can resolve queries without needing a crawl.
     inner.done_initial = true;
     auto crawlInfo = recrawlInfo.wlock();
