@@ -254,11 +254,14 @@ Root::Root(
           int(config.getInt("idle_reap_age_seconds", kDefaultReapAge))),
       unilateralResponses(std::make_shared<Publisher>()),
       saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
-  ++live_roots;
-
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
   (void)openDir(root_path.c_str());
+
+  // TODO: This is only exception-safe because the rest of the function is
+  // unlikely to throw. Switch to some sort of RAII handle instead.
+  ++live_roots;
+
   inner.view_ = std::move(view);
 
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();
