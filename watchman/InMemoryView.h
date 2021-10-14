@@ -297,6 +297,10 @@ class InMemoryView final : public QueryableView {
       const watchman_dir* parentDir,
       bool isUnlink);
 
+  // Performs settle-time actions.
+  // Returns true if the root was reaped and the io thread should terminate.
+  bool doSettleThings(Root& root);
+
   const Configuration config_;
 
   folly::Synchronized<ViewDatabase> view_;

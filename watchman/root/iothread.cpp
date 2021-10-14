@@ -98,9 +98,7 @@ void InMemoryView::fullCrawl(
   logf(ERR, "{}crawl complete\n", recrawlCount ? "re" : "");
 }
 
-// Performs settle-time actions.
-// Returns true if the root was reaped and the io thread should terminate.
-static bool do_settle_things(InMemoryView& view, Root& root) {
+bool InMemoryView::doSettleThings(Root& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
@@ -109,7 +107,7 @@ static bool do_settle_things(InMemoryView& view, Root& root) {
     return false;
   }
 
-  view.warmContentCache();
+  warmContentCache();
 
   root.unilateralResponses->enqueue(json_object({{"settled", json_true()}}));
 
@@ -200,7 +198,7 @@ void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
 
     // Waiting for an event timed out, so consider the root settled.
     if (!pinged && localPending.empty()) {
-      if (do_settle_things(*this, *root)) {
+      if (doSettleThings(*root)) {
         break;
       }
       timeoutms = std::min(biggest_timeout, timeoutms * 2);
