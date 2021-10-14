@@ -40,7 +40,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/install/include")
 
 option(ENABLE_EDEN_SUPPORT "If enabled, add support for the Eden \
   virtual filesystem.  That requires fbthrift."
-  OFF)
+  ON)
 
 # Determine whether we are the git repo produced by shipit, a staging
 # area produced by shipit in the FB internal CI, or whether
