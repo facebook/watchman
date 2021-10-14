@@ -612,6 +612,7 @@ watchman/CookieSync.cpp
 watchman/Errors.cpp
 watchman/fs/FileDescriptor.cpp
 watchman/fs/FileInformation.cpp
+watchman/fs/FileSystem.cpp
 watchman/FlagMap.cpp
 watchman/fs/FSDetect.cpp
 watchman/GroupLookup.cpp
