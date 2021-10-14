@@ -48,7 +48,7 @@ struct WinWatcher : public Watcher {
   explicit WinWatcher(const w_string& root_path, const Configuration& config);
   ~WinWatcher();
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
@@ -358,11 +358,11 @@ bool WinWatcher::start(const std::shared_ptr<Root>& root) {
   }
 }
 
-std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
+std::unique_ptr<DirHandle> WinWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
     struct watchman_dir* dir,
     const char* path) {
-  return w_dir_open(path);
+  return openDir(path);
 }
 
 Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(

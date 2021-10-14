@@ -92,7 +92,7 @@ void InMemoryView::crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  std::unique_ptr<watchman_dir_handle> osdir;
+  std::unique_ptr<DirHandle> osdir;
 
   try {
     osdir = watcher_->startWatchDir(root, dir, path);
@@ -133,7 +133,7 @@ void InMemoryView::crawler(
   }
 
   try {
-    while (const watchman_dir_ent* dirent = osdir->readDir()) {
+    while (const DirEntry* dirent = osdir->readDir()) {
       // Don't follow parent/self links
       if (dirent->d_name[0] == '.' &&
           (!strcmp(dirent->d_name, ".") || !strcmp(dirent->d_name, ".."))) {

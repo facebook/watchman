@@ -19,7 +19,7 @@ class FakeWatcher : public Watcher {
  public:
   FakeWatcher() : Watcher{"fake", 0} {}
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override {

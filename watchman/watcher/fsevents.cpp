@@ -801,11 +801,11 @@ void FSEventsWatcher::stopThreads() {
   write(fsePipe_.write.fd(), "X", 1);
 }
 
-std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
+std::unique_ptr<DirHandle> FSEventsWatcher::startWatchDir(
     const std::shared_ptr<Root>&,
     watchman_dir*,
     const char* path) {
-  return w_dir_open(path);
+  return openDir(path);
 }
 
 json_ref FSEventsWatcher::getDebugInfo() {

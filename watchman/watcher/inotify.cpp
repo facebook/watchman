@@ -153,7 +153,7 @@ struct InotifyWatcher : public Watcher {
 
   explicit InotifyWatcher(const Configuration& config);
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
@@ -204,13 +204,13 @@ InotifyWatcher::InotifyWatcher(const Configuration& config)
   }
 }
 
-std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
+std::unique_ptr<DirHandle> InotifyWatcher::startWatchDir(
     const std::shared_ptr<Root>&,
     struct watchman_dir*,
     const char* path) {
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
-  auto osdir = w_dir_open(path);
+  auto osdir = openDir(path);
 
   w_string dir_name(path, W_STRING_BYTE);
 

@@ -40,7 +40,7 @@ struct KQueueWatcher : public Watcher {
       const Configuration& config,
       bool recursive = true);
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;

@@ -8,9 +8,9 @@
 #pragma once
 #include <folly/futures/Future.h>
 #include <stdexcept>
+#include "watchman/DirHandle.h"
 #include "watchman/PendingCollection.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman_opendir.h"
 
 #define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -79,7 +79,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
-  virtual std::unique_ptr<watchman_dir_handle> startWatchDir(
+  virtual std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) = 0;

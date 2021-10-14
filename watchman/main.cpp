@@ -17,6 +17,7 @@
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
+#include "watchman/DirHandle.h"
 #include "watchman/FileSystem.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
@@ -33,7 +34,6 @@
 #include "watchman/sockname.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
-#include "watchman/watchman_opendir.h"
 #include "watchman/watchman_stream.h"
 
 #ifdef _WIN32
@@ -582,8 +582,8 @@ static void verify_dir_ownership(const std::string& state_dir) {
           "sock_access", false /* write bits */, true /* execute bits */) |
       S_ISGID;
 
-  auto dirp = w_dir_open(
-      state_dir.c_str(), false /* don't need strict symlink rules */);
+  auto dirp =
+      openDir(state_dir.c_str(), false /* don't need strict symlink rules */);
 
   dir_fd = dirp->getFd();
   if (dir_fd == -1) {

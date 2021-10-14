@@ -91,7 +91,7 @@ class KQueueAndFSEventsWatcher : public Watcher {
 
   folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,
       const char* path) override;
@@ -183,7 +183,7 @@ folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
   return folly::collect(futures).unit();
 }
 
-std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(
+std::unique_ptr<DirHandle> KQueueAndFSEventsWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
     struct watchman_dir* dir,
     const char* path) {
@@ -214,7 +214,7 @@ std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(
     }
   }
 
-  return w_dir_open(path);
+  return openDir(path);
 }
 
 bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {

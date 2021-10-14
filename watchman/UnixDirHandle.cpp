@@ -5,25 +5,26 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/DirHandle.h"
+
+#include <folly/String.h>
 #include <system_error>
+#include "watchman/FileDescriptor.h"
+#include "watchman/FileSystem.h"
+#include "watchman/Logging.h"
+#include "watchman/WatchmanConfig.h"
+
 #ifndef _WIN32
 #include <dirent.h>
 #endif
+
 #ifdef __APPLE__
 #include <sys/attr.h> // @manual
 #include <sys/utsname.h> // @manual
 #include <sys/vnode.h> // @manual
 #endif
-#include <folly/String.h>
-#include "watchman/FileDescriptor.h"
-#include "watchman/FileSystem.h"
-#include "watchman/Logging.h"
-#include "watchman/WatchmanConfig.h"
-#include "watchman/watchman_opendir.h"
 
-using namespace watchman;
-using watchman::FileDescriptor;
-using watchman::OpenFileHandleOptions;
+namespace watchman {
 
 #ifdef HAVE_GETATTRLISTBULK
 // The ordering of these fields is defined by the ordering of the
@@ -59,7 +60,7 @@ typedef struct {
 #endif
 
 #ifndef _WIN32
-class DirHandle : public watchman_dir_handle {
+class UnixDirHandle : public DirHandle {
 #ifdef HAVE_GETATTRLISTBULK
   std::string dirName_;
   FileDescriptor fd_;
@@ -69,12 +70,12 @@ class DirHandle : public watchman_dir_handle {
   char* cursor_{nullptr};
 #endif
   DIR* d_{nullptr};
-  struct watchman_dir_ent ent_;
+  struct DirEntry ent_;
 
  public:
-  explicit DirHandle(const char* path, bool strict);
-  ~DirHandle() override;
-  const watchman_dir_ent* readDir() override;
+  explicit UnixDirHandle(const char* path, bool strict);
+  ~UnixDirHandle() override;
+  const DirEntry* readDir() override;
   int getFd() const override;
 };
 #endif
@@ -127,8 +128,8 @@ static bool use_bulkstat_by_default() {
 #endif
 
 #ifndef _WIN32
-std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
-  return std::make_unique<DirHandle>(path, strict);
+std::unique_ptr<DirHandle> openDir(const char* path, bool strict) {
+  return std::make_unique<UnixDirHandle>(path, strict);
 }
 
 #ifdef HAVE_GETATTRLISTBULK
@@ -171,7 +172,7 @@ static const std::unordered_map<uint32_t, const char*> commonLabels = {
 };
 #endif
 
-DirHandle::DirHandle(const char* path, bool strict)
+UnixDirHandle::UnixDirHandle(const char* path, bool strict)
 #ifdef HAVE_GETATTRLISTBULK
     : dirName_(path)
 #endif
@@ -216,7 +217,7 @@ DirHandle::DirHandle(const char* path, bool strict)
   }
 }
 
-const watchman_dir_ent* DirHandle::readDir() {
+const DirEntry* UnixDirHandle::readDir() {
 #ifdef HAVE_GETATTRLISTBULK
   if (fd_) {
     bulk_attr_item* item;
@@ -396,13 +397,13 @@ const watchman_dir_ent* DirHandle::readDir() {
   return &ent_;
 }
 
-DirHandle::~DirHandle() {
+UnixDirHandle::~UnixDirHandle() {
   if (d_) {
     closedir(d_);
   }
 }
 
-int DirHandle::getFd() const {
+int UnixDirHandle::getFd() const {
 #ifdef HAVE_GETATTRLISTBULK
   if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
     return fd_.fd();
@@ -411,6 +412,8 @@ int DirHandle::getFd() const {
   return dirfd(d_);
 }
 #endif
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

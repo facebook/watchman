@@ -6,12 +6,12 @@
  */
 
 #include <folly/String.h>
+#include "watchman/DirHandle.h"
 #include "watchman/Logging.h"
 #include "watchman/QueryableView.h"
 #include "watchman/TriggerCommand.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
-#include "watchman/watchman_opendir.h"
 
 namespace watchman {
 
@@ -257,7 +257,7 @@ Root::Root(
 
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
-  w_dir_open(root_path.c_str());
+  (void)openDir(root_path.c_str());
   inner.view_ = std::move(view);
 
   inner.last_cmd_timestamp = std::chrono::steady_clock::now();

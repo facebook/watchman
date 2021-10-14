@@ -301,7 +301,7 @@ void InMemoryView::processPath(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
-    const watchman_dir_ent* pre_stat) {
+    const DirEntry* pre_stat) {
   w_assert(
       pending.path.size() >= rootPath_.size(),
       "full_path must be a descendant of the root directory\n");

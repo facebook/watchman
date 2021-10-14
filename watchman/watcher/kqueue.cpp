@@ -156,14 +156,14 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   return true;
 }
 
-std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
+std::unique_ptr<DirHandle> KQueueWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
     struct watchman_dir* dir,
     const char* path) {
   struct stat st, osdirst;
   struct kevent k;
 
-  auto osdir = w_dir_open(path);
+  auto osdir = openDir(path);
 
   FileDescriptor fdHolder(
       open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC),

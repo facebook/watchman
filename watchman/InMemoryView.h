@@ -13,6 +13,7 @@
 #include <utility>
 #include "watchman/ContentHash.h"
 #include "watchman/CookieSync.h"
+#include "watchman/DirHandle.h"
 #include "watchman/PendingCollection.h"
 #include "watchman/PerfSample.h"
 #include "watchman/QueryableView.h"
@@ -21,7 +22,6 @@
 #include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/query/FileResult.h"
-#include "watchman/watchman_opendir.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
@@ -238,7 +238,7 @@ class InMemoryView final : public QueryableView {
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const watchman_dir_ent* pre_stat);
+      const DirEntry* pre_stat);
 
   /** Recursively walks files under a specified dir */
   void dirGenerator(
@@ -286,7 +286,7 @@ class InMemoryView final : public QueryableView {
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const watchman_dir_ent* pre_stat);
+      const DirEntry* pre_stat);
 
   bool propagateToParentDirIfAppropriate(
       const RootConfig& root,

@@ -109,7 +109,7 @@ void InMemoryView::statPath(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
-    const watchman_dir_ent* pre_stat) {
+    const DirEntry* pre_stat) {
   bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
   const bool via_notify = pending.flags.contains(W_PENDING_VIA_NOTIFY);
   const PendingFlags desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;

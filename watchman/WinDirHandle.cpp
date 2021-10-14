@@ -5,19 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/DirHandle.h"
+
 #include <folly/ScopeGuard.h>
 #include "watchman/FileDescriptor.h"
 #include "watchman/FileSystem.h"
-#include "watchman/watchman_opendir.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
-using watchman::FileDescriptor;
-using watchman::FileInformation;
-using watchman::OpenFileHandleOptions;
+namespace watchman {
+
+#ifdef _WIN32
 
 namespace {
-class WinDirHandle : public watchman_dir_handle {
+class WinDirHandle : public DirHandle {
   std::wstring dirWPath_;
   FileDescriptor h_;
   bool win7_{false};
@@ -25,7 +26,7 @@ class WinDirHandle : public watchman_dir_handle {
   char __declspec(align(8)) buf_[64 * 1024];
   HANDLE hDirFind_{nullptr};
   char nameBuf_[WATCHMAN_NAME_MAX];
-  struct watchman_dir_ent ent_;
+  DirEntry ent_;
 
  public:
   ~WinDirHandle() {
@@ -49,7 +50,7 @@ class WinDirHandle : public watchman_dir_handle {
       win7_ = true;
     }
 
-    ent_ = watchman_dir_ent();
+    ent_ = DirEntry();
     ent_.d_name = nameBuf_;
     ent_.has_stat = true;
     if (path[1] == ':') {
@@ -57,7 +58,7 @@ class WinDirHandle : public watchman_dir_handle {
     }
   }
 
-  const watchman_dir_ent* readDir() override {
+  const DirEntry* readDir() override {
     if (win7_) {
       return readDirWin7();
     }
@@ -75,7 +76,7 @@ class WinDirHandle : public watchman_dir_handle {
   }
 
  private:
-  const watchman_dir_ent* readDirWin8() {
+  const DirEntry* readDirWin8() {
     if (!info_) {
       if (!GetFileInformationByHandleEx(
               (HANDLE)h_.handle(), FileFullDirectoryInfo, buf_, sizeof(buf_))) {
@@ -123,7 +124,7 @@ class WinDirHandle : public watchman_dir_handle {
     return &ent_;
   }
 
-  const watchman_dir_ent* readDirWin7() {
+  const DirEntry* readDirWin7() {
     // FileFullDirectoryInfo is not supported prior to Windows 8
     WIN32_FIND_DATAW findFileData;
     bool success;
@@ -181,6 +182,10 @@ class WinDirHandle : public watchman_dir_handle {
 };
 } // namespace
 
-std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
+std::unique_ptr<DirHandle> openDir(const char* path, bool strict) {
   return std::make_unique<WinDirHandle>(path, strict);
 }
+
+#endif
+
+} // namespace watchman

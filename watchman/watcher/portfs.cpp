@@ -45,7 +45,7 @@ struct PortFSWatcher : public Watcher {
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
       struct watchman_dir* dir,
       const char* path) override;
@@ -183,7 +183,7 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
   return do_watch(name, file->stat, false);
 }
 
-std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
+std::unique_ptr<DirHandle> PortFSWatcher::startWatchDir(
     const std::shared_ptr<watchman_root>& root,
     struct watchman_dir* dir,
     const char* path) {

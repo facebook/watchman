@@ -555,7 +555,8 @@ watchman/Pipe.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
-watchman/opendir.cpp
+watchman/UnixDirHandle.cpp
+watchman/WinDirHandle.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/root/dir.cpp
@@ -629,8 +630,10 @@ watchman/SignalHandler.cpp
 watchman/SymlinkTargets.cpp
 watchman/ThreadPool.cpp
 watchman/TriggerCommand.cpp
+watchman/UnixDirHandle.cpp
 watchman/UserDir.cpp
 watchman/WatchmanConfig.cpp
+watchman/WinDirHandle.cpp
 watchman/bser.cpp
 watchman/clientmode.cpp
 # hash.cpp (in libhash)
@@ -638,7 +641,6 @@ watchman/launchd.cpp
 watchman/listener-user.cpp
 watchman/listener.cpp
 watchman/main.cpp
-watchman/opendir.cpp
 watchman/sockname.cpp
 watchman/state.cpp
 watchman/stream.cpp
@@ -720,7 +722,6 @@ watchman/watcher/win32.cpp
 watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/mkdir.cpp
-watchman/winbuild/dir.cpp
 watchman/winbuild/time.cpp
 watchman/winbuild/backtrace.cpp
 watchman/winbuild/getopt_long.cpp
