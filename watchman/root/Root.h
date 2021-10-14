@@ -133,7 +133,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   json_ref config_file;
   Configuration config;
 
-  const int trigger_settle{0};
+  const std::chrono::milliseconds trigger_settle{0};
   /**
    * Don't GC more often than this.
    *
@@ -144,7 +144,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
    * When GCing, age out files older than this.
    */
   const std::chrono::seconds gc_age{DEFAULT_GC_AGE};
-  const int idle_reap_age{0};
+  const std::chrono::seconds idle_reap_age{0};
 
   // Stream of broadcast unilateral items emitted by this root
   std::shared_ptr<Publisher> unilateralResponses;

@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <fmt/chrono.h>
 #include <chrono>
 #include "watchman/InMemoryView.h"
 #include "watchman/root/Root.h"
@@ -143,22 +144,31 @@ bool InMemoryView::handleShouldRecrawl(Root& root) {
   return true;
 }
 
+namespace {
+
+std::chrono::milliseconds getBiggestTimeout(const Root& root) {
+  std::chrono::milliseconds biggest_timeout = root.gc_interval;
+
+  if (biggest_timeout.count() == 0 ||
+      (root.idle_reap_age.count() != 0 &&
+       root.idle_reap_age < biggest_timeout)) {
+    biggest_timeout = root.idle_reap_age;
+  }
+  if (biggest_timeout.count() == 0) {
+    biggest_timeout = std::chrono::hours(24);
+  }
+  return biggest_timeout;
+}
+
+} // namespace
+
 void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
   PendingChanges localPending;
 
-  int timeoutms = root->trigger_settle;
+  std::chrono::milliseconds timeoutms = root->trigger_settle;
 
-  // Upper bound on sleep delay.  These options are measured in seconds.
-  int biggest_timeout = root->gc_interval.count();
-  if (biggest_timeout == 0 ||
-      (root->idle_reap_age != 0 && root->idle_reap_age < biggest_timeout)) {
-    biggest_timeout = root->idle_reap_age;
-  }
-  if (biggest_timeout == 0) {
-    biggest_timeout = 86400;
-  }
-  // And convert to milliseconds
-  biggest_timeout *= 1000;
+  // Compute the upper bound on sleep delay.
+  const auto biggest_timeout = getBiggestTimeout(*root);
 
   while (!stopThreads_) {
     if (!root->inner.done_initial.load(std::memory_order_acquire)) {
@@ -173,8 +183,7 @@ void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
     bool pinged;
     {
       logf(DBG, "poll_events timeout={}ms\n", timeoutms);
-      auto targetPendingLock =
-          pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
+      auto targetPendingLock = pending_.lockAndWait(timeoutms, pinged);
       logf(DBG, " ... wake up (pinged={})\n", pinged);
       localPending.append(
           targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
