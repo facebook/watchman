@@ -200,10 +200,11 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   folly::Synchronized<std::unordered_set<QueryContext*>> queries;
 
   /**
-   * Obtain the current view pointer.
-   * This is safe wrt. a concurrent recrawl operation
+   * Returns the view with which this Root was constructed.
    */
-  std::shared_ptr<QueryableView> view() const;
+  std::shared_ptr<QueryableView> view() const {
+    return view_;
+  }
 
   Root(
       FileSystem& fileSystem,

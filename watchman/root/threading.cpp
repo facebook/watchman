@@ -11,14 +11,6 @@
 
 using namespace watchman;
 
-std::shared_ptr<QueryableView> Root::view() const {
-  // We grab a read lock on the recrawl info to ensure that we
-  // can't race with scheduleRecrawl and observe a nullptr for
-  // the view_.
-  auto info = recrawlInfo.rlock();
-  return view_;
-}
-
 void Root::recrawlTriggered(const char* why) {
   recrawlInfo.wlock()->recrawlCount++;
 
