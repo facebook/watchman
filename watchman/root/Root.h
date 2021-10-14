@@ -208,6 +208,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   std::shared_ptr<QueryableView> view() const;
 
   Root(
+      FileSystem& fileSystem,
       const w_string& root_path,
       const w_string& fs_type,
       json_ref config_file,

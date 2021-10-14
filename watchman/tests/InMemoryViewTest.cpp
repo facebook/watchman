@@ -44,11 +44,39 @@ class FakeWatcher : public Watcher {
   }
 };
 
+class FakeDirHandle : public DirHandle {
+ public:
+  const DirEntry* readDir() override {
+    return nullptr;
+  }
+
+#ifndef _WIN32
+  int getFd() const override {
+    return 0;
+  }
+#endif
+};
+
+class FakeFileSystem : public FileSystem {
+ public:
+  std::unique_ptr<DirHandle> openDir(const char* path, bool strict = true)
+      override {
+    (void)path;
+    (void)strict;
+    return std::make_unique<FakeDirHandle>();
+  }
+};
+
 TEST(InMemoryViewTest, can_construct) {
+  FakeFileSystem fs;
+
   Configuration config;
   auto watcher = std::make_shared<FakeWatcher>();
 
-  InMemoryView view{"/fake/root", config, watcher};
+  w_string root_path{"/fake/root"};
+  auto view = std::make_shared<InMemoryView>(root_path, config, watcher);
+  Root root{
+      fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {}};
 }
 
 } // namespace

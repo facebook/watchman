@@ -236,6 +236,7 @@ IgnoreSet computeIgnoreSet(
 }
 
 Root::Root(
+    FileSystem& fileSystem,
     const w_string& root_path,
     const w_string& fs_type,
     json_ref config_file,
@@ -256,7 +257,7 @@ Root::Root(
       saveGlobalStateHook_{std::move(saveGlobalStateHook)} {
   // This just opens and releases the dir.  If an exception is thrown
   // it will bubble up.
-  (void)openDir(root_path.c_str());
+  fileSystem.openDir(root_path.c_str());
 
   // TODO: This is only exception-safe because the rest of the function is
   // unlikely to throw. Switch to some sort of RAII handle instead.

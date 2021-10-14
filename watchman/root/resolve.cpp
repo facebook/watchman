@@ -241,6 +241,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
   auto config_file = load_root_config(root_str.c_str());
   Configuration config{config_file};
   root = std::make_shared<Root>(
+      realFileSystem,
       root_str,
       fs_type,
       config_file,
