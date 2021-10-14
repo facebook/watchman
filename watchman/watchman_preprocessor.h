@@ -12,7 +12,14 @@
 #define w_paste1(pre, post) w_paste2(pre, post)
 #define w_gen_symbol(pre) w_paste1(pre, __LINE__)
 
-#ifndef WATCHMAN_FMT_STRING
+#if _MSC_VER >= 1400
+#include <sal.h> // @manual
+#if _MSC_VER > 1400
+#define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
+#else
+#define WATCHMAN_FMT_STRING(x) __format_string x
+#endif
+#else
 #define WATCHMAN_FMT_STRING(x) x
 #endif
 

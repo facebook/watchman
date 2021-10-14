@@ -48,15 +48,6 @@
 #include <time.h>
 #include <windows.h>
 
-#if _MSC_VER >= 1400
-#include <sal.h> // @manual
-#if _MSC_VER > 1400
-#define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
-#else
-#define WATCHMAN_FMT_STRING(x) __format_string x
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
