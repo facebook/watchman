@@ -457,7 +457,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   endif()
   add_definitions(-D_CRT_SECURE_NO_WARNINGS=1)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/watchman/winbuild)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /Zo /MP /MT /Oi /EHsc /GL-")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /Zo /MP /MT /Oi /EHsc /GL- /wd4250")
   set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG /MT /OPT:NOREF")
   set(CMAKE_EXE_LINKER_FLAGS
