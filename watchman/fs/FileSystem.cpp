@@ -49,4 +49,42 @@ w_string realPath(const char* path) {
   return handle.getOpenedPath();
 }
 
+w_string readSymbolicLink(const char* path) {
+#ifndef _WIN32
+  std::string result;
+
+  // Speculatively assume that this is large enough to read the
+  // symlink text.  This helps to avoid an extra lstat call.
+  result.resize(256);
+
+  for (int retry = 0; retry < 2; ++retry) {
+    auto len = readlink(path, &result[0], result.size());
+    if (len < 0) {
+      throw std::system_error(
+          errno, std::generic_category(), "readlink for readSymbolicLink");
+    }
+    if (size_t(len) < result.size()) {
+      return w_string(result.data(), len);
+    }
+
+    // Truncated read; we need to figure out the right size to use
+    struct stat st;
+    if (lstat(path, &st)) {
+      throw std::system_error(
+          errno, std::generic_category(), "lstat for readSymbolicLink");
+    }
+
+    result.resize(st.st_size + 1, 0);
+  }
+
+  throw std::system_error(
+      E2BIG,
+      std::generic_category(),
+      "readlink for readSymbolicLink: symlink changed while reading it");
+#else
+  return openFileHandle(path, OpenFileHandleOptions::queryFileInfo())
+      .readSymbolicLink();
+#endif
+}
+
 } // namespace watchman
