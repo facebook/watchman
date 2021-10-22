@@ -8,7 +8,6 @@
 use ahash::AHashMap;
 use jwalk::WalkDir;
 use serde::Deserialize;
-use std::convert::TryInto;
 use std::io::ErrorKind;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;

@@ -9,7 +9,6 @@ use crate::bytestring::ByteString;
 use serde::de::{Deserialize, MapAccess, SeqAccess, Visitor};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::path::PathBuf;
 
 /// The Value type is used in cases where the schema is not known statically.

@@ -10,7 +10,6 @@ use crate::pdu::*;
 use maplit::hashmap;
 use serde::Serialize;
 use serde_bser::value::Value;
-use std::convert::TryInto;
 use std::path::PathBuf;
 
 /// An expression term used to filter candidate files from query results.
