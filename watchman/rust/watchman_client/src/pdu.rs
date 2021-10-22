@@ -472,6 +472,7 @@ pub struct SubscribeCommand(
 #[derive(Deserialize, Debug)]
 pub struct SubscribeResponse {
     pub version: String,
+    #[allow(unused)] // TODO unused warning after rustc upgrade
     subscribe: String,
 
     /// The clock at initiation time.
