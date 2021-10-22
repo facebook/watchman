@@ -2,7 +2,7 @@
 name = "serde_bser"
 version = "0.3.1"
 authors = ["Rain <rain1@fb.com>", "Wez Furlong"]
-edition = "2018"
+edition = "2021"
 description = "Implements the Watchman BSER encoding for serde. https://facebook.github.io/watchman/docs/bser.html"
 documentation = "https://docs.rs/serde_bser"
 repository = "https://github.com/facebook/watchman/"
