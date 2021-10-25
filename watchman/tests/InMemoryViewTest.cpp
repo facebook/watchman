@@ -13,7 +13,6 @@
 
 namespace {
 
-using namespace ::testing;
 using namespace watchman;
 
 class FakeWatcher : public Watcher {
