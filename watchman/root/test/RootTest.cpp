@@ -11,7 +11,6 @@
 
 namespace {
 
-using namespace ::testing;
 using namespace watchman;
 
 TEST(RootTest, IgnoreSet_includes_ignore_vcs_if_no_ignore_dirs) {

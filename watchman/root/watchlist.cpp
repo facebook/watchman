@@ -13,8 +13,6 @@
 #include "watchman/query/QueryContext.h"
 #include "watchman/root/Root.h"
 
-using namespace watchman;
-
 namespace watchman {
 
 folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<Root>>>
