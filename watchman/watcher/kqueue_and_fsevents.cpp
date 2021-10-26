@@ -289,6 +289,7 @@ std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(
     const Configuration& config) {
   if (config.getBool("prefer_split_fsevents_watcher", false)) {
     return std::make_shared<InMemoryView>(
+        realFileSystem,
         root_path,
         config,
         std::make_shared<KQueueAndFSEventsWatcher>(root_path, config));

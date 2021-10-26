@@ -33,6 +33,10 @@ class FileSystem {
   virtual std::unique_ptr<DirHandle> openDir(
       const char* path,
       bool strict = true) = 0;
+
+  virtual FileInformation getFileInformation(
+      const char* path,
+      CaseSensitivity caseSensitive = CaseSensitivity::Unknown) = 0;
 };
 
 extern FileSystem& realFileSystem;

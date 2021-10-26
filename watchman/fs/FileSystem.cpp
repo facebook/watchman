@@ -31,6 +31,12 @@ class RealFileSystem : public FileSystem {
       override {
     return watchman::openDir(path, strict);
   }
+
+  FileInformation getFileInformation(
+      const char* path,
+      CaseSensitivity caseSensitive = CaseSensitivity::Unknown) override {
+    return watchman::getFileInformation(path, caseSensitive);
+  }
 };
 
 RealFileSystem gRealFileSystem;

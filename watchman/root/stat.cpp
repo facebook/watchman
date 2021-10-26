@@ -141,7 +141,7 @@ void InMemoryView::statPath(
     st = pre_stat->stat;
   } else {
     try {
-      st = getFileInformation(path, root.case_sensitive);
+      st = fileSystem_.getFileInformation(path, root.case_sensitive);
       log(DBG,
           "getFileInformation(",
           path,

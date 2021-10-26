@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "watchman/fs/FileSystem.h"
 #include "watchman/watchman_string.h"
 
 namespace watchman {
@@ -75,6 +76,7 @@ class RegisterWatcher : public WatcherRegistry {
                const w_string& /*fstype*/,
                const Configuration& config) {
               return std::make_shared<InMemoryView>(
+                  realFileSystem,
                   root_path,
                   config,
                   std::make_shared<WATCHER>(root_path, config));

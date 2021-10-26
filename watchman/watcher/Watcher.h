@@ -78,7 +78,7 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   virtual bool startWatchFile(watchman_file* file);
 
   // Initiate an OS-level watch on the provided dir, return a DIR
-  // handle, or NULL on error
+  // handle, or throw on error.
   virtual std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       struct watchman_dir* dir,

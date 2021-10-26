@@ -30,6 +30,7 @@ struct watchman_file;
 
 namespace watchman {
 
+class FileSystem;
 class RootConfig;
 struct GlobTree;
 class Watcher;
@@ -147,6 +148,7 @@ class ViewDatabase {
 class InMemoryView final : public QueryableView {
  public:
   InMemoryView(
+      FileSystem& fileSystem,
       const w_string& root_path,
       Configuration config,
       std::shared_ptr<Watcher> watcher);
@@ -327,6 +329,7 @@ class InMemoryView final : public QueryableView {
   // Returns whether the root was reaped and the IO thread should terminate.
   Continue doSettleThings(Root& root);
 
+  FileSystem& fileSystem_;
   const Configuration config_;
 
   folly::Synchronized<ViewDatabase> view_;

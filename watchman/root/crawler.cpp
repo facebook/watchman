@@ -63,7 +63,8 @@ void InMemoryView::crawler(
   // left the cookie sync mechanism broken forever.
   if (pending.path == root->root_path) {
     try {
-      auto st = getFileInformation(pending.path.c_str(), root->case_sensitive);
+      auto st = fileSystem_.getFileInformation(
+          pending.path.c_str(), root->case_sensitive);
       if (st.ino != view.getRootInode()) {
         // If it still exists and the inode doesn't match, then we need
         // to force recrawl to make sure we're in sync.

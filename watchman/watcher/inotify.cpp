@@ -512,7 +512,10 @@ std::shared_ptr<QueryableView> detectInotify(
     throw std::runtime_error("cannot watch EdenFS file systems with inotify");
   }
   return std::make_shared<InMemoryView>(
-      root_path, config, std::make_shared<InotifyWatcher>(config));
+      realFileSystem,
+      root_path,
+      config,
+      std::make_shared<InotifyWatcher>(config));
 }
 } // namespace
 
