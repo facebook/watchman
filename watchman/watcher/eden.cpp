@@ -1007,7 +1007,8 @@ class EdenView final : public QueryableView {
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
       Query* query,
-      QueryContext* ctx) const {
+      QueryContext* ctx,
+      bool includeDir = true) const {
     auto client = getEdenClient(thriftChannel_);
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
@@ -1032,6 +1033,11 @@ class EdenView final : public QueryableView {
 
       // The results of a glob are known to exist
       file->setExists(true);
+
+      // Skip processing directories
+      if (!includeDir && item.dtype == DType::Dir) {
+        continue;
+      }
 
       w_query_process_file(ctx->query, ctx, std::move(file));
     }
@@ -1077,6 +1083,18 @@ class EdenView final : public QueryableView {
               .view()});
     }
     executeGlobBasedQuery(globStrings, query, ctx);
+
+    // We send another round of glob queries to query about the information
+    // about the path themselves since we want to include the paths if they are
+    // files.
+    // TODO(zeyi): replace this with builtin path generator inside EdenFS
+    globStrings.clear();
+    for (auto& path : *query->paths) {
+      globStrings.emplace_back(std::string{
+          w_string::pathCat({rel, escapeGlobSpecialChars(path.name)}).view()});
+    }
+
+    executeGlobBasedQuery(globStrings, query, ctx, false);
   }
 
   void globGenerator(Query* query, QueryContext* ctx) const override {
