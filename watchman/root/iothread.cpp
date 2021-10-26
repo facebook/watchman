@@ -98,13 +98,13 @@ void InMemoryView::fullCrawl(
   logf(ERR, "{}crawl complete\n", recrawlCount ? "re" : "");
 }
 
-bool InMemoryView::doSettleThings(Root& root) {
+InMemoryView::Continue InMemoryView::doSettleThings(Root& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
   if (!root.inner.done_initial.load(std::memory_order_acquire)) {
     // we need to recrawl, stop what we're doing here
-    return false;
+    return Continue::Continue;
   }
 
   warmContentCache();
@@ -113,11 +113,11 @@ bool InMemoryView::doSettleThings(Root& root) {
 
   if (root.considerReap()) {
     root.stopWatch();
-    return true;
+    return Continue::Stop;
   }
 
   root.considerAgeOut();
-  return false;
+  return Continue::Continue;
 }
 
 void InMemoryView::clientModeCrawl(const std::shared_ptr<Root>& root) {
@@ -161,85 +161,92 @@ std::chrono::milliseconds getBiggestTimeout(const Root& root) {
 } // namespace
 
 void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
-  PendingChanges localPending;
+  IoThreadState state{getBiggestTimeout(*root)};
+  state.currentTimeout = root->trigger_settle;
 
-  std::chrono::milliseconds timeoutms = root->trigger_settle;
-
-  // Compute the upper bound on sleep delay.
-  const auto biggest_timeout = getBiggestTimeout(*root);
-
-  while (!stopThreads_) {
-    if (!root->inner.done_initial.load(std::memory_order_acquire)) {
-      /* first order of business is to find all the files under our root */
-      fullCrawl(root, localPending);
-
-      timeoutms = root->trigger_settle;
-    }
-
-    // Wait for the notify thread to give us pending items, or for
-    // the settle period to expire
-    bool pinged;
-    {
-      logf(DBG, "poll_events timeout={}ms\n", timeoutms);
-      auto targetPendingLock = pending_.lockAndWait(timeoutms, pinged);
-      logf(DBG, " ... wake up (pinged={})\n", pinged);
-      localPending.append(
-          targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
-    }
-
-    // Do we need to recrawl?
-    if (handleShouldRecrawl(*root)) {
-      // TODO: can this just continue? handleShouldRecrawl sets done_initial to
-      // false.
-      fullCrawl(root, localPending);
-      timeoutms = root->trigger_settle;
-      continue;
-    }
-
-    // Waiting for an event timed out, so consider the root settled.
-    if (!pinged && localPending.empty()) {
-      if (doSettleThings(*root)) {
-        break;
-      }
-      timeoutms = std::min(biggest_timeout, timeoutms * 2);
-      continue;
-    }
-
-    // Otherwise we have pending items to stat and crawl
-
-    // We are now, by definition, unsettled, so reduce sleep timeout
-    // to the settle duration ready for the next loop through
-    timeoutms = root->trigger_settle;
-
-    // Some Linux 5.6 kernels will report inotify events before the file has
-    // been evicted from the cache, causing Watchman to incorrectly think the
-    // file is still on disk after it's unlinked. If configured, allow a brief
-    // sleep to mitigate.
-    //
-    // Careful with this knob: it adds latency to every query by delaying cookie
-    // processing.
-    auto notify_sleep_ms = config_.getInt("notify_sleep_ms", 0);
-    if (notify_sleep_ms) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(notify_sleep_ms));
-    }
-
-    auto view = view_.wlock();
-
-    // fullCrawl unconditionally sets done_initial to true and if
-    // handleShouldRecrawl set it false, execution wouldn't reach this part of
-    // the loop.
-    w_check(
-        root->inner.done_initial.load(std::memory_order_acquire),
-        "A full crawl should not be pending at this point in the loop.");
-
-    mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
-
-    auto isDesynced = processAllPending(root, *view, localPending);
-    if (isDesynced == IsDesynced::Yes) {
-      logf(ERR, "recrawl complete, aborting all pending cookies\n");
-      root->cookies.abortAllCookies();
-    }
+  while (Continue::Continue == stepIoThread(root, state)) {
   }
+}
+
+InMemoryView::Continue InMemoryView::stepIoThread(
+    const std::shared_ptr<Root>& root,
+    IoThreadState& state) {
+  if (stopThreads_.load(std::memory_order_acquire)) {
+    return Continue::Stop;
+  }
+
+  if (!root->inner.done_initial.load(std::memory_order_acquire)) {
+    /* first order of business is to find all the files under our root */
+    fullCrawl(root, state.localPending);
+
+    state.currentTimeout = root->trigger_settle;
+  }
+
+  // Wait for the notify thread to give us pending items, or for
+  // the settle period to expire
+  bool pinged;
+  {
+    logf(DBG, "poll_events timeout={}ms\n", state.currentTimeout);
+    auto targetPendingLock = pending_.lockAndWait(state.currentTimeout, pinged);
+    logf(DBG, " ... wake up (pinged={})\n", pinged);
+    state.localPending.append(
+        targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
+  }
+
+  // Do we need to recrawl?
+  if (handleShouldRecrawl(*root)) {
+    // TODO: can this just continue? handleShouldRecrawl sets done_initial to
+    // false.
+    fullCrawl(root, state.localPending);
+    state.currentTimeout = root->trigger_settle;
+    return Continue::Continue;
+  }
+
+  // Waiting for an event timed out, so consider the root settled.
+  if (!pinged && state.localPending.empty()) {
+    if (Continue::Stop == doSettleThings(*root)) {
+      return Continue::Stop;
+    }
+    state.currentTimeout =
+        std::min(state.biggestTimeout, state.currentTimeout * 2);
+    return Continue::Continue;
+  }
+
+  // Otherwise we have pending items to stat and crawl
+
+  // We are now, by definition, unsettled, so reduce sleep timeout
+  // to the settle duration ready for the next loop through
+  state.currentTimeout = root->trigger_settle;
+
+  // Some Linux 5.6 kernels will report inotify events before the file has
+  // been evicted from the cache, causing Watchman to incorrectly think the
+  // file is still on disk after it's unlinked. If configured, allow a brief
+  // sleep to mitigate.
+  //
+  // Careful with this knob: it adds latency to every query by delaying cookie
+  // processing.
+  auto notify_sleep_ms = config_.getInt("notify_sleep_ms", 0);
+  if (notify_sleep_ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(notify_sleep_ms));
+  }
+
+  auto view = view_.wlock();
+
+  // fullCrawl unconditionally sets done_initial to true and if
+  // handleShouldRecrawl set it false, execution wouldn't reach this part of
+  // the loop.
+  w_check(
+      root->inner.done_initial.load(std::memory_order_acquire),
+      "A full crawl should not be pending at this point in the loop.");
+
+  mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
+
+  auto isDesynced = processAllPending(root, *view, state.localPending);
+  if (isDesynced == IsDesynced::Yes) {
+    logf(ERR, "recrawl complete, aborting all pending cookies\n");
+    root->cookies.abortAllCookies();
+  }
+  return Continue::Continue;
 }
 
 InMemoryView::IsDesynced InMemoryView::processAllPending(

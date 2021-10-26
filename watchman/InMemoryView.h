@@ -272,6 +272,32 @@ class InMemoryView final : public QueryableView {
       const PendingChange& pending);
   void notifyThread(const std::shared_ptr<Root>& root);
   void ioThread(const std::shared_ptr<Root>& root);
+
+ public:
+  // This is public so the IO thread state machine can be driven from a test.
+  // TODO: Move this logic into a separate class with its own state.
+
+  enum class Continue {
+    Stop,
+    Continue,
+  };
+
+  struct IoThreadState {
+    explicit IoThreadState(std::chrono::milliseconds biggestTimeout)
+        : biggestTimeout{biggestTimeout} {}
+
+    const std::chrono::milliseconds biggestTimeout;
+
+    PendingChanges localPending;
+    std::chrono::milliseconds currentTimeout;
+  };
+
+  // Returns whether IO thread should stop.
+  Continue stepIoThread(
+      const std::shared_ptr<Root>& root,
+      IoThreadState& state);
+
+ private:
   bool handleShouldRecrawl(Root& root);
   void fullCrawl(const std::shared_ptr<Root>& root, PendingChanges& pending);
 
@@ -298,8 +324,8 @@ class InMemoryView final : public QueryableView {
       bool isUnlink);
 
   // Performs settle-time actions.
-  // Returns true if the root was reaped and the io thread should terminate.
-  bool doSettleThings(Root& root);
+  // Returns whether the root was reaped and the IO thread should terminate.
+  Continue doSettleThings(Root& root);
 
   const Configuration config_;
 

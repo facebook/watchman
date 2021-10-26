@@ -14,8 +14,11 @@
 #include "watchman/watchman_file.h"
 #include "watchman/watchman_system.h"
 
-static void
-apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
+namespace watchman {
+
+namespace {
+
+void apply_dir_size_hint(watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
   if (dir->files.empty() && nfiles > 0) {
     dir->files.reserve(nfiles);
   }
@@ -24,7 +27,8 @@ apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
   }
 }
 
-namespace watchman {
+} // namespace
+
 void InMemoryView::crawler(
     const std::shared_ptr<Root>& root,
     ViewDatabase& view,
