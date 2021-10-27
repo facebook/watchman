@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#pragma once
+
+#include "watchman/watcher/Watcher.h"
+
+namespace watchman {
+
+class FileSystem;
+
+class FakeWatcher : public Watcher {
+ public:
+  explicit FakeWatcher(FileSystem& fileSystem);
+
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
+      struct watchman_dir* dir,
+      const char* path) override;
+
+  bool waitNotify(int timeoutms) override;
+  ConsumeNotifyRet consumeNotify(
+      const std::shared_ptr<Root>& root,
+      PendingChanges& coll) override;
+
+ private:
+  FileSystem& fileSystem_;
+};
+
+} // namespace watchman
