@@ -13,7 +13,7 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 
-#define WILDMATCH_TEST_JSON_FILE "watchman/tests/wildmatch_test.json"
+#define WILDMATCH_TEST_JSON_FILE "watchman/test/wildmatch_test.json"
 
 static void run_test(const json_ref& test_case_data) {
   auto wildmatch_should_succeed = test_case_data.at(0).asBool();
