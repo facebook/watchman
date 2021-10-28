@@ -22,32 +22,32 @@ namespace {
 
 using namespace watchman;
 
-TEST(InMemoryViewTest, can_construct) {
+class InMemoryViewTest : public testing::Test {
+ public:
+  using Continue = InMemoryView::Continue;
+
+  const w_string root_path{"/root"};
+
   FakeFileSystem fs;
+  Configuration config;
+  std::shared_ptr<FakeWatcher> watcher = std::make_shared<FakeWatcher>(fs);
+
+  std::shared_ptr<InMemoryView> view =
+      std::make_shared<InMemoryView>(fs, root_path, config, watcher);
+};
+
+TEST_F(InMemoryViewTest, can_construct) {
   fs.defineContents({
-      "/fake/root",
+      "/root",
   });
 
-  Configuration config;
-  auto watcher = std::make_shared<FakeWatcher>(fs);
-
-  w_string root_path{"/fake/root"};
-  auto view = std::make_shared<InMemoryView>(fs, root_path, config, watcher);
   Root root{
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {}};
 }
 
-TEST(InMemoryViewTest, drive_initial_crawl) {
-  using Continue = InMemoryView::Continue;
+TEST_F(InMemoryViewTest, drive_initial_crawl) {
+  fs.defineContents({"/root/dir/file.txt"});
 
-  FakeFileSystem fs;
-  fs.defineContents({"/fake/root/dir/file.txt"});
-
-  Configuration config;
-  auto watcher = std::make_shared<FakeWatcher>(fs);
-
-  w_string root_path{"/fake/root"};
-  auto view = std::make_shared<InMemoryView>(fs, root_path, config, watcher);
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
 
