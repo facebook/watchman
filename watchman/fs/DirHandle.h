@@ -14,7 +14,7 @@ namespace watchman {
 
 struct DirEntry {
   bool has_stat;
-  char* d_name;
+  const char* d_name;
   FileInformation stat;
 };
 

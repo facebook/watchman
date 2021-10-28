@@ -24,6 +24,9 @@ using namespace watchman;
 
 TEST(InMemoryViewTest, can_construct) {
   FakeFileSystem fs;
+  fs.defineContents({
+      "/fake/root",
+  });
 
   Configuration config;
   auto watcher = std::make_shared<FakeWatcher>(fs);
@@ -38,7 +41,7 @@ TEST(InMemoryViewTest, drive_initial_crawl) {
   using Continue = InMemoryView::Continue;
 
   FakeFileSystem fs;
-  fs.addDir("/fake/root", fs.fakeDir());
+  fs.defineContents({"/fake/root/dir/file.txt"});
 
   Configuration config;
   auto watcher = std::make_shared<FakeWatcher>(fs);
@@ -56,12 +59,14 @@ TEST(InMemoryViewTest, drive_initial_crawl) {
   Query query;
   parse_field_list(json_array({w_string_to_json("name")}), &query.fieldList);
   query.paths.emplace();
-  query.paths->emplace_back(QueryPath{"", 0});
+  query.paths->emplace_back(QueryPath{"", 1});
 
   QueryContext ctx{&query, root, false};
   view->pathGenerator(&query, &ctx);
 
-  // TODO: assert result set
+  EXPECT_EQ(2, json_array_size(ctx.resultsArray));
+  EXPECT_STREQ("dir", json_string_value(ctx.resultsArray.at(0)));
+  EXPECT_STREQ("dir/file.txt", json_string_value(ctx.resultsArray.at(1)));
 }
 
 } // namespace

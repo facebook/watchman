@@ -7,23 +7,22 @@
 
 #pragma once
 
+#include <folly/Synchronized.h>
 #include <atomic>
 #include <map>
 #include "watchman/fs/FileSystem.h"
 
 namespace watchman {
 
-class FakeDirHandle : public DirHandle {
- public:
-  const DirEntry* readDir() override {
-    return nullptr;
-  }
+struct FakeInode {
+  FileInformation metadata;
+  // For testability, a defined order is useful. Lexicographical ordering is
+  // fine, though it might be nice to support arbitrary orders in the future.
+  // After all, operating systems don't guarantee any particular order from
+  // readdir.
+  std::map<std::string, FakeInode> children;
 
-#ifndef _WIN32
-  int getFd() const override {
-    return 0;
-  }
-#endif
+  explicit FakeInode(const FileInformation& fi) : metadata{fi} {}
 };
 
 class FakeFileSystem : public FileSystem {
@@ -32,6 +31,17 @@ class FakeFileSystem : public FileSystem {
   static constexpr gid_t kDefaultGid = 1002;
   static constexpr dev_t kDefaultDev = 1;
 
+  struct Flags {
+    // For the FakeFileSystem constructor below, this constructor must be
+    // defined externally.
+    Flags();
+
+    // Default to POSIX semantics. Set true for readdirplus / Windows semantics.
+    bool includeReadDirStat = false;
+  };
+
+  explicit FakeFileSystem(Flags flags = Flags{});
+
   std::unique_ptr<DirHandle> openDir(const char* path, bool strict = true)
       override;
 
@@ -39,13 +49,17 @@ class FakeFileSystem : public FileSystem {
       const char* path,
       CaseSensitivity caseSensitive = CaseSensitivity::Unknown) override;
 
-  void addDir(std::string path, const FileInformation& fi);
+  void defineContents(std::initializer_list<const char*> paths);
+
+  void addNode(const char* path, const FileInformation& fi);
 
   FileInformation fakeDir();
+  FileInformation fakeFile();
 
  private:
+  const Flags flags_;
   std::atomic<ino_t> inodeNumber_{1};
-  std::map<std::string, FileInformation> byPath_;
+  folly::Synchronized<FakeInode> root_;
 };
 
 } // namespace watchman
