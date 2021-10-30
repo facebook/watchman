@@ -6,7 +6,6 @@
  */
 
 #include "watchman/InMemoryView.h"
-#include <folly/MapUtil.h>
 #include <folly/portability/GTest.h>
 #include "watchman/fs/FSDetect.h"
 #include "watchman/query/GlobTree.h"
@@ -69,9 +68,9 @@ TEST_F(InMemoryViewTest, drive_initial_crawl) {
   QueryContext ctx{&query, root, false};
   view->pathGenerator(&query, &ctx);
 
-  EXPECT_EQ(2, json_array_size(ctx.resultsArray));
-  EXPECT_STREQ("dir", json_string_value(ctx.resultsArray.at(0)));
-  EXPECT_STREQ("dir/file.txt", json_string_value(ctx.resultsArray.at(1)));
+  EXPECT_EQ(2, ctx.resultsArray.array().size());
+  EXPECT_STREQ("dir", ctx.resultsArray.at(0).asCString());
+  EXPECT_STREQ("dir/file.txt", ctx.resultsArray.at(1).asCString());
 }
 
 TEST_F(InMemoryViewTest, respond_to_watcher_events) {
@@ -95,22 +94,14 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   QueryContext ctx1{&query, root, false};
   view->pathGenerator(&query, &ctx1);
 
-  EXPECT_EQ(2, json_array_size(ctx1.resultsArray));
+  EXPECT_EQ(2, ctx1.resultsArray.array().size());
 
   auto one = ctx1.resultsArray.at(0);
-  EXPECT_STREQ(
-      "dir",
-      json_string_value(folly::get_or_throw(one.object(), w_string{"name"})));
-  EXPECT_EQ(
-      0,
-      json_integer_value(folly::get_or_throw(one.object(), w_string{"size"})));
+  EXPECT_STREQ("dir", one.get("name").asCString());
+  EXPECT_EQ(0, one.get("size").asInt());
   auto two = ctx1.resultsArray.at(1);
-  EXPECT_STREQ(
-      "dir/file.txt",
-      json_string_value(folly::get_or_throw(two.object(), w_string{"name"})));
-  EXPECT_EQ(
-      0,
-      json_integer_value(folly::get_or_throw(two.object(), w_string{"size"})));
+  EXPECT_STREQ("dir/file.txt", two.get("name").asCString());
+  EXPECT_EQ(0, two.get("size").asInt());
 
   // Update filesystem and ensure the query results don't update.
 
@@ -123,19 +114,11 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   view->pathGenerator(&query, &ctx2);
 
   one = ctx2.resultsArray.at(0);
-  EXPECT_STREQ(
-      "dir",
-      json_string_value(folly::get_or_throw(one.object(), w_string{"name"})));
-  EXPECT_EQ(
-      0,
-      json_integer_value(folly::get_or_throw(one.object(), w_string{"size"})));
+  EXPECT_STREQ("dir", one.get("name").asCString());
+  EXPECT_EQ(0, one.get("size").asInt());
   two = ctx2.resultsArray.at(1);
-  EXPECT_STREQ(
-      "dir/file.txt",
-      json_string_value(folly::get_or_throw(two.object(), w_string{"name"})));
-  EXPECT_EQ(
-      0,
-      json_integer_value(folly::get_or_throw(two.object(), w_string{"size"})));
+  EXPECT_STREQ("dir/file.txt", two.get("name").asCString());
+  EXPECT_EQ(0, two.get("size").asInt());
 
   // Now notify the iothread of the change, process events, and assert the view
   // updates.
@@ -147,19 +130,11 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   view->pathGenerator(&query, &ctx3);
 
   one = ctx3.resultsArray.at(0);
-  EXPECT_STREQ(
-      "dir",
-      json_string_value(folly::get_or_throw(one.object(), w_string{"name"})));
-  EXPECT_EQ(
-      0,
-      json_integer_value(folly::get_or_throw(one.object(), w_string{"size"})));
+  EXPECT_STREQ("dir", one.get("name").asCString());
+  EXPECT_EQ(0, one.get("size").asInt());
   two = ctx3.resultsArray.at(1);
-  EXPECT_STREQ(
-      "dir/file.txt",
-      json_string_value(folly::get_or_throw(two.object(), w_string{"name"})));
-  EXPECT_EQ(
-      100,
-      json_integer_value(folly::get_or_throw(two.object(), w_string{"size"})));
+  EXPECT_STREQ("dir/file.txt", two.get("name").asCString());
+  EXPECT_EQ(100, two.get("size").asInt());
 }
 
 } // namespace

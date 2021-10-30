@@ -15,8 +15,8 @@
 #include <cmath>
 #include <string>
 
-#include "watchman/watchman_string.h"
 #include "utf.h"
+#include "watchman/watchman_string.h"
 
 json_ref::json_ref() : ref_(nullptr) {}
 json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
@@ -70,6 +70,18 @@ json_t::json_t(json_type type) : type(type), refcount(1) {}
 
 json_t::json_t(json_type type, json_t::SingletonHack&&)
     : type(type), refcount(-1) {}
+
+const w_string& json_ref::asString() const {
+  if (!json_is_string(ref_)) {
+    throw std::domain_error("json_ref not a string");
+  }
+  auto jstr = json_to_string(ref_);
+  return jstr->value;
+}
+
+const char* json_ref::asCString() const {
+  return asString().c_str();
+}
 
 bool json_ref::asBool() const {
   switch (type()) {

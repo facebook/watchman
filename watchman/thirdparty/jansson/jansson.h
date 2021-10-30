@@ -183,6 +183,8 @@ class json_ref {
     return type() == JSON_REAL;
   }
 
+  const w_string& asString() const;
+  const char* asCString() const;
   bool asBool() const;
   json_int_t asInt() const;
 };
