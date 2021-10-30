@@ -11,7 +11,17 @@
 
 namespace watchman {
 
+class Configuration;
+class PerfSample;
+class SavedStateInterface;
 class SCM;
+
+using SavedStateFactory = std::unique_ptr<SavedStateInterface> (*)(
+    w_string_piece storageType,
+    const json_ref& savedStateConfig,
+    const SCM* scm,
+    Configuration config,
+    std::function<void(PerfSample&)> extraSampleMetadata);
 
 // An interface that returns information about saved states associated with
 // specific source control commits. Clients using scm-aware queries can

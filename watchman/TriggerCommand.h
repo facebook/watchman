@@ -11,6 +11,7 @@
 
 #include "watchman/ChildProcess.h"
 #include "watchman/PubSub.h"
+#include "watchman/saved_state/SavedStateInterface.h"
 
 class watchman_event;
 
@@ -41,7 +42,10 @@ struct TriggerCommand {
    * of the running process */
   std::unique_ptr<watchman::ChildProcess> current_proc;
 
-  TriggerCommand(const std::shared_ptr<Root>& root, const json_ref& trig);
+  TriggerCommand(
+      SavedStateFactory savedStateFactory,
+      const std::shared_ptr<Root>& root,
+      const json_ref& trig);
   ~TriggerCommand();
 
   void stop();
@@ -54,14 +58,15 @@ struct TriggerCommand {
   TriggerCommand& operator=(const TriggerCommand&) = delete;
   TriggerCommand& operator=(TriggerCommand&&) = delete;
 
+  void run(const std::shared_ptr<Root>& root);
+  bool maybeSpawn(const std::shared_ptr<Root>& root);
+  bool waitNoIntr();
+
+  const SavedStateFactory savedStateFactory_;
   std::thread triggerThread_;
   std::shared_ptr<watchman::Publisher::Subscriber> subscriber_;
   std::unique_ptr<watchman_event> ping_;
   bool stopTrigger_{false};
-
-  void run(const std::shared_ptr<Root>& root);
-  bool maybeSpawn(const std::shared_ptr<Root>& root);
-  bool waitNoIntr();
 };
 
 } // namespace watchman

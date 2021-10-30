@@ -291,6 +291,7 @@ void spawn_command(
 } // namespace
 
 TriggerCommand::TriggerCommand(
+    SavedStateFactory savedStateFactory,
     const std::shared_ptr<Root>& root,
     const json_ref& trig)
     : definition(trig),
@@ -299,6 +300,7 @@ TriggerCommand::TriggerCommand(
       max_files_stdin(0),
       stdout_flags(0),
       stderr_flags(0),
+      savedStateFactory_{savedStateFactory},
       ping_(w_event_make_sockets()) {
   auto queryDef = json_object();
   auto expr = definition.get_default("expression");
@@ -485,7 +487,8 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
   query->sync_timeout = std::chrono::milliseconds(0);
   watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
   try {
-    auto res = w_query_execute(query.get(), root, time_generator);
+    auto res =
+        w_query_execute(query.get(), root, time_generator, savedStateFactory_);
 
     watchman::log(
         watchman::DBG,

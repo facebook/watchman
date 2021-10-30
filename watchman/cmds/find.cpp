@@ -8,6 +8,7 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
@@ -29,7 +30,7 @@ static void cmd_find(struct watchman_client* client, const json_ref& args) {
   }
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
-  auto res = w_query_execute(query.get(), root, nullptr);
+  auto res = w_query_execute(query.get(), root, nullptr, getInterface);
   auto response = make_response();
   response.set(
       {{"clock", res.clockAtStartOfQuery.toJson()},

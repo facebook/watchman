@@ -11,6 +11,7 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/parse.h"
 #include "watchman/root/Root.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_stream.h"
@@ -155,7 +156,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
     }
   }
 
-  cmd = std::make_unique<TriggerCommand>(root, trig);
+  cmd = std::make_unique<TriggerCommand>(getInterface, root, trig);
 
   resp = make_response();
   resp.set("triggerid", w_string_to_json(cmd->triggername));

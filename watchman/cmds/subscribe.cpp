@@ -14,6 +14,7 @@
 #include "watchman/query/parse.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
@@ -246,7 +247,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   logf(DBG, "running subscription {} {}\n", name, fmt::ptr(this));
 
   try {
-    auto res = w_query_execute(query.get(), root, time_generator);
+    auto res = w_query_execute(query.get(), root, time_generator, getInterface);
 
     logf(
         DBG,

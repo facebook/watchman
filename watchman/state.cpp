@@ -18,6 +18,7 @@
 #include "watchman/root/Root.h"
 #include "watchman/root/resolve.h"
 #include "watchman/root/watchlist.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/watchman_stream.h"
 
 using namespace watchman;
@@ -221,7 +222,7 @@ bool w_root_load_state(const json_ref& state) {
         }
 
         try {
-          auto cmd = std::make_unique<TriggerCommand>(root, tobj);
+          auto cmd = std::make_unique<TriggerCommand>(getInterface, root, tobj);
           cmd->start(root);
           auto& mapEntry = map[cmd->triggername];
           mapEntry = std::move(cmd);

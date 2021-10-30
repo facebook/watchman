@@ -11,6 +11,7 @@
 #include <memory>
 #include "watchman/query/FileResult.h"
 #include "watchman/query/QueryResult.h"
+#include "watchman/saved_state/SavedStateInterface.h"
 
 namespace watchman {
 
@@ -27,10 +28,17 @@ using QueryGenerator = std::function<void(
 
 } // namespace watchman
 
+/**
+ * Execute a query against the root.
+ *
+ * savedStateFactory allows testing this function without pulling in a wide
+ * set of dependencies.
+ */
 watchman::QueryResult w_query_execute(
     const watchman::Query* query,
     const std::shared_ptr<watchman::Root>& root,
-    watchman::QueryGenerator generator);
+    watchman::QueryGenerator generator,
+    watchman::SavedStateFactory savedStateFactory);
 
 // Allows a generator to process a file node
 // through the query engine

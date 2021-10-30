@@ -8,6 +8,7 @@
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
+#include "watchman/saved_state/SavedStateFactory.h"
 #include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
@@ -30,7 +31,7 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
     query->sync_timeout = std::chrono::milliseconds(0);
   }
 
-  auto res = w_query_execute(query.get(), root, nullptr);
+  auto res = w_query_execute(query.get(), root, nullptr, getInterface);
   auto response = make_response();
   response.set(
       {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
