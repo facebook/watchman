@@ -51,6 +51,33 @@ withPath(const FakeInode& root, folly::StringPiece path, Func&& func) {
   return func(*inode);
 }
 
+template <typename Func>
+std::invoke_result_t<Func, FakeInode&>
+withPath(FakeInode& root, folly::StringPiece path, Func&& func) {
+  auto piece = ensureAbsolute(path);
+
+  FakeInode* inode = &root;
+  while (!piece.empty()) {
+    size_t idx = piece.find('/');
+    folly::StringPiece this_level;
+    if (idx == folly::StringPiece::npos) {
+      this_level = piece;
+      piece.clear();
+    } else {
+      this_level = piece.subpiece(0, idx);
+      piece.advance(idx + 1);
+    }
+
+    inode = folly::get_ptr(inode->children, this_level.str());
+    if (!inode) {
+      throw std::system_error(
+          ENOENT, std::generic_category(), fmt::format("no file at {}", path));
+    }
+  }
+
+  return func(*inode);
+}
+
 class FakeDirHandle : public DirHandle {
  public:
   struct FakeDirEntry {
@@ -166,6 +193,13 @@ void FakeFileSystem::addNode(const char* path, const FileInformation& fi) {
   }
 
   inode->metadata = fi;
+}
+
+void FakeFileSystem::updateMetadata(
+    const char* path,
+    std::function<void(FileInformation&)> func) {
+  auto root = root_.wlock();
+  return withPath(*root, path, [&](FakeInode& inode) { func(inode.metadata); });
 }
 
 FileInformation FakeFileSystem::fakeDir() {

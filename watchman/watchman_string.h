@@ -429,6 +429,12 @@ struct hash<w_string_piece> {
 std::ostream& operator<<(std::ostream& stream, const w_string& a);
 std::ostream& operator<<(std::ostream& stream, const w_string_piece& a);
 
+// toAppend allows folly::to<> to operate on w_string
+template <typename String>
+void toAppend(const w_string& a, String* result) {
+  folly::toAppend(a.view(), result);
+}
+
 // Allow formatting w_string and w_string_piece
 namespace fmt {
 template <>

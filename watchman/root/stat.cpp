@@ -266,11 +266,12 @@ void InMemoryView::statPath(
     if (!file->exists || via_notify || did_file_change(&file->stat, &st)) {
       logf(
           DBG,
-          "file changed exists={} via_notify={} stat-changed={} isdir={} {}\n",
+          "file changed exists={} via_notify={} stat-changed={} isdir={} size={} {}\n",
           file->exists,
           via_notify,
           file->exists && !via_notify,
           st.isDir(),
+          st.size,
           path);
       file->exists = true;
       view.markFileChanged(*watcher_, file, getClock(pending.now));

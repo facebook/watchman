@@ -957,7 +957,8 @@ void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
 
   // Wait for it to signal that the watcher has been initialized
   bool pinged = false;
-  pending_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */, pinged);
+  pendingFromWatcher_.lockAndWait(
+      std::chrono::milliseconds(-1) /* infinite */, pinged);
 
   // And now start the IO thread
   std::thread ioThreadInstance([self, root]() {
@@ -978,11 +979,11 @@ void InMemoryView::stopThreads() {
   logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), rootPath_);
   stopThreads_ = true;
   watcher_->stopThreads();
-  pending_.lock()->ping();
+  pendingFromWatcher_.lock()->ping();
 }
 
 void InMemoryView::wakeThreads() {
-  pending_.lock()->ping();
+  pendingFromWatcher_.lock()->ping();
 }
 
 /* Ensure that we're synchronized with the state of the
@@ -1092,7 +1093,8 @@ void InMemoryView::syncToNowCookies(
     {
       auto now = std::chrono::system_clock::now();
 
-      auto lock = pending_.lock();
+      // TODO: pass this PendingCollection in as a parameter
+      auto lock = pendingFromWatcher_.lock();
       for (const auto& dir : cookieDirs) {
         lock->add(dir, now, W_PENDING_CRAWL_ONLY);
       }

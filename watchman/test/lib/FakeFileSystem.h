@@ -42,6 +42,8 @@ class FakeFileSystem : public FileSystem {
 
   explicit FakeFileSystem(Flags flags = Flags{});
 
+  // FileSystem implementation
+
   std::unique_ptr<DirHandle> openDir(const char* path, bool strict = true)
       override;
 
@@ -49,9 +51,15 @@ class FakeFileSystem : public FileSystem {
       const char* path,
       CaseSensitivity caseSensitive = CaseSensitivity::Unknown) override;
 
+  // Modify the FS structure
+
   void defineContents(std::initializer_list<const char*> paths);
 
   void addNode(const char* path, const FileInformation& fi);
+
+  void updateMetadata(
+      const char* path,
+      std::function<void(FileInformation&)> func);
 
   FileInformation fakeDir();
   FileInformation fakeFile();

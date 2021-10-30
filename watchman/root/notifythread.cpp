@@ -32,7 +32,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<Root>& root) {
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  pending_.lock()->ping();
+  pendingFromWatcher_.lock()->ping();
 
   while (!stopThreads_) {
     // big number because not all watchers can deal with
@@ -53,7 +53,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<Root>& root) {
     } while (watcher_->waitNotify(0));
 
     if (!fromWatcher.empty()) {
-      auto lock = pending_.lock();
+      auto lock = pendingFromWatcher_.lock();
       lock->append(fromWatcher.stealItems(), fromWatcher.stealSyncs());
       lock->ping();
     }

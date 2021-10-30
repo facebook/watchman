@@ -38,7 +38,8 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
 
 void InMemoryView::fullCrawl(
     const std::shared_ptr<Root>& root,
-    PendingChanges& pending) {
+    PendingCollection& pendingFromWatcher,
+    PendingChanges& localPending) {
   root->recrawlInfo.wlock()->crawlStart = std::chrono::steady_clock::now();
 
   PerfSample sample("full-crawl");
@@ -50,7 +51,7 @@ void InMemoryView::fullCrawl(
   mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
   auto start = std::chrono::system_clock::now();
-  pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
+  pendingFromWatcher.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
   while (true) {
     // There is the potential for a subtle race condition here.  Since we now
     // coalesce overlaps we must consume our outstanding set before we merge
@@ -60,14 +61,14 @@ void InMemoryView::fullCrawl(
     // inotify, then the inner loop processes it and any dirs that we pick up
     // from recursive processing.
     {
-      auto lock = pending_.lock();
-      pending.append(lock->stealItems(), lock->stealSyncs());
+      auto lock = pendingFromWatcher.lock();
+      localPending.append(lock->stealItems(), lock->stealSyncs());
     }
-    if (pending.empty()) {
+    if (localPending.empty()) {
       break;
     }
 
-    (void)processAllPending(root, *view, pending);
+    (void)processAllPending(root, *view, localPending);
   }
 
   auto [recrawlInfo, crawlState] =
@@ -122,7 +123,7 @@ InMemoryView::Continue InMemoryView::doSettleThings(Root& root) {
 
 void InMemoryView::clientModeCrawl(const std::shared_ptr<Root>& root) {
   PendingChanges pending;
-  fullCrawl(root, pending);
+  fullCrawl(root, pendingFromWatcher_, pending);
 }
 
 bool InMemoryView::handleShouldRecrawl(Root& root) {
@@ -164,20 +165,21 @@ void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
   IoThreadState state{getBiggestTimeout(*root)};
   state.currentTimeout = root->trigger_settle;
 
-  while (Continue::Continue == stepIoThread(root, state)) {
+  while (Continue::Continue == stepIoThread(root, state, pendingFromWatcher_)) {
   }
 }
 
 InMemoryView::Continue InMemoryView::stepIoThread(
     const std::shared_ptr<Root>& root,
-    IoThreadState& state) {
+    IoThreadState& state,
+    PendingCollection& pendingFromWatcher) {
   if (stopThreads_.load(std::memory_order_acquire)) {
     return Continue::Stop;
   }
 
   if (!root->inner.done_initial.load(std::memory_order_acquire)) {
     /* first order of business is to find all the files under our root */
-    fullCrawl(root, state.localPending);
+    fullCrawl(root, pendingFromWatcher, state.localPending);
 
     state.currentTimeout = root->trigger_settle;
   }
@@ -187,7 +189,8 @@ InMemoryView::Continue InMemoryView::stepIoThread(
   bool pinged;
   {
     logf(DBG, "poll_events timeout={}ms\n", state.currentTimeout);
-    auto targetPendingLock = pending_.lockAndWait(state.currentTimeout, pinged);
+    auto targetPendingLock =
+        pendingFromWatcher.lockAndWait(state.currentTimeout, pinged);
     logf(DBG, " ... wake up (pinged={})\n", pinged);
     state.localPending.append(
         targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
@@ -197,7 +200,7 @@ InMemoryView::Continue InMemoryView::stepIoThread(
   if (handleShouldRecrawl(*root)) {
     // TODO: can this just continue? handleShouldRecrawl sets done_initial to
     // false.
-    fullCrawl(root, state.localPending);
+    fullCrawl(root, pendingFromWatcher, state.localPending);
     state.currentTimeout = root->trigger_settle;
     return Continue::Continue;
   }

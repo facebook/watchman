@@ -297,11 +297,15 @@ class InMemoryView final : public QueryableView {
   // Returns whether IO thread should stop.
   Continue stepIoThread(
       const std::shared_ptr<Root>& root,
-      IoThreadState& state);
+      IoThreadState& state,
+      PendingCollection& pendingFromWatcher);
 
  private:
   bool handleShouldRecrawl(Root& root);
-  void fullCrawl(const std::shared_ptr<Root>& root, PendingChanges& pending);
+  void fullCrawl(
+      const std::shared_ptr<Root>& root,
+      PendingCollection& pendingFromWatcher,
+      PendingChanges& localPending);
 
   /**
    * Called on the IO thread. If `pending` is not in the ignored directory list,
@@ -363,7 +367,7 @@ class InMemoryView final : public QueryableView {
    * Populated by both the IO thread (fullCrawl) and the notify thread (from the
    * watcher).
    */
-  PendingCollection pending_;
+  PendingCollection pendingFromWatcher_;
 
   std::atomic<bool> stopThreads_{false};
   std::shared_ptr<Watcher> watcher_;
