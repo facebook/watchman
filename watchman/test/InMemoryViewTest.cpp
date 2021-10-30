@@ -11,7 +11,6 @@
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
-#include "watchman/query/parse.h"
 #include "watchman/root/Root.h"
 #include "watchman/test/lib/FakeFileSystem.h"
 #include "watchman/test/lib/FakeWatcher.h"
@@ -61,7 +60,7 @@ TEST_F(InMemoryViewTest, drive_initial_crawl) {
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
   Query query;
-  parse_field_list(json_array({w_string_to_json("name")}), &query.fieldList);
+  query.fieldList.add("name");
   query.paths.emplace();
   query.paths->emplace_back(QueryPath{"", 1});
 
@@ -85,9 +84,8 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
   Query query;
-  parse_field_list(
-      json_array({w_string_to_json("name"), w_string_to_json("size")}),
-      &query.fieldList);
+  query.fieldList.add("name");
+  query.fieldList.add("size");
   query.paths.emplace();
   query.paths->emplace_back(QueryPath{"", 1});
 

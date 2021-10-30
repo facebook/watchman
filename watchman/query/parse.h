@@ -16,7 +16,7 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 namespace watchman {
 struct Query;
 struct QueryFieldRenderer;
-using QueryFieldList = std::vector<QueryFieldRenderer*>;
+class QueryFieldList;
 class Root;
 } // namespace watchman
 

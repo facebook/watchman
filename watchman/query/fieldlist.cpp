@@ -316,6 +316,15 @@ static std::unordered_map<w_string, QueryFieldRenderer>& field_defs() {
   return map;
 }
 
+void QueryFieldList::add(const w_string& name) {
+  auto& defs = field_defs();
+  auto it = defs.find(name);
+  if (it == defs.end()) {
+    throw QueryParseError("unknown field name '", name.view(), "'");
+  }
+  this->push_back(&it->second);
+}
+
 json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
   auto templ = json_array_of_size(fieldList.size());
 
@@ -353,12 +362,7 @@ void parse_field_list(json_ref field_list, QueryFieldList* selected) {
     }
 
     auto name = json_to_w_string(jname);
-    auto& defs = field_defs();
-    auto it = defs.find(name);
-    if (it == defs.end()) {
-      throw QueryParseError("unknown field name '", name.view(), "'");
-    }
-    selected->push_back(&it->second);
+    selected->add(name);
   }
 }
 

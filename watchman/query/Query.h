@@ -25,7 +25,15 @@ struct QueryFieldRenderer {
   std::optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
 };
 
-using QueryFieldList = std::vector<QueryFieldRenderer*>;
+class QueryFieldList : public std::vector<QueryFieldRenderer*> {
+ public:
+  /**
+   * Adds the specified field to the list of those requested by the query.
+   *
+   * Throws QueryParseError if the name is invalid.
+   */
+  void add(const w_string& name);
+};
 
 struct QueryPath {
   w_string name;
