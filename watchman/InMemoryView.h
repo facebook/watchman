@@ -280,6 +280,28 @@ class InMemoryView final : public QueryableView {
       PendingChanges& coll,
       const PendingChange& pending);
 
+  bool propagateToParentDirIfAppropriate(
+      const RootConfig& root,
+      PendingChanges& coll,
+      std::chrono::system_clock::time_point now,
+      const FileInformation& entryStat,
+      const w_string& dirName,
+      const watchman_dir* parentDir,
+      bool isUnlink);
+
+  /**
+   * Called on the IO thread. If `pending` is not in the ignored directory list,
+   * lstat() the file and update the InMemoryView. This may insert work into
+   * `coll` if a directory needs to be rescanned.
+   */
+  void statPath(
+      const RootConfig& root,
+      const CookieSync& cookies,
+      ViewDatabase& view,
+      PendingChanges& coll,
+      const PendingChange& pending,
+      const DirEntry* pre_stat);
+
   // END IOTHREAD
 
  public:
@@ -313,28 +335,6 @@ class InMemoryView final : public QueryableView {
       const std::shared_ptr<Root>& root,
       PendingCollection& pendingFromWatcher,
       PendingChanges& localPending);
-
-  /**
-   * Called on the IO thread. If `pending` is not in the ignored directory list,
-   * lstat() the file and update the InMemoryView. This may insert work into
-   * `coll` if a directory needs to be rescanned.
-   */
-  void statPath(
-      const RootConfig& root,
-      const CookieSync& cookies,
-      ViewDatabase& view,
-      PendingChanges& coll,
-      const PendingChange& pending,
-      const DirEntry* pre_stat);
-
-  bool propagateToParentDirIfAppropriate(
-      const RootConfig& root,
-      PendingChanges& coll,
-      std::chrono::system_clock::time_point now,
-      const FileInformation& entryStat,
-      const w_string& dirName,
-      const watchman_dir* parentDir,
-      bool isUnlink);
 
   // Performs settle-time actions.
   // Returns whether the root was reaped and the IO thread should terminate.
