@@ -20,24 +20,26 @@ class Root;
 
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions
-using QueryGenerator = std::function<
-    void(Query* query, const std::shared_ptr<Root>& root, QueryContext* ctx)>;
+using QueryGenerator = std::function<void(
+    const Query* query,
+    const std::shared_ptr<Root>& root,
+    QueryContext* ctx)>;
 
 } // namespace watchman
 
 watchman::QueryResult w_query_execute(
-    watchman::Query* query,
+    const watchman::Query* query,
     const std::shared_ptr<watchman::Root>& root,
     watchman::QueryGenerator generator);
 
 // Allows a generator to process a file node
 // through the query engine
 void w_query_process_file(
-    watchman::Query* query,
+    const watchman::Query* query,
     watchman::QueryContext* ctx,
     std::unique_ptr<watchman::FileResult> file);
 
 void time_generator(
-    watchman::Query* query,
+    const watchman::Query* query,
     const std::shared_ptr<watchman::Root>& root,
     watchman::QueryContext* ctx);

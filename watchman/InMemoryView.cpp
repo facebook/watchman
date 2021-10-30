@@ -574,7 +574,7 @@ void InMemoryView::ageOut(PerfSample& sample, std::chrono::seconds minAge) {
            {"dirs", json_integer(dirs_to_erase.size())}}));
 }
 
-void InMemoryView::timeGenerator(Query* query, QueryContext* ctx) const {
+void InMemoryView::timeGenerator(const Query* query, QueryContext* ctx) const {
   struct watchman_file* f;
 
   // Walk back in time until we hit the boundary
@@ -604,7 +604,7 @@ void InMemoryView::timeGenerator(Query* query, QueryContext* ctx) const {
   }
 }
 
-void InMemoryView::pathGenerator(Query* query, QueryContext* ctx) const {
+void InMemoryView::pathGenerator(const Query* query, QueryContext* ctx) const {
   w_string_t* relative_root;
   struct watchman_file* f;
 
@@ -675,7 +675,7 @@ void InMemoryView::pathGenerator(Query* query, QueryContext* ctx) const {
 }
 
 void InMemoryView::dirGenerator(
-    Query* query,
+    const Query* query,
     QueryContext* ctx,
     const watchman_dir* dir,
     uint32_t depth) const {
@@ -877,7 +877,7 @@ void InMemoryView::globGeneratorTree(
   }
 }
 
-void InMemoryView::globGenerator(Query* query, QueryContext* ctx) const {
+void InMemoryView::globGenerator(const Query* query, QueryContext* ctx) const {
   w_string relative_root;
 
   if (query->relative_root) {
@@ -900,7 +900,8 @@ void InMemoryView::globGenerator(Query* query, QueryContext* ctx) const {
   globGeneratorTree(ctx, query->glob_tree.get(), dir);
 }
 
-void InMemoryView::allFilesGenerator(Query* query, QueryContext* ctx) const {
+void InMemoryView::allFilesGenerator(const Query* query, QueryContext* ctx)
+    const {
   struct watchman_file* f;
   auto view = view_.rlock();
   ctx->generationStarted();

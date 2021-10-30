@@ -14,20 +14,20 @@ QueryableView::~QueryableView() = default;
 
 /** Perform a time-based (since) query and emit results to the supplied
  * query context */
-void QueryableView::timeGenerator(Query*, QueryContext*) const {
+void QueryableView::timeGenerator(const Query*, QueryContext*) const {
   throw QueryExecError("timeGenerator not implemented");
 }
 
 /** Walks files that match the supplied set of paths */
-void QueryableView::pathGenerator(Query*, QueryContext*) const {
+void QueryableView::pathGenerator(const Query*, QueryContext*) const {
   throw QueryExecError("pathGenerator not implemented");
 }
 
-void QueryableView::globGenerator(Query*, QueryContext*) const {
+void QueryableView::globGenerator(const Query*, QueryContext*) const {
   throw QueryExecError("globGenerator not implemented");
 }
 
-void QueryableView::allFilesGenerator(Query*, QueryContext*) const {
+void QueryableView::allFilesGenerator(const Query*, QueryContext*) const {
   throw QueryExecError("allFilesGenerator not implemented");
 }
 

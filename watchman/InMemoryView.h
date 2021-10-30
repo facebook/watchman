@@ -178,13 +178,13 @@ class InMemoryView final : public QueryableView {
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
 
-  void timeGenerator(Query* query, QueryContext* ctx) const override;
+  void timeGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void pathGenerator(Query* query, QueryContext* ctx) const override;
+  void pathGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void globGenerator(Query* query, QueryContext* ctx) const override;
+  void globGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void allFilesGenerator(Query* query, QueryContext* ctx) const override;
+  void allFilesGenerator(const Query* query, QueryContext* ctx) const override;
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<Root>& root) override;
@@ -244,7 +244,7 @@ class InMemoryView final : public QueryableView {
 
   /** Recursively walks files under a specified dir */
   void dirGenerator(
-      Query* query,
+      const Query* query,
       QueryContext* ctx,
       const watchman_dir* dir,
       uint32_t depth) const;

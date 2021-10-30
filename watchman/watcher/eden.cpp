@@ -766,7 +766,7 @@ class EdenView final : public QueryableView {
     client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
   }
 
-  void timeGenerator(Query* query, QueryContext* ctx) const override {
+  void timeGenerator(const Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     auto client = getEdenClient(thriftChannel_);
 
@@ -1006,7 +1006,7 @@ class EdenView final : public QueryableView {
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
-      Query* query,
+      const Query* query,
       QueryContext* ctx,
       bool includeDir = true) const {
     auto client = getEdenClient(thriftChannel_);
@@ -1057,7 +1057,7 @@ class EdenView final : public QueryableView {
   }
 
   /** Walks files that match the supplied set of paths */
-  void pathGenerator(Query* query, QueryContext* ctx) const override {
+  void pathGenerator(const Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
@@ -1097,7 +1097,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx, false);
   }
 
-  void globGenerator(Query* query, QueryContext* ctx) const override {
+  void globGenerator(const Query* query, QueryContext* ctx) const override {
     if (!query->glob_tree) {
       // If we are called via the codepath in the query evaluator that
       // just speculatively executes queries then `glob` may not be
@@ -1125,7 +1125,7 @@ class EdenView final : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  void allFilesGenerator(Query* query, QueryContext* ctx) const override {
+  void allFilesGenerator(const Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden

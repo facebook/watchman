@@ -48,7 +48,7 @@ struct QueryContext : QueryContextBase {
     state = QueryContextState::Generating;
   }
 
-  Query* query;
+  const Query* query;
   std::shared_ptr<Root> root;
   std::unique_ptr<FileResult> file;
   QuerySince since;
@@ -73,7 +73,7 @@ struct QueryContext : QueryContextBase {
   bool disableFreshInstance{false};
 
   QueryContext(
-      Query* q,
+      const Query* q,
       const std::shared_ptr<Root>& root,
       bool disableFreshInstance);
   QueryContext(const QueryContext&) = delete;
