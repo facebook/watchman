@@ -54,7 +54,7 @@ struct QueryContext : QueryContextBase {
   QuerySince since;
 
   // Rendered results
-  json_ref resultsArray;
+  std::vector<json_ref> resultsArray;
 
   // When deduping the results, set<wholename> of
   // the files held in results
@@ -96,6 +96,13 @@ struct QueryContext : QueryContextBase {
    * the reference.
    */
   const w_string& getWholeName() override;
+
+  /**
+   * Returns a JSON array containing the query results.
+   *
+   * Consumes the resultsArray field.
+   */
+  json_ref renderResults();
 
   // Adds `file` to the currently accumulating batch of files
   // that require data to be loaded.

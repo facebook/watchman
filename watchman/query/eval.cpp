@@ -220,13 +220,13 @@ static void execute_common(
         json_object(
             {{"fresh_instance", json_boolean(res->isFreshInstance)},
              {"num_deduped", json_integer(ctx->num_deduped)},
-             {"num_results", json_integer(json_array_size(ctx->resultsArray))},
+             {"num_results", json_integer(ctx->resultsArray.size())},
              {"num_walked", json_integer(ctx->getNumWalked())},
              {"query", ctx->query->query_spec}}));
     sample->log();
   }
 
-  res->resultsArray = ctx->resultsArray;
+  res->resultsArray = ctx->renderResults();
   res->dedupedFileNames = std::move(ctx->dedup);
 }
 

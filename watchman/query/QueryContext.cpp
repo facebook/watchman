@@ -111,14 +111,7 @@ QueryContext::QueryContext(
     : created(std::chrono::steady_clock::now()),
       query(q),
       root(root),
-      resultsArray(json_array()),
-      disableFreshInstance{disableFreshInstance} {
-  // build a template for the serializer
-  if (query->fieldList.size() > 1) {
-    json_array_set_template_new(
-        resultsArray, field_list_to_json_name_array(query->fieldList));
-  }
-}
+      disableFreshInstance{disableFreshInstance} {}
 
 void QueryContext::addToEvalBatch(std::unique_ptr<FileResult>&& file) {
   evalBatch_.emplace_back(std::move(file));
@@ -146,10 +139,25 @@ void QueryContext::fetchEvalBatchNow() {
   w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
 }
 
+json_ref QueryContext::renderResults() {
+  // build a template for the serializer
+  auto results = json_array();
+  if (query->fieldList.size() > 1) {
+    json_array_set_template_new(
+        results, field_list_to_json_name_array(query->fieldList));
+  }
+
+  for (auto& result : resultsArray) {
+    json_array_append_new(results, std::move(result));
+  }
+
+  return results;
+}
+
 void QueryContext::maybeRender(std::unique_ptr<FileResult>&& file) {
   auto maybeRendered = file_result_to_json(query->fieldList, file, this);
   if (maybeRendered.has_value()) {
-    json_array_append_new(resultsArray, std::move(maybeRendered.value()));
+    resultsArray.push_back(std::move(maybeRendered.value()));
     return;
   }
 
@@ -175,7 +183,7 @@ bool QueryContext::fetchRenderBatchNow() {
   for (auto& file : toProcess) {
     auto maybeRendered = file_result_to_json(query->fieldList, file, this);
     if (maybeRendered.has_value()) {
-      json_array_append_new(resultsArray, std::move(maybeRendered.value()));
+      resultsArray.push_back(std::move(maybeRendered.value()));
     } else {
       renderBatch_.emplace_back(std::move(file));
     }

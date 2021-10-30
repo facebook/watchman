@@ -68,7 +68,7 @@ TEST_F(InMemoryViewTest, drive_initial_crawl) {
   QueryContext ctx{&query, root, false};
   view->pathGenerator(&query, &ctx);
 
-  EXPECT_EQ(2, ctx.resultsArray.array().size());
+  EXPECT_EQ(2, ctx.resultsArray.size());
   EXPECT_STREQ("dir", ctx.resultsArray.at(0).asCString());
   EXPECT_STREQ("dir/file.txt", ctx.resultsArray.at(1).asCString());
 }
@@ -94,7 +94,7 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   QueryContext ctx1{&query, root, false};
   view->pathGenerator(&query, &ctx1);
 
-  EXPECT_EQ(2, ctx1.resultsArray.array().size());
+  EXPECT_EQ(2, ctx1.resultsArray.size());
 
   auto one = ctx1.resultsArray.at(0);
   EXPECT_STREQ("dir", one.get("name").asCString());
