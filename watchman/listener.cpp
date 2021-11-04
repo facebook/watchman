@@ -32,7 +32,7 @@ using namespace watchman;
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
-static constexpr size_t kResponseLogLimit = 8;
+static constexpr size_t kResponseLogLimit = 0;
 
 json_ref make_response() {
   auto resp = json_object();
@@ -291,7 +291,8 @@ static void client_thread(
       client->stm->setNonBlock(true);
 
       json_ref subscriptionValue = response_to_send.get_default("subscription");
-      if (subscriptionValue && subscriptionValue.isString() &&
+      if (kResponseLogLimit && subscriptionValue &&
+          subscriptionValue.isString() &&
           json_string_value(subscriptionValue)) {
         auto subscriptionName = json_to_w_string(subscriptionValue);
         if (auto* sub =
