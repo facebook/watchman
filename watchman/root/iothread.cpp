@@ -299,7 +299,10 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
         }
 
         // processPath may insert new pending items into `coll`,
-        processPath(root, view, coll, *pending, nullptr);
+        auto result = processPath(root, view, coll, *pending, nullptr);
+        if (result.notifyCookie) {
+          root->cookies.notifyCookie(pending->path);
+        }
       }
 
       // TODO: Document that continuing to run this loop when stopThreads_ is
@@ -317,7 +320,7 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   return desyncState;
 }
 
-void InMemoryView::processPath(
+InMemoryView::ProcessResult InMemoryView::processPath(
     const std::shared_ptr<Root>& root,
     ViewDatabase& view,
     PendingChanges& coll,
@@ -358,12 +361,11 @@ void InMemoryView::processPath(
           (pending.flags & W_PENDING_IS_DESYNCED) != W_PENDING_IS_DESYNCED;
     }
 
-    if (consider_cookie) {
-      root->cookies.notifyCookie(pending.path);
-    }
+    ProcessResult result;
+    result.notifyCookie = consider_cookie;
 
     // Never allow cookie files to show up in the tree
-    return;
+    return result;
   }
 
   if (w_string_equal(pending.path, rootPath_) ||
@@ -372,6 +374,8 @@ void InMemoryView::processPath(
   } else {
     statPath(*root, root->cookies, view, coll, pending, pre_stat);
   }
+
+  return ProcessResult{};
 }
 
 namespace {
@@ -445,6 +449,7 @@ void InMemoryView::crawler(
     }
   }
 
+  // TODO: Bounds check pending.path here.
   char path[WATCHMAN_NAME_MAX];
   memcpy(path, pending.path.data(), pending.path.size());
   path[pending.path.size()] = 0;
@@ -495,6 +500,9 @@ void InMemoryView::crawler(
     }
   }
 
+  // Wait to unblock any queries until the entire directory is traversed.
+  std::vector<w_string> pendingCookies;
+
   try {
     while (const DirEntry* dirent = osdir->readDir()) {
       // Don't follow parent/self links
@@ -527,12 +535,11 @@ void InMemoryView::crawler(
             pending.flags.asRaw(),
             newFlags.asRaw());
 
-        processPath(
-            root,
-            view,
-            coll,
-            PendingChange{std::move(full_path), pending.now, newFlags},
-            dirent);
+        PendingChange full_pending{std::move(full_path), pending.now, newFlags};
+        auto result = processPath(root, view, coll, full_pending, dirent);
+        if (result.notifyCookie) {
+          pendingCookies.push_back(std::move(full_pending.path));
+        }
       }
     }
   } catch (const std::system_error& exc) {
@@ -558,6 +565,11 @@ void InMemoryView::crawler(
           pending.now,
           recursive ? W_PENDING_RECURSIVE : PendingFlags{});
     }
+  }
+
+  // Now that we've traversed the directory, unblock queries.
+  for (auto& cookie : pendingCookies) {
+    root->cookies.notifyCookie(cookie);
   }
 }
 

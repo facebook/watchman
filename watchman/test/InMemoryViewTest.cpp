@@ -200,16 +200,18 @@ TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
   EXPECT_EQ(100, two.get("size").asInt());
 }
 
-TEST_F(InMemoryViewTest, syncToNow_does_not_return_until_cookie_is_observed) {
+TEST_F(
+    InMemoryViewTest,
+    syncToNow_does_not_return_until_cookie_dir_is_crawled) {
   getLog().setStdErrLoggingLevel(DBG);
 
   Query query;
   query.fieldList.add("name");
   query.fieldList.add("size");
   query.paths.emplace();
-  query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
+  query.paths->emplace_back(QueryPath{"file.txt", 1});
 
-  fs.defineContents({"/root/dir/file.txt"});
+  fs.defineContents({"/root/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -222,7 +224,7 @@ TEST_F(InMemoryViewTest, syncToNow_does_not_return_until_cookie_is_observed) {
   // Somebody has updated a file.
 
   fs.updateMetadata(
-      "/root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+      "/root/file.txt", [&](FileInformation& fi) { fi.size = 100; });
 
   // We have not seen the new size, so the size should be zero.
 
@@ -233,7 +235,7 @@ TEST_F(InMemoryViewTest, syncToNow_does_not_return_until_cookie_is_observed) {
     EXPECT_EQ(1, ctx.resultsArray.size());
 
     auto one = ctx.resultsArray.at(0);
-    EXPECT_STREQ("dir/file.txt", one.get("name").asCString());
+    EXPECT_STREQ("file.txt", one.get("name").asCString());
     EXPECT_EQ(0, one.get("size").asInt());
   }
 
@@ -251,12 +253,12 @@ TEST_F(InMemoryViewTest, syncToNow_does_not_return_until_cookie_is_observed) {
     // single-threaded.
 
     const auto& viewdb = view->unsafeAccessViewDatabase();
-    auto* dir = viewdb.resolveDir("/root/dir");
+    auto* dir = viewdb.resolveDir("/root");
     auto* file = dir->getChildFile("file.txt");
     return file->stat.size;
   });
 
-  // Have Watcher publish change to "/root/dir" but this watcher does not have
+  // Have Watcher publish change to "/root" but this watcher does not have
   // per-file notifications.
 
   pending.lock()->add(
@@ -267,8 +269,7 @@ TEST_F(InMemoryViewTest, syncToNow_does_not_return_until_cookie_is_observed) {
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
   EXPECT_TRUE(syncFuture.isReady());
 
-  // THIS IS A BUG: Fix coming soon.
-  // EXPECT_EQ(100, std::move(syncFuture).get());
+  EXPECT_EQ(100, std::move(syncFuture).get());
 }
 
 } // namespace
