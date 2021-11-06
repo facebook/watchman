@@ -138,9 +138,12 @@ void CookieSync::syncToNow(
   auto deadline = system_clock::now() + timeout;
 
   while (true) {
-    auto cookie = sync(cookieFileNames);
+    auto cookieFuture = sync(cookieFileNames);
 
-    if (!cookie.wait(timeout).isReady()) {
+    folly::Try<folly::Unit> result;
+    try {
+      result = std::move(cookieFuture).getTry(timeout);
+    } catch (const folly::FutureTimeout&) {
       auto why = folly::to<std::string>(
           "syncToNow: timed out waiting for cookie file to be "
           "observed by watcher within ",
@@ -150,7 +153,7 @@ void CookieSync::syncToNow(
       throw std::system_error(ETIMEDOUT, std::generic_category(), why);
     }
 
-    if (cookie.result().hasValue()) {
+    if (result.hasValue()) {
       // Success!
       return;
     }
@@ -159,7 +162,7 @@ void CookieSync::syncToNow(
     // and wait again if we still have time
     timeout = duration_cast<milliseconds>(deadline - system_clock::now());
     if (timeout.count() <= 0) {
-      cookie.result().throwUnlessValue();
+      result.throwUnlessValue();
     }
   }
 }
