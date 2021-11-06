@@ -25,7 +25,7 @@ struct FakeInode {
   explicit FakeInode(const FileInformation& fi) : metadata{fi} {}
 };
 
-class FakeFileSystem : public FileSystem {
+class FakeFileSystem final : public FileSystem {
  public:
   static constexpr uid_t kDefaultUid = 1001;
   static constexpr gid_t kDefaultGid = 1002;
@@ -50,6 +50,8 @@ class FakeFileSystem : public FileSystem {
   FileInformation getFileInformation(
       const char* path,
       CaseSensitivity caseSensitive = CaseSensitivity::Unknown) override;
+
+  void touch(const char* path) override;
 
   // Modify the FS structure
 

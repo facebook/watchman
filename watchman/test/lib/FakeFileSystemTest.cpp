@@ -96,4 +96,27 @@ TEST(FakeFileSystemTest, openDir_enumerates_entries_with_stat) {
   EXPECT_EQ(nullptr, handle->readDir());
 }
 
+TEST(FakeFileSystemTest, touch_makes_an_empty_file) {
+  FakeFileSystem fs;
+  fs.defineContents({
+      "/fake/",
+  });
+
+  fs.touch("/fake/newfile.txt");
+
+  auto info = fs.getFileInformation("/fake/newfile.txt");
+  EXPECT_TRUE(info.isFile());
+  EXPECT_EQ(0, info.size);
+
+#ifndef _WIN32
+  EXPECT_EQ(0700 | S_IFREG, info.mode);
+#endif
+
+  fs.touch("/atroot.txt");
+
+  info = fs.getFileInformation("/atroot.txt");
+  EXPECT_TRUE(info.isFile());
+  EXPECT_EQ(0, info.size);
+}
+
 } // namespace

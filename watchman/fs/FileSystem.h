@@ -30,13 +30,33 @@ class FileSystem {
  public:
   virtual ~FileSystem() = default;
 
+  /**
+   * Open a directory for enumeration.
+   */
   virtual std::unique_ptr<DirHandle> openDir(
       const char* path,
       bool strict = true) = 0;
 
+  /**
+   * Analogous to calling lstat() on the path, but can check the canonical case.
+   *
+   * Follows symlinks.
+   */
   virtual FileInformation getFileInformation(
       const char* path,
       CaseSensitivity caseSensitive = CaseSensitivity::Unknown) = 0;
+
+  /**
+   * Watchman-specific API for creating an empty file on the filesystem.
+   * On unix, the created file will have mode 0700.
+   *
+   * Throws system_error on failure.
+   *
+   * Besides creating cookie files, Watchman mostly reads from the watched
+   * directory. If that changes, this function could be replaced by a more
+   * general open(2)-like API.
+   */
+  virtual void touch(const char* path) = 0;
 };
 
 extern FileSystem& realFileSystem;

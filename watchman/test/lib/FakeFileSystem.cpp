@@ -12,7 +12,12 @@ namespace watchman {
 
 namespace {
 
-folly::StringPiece ensureAbsolute(folly::StringPiece path) {
+/**
+ * Ensures the specified path is absolute, and returns it minus the leading
+ * slash. The following sequence of /-delimited names can be used to traverse
+ * the filesystem tree.
+ */
+folly::StringPiece parseAbsolute(folly::StringPiece path) {
   if (path.removePrefix('/')) {
     return path;
   } else {
@@ -20,25 +25,42 @@ folly::StringPiece ensureAbsolute(folly::StringPiece path) {
   }
 }
 
-folly::StringPiece ensureAbsolute(const char* path) {
-  return ensureAbsolute(folly::StringPiece{path});
+folly::StringPiece parseAbsolute(const char* path) {
+  return parseAbsolute(folly::StringPiece{path});
+}
+
+/**
+ * Ensures the specified path is absolute, and returns two ranges, one to the
+ * dirname and one to the basename.
+ */
+std::pair<folly::StringPiece, folly::StringPiece> parseAbsoluteBasename(
+    const char* path) {
+  if (*path != '/') {
+    throw std::logic_error{fmt::format("Path {} must be absolute", path)};
+  }
+  ++path;
+
+  const char* slash = strrchr(path, '/');
+  if (!slash) {
+    return {folly::StringPiece{}, path};
+  } else {
+    return {folly::StringPiece{path, slash}, folly::StringPiece{slash + 1}};
+  }
 }
 
 template <typename Func>
 std::invoke_result_t<Func, const FakeInode&>
 withPath(const FakeInode& root, folly::StringPiece path, Func&& func) {
-  auto piece = ensureAbsolute(path);
-
   const FakeInode* inode = &root;
-  while (!piece.empty()) {
-    size_t idx = piece.find('/');
+  while (!path.empty()) {
+    size_t idx = path.find('/');
     folly::StringPiece this_level;
     if (idx == folly::StringPiece::npos) {
-      this_level = piece;
-      piece.clear();
+      this_level = path;
+      path.clear();
     } else {
-      this_level = piece.subpiece(0, idx);
-      piece.advance(idx + 1);
+      this_level = path.subpiece(0, idx);
+      path.advance(idx + 1);
     }
 
     inode = folly::get_ptr(inode->children, this_level.str());
@@ -54,18 +76,16 @@ withPath(const FakeInode& root, folly::StringPiece path, Func&& func) {
 template <typename Func>
 std::invoke_result_t<Func, FakeInode&>
 withPath(FakeInode& root, folly::StringPiece path, Func&& func) {
-  auto piece = ensureAbsolute(path);
-
   FakeInode* inode = &root;
-  while (!piece.empty()) {
-    size_t idx = piece.find('/');
+  while (!path.empty()) {
+    size_t idx = path.find('/');
     folly::StringPiece this_level;
     if (idx == folly::StringPiece::npos) {
-      this_level = piece;
-      piece.clear();
+      this_level = path;
+      path.clear();
     } else {
-      this_level = piece.subpiece(0, idx);
-      piece.advance(idx + 1);
+      this_level = path.subpiece(0, idx);
+      path.advance(idx + 1);
     }
 
     inode = folly::get_ptr(inode->children, this_level.str());
@@ -123,7 +143,7 @@ std::unique_ptr<DirHandle> FakeFileSystem::openDir(
     const char* path,
     bool strict) {
   auto root = root_.rlock();
-  return withPath(*root, path, [&](const FakeInode& inode) {
+  return withPath(*root, parseAbsolute(path), [&](const FakeInode& inode) {
     // TODO: assert it's a directory
 
     // TODO: implement strict case checking
@@ -146,11 +166,23 @@ FileInformation FakeFileSystem::getFileInformation(
     const char* path,
     CaseSensitivity caseSensitive) {
   auto root = root_.rlock();
-  return withPath(*root, path, [&](const FakeInode& inode) {
+  return withPath(*root, parseAbsolute(path), [&](const FakeInode& inode) {
     // TODO: validate case
     (void)caseSensitive;
 
     return inode.metadata;
+  });
+}
+void FakeFileSystem::touch(const char* path) {
+  auto pair = parseAbsoluteBasename(path);
+  auto& dirname = pair.first;
+  auto& basename = pair.second;
+  auto root = root_.wlock();
+  withPath(*root, dirname, [&](FakeInode& inode) {
+    // TODO: Should we assert if child exists or is a directory?
+    auto [iter, inserted] = inode.children.emplace(basename.str(), fakeFile());
+    // TODO: What does this mean on Windows? Should we ifdef?
+    iter->second.metadata.mode |= 0700;
   });
 }
 
@@ -168,7 +200,7 @@ void FakeFileSystem::addNode(const char* path, const FileInformation& fi) {
   auto root = root_.wlock();
   FakeInode* inode = &*root;
 
-  auto piece = ensureAbsolute(path);
+  auto piece = parseAbsolute(path);
   while (!piece.empty()) {
     size_t idx = piece.find('/');
     folly::StringPiece this_level;
@@ -199,7 +231,9 @@ void FakeFileSystem::updateMetadata(
     const char* path,
     std::function<void(FileInformation&)> func) {
   auto root = root_.wlock();
-  return withPath(*root, path, [&](FakeInode& inode) { func(inode.metadata); });
+  return withPath(*root, parseAbsolute(path), [&](FakeInode& inode) {
+    func(inode.metadata);
+  });
 }
 
 FileInformation FakeFileSystem::fakeDir() {

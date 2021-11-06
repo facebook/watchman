@@ -6,7 +6,9 @@
  */
 
 #include "watchman/fs/FileSystem.h"
+#include <folly/String.h>
 #include "watchman/fs/FSDetect.h"
+#include "watchman/watchman_stream.h"
 #include "watchman/watchman_string.h"
 
 #ifdef __APPLE__
@@ -25,7 +27,7 @@ namespace watchman {
 
 namespace {
 
-class RealFileSystem : public FileSystem {
+class RealFileSystem final : public FileSystem {
  public:
   std::unique_ptr<DirHandle> openDir(const char* path, bool strict = true)
       override {
@@ -36,6 +38,21 @@ class RealFileSystem : public FileSystem {
       const char* path,
       CaseSensitivity caseSensitive = CaseSensitivity::Unknown) override {
     return watchman::getFileInformation(path, caseSensitive);
+  }
+
+  /**
+   * Watchman-specific API for creating an empty file on the filesystem.
+   * On unix, the created file will have mode 0700.
+   * Throws system_error on failure.
+   */
+  void touch(const char* path) override {
+    if (!w_stm_open(path, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700)) {
+      int err = errno;
+      throw std::system_error{
+          err,
+          std::generic_category(),
+          fmt::format("failed to touch {}: {}", path, folly::errnoStr(err))};
+    }
   }
 };
 
