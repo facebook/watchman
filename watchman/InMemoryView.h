@@ -321,6 +321,12 @@ class InMemoryView final : public QueryableView {
     std::chrono::milliseconds currentTimeout;
   };
 
+  // Returns a reference to the ViewDatabase without synchronizing on the mutex.
+  // DO NOT USE OUTSIDE OF SINGLE-THREADED TESTS.
+  ViewDatabase& unsafeAccessViewDatabase() {
+    return view_.unsafeGetUnlocked();
+  }
+
   // Returns whether IO thread should stop.
   Continue stepIoThread(
       const std::shared_ptr<Root>& root,
