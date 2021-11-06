@@ -9,6 +9,7 @@
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
 #include "watchman/Cookie.h"
+#include "watchman/fs/FileSystem.h"
 #include "watchman/watchman_string.h"
 
 namespace watchman {
@@ -17,7 +18,7 @@ class CookieSyncAborted : public std::exception {};
 
 class CookieSync {
  public:
-  explicit CookieSync(const w_string& dir);
+  explicit CookieSync(FileSystem& fs, const w_string& dir);
   ~CookieSync();
 
   void setCookieDir(const w_string& dir);
@@ -83,6 +84,9 @@ class CookieSync {
   std::vector<w_string> getOutstandingCookieFileList() const;
 
  private:
+  CookieSync(CookieSync&&) = delete;
+  CookieSync& operator=(CookieSync&&) = delete;
+
   struct Cookie {
     folly::Promise<folly::Unit> promise;
     std::atomic<uint64_t> numPending;
@@ -99,6 +103,8 @@ class CookieSync {
     // valid filename prefix for cookies we create
     w_string cookiePrefix_;
   };
+
+  FileSystem& fileSystem_;
 
   folly::Synchronized<CookieDirectories> cookieDirs_;
   // Serial number for cookie filename

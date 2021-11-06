@@ -244,7 +244,9 @@ Root::Root(
     std::shared_ptr<QueryableView> view,
     SaveGlobalStateHook saveGlobalStateHook)
     : RootConfig{root_path, fs_type, getCaseSensitivityForPath(root_path.c_str()), computeIgnoreSet(root_path, config_)},
-      cookies(computeCookieDir(root_path, config_, case_sensitive, ignore)),
+      cookies(
+          fileSystem,
+          computeCookieDir(root_path, config_, case_sensitive, ignore)),
       config_file(std::move(config_file)),
       config(std::move(config_)),
       trigger_settle(int(config.getInt("settle", kDefaultSettlePeriod))),

@@ -17,7 +17,7 @@ namespace watchman {
 
 CookieSync::Cookie::Cookie(uint64_t numCookies) : numPending(numCookies) {}
 
-CookieSync::CookieSync(const w_string& dir) {
+CookieSync::CookieSync(FileSystem& fs, const w_string& dir) : fileSystem_{fs} {
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname) - 1] = '\0';
@@ -94,17 +94,16 @@ folly::Future<folly::Unit> CookieSync::sync(
     cookieFileNames.push_back(path_str);
 
     /* then touch the file */
-    auto file = w_stm_open(
-        path_str.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700);
-    if (!file) {
-      auto errCode = errno;
-      lastError = {path_str, errCode};
+    try {
+      fileSystem_.touch(path_str.c_str());
+    } catch (const std::system_error& e) {
+      lastError = {path_str, e.code().value()};
       cookie->numPending.fetch_sub(1, std::memory_order_acq_rel);
       logf(
           ERR,
           "sync cookie {} couldn't be created: {}\n",
           path_str,
-          folly::errnoStr(errCode));
+          folly::errnoStr(e.code().value()));
       continue;
     }
 

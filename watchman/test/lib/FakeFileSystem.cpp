@@ -48,9 +48,17 @@ std::pair<folly::StringPiece, folly::StringPiece> parseAbsoluteBasename(
   }
 }
 
+/**
+ * Traverse the directory structure and call `func` on the leaf inode.
+ *
+ * Throws ENOENT if it doesn't exist.
+ */
 template <typename Func>
-std::invoke_result_t<Func, const FakeInode&>
-withPath(const FakeInode& root, folly::StringPiece path, Func&& func) {
+std::invoke_result_t<Func, const FakeInode&> withPath(
+    const FakeInode& root,
+    folly::StringPiece path,
+    const char* op,
+    Func&& func) {
   const FakeInode* inode = &root;
   while (!path.empty()) {
     size_t idx = path.find('/');
@@ -66,16 +74,26 @@ withPath(const FakeInode& root, folly::StringPiece path, Func&& func) {
     inode = folly::get_ptr(inode->children, this_level.str());
     if (!inode) {
       throw std::system_error(
-          ENOENT, std::generic_category(), fmt::format("no file at {}", path));
+          ENOENT,
+          std::generic_category(),
+          fmt::format("{}: no file at {}", op, path));
     }
   }
 
   return func(*inode);
 }
 
+/**
+ * Traverse the directory structure and call `func` on the leaf inode.
+ *
+ * Throws ENOENT if it doesn't exist.
+ */
 template <typename Func>
-std::invoke_result_t<Func, FakeInode&>
-withPath(FakeInode& root, folly::StringPiece path, Func&& func) {
+std::invoke_result_t<Func, FakeInode&> withPath(
+    FakeInode& root,
+    folly::StringPiece path,
+    const char* op,
+    Func&& func) {
   FakeInode* inode = &root;
   while (!path.empty()) {
     size_t idx = path.find('/');
@@ -91,7 +109,9 @@ withPath(FakeInode& root, folly::StringPiece path, Func&& func) {
     inode = folly::get_ptr(inode->children, this_level.str());
     if (!inode) {
       throw std::system_error(
-          ENOENT, std::generic_category(), fmt::format("no file at {}", path));
+          ENOENT,
+          std::generic_category(),
+          fmt::format("{}: no file at {}", op, path));
     }
   }
 
@@ -143,42 +163,47 @@ std::unique_ptr<DirHandle> FakeFileSystem::openDir(
     const char* path,
     bool strict) {
   auto root = root_.rlock();
-  return withPath(*root, parseAbsolute(path), [&](const FakeInode& inode) {
-    // TODO: assert it's a directory
+  return withPath(
+      *root, parseAbsolute(path), "openDir", [&](const FakeInode& inode) {
+        // TODO: assert it's a directory
 
-    // TODO: implement strict case checking
-    (void)strict;
-    std::vector<FakeDirHandle::FakeDirEntry> entries;
-    for (auto& [name, child] : inode.children) {
-      FakeDirHandle::FakeDirEntry entry;
-      entry.name = name;
-      if (flags_.includeReadDirStat) {
-        entry.stat = child.metadata;
-      }
-      entries.push_back(std::move(entry));
-    }
+        // TODO: implement strict case checking
+        (void)strict;
+        std::vector<FakeDirHandle::FakeDirEntry> entries;
+        for (auto& [name, child] : inode.children) {
+          FakeDirHandle::FakeDirEntry entry;
+          entry.name = name;
+          if (flags_.includeReadDirStat) {
+            entry.stat = child.metadata;
+          }
+          entries.push_back(std::move(entry));
+        }
 
-    return std::make_unique<FakeDirHandle>(std::move(entries));
-  });
+        return std::make_unique<FakeDirHandle>(std::move(entries));
+      });
 }
 
 FileInformation FakeFileSystem::getFileInformation(
     const char* path,
     CaseSensitivity caseSensitive) {
   auto root = root_.rlock();
-  return withPath(*root, parseAbsolute(path), [&](const FakeInode& inode) {
-    // TODO: validate case
-    (void)caseSensitive;
+  return withPath(
+      *root,
+      parseAbsolute(path),
+      "getFileInformation",
+      [&](const FakeInode& inode) {
+        // TODO: validate case
+        (void)caseSensitive;
 
-    return inode.metadata;
-  });
+        return inode.metadata;
+      });
 }
 void FakeFileSystem::touch(const char* path) {
   auto pair = parseAbsoluteBasename(path);
   auto& dirname = pair.first;
   auto& basename = pair.second;
   auto root = root_.wlock();
-  withPath(*root, dirname, [&](FakeInode& inode) {
+  withPath(*root, dirname, "touch", [&](FakeInode& inode) {
     // TODO: Should we assert if child exists or is a directory?
     auto [iter, inserted] = inode.children.emplace(basename.str(), fakeFile());
     // TODO: What does this mean on Windows? Should we ifdef?
@@ -231,9 +256,10 @@ void FakeFileSystem::updateMetadata(
     const char* path,
     std::function<void(FileInformation&)> func) {
   auto root = root_.wlock();
-  return withPath(*root, parseAbsolute(path), [&](FakeInode& inode) {
-    func(inode.metadata);
-  });
+  return withPath(
+      *root, parseAbsolute(path), "updateMetadata", [&](FakeInode& inode) {
+        func(inode.metadata);
+      });
 }
 
 FileInformation FakeFileSystem::fakeDir() {
