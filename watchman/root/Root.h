@@ -218,9 +218,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
-  void syncToNow(
-      std::chrono::milliseconds timeout,
-      std::vector<w_string>& cookieFileNames);
+  CookieSync::SyncResult syncToNow(std::chrono::milliseconds timeout);
   void scheduleRecrawl(const char* why);
   void recrawlTriggered(const char* why);
 

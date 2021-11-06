@@ -71,8 +71,7 @@ std::vector<w_string> CookieSync::getOutstandingCookieFileList() const {
   return result;
 }
 
-folly::Future<folly::Unit> CookieSync::sync(
-    std::vector<w_string>& cookieFileNames) {
+folly::Future<CookieSync::SyncResult> CookieSync::sync() {
   auto prefixes = cookiePrefix();
   auto serial = serial_++;
 
@@ -88,6 +87,7 @@ folly::Future<folly::Unit> CookieSync::sync(
   CookieMap pendingCookies;
   std::optional<std::tuple<w_string, int>> lastError;
 
+  std::vector<w_string> cookieFileNames;
   cookieFileNames.reserve(prefixes.size());
   for (const auto& prefix : prefixes) {
     auto path_str = w_string::build(prefix, serial);
@@ -127,20 +127,22 @@ folly::Future<folly::Unit> CookieSync::sync(
 
   cookiesLock->insert(pendingCookies.begin(), pendingCookies.end());
 
-  return cookie->promise.getFuture();
+  return cookie->promise.getFuture().thenValue(
+      [cookieFileNames = std::move(cookieFileNames)](folly::Unit) mutable {
+        return SyncResult{std::move(cookieFileNames)};
+      });
 }
 
-void CookieSync::syncToNow(
-    std::chrono::milliseconds timeout,
-    std::vector<w_string>& cookieFileNames) {
+CookieSync::SyncResult CookieSync::syncToNow(
+    std::chrono::milliseconds timeout) {
   /* compute deadline */
   using namespace std::chrono;
   auto deadline = system_clock::now() + timeout;
 
   while (true) {
-    auto cookieFuture = sync(cookieFileNames);
+    auto cookieFuture = sync();
 
-    folly::Try<folly::Unit> result;
+    folly::Try<SyncResult> result;
     try {
       result = std::move(cookieFuture).getTry(timeout);
     } catch (const folly::FutureTimeout&) {
@@ -155,7 +157,7 @@ void CookieSync::syncToNow(
 
     if (result.hasValue()) {
       // Success!
-      return;
+      return std::move(result).value();
     }
 
     // Sync was aborted by a recrawl; recompute the timeout

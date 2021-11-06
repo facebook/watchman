@@ -84,8 +84,7 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (sync_timeout) {
-    std::vector<w_string> cookieFileNames;
-    root->syncToNow(std::chrono::milliseconds(sync_timeout), cookieFileNames);
+    root->syncToNow(std::chrono::milliseconds(sync_timeout));
   }
 
   auto resp = make_response();

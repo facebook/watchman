@@ -18,6 +18,14 @@ class CookieSyncAborted : public std::exception {};
 
 class CookieSync {
  public:
+  struct SyncResult {
+    /**
+     * For logging and debugging, populated with the paths of all cookie files
+     * used.
+     */
+    std::vector<w_string> cookieFileNames;
+  };
+
   explicit CookieSync(FileSystem& fs, const w_string& dir);
   ~CookieSync();
 
@@ -39,12 +47,8 @@ class CookieSync {
    * Throws a std::system_error with an ETIMEDOUT
    * error if the timeout expires before we observe the change, or a
    * runtime_error if the root has been deleted or rendered inaccessible.
-   *
-   * cookieFileNames is populated with the names of all cookie files used.
    */
-  void syncToNow(
-      std::chrono::milliseconds timeout,
-      std::vector<w_string>& cookieFileNames);
+  SyncResult syncToNow(std::chrono::milliseconds timeout);
 
   /**
    * Touches a cookie file and returns a Future that will
@@ -55,7 +59,7 @@ class CookieSync {
    * It is recommended that you minimize the actions performed
    * in that context to avoid holding up the IO thread.
    **/
-  folly::Future<folly::Unit> sync(std::vector<w_string>& cookieFileNames);
+  folly::Future<SyncResult> sync();
 
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just

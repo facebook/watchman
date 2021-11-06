@@ -402,8 +402,7 @@ static void cmd_flush_subscriptions(
     }
   }
 
-  std::vector<w_string> cookieFileNames;
-  root->syncToNow(std::chrono::milliseconds(sync_timeout), cookieFileNames);
+  root->syncToNow(std::chrono::milliseconds(sync_timeout));
 
   auto resp = make_response();
   auto synced = json_array();

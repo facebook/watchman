@@ -386,7 +386,8 @@ QueryResult w_query_execute(
     ctx.state = QueryContextState::WaitingForCookieSync;
     ctx.stopWatch.reset();
     try {
-      root->syncToNow(query->sync_timeout, res.debugInfo.cookieFileNames);
+      auto result = root->syncToNow(query->sync_timeout);
+      res.debugInfo.cookieFileNames = std::move(result.cookieFileNames);
     } catch (const std::exception& exc) {
       throw QueryExecError("synchronization failed: ", exc.what());
     }

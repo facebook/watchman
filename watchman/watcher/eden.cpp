@@ -995,13 +995,13 @@ class EdenView final : public QueryableView {
     ctx->bumpNumWalked(fileInfo.size());
   }
 
-  void syncToNow(
+  CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>&,
-      std::chrono::milliseconds,
-      std::vector<w_string>& /*cookieFileNames*/) override {
+      std::chrono::milliseconds) override {
     // TODO: on FUSE and NFS, where all writes give synchronous notifications to
     // the EdenFS daemon, cookie files are not necessary, and could be replaced
     // with a Thrift call here.
+    return {};
   }
 
   void executeGlobBasedQuery(

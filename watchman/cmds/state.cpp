@@ -107,15 +107,15 @@ static void cmd_state_enter(
        {"state-enter", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
-  std::vector<w_string> cookieFileNames;
   root->cookies
-      .sync(cookieFileNames)
+      .sync()
       // Note that it is possible that the sync()
       // might throw.  If that happens the exception will bubble back
       // to the client as an error PDU.
       // after this point, any errors are async and the client is
       // unaware of them.
-      .thenTry([assertion, parsed, root](folly::Try<folly::Unit>&& result) {
+      .thenTry([assertion, parsed, root](
+                   folly::Try<CookieSync::SyncResult>&& result) {
         try {
           result.throwUnlessValue();
         } catch (const std::exception& exc) {
@@ -283,9 +283,8 @@ static void cmd_state_leave(
        {"state-leave", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
-  std::vector<w_string> cookieFileNames;
-  root->cookies.sync(cookieFileNames)
-      .thenTry([assertion, parsed, root](folly::Try<folly::Unit>&& result) {
+  root->cookies.sync().thenTry(
+      [assertion, parsed, root](folly::Try<CookieSync::SyncResult>&& result) {
         try {
           result.throwUnlessValue();
         } catch (const std::exception& exc) {

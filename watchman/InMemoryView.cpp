@@ -997,11 +997,10 @@ void InMemoryView::wakeThreads() {
  * the timeout expires before we observe the change, or
  * a runtime_error if the root has been deleted or rendered
  * inaccessible. */
-void InMemoryView::syncToNow(
+CookieSync::SyncResult InMemoryView::syncToNow(
     const std::shared_ptr<Root>& root,
-    std::chrono::milliseconds timeout,
-    std::vector<w_string>& cookieFileNames) {
-  syncToNowCookies(root, timeout, cookieFileNames);
+    std::chrono::milliseconds timeout) {
+  auto syncResult = syncToNowCookies(root, timeout);
 
   // Some watcher implementations (notably, FSEvents) reorder change events
   // before they're reported, and cookie files are not sufficient. Instead, the
@@ -1027,14 +1026,15 @@ void InMemoryView::syncToNow(
       throw std::system_error(ETIMEDOUT, std::generic_category(), why);
     }
   }
+
+  return syncResult;
 }
 
-void InMemoryView::syncToNowCookies(
+CookieSync::SyncResult InMemoryView::syncToNowCookies(
     const std::shared_ptr<Root>& root,
-    std::chrono::milliseconds timeout,
-    std::vector<w_string>& cookieFileNames) {
+    std::chrono::milliseconds timeout) {
   try {
-    root->cookies.syncToNow(timeout, cookieFileNames);
+    return root->cookies.syncToNow(timeout);
   } catch (const std::system_error& exc) {
     auto cookieDirs = root->cookies.cookieDirs();
 
@@ -1058,7 +1058,7 @@ void InMemoryView::syncToNowCookies(
           // The cookie dir was a VCS subdir and it got deleted.  Let's
           // focus instead on the parent dir and recursively retry.
           root->cookies.setCookieDir(rootPath_);
-          return root->cookies.syncToNow(timeout, cookieFileNames);
+          return root->cookies.syncToNow(timeout);
         }
       } else {
         // Split watchers have one watch on the root and watches for nested

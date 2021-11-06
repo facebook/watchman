@@ -10,6 +10,7 @@
 #include <future>
 #include <vector>
 #include "watchman/Clock.h"
+#include "watchman/CookieSync.h"
 #include "watchman/PerfSample.h"
 #include "watchman/watchman_string.h"
 
@@ -50,10 +51,9 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
   virtual void ageOut(PerfSample& sample, std::chrono::seconds minAge);
-  virtual void syncToNow(
+  virtual CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>& root,
-      std::chrono::milliseconds timeout,
-      std::vector<w_string>& cookieFileNames) = 0;
+      std::chrono::milliseconds timeout) = 0;
 
   // Specialized query function that is used to test whether
   // version control files exist as part of some settling handling.

@@ -11,13 +11,11 @@
 
 using namespace watchman;
 
-void Root::syncToNow(
-    std::chrono::milliseconds timeout,
-    std::vector<w_string>& cookieFileNames) {
+CookieSync::SyncResult Root::syncToNow(std::chrono::milliseconds timeout) {
   PerfSample sample("sync_to_now");
   auto root = shared_from_this();
   try {
-    view()->syncToNow(root, timeout, cookieFileNames);
+    auto result = view()->syncToNow(root, timeout);
     if (sample.finish()) {
       root->addPerfSampleMetadata(sample);
       sample.add_meta(
@@ -27,6 +25,7 @@ void Root::syncToNow(
                {"timeoutms", json_integer(timeout.count())}}));
       sample.log();
     }
+    return result;
   } catch (const std::exception& exc) {
     sample.force_log();
     sample.finish();

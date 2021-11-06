@@ -170,10 +170,9 @@ class InMemoryView final : public QueryableView {
   }
 
   void ageOut(PerfSample& sample, std::chrono::seconds minAge) override;
-  void syncToNow(
+  CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>& root,
-      std::chrono::milliseconds timeout,
-      std::vector<w_string>& cookieFileNames) override;
+      std::chrono::milliseconds timeout) override;
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
@@ -211,10 +210,9 @@ class InMemoryView final : public QueryableView {
   }
 
  private:
-  void syncToNowCookies(
+  CookieSync::SyncResult syncToNowCookies(
       const std::shared_ptr<Root>& root,
-      std::chrono::milliseconds timeout,
-      std::vector<w_string>& cookieFileNames);
+      std::chrono::milliseconds timeout);
 
   // Returns the erased file's otime.
   w_clock_t ageOutFile(
