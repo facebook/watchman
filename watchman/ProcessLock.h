@@ -23,11 +23,11 @@ class ProcessLock {
    */
   class Handle {
    public:
+    Handle() = default;
     Handle(Handle&&) = default;
     Handle& operator=(Handle&&) = default;
 
    private:
-    Handle() = default;
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
   };
