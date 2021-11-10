@@ -160,7 +160,7 @@ folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
 /** Create a thrift client that will connect to the eden server associated
  * with the current user. */
 std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
-    std::shared_ptr<apache::thrift::PooledRequestChannel> channel) {
+    std::shared_ptr<apache::thrift::RequestChannel> channel) {
   return make_unique<StreamingEdenServiceAsyncClient>(std::move(channel));
 }
 
@@ -182,7 +182,7 @@ class EdenFileResult : public FileResult {
  public:
   EdenFileResult(
       const w_string& rootPath,
-      std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel,
+      std::shared_ptr<apache::thrift::RequestChannel> thriftChannel,
       const w_string& fullName,
       JournalPosition* position = nullptr,
       bool isNew = false,
@@ -435,7 +435,7 @@ class EdenFileResult : public FileResult {
 
  private:
   w_string rootPath_;
-  std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
+  std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
   w_string fullName_;
   std::optional<FileInformation> stat_;
   std::optional<bool> exists_;
@@ -712,7 +712,7 @@ namespace {
  * Construct a pooled Thrift channel that will automatically reconnect to
  * EdenFS on error.
  */
-std::shared_ptr<apache::thrift::PooledRequestChannel> makeThriftChannel(
+std::shared_ptr<apache::thrift::RequestChannel> makeThriftChannel(
     w_string rootPath,
     int numRetries) {
   auto channel = apache::thrift::PooledRequestChannel::newChannel(
@@ -736,7 +736,7 @@ std::shared_ptr<apache::thrift::PooledRequestChannel> makeThriftChannel(
 
 class EdenView final : public QueryableView {
   w_string rootPath_;
-  std::shared_ptr<apache::thrift::PooledRequestChannel> thriftChannel_;
+  std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
   // The source control system that we detected during initialization
   mutable std::unique_ptr<EdenWrappedSCM> scm_;
   folly::EventBase subscriberEventBase_;
