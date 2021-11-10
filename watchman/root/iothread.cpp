@@ -447,10 +447,7 @@ void InMemoryView::crawler(
     }
   }
 
-  // TODO: Bounds check pending.path here.
-  char path[WATCHMAN_NAME_MAX];
-  memcpy(path, pending.path.data(), pending.path.size());
-  path[pending.path.size()] = 0;
+  auto& path = pending.path;
 
   logf(
       DBG, "opendir({}) recursive={} stat_all={}\n", path, recursive, stat_all);
@@ -461,7 +458,7 @@ void InMemoryView::crawler(
   std::unique_ptr<DirHandle> osdir;
 
   try {
-    osdir = watcher_->startWatchDir(root, dir, path);
+    osdir = watcher_->startWatchDir(root, dir, path.c_str());
   } catch (const std::system_error& err) {
     logf(DBG, "startWatchDir({}) threw {}\n", path, err.what());
     handle_open_errno(*root, dir, pending.now, "opendir", err.code());
@@ -665,14 +662,7 @@ void InMemoryView::statPath(
     return;
   }
 
-  char path[WATCHMAN_NAME_MAX];
-  if (pending.path.size() > sizeof(path) - 1) {
-    logf(FATAL, "path {} is too big\n", pending.path);
-  }
-
-  memcpy(path, pending.path.data(), pending.path.size());
-  path[pending.path.size()] = 0;
-
+  auto& path = pending.path;
   auto dir_name = pending.path.dirName();
   auto file_name = pending.path.baseName();
   auto parentDir = view.resolveDir(dir_name, true);
@@ -687,7 +677,7 @@ void InMemoryView::statPath(
     st = pre_stat->stat;
   } else {
     try {
-      st = fileSystem_.getFileInformation(path, root.case_sensitive);
+      st = fileSystem_.getFileInformation(path.c_str(), root.case_sensitive);
       log(DBG,
           "getFileInformation(",
           path,

@@ -271,6 +271,7 @@ bool InotifyWatcher::process_inotify_event(
 
     if (dir_name) {
       if (ine->len > 0) {
+        // TODO: What if this truncates?
         snprintf(
             buf,
             sizeof(buf),
