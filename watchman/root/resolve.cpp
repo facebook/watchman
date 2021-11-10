@@ -135,27 +135,23 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
 
   // Sanity check that the path is absolute
   if (!w_is_path_absolute_cstr(filename)) {
-    watchman::log(
-        watchman::ERR,
-        "resolve_root: path \"",
-        filename,
-        "\" must be absolute\n");
+    log(ERR, "resolve_root: path \"", filename, "\" must be absolute\n");
     throw RootResolveError("path \"", filename, "\" must be absolute");
   }
 
   if (!strcmp(filename, "/")) {
-    watchman::log(watchman::ERR, "resolve_root: cannot watchman \"/\"\n");
+    log(ERR, "resolve_root: cannot watchman \"/\"\n");
     throw RootResolveError("cannot watch \"/\"");
   }
 
   w_string root_str;
 
   try {
-    root_str = watchman::realPath(filename);
+    root_str = realPath(filename);
     try {
-      watchman::getFileInformation(filename);
+      getFileInformation(filename);
     } catch (const std::system_error& exc) {
-      if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+      if (exc.code() == error_code::no_such_file_or_directory) {
         throw RootResolveError(
             "\"",
             filename,
@@ -274,10 +270,7 @@ std::shared_ptr<Root> w_root_resolve(const char* filename, bool auto_watch) {
     try {
       root->view()->startThreads(root);
     } catch (const std::exception& e) {
-      watchman::log(
-          watchman::ERR,
-          "w_root_resolve, while calling startThreads: ",
-          e.what());
+      log(ERR, "w_root_resolve, while calling startThreads: ", e.what());
       root->cancel();
       throw;
     }
@@ -291,7 +284,7 @@ std::shared_ptr<Root> w_root_resolve_for_client_mode(const char* filename) {
   auto root = root_resolve(filename, true, &created);
 
   if (created) {
-    auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+    auto view = std::dynamic_pointer_cast<InMemoryView>(root->view());
     if (!view) {
       throw RootResolveError("client mode not available");
     }

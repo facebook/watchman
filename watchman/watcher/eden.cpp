@@ -111,8 +111,7 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
       auto settledPayload = json_object({{"settled", json_true()}});
       root_->unilateralResponses->enqueue(std::move(settledPayload));
     } catch (const std::exception& exc) {
-      watchman::log(
-          watchman::ERR,
+      log(ERR,
           "error while dispatching settle payload; cancel watch: ",
           exc.what(),
           "\n");
@@ -222,7 +221,7 @@ class EdenFileResult : public FileResult {
     return stat_;
   }
 
-  std::optional<watchman::DType> dtype() override {
+  std::optional<DType> dtype() override {
     // We're using Unknown as the default value to avoid also wrapping
     // this value up in an Optional in our internal storage.
     // In theory this is ambiguous, but in practice Eden will never
@@ -419,8 +418,7 @@ class EdenFileResult : public FileResult {
       client->sync_getSHA1(sha1s, std::string{rootPath_.view()}, getShaNames);
 
       if (sha1s.size() != getShaFiles.size()) {
-        watchman::log(
-            ERR,
+        log(ERR,
             "Requested SHA-1 of ",
             getShaFiles.size(),
             " but Eden returned ",
@@ -481,8 +479,7 @@ class EdenFileResult : public FileResult {
 
     auto applyResults = [&](const auto& edenInfo) {
       if (names.size() != edenInfo.size()) {
-        watchman::log(
-            ERR,
+        log(ERR,
             "Requested file information of ",
             names.size(),
             " files but Eden returned information for ",
@@ -925,8 +922,7 @@ class EdenView final : public QueryableView {
         }
 
         resultPosition = *delta.toPosition_ref();
-        watchman::log(
-            watchman::DBG,
+        log(DBG,
             "wanted from ",
             *position.sequenceNumber_ref(),
             " result delta from ",
@@ -954,8 +950,7 @@ class EdenView final : public QueryableView {
         // an error trying to get the list of files changed between the two
         // commits.  Generate a fresh instance result since we were unable
         // to compute the list of files changed.
-        watchman::log(
-            ERR,
+        log(ERR,
             "SCM error while processing EdenFS journal update: ",
             err.what(),
             "\n");
@@ -1230,9 +1225,9 @@ class EdenView final : public QueryableView {
                 folly::Try<JournalPosition>&& t) {
               if (t.hasValue()) {
                 try {
-                  watchman::log(DBG, "Got subscription push from eden\n");
+                  log(DBG, "Got subscription push from eden\n");
                   if (settleCallback.isScheduled()) {
-                    watchman::log(DBG, "reschedule settle timeout\n");
+                    log(DBG, "reschedule settle timeout\n");
                     settleCallback.cancelTimeout();
                   }
                   subscriberEventBase_.timer().scheduleTimeout(
@@ -1242,8 +1237,7 @@ class EdenView final : public QueryableView {
                   // possible latency, so we consume that information now
                   checkCookies(root);
                 } catch (const std::exception& exc) {
-                  watchman::log(
-                      ERR,
+                  log(ERR,
                       "Exception while processing eden subscription: ",
                       exc.what(),
                       ": cancel watch\n");
@@ -1253,8 +1247,7 @@ class EdenView final : public QueryableView {
                 auto reason = t.hasException()
                     ? folly::exceptionStr(std::move(t.exception()))
                     : "controlled shutdown";
-                watchman::log(
-                    ERR,
+                log(ERR,
                     "subscription stream ended: ",
                     w_string_piece(reason.data(), reason.size()),
                     ", cancel watch\n");
@@ -1277,7 +1270,7 @@ class EdenView final : public QueryableView {
     };
 
     w_set_thread_name("edensub ", root->root_path.view());
-    watchman::log(watchman::DBG, "Started subscription thread\n");
+    log(DBG, "Started subscription thread\n");
 
     try {
       // Prepare the callback
@@ -1289,13 +1282,12 @@ class EdenView final : public QueryableView {
       client = rocketSubscribe(root, settleCallback, settleTimeout);
 
       // This will run until the stream ends
-      watchman::log(watchman::DBG, "Started subscription thread loop\n");
+      log(DBG, "Started subscription thread loop\n");
       subscribeReadyPromise_.set_value();
       subscriberEventBase_.loop();
 
     } catch (const std::exception& exc) {
-      watchman::log(
-          watchman::ERR,
+      log(ERR,
           "uncaught exception in subscription thread, cancel watch:",
           exc.what(),
           "\n");
@@ -1336,16 +1328,16 @@ bool isEdenStopped(w_string root) {
   // since it can't reach EdenFS to query directory information.
   if (find == INVALID_HANDLE_VALUE &&
       lastError == ERROR_FILE_SYSTEM_VIRTUALIZATION_UNAVAILABLE) {
-    watchman::log(watchman::DBG, "edenfs is NOT RUNNING\n");
+    log(DBG, "edenfs is NOT RUNNING\n");
     return true;
   }
 
-  watchman::log(watchman::DBG, "edenfs is RUNNING\n");
+  log(DBG, "edenfs is RUNNING\n");
   return false;
 }
 #endif
 
-std::shared_ptr<watchman::QueryableView> detectEden(
+std::shared_ptr<QueryableView> detectEden(
     const w_string& root_path,
     const w_string& fstype,
     const Configuration& config) {

@@ -24,8 +24,7 @@ bool Root::considerReap() {
       !unilateralResponses->hasSubscribers()) {
     // We haven't had any activity in a while, and there are no registered
     // triggers or subscriptions against this watch.
-    watchman::log(
-        watchman::ERR,
+    log(ERR,
         "root ",
         root_path,
         " has had no activity in ",

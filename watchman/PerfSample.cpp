@@ -251,11 +251,7 @@ void PerfLogThread::loop() noexcept {
               ChildProcess proc(cmd, std::move(opts));
               proc.wait();
             } catch (const std::exception& exc) {
-              watchman::log(
-                  watchman::ERR,
-                  "failed to spawn perf logger: ",
-                  exc.what(),
-                  "\n");
+              log(ERR, "failed to spawn perf logger: ", exc.what(), "\n");
             }
           },
           [&](std::string sample_stdin) {
@@ -285,8 +281,7 @@ void PerfLogThread::loop() noexcept {
                   total_written += written;
                 }
               } catch (const std::exception& exc) {
-                watchman::log(
-                    watchman::ERR,
+                log(ERR,
                     "failed to send data to perf logger: ",
                     exc.what(),
                     "\n");
@@ -296,11 +291,7 @@ void PerfLogThread::loop() noexcept {
               stdinPipe.reset();
               proc.wait();
             } catch (const std::exception& exc) {
-              watchman::log(
-                  watchman::ERR,
-                  "failed to spawn perf logger: ",
-                  exc.what(),
-                  "\n");
+              log(ERR, "failed to spawn perf logger: ", exc.what(), "\n");
             }
           });
     }
@@ -335,7 +326,7 @@ void PerfSample::log() {
 
   // Log to the log file
   auto dumped = json_dumps(info, 0);
-  watchman::log(watchman::ERR, "PERF: ", dumped, "\n");
+  watchman::log(ERR, "PERF: ", dumped, "\n");
 
   if (!cfg_get_json("perf_logger_command")) {
     return;

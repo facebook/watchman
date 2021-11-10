@@ -27,6 +27,8 @@
 #include <linux/magic.h>
 #endif
 
+using namespace watchman;
+
 namespace watchman {
 
 CaseSensitivity getCaseSensitivityForPath(const char* path) {
@@ -193,7 +195,7 @@ w_string w_fstype(const char* path) {
 #ifdef _WIN32
   auto wpath = w_string_piece(path).asWideUNC();
   WCHAR fstype[MAX_PATH + 1];
-  watchman::FileDescriptor h(
+  FileDescriptor h(
       intptr_t(CreateFileW(
           wpath.c_str(),
           GENERIC_READ,
@@ -202,7 +204,7 @@ w_string w_fstype(const char* path) {
           OPEN_EXISTING,
           FILE_FLAG_BACKUP_SEMANTICS,
           nullptr)),
-      watchman::FileDescriptor::FDType::Generic);
+      FileDescriptor::FDType::Generic);
   if (h &&
       GetVolumeInformationByHandleW(
           (HANDLE)h.handle(), nullptr, 0, 0, 0, 0, fstype, MAX_PATH + 1)) {

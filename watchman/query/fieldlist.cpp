@@ -49,8 +49,8 @@ static std::optional<json_ref> make_sha1_hex(
     return w_string_to_json(w_string(buf, sizeof(buf), W_STRING_UNICODE));
   } catch (const std::system_error& exc) {
     auto errcode = exc.code();
-    if (errcode == watchman::error_code::no_such_file_or_directory ||
-        errcode == watchman::error_code::is_a_directory) {
+    if (errcode == error_code::no_such_file_or_directory ||
+        errcode == error_code::is_a_directory) {
       // Deleted files, or (currently existing) directories have no hash
       return json_null();
     }

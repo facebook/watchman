@@ -259,7 +259,7 @@ void spawn_command(
     }
   }
 
-  watchman::log(watchman::DBG, "using ", working_dir, " for working dir\n");
+  log(DBG, "using ", working_dir, " for working dir\n");
   opts.chdir(working_dir.c_str());
 
   try {
@@ -269,8 +269,7 @@ void spawn_command(
     }
     cmd->current_proc = std::make_unique<ChildProcess>(args, std::move(opts));
   } catch (const std::exception& exc) {
-    watchman::log(
-        watchman::ERR,
+    log(ERR,
         "trigger ",
         root->root_path,
         ":",
@@ -281,11 +280,7 @@ void spawn_command(
   }
 
   // We have integration tests that check for this string
-  watchman::log(
-      cmd->current_proc ? watchman::DBG : watchman::ERR,
-      "posix_spawnp: ",
-      cmd->triggername,
-      "\n");
+  log(cmd->current_proc ? DBG : ERR, "posix_spawnp: ", cmd->triggername, "\n");
 }
 
 } // namespace
@@ -382,13 +377,12 @@ TriggerCommand::~TriggerCommand() {
   if (triggerThread_.joinable() && !stopTrigger_) {
     // We could try to call stop() here, but that is paving over the problem,
     // especially if we happen to be the triggerThread_ for some reason.
-    watchman::log(
-        watchman::FATAL, "destroying trigger without stopping it first\n");
+    log(FATAL, "destroying trigger without stopping it first\n");
   }
 }
 
 void TriggerCommand::run(const std::shared_ptr<Root>& root) {
-  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
+  std::vector<std::shared_ptr<const Publisher::Item>> pending;
   w_set_thread_name(
       "trigger ", triggername.view(), " ", root->root_path.view());
 
@@ -396,7 +390,7 @@ void TriggerCommand::run(const std::shared_ptr<Root>& root) {
     watchman_event_poll pfd[1];
     pfd[0].evt = ping_.get();
 
-    watchman::log(watchman::DBG, "waiting for settle\n");
+    log(DBG, "waiting for settle\n");
 
     while (!w_is_stopping() && !stopTrigger_) {
       ignore_result(w_poll_events(pfd, 1, 86400));
@@ -428,14 +422,10 @@ void TriggerCommand::run(const std::shared_ptr<Root>& root) {
       current_proc->wait();
     }
   } catch (const std::exception& exc) {
-    watchman::log(
-        watchman::ERR,
-        "Uncaught exception in trigger thread: ",
-        exc.what(),
-        "\n");
+    log(ERR, "Uncaught exception in trigger thread: ", exc.what(), "\n");
   }
 
-  watchman::log(watchman::DBG, "out of loop\n");
+  log(DBG, "out of loop\n");
 }
 
 void TriggerCommand::stop() {
@@ -453,8 +443,7 @@ void TriggerCommand::start(const std::shared_ptr<Root>& root) {
     try {
       run(root);
     } catch (const std::exception& e) {
-      watchman::log(
-          watchman::ERR, "exception in trigger thread: ", e.what(), "\n");
+      log(ERR, "exception in trigger thread: ", e.what(), "\n");
     }
   });
 }
@@ -485,13 +474,12 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   query->sync_timeout = std::chrono::milliseconds(0);
-  watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
+  log(DBG, "assessing trigger ", triggername, "\n");
   try {
     auto res =
         w_query_execute(query.get(), root, time_generator, savedStateFactory_);
 
-    watchman::log(
-        watchman::DBG,
+    log(DBG,
         "trigger \"",
         triggername,
         "\" generated ",
@@ -502,8 +490,7 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
     auto saved_spec = std::move(query->since_spec);
     query->since_spec = std::make_unique<ClockSpec>(res.clockAtStartOfQuery);
 
-    watchman::log(
-        watchman::DBG,
+    log(DBG,
         "updating trigger \"",
         triggername,
         "\" use ",
@@ -516,8 +503,7 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
     }
     return didRun;
   } catch (const QueryExecError& e) {
-    watchman::log(
-        watchman::ERR,
+    log(ERR,
         "error running trigger \"",
         triggername,
         "\" query: ",

@@ -949,10 +949,10 @@ void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
     try {
       self->notifyThread(root);
     } catch (const std::exception& e) {
-      watchman::log(watchman::ERR, "Exception: ", e.what(), " cancel root\n");
+      log(ERR, "Exception: ", e.what(), " cancel root\n");
       root->cancel();
     }
-    watchman::log(watchman::DBG, "out of loop\n");
+    log(DBG, "out of loop\n");
   });
   notifyThreadInstance.detach();
 
@@ -968,10 +968,10 @@ void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
     try {
       self->ioThread(root);
     } catch (const std::exception& e) {
-      watchman::log(watchman::ERR, "Exception: ", e.what(), " cancel root\n");
+      log(ERR, "Exception: ", e.what(), " cancel root\n");
       root->cancel();
     }
-    watchman::log(watchman::DBG, "out of loop\n");
+    log(DBG, "out of loop\n");
   });
   ioThreadInstance.detach();
 }
@@ -1038,9 +1038,9 @@ CookieSync::SyncResult InMemoryView::syncToNowCookies(
   } catch (const std::system_error& exc) {
     auto cookieDirs = root->cookies.cookieDirs();
 
-    if (exc.code() == watchman::error_code::no_such_file_or_directory ||
-        exc.code() == watchman::error_code::permission_denied ||
-        exc.code() == watchman::error_code::not_a_directory) {
+    if (exc.code() == error_code::no_such_file_or_directory ||
+        exc.code() == error_code::permission_denied ||
+        exc.code() == error_code::not_a_directory) {
       // A key path was removed; this is either the vcs dir (.hg, .git, .svn)
       // or possibly the root of the watch itself.
       if (!(watcher_->flags & WATCHER_HAS_SPLIT_WATCH)) {
@@ -1177,8 +1177,7 @@ void InMemoryView::warmContentCache() {
     return;
   }
 
-  watchman::log(
-      watchman::DBG, "considering files for content hash cache warming\n");
+  log(DBG, "considering files for content hash cache warming\n");
 
   size_t n = 0;
   std::deque<folly::Future<std::shared_ptr<const ContentHashCache::Node>>>
@@ -1192,8 +1191,7 @@ void InMemoryView::warmContentCache() {
     for (f = view->getLatestFile(); f && n < maxFilesToWarmInContentCache_;
          f = f->next) {
       if (f->otime.ticks <= lastWarmedTick_) {
-        watchman::log(
-            watchman::DBG,
+        log(DBG,
             "warmContentCache: stop because file ticks ",
             f->otime.ticks,
             " is <= lastWarmedTick_ ",
@@ -1222,8 +1220,7 @@ void InMemoryView::warmContentCache() {
             size_t(f->stat.size),
             f->stat.mtime};
 
-        watchman::log(
-            watchman::DBG, "warmContentCache: lookup ", key.relativePath, "\n");
+        log(DBG, "warmContentCache: lookup ", key.relativePath, "\n");
         auto f = caches_.contentHashCache.get(key);
         if (syncContentCacheWarming_) {
           futures.emplace_back(std::move(f));
@@ -1235,8 +1232,7 @@ void InMemoryView::warmContentCache() {
     lastWarmedTick_ = mostRecentTick_;
   }
 
-  watchman::log(
-      watchman::DBG,
+  log(DBG,
       "warmContentCache, lastWarmedTick_ now ",
       lastWarmedTick_,
       " scheduled ",
@@ -1249,7 +1245,7 @@ void InMemoryView::warmContentCache() {
     // Wait for them to finish, but don't use get() because we don't
     // care about any errors that may have occurred.
     folly::collectAll(futures.begin(), futures.end()).wait();
-    watchman::log(watchman::DBG, "warmContentCache: hashing complete\n");
+    log(DBG, "warmContentCache: hashing complete\n");
   }
 }
 

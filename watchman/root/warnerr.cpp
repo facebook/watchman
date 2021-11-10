@@ -23,13 +23,13 @@ void handle_open_errno(
   auto dir_name = dir->getFullPath();
   bool log_warning = true;
 
-  if (err == watchman::error_code::no_such_file_or_directory ||
-      err == watchman::error_code::not_a_directory ||
-      err == watchman::error_code::too_many_symbolic_link_levels) {
+  if (err == error_code::no_such_file_or_directory ||
+      err == error_code::not_a_directory ||
+      err == error_code::too_many_symbolic_link_levels) {
     log_warning = false;
-  } else if (err == watchman::error_code::permission_denied) {
+  } else if (err == error_code::permission_denied) {
     log_warning = true;
-  } else if (err == watchman::error_code::system_limits_exceeded) {
+  } else if (err == error_code::system_limits_exceeded) {
     set_poison_state(dir_name, now, syscall, err);
     if (!root.failure_reason) {
       root.failure_reason = w_string::build(*poisoned_reason.rlock());
@@ -63,11 +63,7 @@ void handle_open_errno(
       err.message(),
       ". Marking this portion of the tree deleted");
 
-  watchman::log(
-      err == watchman::error_code::no_such_file_or_directory ? watchman::DBG
-                                                             : watchman::ERR,
-      warn,
-      "\n");
+  log(err == error_code::no_such_file_or_directory ? DBG : ERR, warn, "\n");
   if (log_warning) {
     root.recrawlInfo.wlock()->warning = warn;
   }

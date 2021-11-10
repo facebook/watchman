@@ -320,7 +320,7 @@ void debugContentHashCache(
 
   auto root = resolveRoot(client, args);
 
-  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  auto view = std::dynamic_pointer_cast<InMemoryView>(root->view());
   if (!view) {
     send_error_response(client, "root is not an InMemoryView watcher");
     return;
@@ -349,7 +349,7 @@ void debugSymlinkTargetCache(
 
   auto root = resolveRoot(client, args);
 
-  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  auto view = std::dynamic_pointer_cast<InMemoryView>(root->view());
   if (!view) {
     send_error_response(client, "root is not an InMemoryView watcher");
     return;

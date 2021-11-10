@@ -179,8 +179,7 @@ QuerySince ClockSpec::evaluate(
         cursors[named_cursor.cursor] = position.ticks;
       }
 
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "resolved cursor ",
           named_cursor.cursor,
           " -> ",

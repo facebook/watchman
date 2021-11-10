@@ -559,8 +559,8 @@ void InMemoryView::crawler(
 
 namespace {
 bool did_file_change(
-    const watchman::FileInformation* saved,
-    const watchman::FileInformation* fresh) {
+    const FileInformation* saved,
+    const FileInformation* fresh) {
   /* we have to compare this way because the stat structure
    * may contain fields that vary and that don't impact our
    * understanding of the file */
@@ -671,7 +671,7 @@ void InMemoryView::statPath(
 
   auto dir_ent = parentDir->getChildDir(file_name);
 
-  watchman::FileInformation st;
+  FileInformation st;
   std::error_code errcode;
   if (pre_stat && pre_stat->has_stat) {
     st = pre_stat->stat;
@@ -705,13 +705,12 @@ void InMemoryView::statPath(
     processedPaths_->write(PendingChangeLogEntry{pending, errcode, st});
   }
 
-  if (errcode == watchman::error_code::no_such_file_or_directory ||
-      errcode == watchman::error_code::not_a_directory) {
+  if (errcode == error_code::no_such_file_or_directory ||
+      errcode == error_code::not_a_directory) {
     /* it's not there, update our state */
     if (dir_ent) {
       view.markDirDeleted(*watcher_, dir_ent, getClock(pending.now), true);
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "getFileInformation(",
           path,
           ") -> ",
@@ -720,8 +719,7 @@ void InMemoryView::statPath(
     }
     if (file) {
       if (file->exists) {
-        watchman::log(
-            watchman::DBG,
+        log(DBG,
             "getFileInformation(",
             path,
             ") -> ",

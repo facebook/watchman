@@ -65,8 +65,7 @@ static std::tuple<sub_action, w_string> get_subscription_action(
   auto action = sub_action::execute;
   w_string policy_name;
 
-  watchman::log(
-      watchman::DBG,
+  log(DBG,
       "sub=",
       fmt::ptr(sub),
       " ",
@@ -108,8 +107,7 @@ static std::tuple<sub_action, w_string> get_subscription_action(
       }
     }
   } else {
-    watchman::log(
-        watchman::DBG, "subscription ", sub->name, " is up to date\n");
+    log(DBG, "subscription ", sub->name, " is up to date\n");
     action = sub_action::no_sync_needed;
   }
 
@@ -141,9 +139,7 @@ void watchman_client_subscription::processSubscription() {
 void watchman_client_subscription::processSubscriptionImpl() {
   auto client = lockClient();
   if (!client) {
-    watchman::log(
-        watchman::ERR,
-        "encountered a vacated client while running subscription rules\n");
+    log(ERR, "encountered a vacated client while running subscription rules\n");
     return;
   }
 
@@ -159,8 +155,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
       // fast-forward over any notifications while in the drop state
       last_sub_tick = position.ticks;
       query->since_spec = std::make_unique<ClockSpec>(position);
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "dropping subscription notifications for ",
           name,
           " until state ",
@@ -170,8 +165,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
           "\n");
       executeQuery = false;
     } else if (action == sub_action::defer) {
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "deferring subscription notifications for ",
           name,
           " until state ",
@@ -179,8 +173,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
           " is vacated\n");
       executeQuery = false;
     } else if (vcs_defer && root->view()->isVCSOperationInProgress()) {
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "deferring subscription notifications for ",
           name,
           " until VCS operations complete\n");
@@ -208,7 +201,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
       }
     }
   } else {
-    watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
+    log(DBG, "subscription ", name, " is up to date\n");
   }
 }
 
@@ -224,16 +217,14 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    watchman::log(
-        watchman::DBG,
+    log(DBG,
         "running subscription ",
         name,
         " rules since ",
         since_spec->clock.position.ticks,
         "\n");
   } else {
-    watchman::log(
-        watchman::DBG, "running subscription ", name, " rules (no since)\n");
+    log(DBG, "running subscription ", name, " rules (no since)\n");
   }
 
   // Subscriptions never need to sync explicitly; we are only dispatched
@@ -264,8 +255,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     bool scmAwareQuery = since_spec && since_spec->hasScmParams();
     if (onStateTransition == OnStateTransition::DontAdvance && scmAwareQuery) {
       if (root->stateTransCount.load() != res.stateTransCountAtStartOfQuery) {
-        watchman::log(
-            watchman::DBG,
+        log(DBG,
             "discarding SCM aware query results, SCM activity interleaved\n");
         return nullptr;
       }
@@ -304,12 +294,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
 
     return response;
   } catch (const QueryExecError& e) {
-    watchman::log(
-        watchman::ERR,
-        "error running subscription ",
-        name,
-        " query: ",
-        e.what());
+    log(ERR, "error running subscription ", name, " query: ", e.what());
     return nullptr;
   }
 }
@@ -422,8 +407,7 @@ static void cmd_flush_subscriptions(
     if (action == sub_action::drop) {
       sub->last_sub_tick = position.ticks;
       sub->query->since_spec = std::make_unique<ClockSpec>(position);
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "(flush-subscriptions) dropping subscription notifications for ",
           sub->name,
           " until state ",
@@ -436,8 +420,7 @@ static void cmd_flush_subscriptions(
       // flush-subscriptions means that we _should NOT defer_ notifications. So
       // ignore defer and defer_vcs.
       ClockSpec out_position;
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "(flush-subscriptions) executing subscription ",
           sub->name,
           "\n");
@@ -586,8 +569,7 @@ static void cmd_subscribe(
 
     // If they didn't specify any drop/defer behavior, default to a reasonable
     // setting that works together with the fsmonitor extension for hg.
-    if (watchman::mapContainsAny(
-            sub->drop_or_defer, "hg.update", "hg.transaction")) {
+    if (mapContainsAny(sub->drop_or_defer, "hg.update", "hg.transaction")) {
       sub->drop_or_defer["hg.update"] = false; // defer
       sub->drop_or_defer["hg.transaction"] = false; // defer
     }
