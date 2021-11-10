@@ -823,6 +823,71 @@ impl Client {
         Ok(response)
     }
 
+    /// This method will attempt to assert the state named `state_name`
+    /// on the watchman server. This is used to facilitate advanced settling
+    /// in subscriptions.
+    ///
+    /// Only one client can assert a given named state for a given root at
+    /// a given time; an error will be returned if another client owns the
+    /// requested state assertion.
+    ///
+    /// If successful, the state will remain asserted until the owning client
+    /// either issues a `state-leave` or disconnects from the server.
+    ///
+    /// The optional `metadata` will be published to all subscribers of the
+    /// root and made visible via `SubscriptionData::StateEnter::metadata`.
+    ///
+    /// See also: <https://facebook.github.io/watchman/docs/cmd/state-enter.html>
+    pub async fn state_enter(
+        &self,
+        root: &ResolvedRoot,
+        state_name: &str,
+        sync_timeout: SyncTimeout,
+        metadata: Option<Value>,
+    ) -> Result<(), Error> {
+        let request = StateEnterLeaveRequest(
+            "state-enter",
+            root.root.clone(),
+            StateEnterLeaveParams {
+                name: state_name,
+                metadata,
+                sync_timeout,
+            },
+        );
+
+        let _response: StateEnterLeaveResponse = self.generic_request(request).await?;
+        Ok(())
+    }
+
+    /// This method will attempt to release an owned state assertion for the
+    /// state named `state_name` on the watchman server. This is used to facilitate
+    /// advanced settling in subscriptions.
+    ///
+    /// The optional `metadata` will be published to all subscribers of the
+    /// root and made visible via `SubscriptionData::StateLeave::metadata`.
+    ///
+    /// See also: <https://facebook.github.io/watchman/docs/cmd/state-leave.html>
+    pub async fn state_leave(
+        &self,
+        root: &ResolvedRoot,
+        state_name: &str,
+        sync_timeout: SyncTimeout,
+        metadata: Option<Value>,
+    ) -> Result<(), Error> {
+        let request = StateEnterLeaveRequest(
+            "state-leave",
+            root.root.clone(),
+            StateEnterLeaveParams {
+                name: state_name,
+                metadata,
+                sync_timeout,
+            },
+        );
+
+        let _response: StateEnterLeaveResponse = self.generic_request(request).await?;
+        Ok(())
+    }
+
     /// This is typically the first method invoked on a client.
     /// Its purpose is to ensure that the watchman server is watching the specified
     /// path and to resolve it to a `ResolvedRoot` instance.

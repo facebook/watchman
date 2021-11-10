@@ -58,6 +58,30 @@ pub struct GetConfigResponse {
     pub config: WatchmanConfig,
 }
 
+/// Parameters used by `state-enter` and `state-leave` commands.
+#[derive(Serialize, Debug)]
+pub struct StateEnterLeaveParams<'a> {
+    /// The name of the state being asserted
+    pub name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
+    #[serde(skip_serializing_if = "SyncTimeout::is_default")]
+    pub sync_timeout: SyncTimeout,
+}
+
+/// The `state-enter` or `state-leave` request.
+/// You should use `Client::state_enter` rather than directly constructing
+/// this type.
+#[derive(Serialize, Debug)]
+pub struct StateEnterLeaveRequest<'a>(pub &'static str, pub PathBuf, pub StateEnterLeaveParams<'a>);
+
+/// The `state-enter` response
+#[derive(Deserialize, Debug)]
+pub struct StateEnterLeaveResponse {
+    /// The watchman server version
+    pub version: String,
+}
+
 /// The `watch-project` command request.
 /// You should use `Client::resolve_root` rather than directly
 /// constructing this type.
