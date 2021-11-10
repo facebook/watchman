@@ -265,6 +265,14 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   // Don't resolve any of these until any recursive crawls are done.
   std::vector<std::vector<folly::Promise<folly::Unit>>> allSyncs;
 
+  // Don't resolve cookies -- that is, unblock queries -- until all
+  // pending paths are processed.  There is no inherent order in
+  // events from the watcher. They might trigger recrawls or require
+  // subsequent enumeration and discovery. So we cannot unblock any
+  // pending queries until we're sure the internal view is caught up
+  // to all pending change events.
+  std::vector<w_string> pendingCookies;
+
   while (!coll.empty()) {
     logf(
         DBG,
@@ -298,17 +306,18 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
           }
         }
 
-        // processPath may insert new pending items into `coll`,
-        auto result = processPath(root, view, coll, *pending, nullptr);
-        if (result.notifyCookie) {
-          root->cookies.notifyCookie(pending->path);
-        }
+        // processPath may insert new pending items into `coll`
+        processPath(root, view, coll, *pending, nullptr, pendingCookies);
       }
 
       // TODO: Document that continuing to run this loop when stopThreads_ is
       // true fixes a stack overflow when pending is long.
       pending = std::move(pending->next);
     }
+  }
+
+  for (auto& pendingCookie : pendingCookies) {
+    root->cookies.notifyCookie(pendingCookie);
   }
 
   for (auto& outer : allSyncs) {
@@ -320,12 +329,13 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
   return desyncState;
 }
 
-InMemoryView::ProcessResult InMemoryView::processPath(
+void InMemoryView::processPath(
     const std::shared_ptr<Root>& root,
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
-    const DirEntry* pre_stat) {
+    const DirEntry* pre_stat,
+    std::vector<w_string>& pendingCookies) {
   w_assert(
       pending.path.size() >= rootPath_.size(),
       "full_path must be a descendant of the root directory\n");
@@ -361,21 +371,20 @@ InMemoryView::ProcessResult InMemoryView::processPath(
           (pending.flags & W_PENDING_IS_DESYNCED) != W_PENDING_IS_DESYNCED;
     }
 
-    ProcessResult result;
-    result.notifyCookie = consider_cookie;
+    if (consider_cookie) {
+      pendingCookies.push_back(pending.path);
+    }
 
     // Never allow cookie files to show up in the tree
-    return result;
+    return;
   }
 
   if (w_string_equal(pending.path, rootPath_) ||
       (pending.flags & W_PENDING_CRAWL_ONLY)) {
-    crawler(root, view, coll, pending);
+    crawler(root, view, coll, pending, pendingCookies);
   } else {
     statPath(*root, root->cookies, view, coll, pending, pre_stat);
   }
-
-  return ProcessResult{};
 }
 
 namespace {
@@ -395,7 +404,8 @@ void InMemoryView::crawler(
     const std::shared_ptr<Root>& root,
     ViewDatabase& view,
     PendingChanges& coll,
-    const PendingChange& pending) {
+    const PendingChange& pending,
+    std::vector<w_string>& pendingCookies) {
   bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
 
   bool stat_all;
@@ -500,9 +510,6 @@ void InMemoryView::crawler(
     }
   }
 
-  // Wait to unblock any queries until the entire directory is traversed.
-  std::vector<w_string> pendingCookies;
-
   try {
     while (const DirEntry* dirent = osdir->readDir()) {
       // Don't follow parent/self links
@@ -536,10 +543,7 @@ void InMemoryView::crawler(
             newFlags.asRaw());
 
         PendingChange full_pending{std::move(full_path), pending.now, newFlags};
-        auto result = processPath(root, view, coll, full_pending, dirent);
-        if (result.notifyCookie) {
-          pendingCookies.push_back(std::move(full_pending.path));
-        }
+        processPath(root, view, coll, full_pending, dirent, pendingCookies);
       }
     }
   } catch (const std::system_error& exc) {
@@ -565,11 +569,6 @@ void InMemoryView::crawler(
           pending.now,
           recursive ? W_PENDING_RECURSIVE : PendingFlags{});
     }
-  }
-
-  // Now that we've traversed the directory, unblock queries.
-  for (auto& cookie : pendingCookies) {
-    root->cookies.notifyCookie(cookie);
   }
 }
 

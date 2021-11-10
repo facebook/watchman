@@ -225,12 +225,6 @@ class InMemoryView final : public QueryableView {
   // caller will abort all pending cookies after processAllPending returns.
   enum class IsDesynced { Yes, No };
 
-  struct ProcessResult {
-    // Is this path a cookie that should unblock a query after paths are
-    // processed?
-    bool notifyCookie = false;
-  };
-
   /** Recursively walks files under a specified dir */
   void dirGenerator(
       const Query* query,
@@ -262,15 +256,17 @@ class InMemoryView final : public QueryableView {
       ViewDatabase& view,
       PendingChanges& pending);
 
-  ProcessResult processPath(
+  void processPath(
       const std::shared_ptr<Root>& root,
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const DirEntry* pre_stat);
+      const DirEntry* pre_stat,
+      std::vector<w_string>& pendingCookies);
 
   /**
-   * Crawl the given directory.
+   * Crawl the given directory. Any cookies discovered during the crawl are
+   * appended to pendingCookies.
    *
    * Allowed flags:
    *  - W_PENDING_RECURSIVE: the directory will be recursively crawled,
@@ -282,7 +278,8 @@ class InMemoryView final : public QueryableView {
       const std::shared_ptr<Root>& root,
       ViewDatabase& view,
       PendingChanges& coll,
-      const PendingChange& pending);
+      const PendingChange& pending,
+      std::vector<w_string>& pendingCookies);
 
   bool propagateToParentDirIfAppropriate(
       const RootConfig& root,

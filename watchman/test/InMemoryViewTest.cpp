@@ -272,4 +272,81 @@ TEST_F(
   EXPECT_EQ(100, std::move(syncFuture).get());
 }
 
+TEST_F(
+    InMemoryViewTest,
+    syncToNow_does_not_return_until_all_pending_events_are_processed) {
+  getLog().setStdErrLoggingLevel(DBG);
+
+  Query query;
+  query.fieldList.add("name");
+  query.fieldList.add("size");
+  query.paths.emplace();
+  query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
+
+  fs.defineContents({"/root/dir/file.txt"});
+
+  auto root = std::make_shared<Root>(
+      fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
+
+  // Initial crawl
+
+  InMemoryView::IoThreadState state{std::chrono::minutes(5)};
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  // Somebody has updated a file.
+
+  fs.updateMetadata(
+      "/root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+
+  // We have not seen the new size, so the size should be zero.
+
+  {
+    QueryContext ctx{&query, root, false};
+    view->pathGenerator(&query, &ctx);
+
+    EXPECT_EQ(1, ctx.resultsArray.size());
+
+    auto one = ctx.resultsArray.at(0);
+    EXPECT_STREQ("dir/file.txt", one.get("name").asCString());
+    EXPECT_EQ(0, one.get("size").asInt());
+  }
+
+  // A query starts, but the watcher has not notified us.
+
+  // Query, to synchronize, writes a cookie to the filesystem.
+  auto syncFuture1 = root->cookies.sync();
+
+  // But we want to know exactly when it unblocks:
+  auto syncFuture = std::move(syncFuture1).thenValue([&](auto) {
+    // We are running in the iothread, so it is unsafe to access
+    // InMemoryView, but this test is trying to simulate another query's thread
+    // being unblocked too early. Access the ViewDatabase unsafely because the
+    // iothread currently has it locked. That's okay because this test is
+    // single-threaded.
+
+    const auto& viewdb = view->unsafeAccessViewDatabase();
+    auto* dir = viewdb.resolveDir("/root/dir");
+    auto* file = dir->getChildFile("file.txt");
+    return file->stat.size;
+  });
+
+  // Have Watcher publish its change events but this watcher does not have
+  // per-file notifications.
+
+  // The Watcher event from the modified file, which was sequenced before the
+  // cookie write.
+  pending.lock()->add(
+      "/root/dir", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+
+  // The Watcher event from the cookie.
+  pending.lock()->add(
+      "/root", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+
+  // This will notice the cookie and unblock.
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+  EXPECT_TRUE(syncFuture.isReady());
+
+  EXPECT_EQ(100, std::move(syncFuture).get());
+}
+
 } // namespace
