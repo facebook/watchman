@@ -407,19 +407,7 @@ void InMemoryView::crawler(
     const PendingChange& pending,
     std::vector<w_string>& pendingCookies) {
   bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
-
-  bool stat_all;
-  if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-    stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
-  } else {
-    // If the watcher doesn't give us per-file notifications for watched dirs
-    // and is able to watch files individually, then we'll end up explicitly
-    // tracking them and will get updates for the files explicitly. We don't
-    // need to look at the files again when we crawl. To avoid recursing into
-    // all the subdirectories, only stat all the files/directories when this
-    // directory was added by the watcher.
-    stat_all = pending.flags.contains(W_PENDING_NONRECURSIVE_SCAN);
-  }
+  bool stat_all = pending.flags.contains(W_PENDING_NONRECURSIVE_SCAN);
 
   auto dir = view.resolveDir(pending.path, true);
 

@@ -551,9 +551,7 @@ FSEventsWatcher::FSEventsWatcher(
     std::optional<w_string> dir)
     : Watcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
-          hasFileWatching
-              ? (WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME)
-              : 0),
+          hasFileWatching ? WATCHER_HAS_PER_FILE_NOTIFICATIONS : 0),
       hasFileWatching_{hasFileWatching},
       enableStreamFlush_{config.getBool("fsevents_enable_stream_flush", true)},
       subdir{std::move(dir)} {
@@ -776,6 +774,10 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
           (kFSEventStreamEventFlagMustScanSubDirs |
            kFSEventStreamEventFlagItemRenamed)) {
         flags.set(W_PENDING_RECURSIVE);
+      } else if (item.flags & kFSEventStreamEventFlagItemRenamed) {
+        // FSEvents does not reliably report the individual files renamed in the
+        // hierarchy.
+        flags.set(W_PENDING_NONRECURSIVE_SCAN);
       } else if (!hasFileWatching_) {
         flags.set(W_PENDING_NONRECURSIVE_SCAN);
       }

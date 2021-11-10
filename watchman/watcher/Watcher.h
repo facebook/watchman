@@ -38,9 +38,6 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // if this watcher notifies for individual files contained within
   // a watched dir, false if it only notifies for dirs
 #define WATCHER_HAS_PER_FILE_NOTIFICATIONS 1
-  // if renames do not reliably report the individual
-  // files renamed in the hierarchy
-#define WATCHER_COALESCED_RENAME 2
   // if the watcher is comprised of multiple watchers
 #define WATCHER_HAS_SPLIT_WATCH 4
   unsigned flags;
