@@ -854,7 +854,9 @@ bool w_start_listener() {
     tcp_loop = AcceptLoop("tcp-listener", get_listener_tcp_socket());
   }
 
-  startSanityCheckThread();
+  if (Configuration().getBool("enable-sanity-check", true)) {
+    startSanityCheckThread();
+  }
 
 #ifdef _WIN32
   // Start the named pipes and join them; this will
