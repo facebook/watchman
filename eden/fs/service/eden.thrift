@@ -248,6 +248,52 @@ union FileInformationOrError {
   2: EdenError error;
 }
 
+/**
+ * File Attributes that can be requested with getAttributesFromFiles(). All attributes
+ * should be a power of 2. OR the requested attributes together to get a bitmask.
+ */
+enum FileAttributes {
+  NONE = 0,
+  SHA1_HASH = 1,
+  FILE_SIZE = 2,
+/* NEXT_ATTR = 2^x */
+} (cpp2.enum_type = 'uint64_t')
+
+/**
+ * Subset of attributes for a single file returned by getAttributesFromFiles()
+ */
+struct FileAttributeData {
+  1: optional BinaryHash sha1;
+  2: optional i64 fileSize;
+}
+
+/**
+ * Attributes for a file or information about error encountered when accessing file attributes.
+ * The most likely error will be ENOENT, implying that the file doesn't exist.
+ */
+union FileAttributeDataOrError {
+  1: FileAttributeData data;
+  2: EdenError error;
+}
+
+/**
+ * Parameters for the getAttributesFromFiles() function
+ */
+struct GetAttributesFromFilesParams {
+  1: PathString mountPoint;
+  2: list<PathString> paths;
+  3: unsigned64 requestedAttributes;
+}
+
+/**
+ * Return value for the getAttributesFromFiles() function.
+ * The returned list of attributes corresponds to the input list of
+ * paths; eg; res[0] holds the information for paths[0].
+ */
+struct GetAttributesFromFilesResult {
+  1: list<FileAttributeDataOrError> res;
+}
+
 /** reference a point in time in the journal.
  * This can be used to reason about a point in time in a given mount point.
  * The mountGeneration value is opaque to the client.
@@ -1123,6 +1169,15 @@ service EdenService extends fb303_core.BaseService {
   list<FileInformationOrError> getFileInformation(
     1: PathString mountPoint,
     2: list<PathString> paths,
+  ) throws (1: EdenError ex);
+
+  /**
+   * Returns the requested file attributes for the provided list of files.
+   * The result maps the files to attribute results which may be an EdenError
+   * or a FileAttributeData struct.
+   */
+  GetAttributesFromFilesResult getAttributesFromFiles(
+    1: GetAttributesFromFilesParams params,
   ) throws (1: EdenError ex);
 
   /**
