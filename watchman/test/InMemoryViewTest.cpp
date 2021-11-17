@@ -349,4 +349,54 @@ TEST_F(
   EXPECT_EQ(100, std::move(syncFuture).get());
 }
 
+TEST_F(
+    InMemoryViewTest,
+    syncToNow_does_not_return_until_initial_crawl_completes) {
+  getLog().setStdErrLoggingLevel(DBG);
+
+  Query query;
+  query.fieldList.add("name");
+  query.fieldList.add("size");
+  query.paths.emplace();
+  query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
+
+  fs.defineContents({
+      "/root/dir/file.txt",
+  });
+  // TODO: add a mode for defining FileInformation with the hierarchy
+  fs.updateMetadata(
+      "/root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+
+  auto root = std::make_shared<Root>(
+      fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
+
+  // A query is immediately issued. To synchronize, a cookie is written.
+  auto syncFuture1 = root->cookies.sync();
+
+  // But we want to know exactly when it unblocks:
+  auto syncFuture = std::move(syncFuture1).thenValue([&](auto) {
+    // We are running in the iothread, so it is unsafe to access
+    // InMemoryView, but this test is trying to simulate another query's thread
+    // being unblocked too early. Access the ViewDatabase unsafely because the
+    // iothread currently has it locked. That's okay because this test is
+    // single-threaded.
+
+    const auto& viewdb = view->unsafeAccessViewDatabase();
+    auto* dir = viewdb.resolveDir("/root/dir");
+    auto* file = dir->getChildFile("file.txt");
+    EXPECT_EQ(100, file->stat.size);
+  });
+
+  EXPECT_FALSE(syncFuture.isReady());
+
+  // Initial crawl...
+
+  InMemoryView::IoThreadState state{std::chrono::minutes(5)};
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  // ... should unblock the cookie when it's done.
+  EXPECT_TRUE(syncFuture.isReady());
+  std::move(syncFuture).get();
+}
+
 } // namespace
