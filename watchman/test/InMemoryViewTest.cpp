@@ -399,4 +399,37 @@ TEST_F(
   std::move(syncFuture).get();
 }
 
+TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
+  getLog().setStdErrLoggingLevel(DBG);
+
+  Query query;
+  query.fieldList.add("name");
+  query.fieldList.add("size");
+  query.paths.emplace();
+  query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
+
+  fs.defineContents({
+      "/root/dir/file.txt",
+  });
+  // TODO: add a mode for defining FileInformation with the hierarchy
+  fs.updateMetadata(
+      "/root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+
+  auto root = std::make_shared<Root>(
+      fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
+
+  auto syncFuture = view->waitUntilReadyToQuery(root);
+  EXPECT_EQ(
+      std::future_status::timeout,
+      syncFuture.wait_for(std::chrono::milliseconds{0}));
+
+  // Initial crawl...
+
+  InMemoryView::IoThreadState state{std::chrono::minutes(5)};
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  // Unblocks!
+  syncFuture.get();
+}
+
 } // namespace
