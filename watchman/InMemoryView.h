@@ -185,8 +185,15 @@ class InMemoryView final : public QueryableView {
 
   void allFilesGenerator(const Query* query, QueryContext* ctx) const override;
 
-  std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<Root>& root) override;
+  /**
+   * Returns a SemiFuture that completes when any pending recrawls are
+   * completed. The primary use of this is so that "watch-project" doesn't send
+   * its return PDU to the client until after the initial crawl is complete.
+   * Note that a recrawl can happen at any point, so this is a bit of a weak
+   * promise that a query can be immediately executed, but is good enough
+   * assuming that the system isn't in a perpetual state of recrawl.
+   */
+  folly::SemiFuture<folly::Unit> waitUntilReadyToQuery() override;
 
   void startThreads(const std::shared_ptr<Root>& root) override;
   void stopThreads() override;
@@ -330,6 +337,11 @@ class InMemoryView final : public QueryableView {
     return view_.unsafeGetUnlocked();
   }
 
+  // Used by tests to inject events into the iothread.
+  PendingCollection& unsafeAccessPendingFromWatcher() {
+    return pendingFromWatcher_;
+  }
+
   // Returns whether IO thread should stop.
   Continue stepIoThread(
       const std::shared_ptr<Root>& root,
@@ -357,19 +369,6 @@ class InMemoryView final : public QueryableView {
   const uint32_t rootNumber_{0};
   const w_string rootPath_;
 
-  // This allows a client to wait for a recrawl to complete.
-  // The primary use of this is so that "watch-project" doesn't
-  // send its return PDU to the client until after the initial
-  // crawl is complete.  Note that a recrawl can happen at any
-  // point, so this is a bit of a weak promise that a query can
-  // be immediately executed, but is good enough assuming that
-  // the system isn't in a perpetual state of recrawl.
-  struct CrawlState {
-    std::unique_ptr<std::promise<void>> promise;
-    std::shared_future<void> future;
-  };
-  folly::Synchronized<CrawlState> crawlState_;
-
   uint32_t lastAgeOutTick_{0};
   // This is system_clock instead of steady_clock because it's compared with a
   // file's otime.
@@ -378,8 +377,8 @@ class InMemoryView final : public QueryableView {
   /*
    * Queue of items that we need to stat/process.
    *
-   * Populated by both the IO thread (fullCrawl) and the notify thread (from the
-   * watcher).
+   * Populated by both the IO thread (fullCrawl), the notify thread (from the
+   * watcher), and anything that calls waitUntilReadyToQuery.
    */
   PendingCollection pendingFromWatcher_;
 

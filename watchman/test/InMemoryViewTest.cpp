@@ -31,10 +31,10 @@ class InMemoryViewTest : public testing::Test {
   FakeFileSystem fs;
   Configuration config;
   std::shared_ptr<FakeWatcher> watcher = std::make_shared<FakeWatcher>(fs);
-  PendingCollection pending;
 
   std::shared_ptr<InMemoryView> view =
       std::make_shared<InMemoryView>(fs, root_path, config, watcher);
+  PendingCollection& pending = view->unsafeAccessPendingFromWatcher();
 
   InMemoryViewTest() {
     pending.lock()->ping();
@@ -418,10 +418,8 @@ TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
 
-  auto syncFuture = view->waitUntilReadyToQuery(root);
-  EXPECT_EQ(
-      std::future_status::timeout,
-      syncFuture.wait_for(std::chrono::milliseconds{0}));
+  auto syncFuture = view->waitUntilReadyToQuery();
+  EXPECT_FALSE(syncFuture.isReady());
 
   // Initial crawl...
 
@@ -429,7 +427,7 @@ TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
   // Unblocks!
-  syncFuture.get();
+  std::move(syncFuture).get();
 }
 
 } // namespace

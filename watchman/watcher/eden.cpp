@@ -742,8 +742,7 @@ class EdenView final : public QueryableView {
   folly::EventBase subscriberEventBase_;
   JournalPosition lastCookiePosition_;
   std::string mountPoint_;
-  std::promise<void> subscribeReadyPromise_;
-  std::shared_future<void> subscribeReadyFuture_;
+  folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
   bool splitGlobPattern_;
 
  public:
@@ -755,7 +754,6 @@ class EdenView final : public QueryableView {
             config.getInt("eden_retry_connection_count", 3))),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root_path))),
         mountPoint_(root_path.string()),
-        subscribeReadyFuture_(subscribeReadyPromise_.get_future()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
@@ -1261,7 +1259,7 @@ class EdenView final : public QueryableView {
   }
 
   // This is the thread that we use to listen to the stream of
-  // changes coming in from the Eden server
+  // changes coming in from the EdenFS server.
   void subscriberThread(std::shared_ptr<Root> root) noexcept {
     SCOPE_EXIT {
       // ensure that the root gets torn down,
@@ -1283,7 +1281,7 @@ class EdenView final : public QueryableView {
 
       // This will run until the stream ends
       log(DBG, "Started subscription thread loop\n");
-      subscribeReadyPromise_.set_value();
+      subscribeReadyPromise_.setValue();
       subscriberEventBase_.loop();
 
     } catch (const std::exception& exc) {
@@ -1299,9 +1297,8 @@ class EdenView final : public QueryableView {
     return name;
   }
 
-  std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<Root>& /*root*/) override {
-    return subscribeReadyFuture_;
+  folly::SemiFuture<folly::Unit> waitUntilReadyToQuery() override {
+    return subscribeReadyPromise_.getSemiFuture();
   }
 };
 

@@ -17,27 +17,12 @@
 
 namespace watchman {
 
-std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
-    const std::shared_ptr<Root>& root) {
-  auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
-
-  if (lockPair.second->promise && lockPair.second->future.valid()) {
-    return lockPair.second->future;
-  }
-
-  if (root->inner.done_initial.load(std::memory_order_acquire) &&
-      !lockPair.first->shouldRecrawl) {
-    // Return an already satisfied future
-    std::promise<void> p;
-    p.set_value();
-    return p.get_future();
-  }
-
-  // Not yet done, so queue up the promise
-  lockPair.second->promise = std::make_unique<std::promise<void>>();
-  lockPair.second->future =
-      std::shared_future<void>(lockPair.second->promise->get_future());
-  return lockPair.second->future;
+folly::SemiFuture<folly::Unit> InMemoryView::waitUntilReadyToQuery() {
+  auto [p, f] = folly::makePromiseContract<folly::Unit>();
+  auto pending = pendingFromWatcher_.lock();
+  pending->addSync(std::move(p));
+  pending->ping();
+  return std::move(f);
 }
 
 void InMemoryView::fullCrawl(
@@ -75,21 +60,15 @@ void InMemoryView::fullCrawl(
     (void)processAllPending(root, *view, localPending);
   }
 
-  auto [recrawlInfo, crawlState] =
-      acquireLockedPair(root->recrawlInfo, crawlState_);
+  auto recrawlInfo = root->recrawlInfo.wlock();
   recrawlInfo->shouldRecrawl = false;
   recrawlInfo->crawlFinish = std::chrono::steady_clock::now();
-  if (crawlState->promise) {
-    crawlState->promise->set_value();
-    crawlState->promise.reset();
-  }
   root->inner.done_initial.store(true, std::memory_order_release);
 
   // There is no need to hold locks while logging, and abortAllCookies resolves
   // a Promise which can run arbitrary code, so locks must be released here.
   auto recrawlCount = recrawlInfo->recrawlCount;
   recrawlInfo.unlock();
-  crawlState.unlock();
   view.unlock();
 
   root->cookies.abortAllCookies();

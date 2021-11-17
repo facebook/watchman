@@ -273,7 +273,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
   }
 
   auto root = resolveOrCreateRoot(client, args);
-  root->view()->waitUntilReadyToQuery(root).wait();
+  root->view()->waitUntilReadyToQuery().get();
 
   auto resp = make_response();
 
@@ -310,7 +310,7 @@ static void cmd_watch_project(
 
   auto root = resolveOrCreateRoot(client, args);
 
-  root->view()->waitUntilReadyToQuery(root).wait();
+  root->view()->waitUntilReadyToQuery().get();
 
   auto resp = make_response();
 
