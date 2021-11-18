@@ -29,6 +29,13 @@ struct SerializedInodeMap {
 
 struct SerializedFileHandleMap {}
 
+// Mount protocol to use for a mount that we are taking over.
+enum TakeoverMountProtocol {
+  UNKNOWN = 0,
+  FUSE = 1,
+  NFS = 2,
+}
+
 struct SerializedMountInfo {
   1: string mountPath;
   2: string stateDirectory;
@@ -41,12 +48,15 @@ struct SerializedMountInfo {
   // access the struct once we've moved it across the process
   // boundary.  Note that takeover is always local to the same
   // machine and thus has the same endianness.
+  // This will be left empty for NFS mounts.
   4: binary connInfo; // fuse_init_out
 
   // Removed, do not use 5
   // 5: SerializedFileHandleMap fileHandleMap,
 
   6: SerializedInodeMap inodeMap;
+
+  7: TakeoverMountProtocol mountProtocol = TakeoverMountProtocol.UNKNOWN;
 }
 
 union SerializedTakeoverData {
