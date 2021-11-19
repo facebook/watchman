@@ -269,6 +269,11 @@ original strategy of recrawling the watched directory tree is used instead.
 The default changed to `true`.  In addition, this resync strategy is now
 also applied to `kFSEventStreamEventFlagKernelDropped` events.
 
+*Since December 2021.*
+
+The default changed to `false`. There are possible undiagnosed
+correctness issues with this setting.
+
 ### prefer_split_fsevents_watcher
 
 This is macOS specific.

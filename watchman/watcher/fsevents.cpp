@@ -532,7 +532,7 @@ FSEventsWatcher::FSEventsWatcher(
     : Watcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
           hasFileWatching ? WATCHER_HAS_PER_FILE_NOTIFICATIONS : 0),
-      attemptResyncOnDrop_{config.getBool("fsevents_try_resync", true)},
+      attemptResyncOnDrop_{config.getBool("fsevents_try_resync", false)},
       hasFileWatching_{hasFileWatching},
       enableStreamFlush_{config.getBool("fsevents_enable_stream_flush", true)},
       subdir{std::move(dir)} {
