@@ -481,8 +481,16 @@ fail:
   goto out;
 }
 
+namespace {
+struct CFDeleter {
+  void operator()(CFTypeRef ref) {
+    CFRelease(ref);
+  }
+};
+} // namespace
+
 void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
-  CFFileDescriptorRef fdref;
+  std::unique_ptr<std::remove_pointer_t<CFFileDescriptorRef>, CFDeleter> fdref;
   auto fdctx = CFFileDescriptorContext();
 
   w_set_thread_name("fsevents ", root->root_path.view());
@@ -493,17 +501,18 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
 
     fdctx.info = root.get();
 
-    fdref = CFFileDescriptorCreate(
-        nullptr, fsePipe_.read.fd(), true, fse_pipe_callback, &fdctx);
-    CFFileDescriptorEnableCallBacks(fdref, kCFFileDescriptorReadCallBack);
+    fdref.reset(CFFileDescriptorCreate(
+        nullptr, fsePipe_.read.fd(), true, fse_pipe_callback, &fdctx));
+    CFFileDescriptorEnableCallBacks(fdref.get(), kCFFileDescriptorReadCallBack);
     {
       CFRunLoopSourceRef fdsrc;
 
-      fdsrc = CFFileDescriptorCreateRunLoopSource(nullptr, fdref, 0);
+      fdsrc = CFFileDescriptorCreateRunLoopSource(nullptr, fdref.get(), 0);
       if (!fdsrc) {
         root->failure_reason = w_string(
             "CFFileDescriptorCreateRunLoopSource failed", W_STRING_UNICODE);
-        goto done;
+        logf(ERR, "fse_thread failed: CFFileDescriptorCreateRunLoopSource");
+        return;
       }
       CFRunLoopAddSource(CFRunLoopGetCurrent(), fdsrc, kCFRunLoopDefaultMode);
       CFRelease(fdsrc);
@@ -512,7 +521,8 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
     stream_ = fse_stream_make(
         root, this, kFSEventStreamEventIdSinceNow, root->failure_reason);
     if (!stream_) {
-      goto done;
+      logf(ERR, "fse_thread failed: fse_stream_make");
+      return;
     }
 
     if (!FSEventStreamStart(stream_->stream)) {
@@ -522,7 +532,8 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
           " for lines mentioning FSEvents and see ",
           cfg_get_trouble_url(),
           "#fsevents for more information\n");
-      goto done;
+      logf(ERR, "fse_thread failed: FSEventStreamStart");
+      return;
     }
 
     // Signal to fsevents_root_start that we're done initializing
@@ -531,12 +542,6 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
 
   // Process the events stream until we get signalled to quit
   CFRunLoopRun();
-
-done:
-  stream_.reset();
-  if (fdref) {
-    CFRelease(fdref);
-  }
 
   logf(DBG, "fse_thread done\n");
 }
