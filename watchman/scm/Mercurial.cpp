@@ -209,6 +209,11 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
                 makeHgOptions(requestId),
                 "query for the merge base");
 
+            if (!result.output) {
+              throw SCMError(
+                  "no output was returned from `hg log -T{node} -r ", revset);
+            }
+
             if (result.output.size() != 40) {
               throw SCMError(
                   "expected merge base to be a 40 character string, got ",
@@ -248,7 +253,7 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
                 "query for files changed since merge base");
 
             std::vector<w_string> lines;
-            w_string_piece(result.output).split(lines, '\n');
+            result.output.piece().split(lines, '\n');
             return folly::makeFuture(lines);
           })
       .get()
