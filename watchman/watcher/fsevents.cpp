@@ -30,6 +30,15 @@ namespace {
 // If that limit is exceeded, it will fail.
 constexpr inline size_t kMaxExclusions = 8;
 
+struct CFDeleter {
+  void operator()(CFTypeRef ref) {
+    CFRelease(ref);
+  }
+};
+
+template <typename T>
+using unique_ref = std::unique_ptr<std::remove_pointer_t<T>, CFDeleter>;
+
 } // namespace
 
 struct FSEventsStream {
@@ -41,7 +50,7 @@ struct FSEventsStream {
   bool lost_sync{false};
   bool inject_drop{false};
   bool event_id_wrapped{false};
-  CFUUIDRef uuid;
+  unique_ref<CFUUIDRef> uuid;
 
   FSEventsStream(
       const std::shared_ptr<Root>& root,
@@ -56,9 +65,6 @@ FSEventsStream::~FSEventsStream() {
     FSEventStreamStop(stream);
     FSEventStreamInvalidate(stream);
     FSEventStreamRelease(stream);
-  }
-  if (uuid) {
-    CFRelease(uuid);
   }
 }
 
@@ -300,10 +306,9 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
     FSEventStreamEventId since,
     w_string& failure_reason) {
   auto ctx = FSEventStreamContext();
-  CFMutableArrayRef parray = nullptr;
-  CFStringRef cpath = nullptr;
+  unique_ref<CFMutableArrayRef> parray;
+  unique_ref<CFStringRef> cpath;
   double latency;
-  struct stat st;
   FSEventStreamCreateFlags flags;
   w_string path;
 
@@ -317,6 +322,7 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
   // if the EventId rolls over.
   // We need to lookup up the UUID for the associated path and use that to
   // help decide whether we can use a value of `since` other than SinceNow.
+  struct stat st;
   if (stat(root->root_path.c_str(), &st)) {
     failure_reason = w_string::build(
         "failed to stat(",
@@ -324,11 +330,12 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
         "): ",
         folly::errnoStr(errno),
         "\n");
-    goto fail;
+    return nullptr;
   }
 
   // Obtain the UUID for the device associated with the root
-  fse_stream->uuid = FSEventsCopyUUIDForDevice(st.st_dev);
+  fse_stream->uuid =
+      unique_ref<CFUUIDRef>{FSEventsCopyUUIDForDevice(st.st_dev)};
   if (since != kFSEventStreamEventIdSinceNow) {
     CFUUIDBytes a, b;
 
@@ -337,32 +344,32 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
       // we fail: a nullptr UUID means that the journal is not available.
       failure_reason = w_string::build(
           "fsevents journal is not available for dev_t=", st.st_dev, "\n");
-      goto fail;
+      return nullptr;
     }
     // Compare the UUID with that of the current stream
     if (!watcher->stream_->uuid) {
       failure_reason = w_string(
           "fsevents journal was not available for prior stream",
           W_STRING_UNICODE);
-      goto fail;
+      return nullptr;
     }
 
-    a = CFUUIDGetUUIDBytes(fse_stream->uuid);
-    b = CFUUIDGetUUIDBytes(watcher->stream_->uuid);
+    a = CFUUIDGetUUIDBytes(fse_stream->uuid.get());
+    b = CFUUIDGetUUIDBytes(watcher->stream_->uuid.get());
 
     if (memcmp(&a, &b, sizeof(a)) != 0) {
       failure_reason =
           w_string("fsevents journal UUID is different", W_STRING_UNICODE);
-      goto fail;
+      return nullptr;
     }
   }
 
   ctx.info = fse_stream.get();
 
-  parray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
+  parray.reset(CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks));
   if (!parray) {
     failure_reason = w_string("CFArrayCreateMutable failed", W_STRING_UNICODE);
-    goto fail;
+    return nullptr;
   }
 
   if (auto subdir = watcher->subdir) {
@@ -371,19 +378,19 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
     path = root->root_path;
   }
 
-  cpath = CFStringCreateWithBytes(
+  cpath.reset(CFStringCreateWithBytes(
       nullptr,
       (const UInt8*)path.data(),
       path.size(),
       kCFStringEncodingUTF8,
-      false);
+      false));
   if (!cpath) {
     failure_reason =
         w_string("CFStringCreateWithBytes failed", W_STRING_UNICODE);
-    goto fail;
+    return nullptr;
   }
 
-  CFArrayAppendValue(parray, cpath);
+  CFArrayAppendValue(parray.get(), cpath.get());
 
   latency = root->config.getDouble("fsevents_latency", 0.01),
   logf(
@@ -397,11 +404,11 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
     flags |= kFSEventStreamCreateFlagFileEvents;
   }
   fse_stream->stream = FSEventStreamCreate(
-      nullptr, fse_callback, &ctx, parray, since, latency, flags);
+      nullptr, fse_callback, &ctx, parray.get(), since, latency, flags);
 
   if (!fse_stream->stream) {
     failure_reason = w_string("FSEventStreamCreate failed", W_STRING_UNICODE);
-    goto fail;
+    return nullptr;
   }
 
   FSEventStreamScheduleWithRunLoop(
@@ -410,15 +417,15 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
   if (root->config.getBool("_use_fsevents_exclusions", true)) {
     auto& dirs_vec = root->ignore.getIgnoredDirs();
 
-    CFMutableArrayRef ignarray;
     size_t nitems = std::min(dirs_vec.size(), kMaxExclusions);
     size_t appended = 0;
 
-    ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
+    unique_ref<CFMutableArrayRef> ignarray{
+        CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks)};
     if (!ignarray) {
       failure_reason =
           w_string("CFArrayCreateMutable failed", W_STRING_UNICODE);
-      goto fail;
+      return nullptr;
     }
 
     for (const auto& path : dirs_vec) {
@@ -429,24 +436,20 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
         logf(DBG, "Adding exclusion: {} for subdir: {}\n", path, *subdir);
       }
 
-      CFStringRef ignpath;
-
-      ignpath = CFStringCreateWithBytes(
+      unique_ref<CFStringRef> ignpath{CFStringCreateWithBytes(
           nullptr,
           (const UInt8*)path.data(),
           path.size(),
           kCFStringEncodingUTF8,
-          false);
+          false)};
 
       if (!ignpath) {
         failure_reason =
             w_string("CFStringCreateWithBytes failed", W_STRING_UNICODE);
-        CFRelease(ignarray);
-        goto fail;
+        return nullptr;
       }
 
-      CFArrayAppendValue(ignarray, ignpath);
-      CFRelease(ignpath);
+      CFArrayAppendValue(ignarray.get(), ignpath.get());
 
       appended++;
       if (appended == nitems) {
@@ -455,42 +458,19 @@ std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
     }
 
     if (appended != 0) {
-      if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
+      if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray.get())) {
         failure_reason =
             w_string("FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
-        CFRelease(ignarray);
-        goto fail;
+        return nullptr;
       }
     }
-
-    CFRelease(ignarray);
-  }
-
-out:
-  if (parray) {
-    CFRelease(parray);
-  }
-  if (cpath) {
-    CFRelease(cpath);
   }
 
   return fse_stream;
-
-fail:
-  fse_stream.reset();
-  goto out;
 }
 
-namespace {
-struct CFDeleter {
-  void operator()(CFTypeRef ref) {
-    CFRelease(ref);
-  }
-};
-} // namespace
-
 void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
-  std::unique_ptr<std::remove_pointer_t<CFFileDescriptorRef>, CFDeleter> fdref;
+  unique_ref<CFFileDescriptorRef> fdref;
   auto fdctx = CFFileDescriptorContext();
 
   w_set_thread_name("fsevents ", root->root_path.view());
@@ -505,17 +485,16 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
         nullptr, fsePipe_.read.fd(), true, fse_pipe_callback, &fdctx));
     CFFileDescriptorEnableCallBacks(fdref.get(), kCFFileDescriptorReadCallBack);
     {
-      CFRunLoopSourceRef fdsrc;
-
-      fdsrc = CFFileDescriptorCreateRunLoopSource(nullptr, fdref.get(), 0);
+      unique_ref<CFRunLoopSourceRef> fdsrc{
+          CFFileDescriptorCreateRunLoopSource(nullptr, fdref.get(), 0)};
       if (!fdsrc) {
         root->failure_reason = w_string(
             "CFFileDescriptorCreateRunLoopSource failed", W_STRING_UNICODE);
         logf(ERR, "fse_thread failed: CFFileDescriptorCreateRunLoopSource");
         return;
       }
-      CFRunLoopAddSource(CFRunLoopGetCurrent(), fdsrc, kCFRunLoopDefaultMode);
-      CFRelease(fdsrc);
+      CFRunLoopAddSource(
+          CFRunLoopGetCurrent(), fdsrc.get(), kCFRunLoopDefaultMode);
     }
 
     stream_ = fse_stream_make(
