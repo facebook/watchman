@@ -24,11 +24,15 @@
 
 namespace watchman {
 
+namespace {
+
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
-#define MAX_EXCLUSIONS size_t(8)
+constexpr inline size_t kMaxExclusions = 8;
 
-struct fse_stream {
+} // namespace
+
+struct FSEventsStream {
   FSEventStreamRef stream{nullptr};
   std::shared_ptr<Root> root;
   FSEventsWatcher* watcher;
@@ -39,13 +43,24 @@ struct fse_stream {
   bool event_id_wrapped{false};
   CFUUIDRef uuid;
 
-  fse_stream(
+  FSEventsStream(
       const std::shared_ptr<Root>& root,
       FSEventsWatcher* watcher,
       FSEventStreamEventId since)
-      : root(root), watcher(watcher), since(since) {}
-  ~fse_stream();
+      : root{root}, watcher{watcher}, since{since} {}
+  ~FSEventsStream();
 };
+
+FSEventsStream::~FSEventsStream() {
+  if (stream) {
+    FSEventStreamStop(stream);
+    FSEventStreamInvalidate(stream);
+    FSEventStreamRelease(stream);
+  }
+  if (uuid) {
+    CFRelease(uuid);
+  }
+}
 
 static const flag_map kflags[] = {
     {kFSEventStreamEventFlagMustScanSubDirs, "MustScanSubDirs"},
@@ -124,8 +139,8 @@ void FSEventsWatcher::fse_callback(
     const FSEventStreamEventFlags eventFlags[],
     const FSEventStreamEventId eventIds[]) {
   size_t i;
-  auto paths = (char**)eventPaths;
-  auto stream = (fse_stream*)clientCallBackInfo;
+  auto paths = reinterpret_cast<char**>(eventPaths);
+  auto stream = reinterpret_cast<FSEventsStream*>(clientCallBackInfo);
   auto root = stream->root;
   std::vector<watchman_fsevent> items;
   auto watcher = stream->watcher;
@@ -175,7 +190,7 @@ void FSEventsWatcher::fse_callback(
             goto propagate;
           }
 
-          if (watcher->stream_ == stream) {
+          if (watcher->stream_.get() == stream) {
             // We are the active stream for this watch which means that it
             // is safe for us to proceed with changing watcher->stream.
             // Attempt to set up a new stream to resync from the last-good
@@ -184,7 +199,7 @@ void FSEventsWatcher::fse_callback(
             // to the consumer thread which has existing logic to schedule
             // a recrawl.
             w_string failure_reason;
-            fse_stream* replacement = fse_stream_make(
+            auto replacement = fse_stream_make(
                 root, watcher, stream->last_good, failure_reason);
 
             if (!replacement) {
@@ -212,10 +227,7 @@ void FSEventsWatcher::fse_callback(
                 stream->last_good);
 
             // mark the replacement as the winner
-            watcher->stream_ = replacement;
-
-            // And tear ourselves down
-            delete stream;
+            std::swap(watcher->stream_, replacement);
 
             // And we're done.
             return;
@@ -282,18 +294,7 @@ static void fse_pipe_callback(CFFileDescriptorRef, CFOptionFlags, void*) {
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
-fse_stream::~fse_stream() {
-  if (stream) {
-    FSEventStreamStop(stream);
-    FSEventStreamInvalidate(stream);
-    FSEventStreamRelease(stream);
-  }
-  if (uuid) {
-    CFRelease(uuid);
-  }
-}
-
-fse_stream* FSEventsWatcher::fse_stream_make(
+std::unique_ptr<FSEventsStream> FSEventsWatcher::fse_stream_make(
     const std::shared_ptr<Root>& root,
     FSEventsWatcher* watcher,
     FSEventStreamEventId since,
@@ -306,7 +307,7 @@ fse_stream* FSEventsWatcher::fse_stream_make(
   FSEventStreamCreateFlags flags;
   w_string path;
 
-  fse_stream* fse_stream = new struct fse_stream(root, watcher, since);
+  auto fse_stream = std::make_unique<FSEventsStream>(root, watcher, since);
 
   // Each device has an optional journal maintained by fseventsd that keeps
   // track of the change events.  The journal may not be available if the
@@ -356,7 +357,7 @@ fse_stream* FSEventsWatcher::fse_stream_make(
     }
   }
 
-  ctx.info = fse_stream;
+  ctx.info = fse_stream.get();
 
   parray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
   if (!parray) {
@@ -410,7 +411,7 @@ fse_stream* FSEventsWatcher::fse_stream_make(
     auto& dirs_vec = root->ignore.getIgnoredDirs();
 
     CFMutableArrayRef ignarray;
-    size_t nitems = std::min(dirs_vec.size(), MAX_EXCLUSIONS);
+    size_t nitems = std::min(dirs_vec.size(), kMaxExclusions);
     size_t appended = 0;
 
     ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
@@ -476,8 +477,7 @@ out:
   return fse_stream;
 
 fail:
-  delete fse_stream;
-  fse_stream = nullptr;
+  fse_stream.reset();
   goto out;
 }
 
@@ -490,8 +490,6 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
   {
     // Block until fsevents_root_start is waiting for our initialization
     auto wlock = items_.lock();
-
-    attemptResyncOnDrop_ = root->config.getBool("fsevents_try_resync", true);
 
     fdctx.info = root.get();
 
@@ -535,9 +533,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<Root>& root) {
   CFRunLoopRun();
 
 done:
-  if (stream_) {
-    delete stream_;
-  }
+  stream_.reset();
   if (fdref) {
     CFRelease(fdref);
   }
@@ -552,6 +548,7 @@ FSEventsWatcher::FSEventsWatcher(
     : Watcher(
           hasFileWatching ? "fsevents" : "dirfsevents",
           hasFileWatching ? WATCHER_HAS_PER_FILE_NOTIFICATIONS : 0),
+      attemptResyncOnDrop_{config.getBool("fsevents_try_resync", true)},
       hasFileWatching_{hasFileWatching},
       enableStreamFlush_{config.getBool("fsevents_enable_stream_flush", true)},
       subdir{std::move(dir)} {
@@ -841,8 +838,6 @@ static RegisterWatcher<FSEventsWatcher> reg("fsevents");
 void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     watchman_client* client,
     const json_ref& args) {
-  FSEventStreamEventId last_good;
-
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(
@@ -862,6 +857,8 @@ void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     send_error_response(client, "fsevents_try_resync is not enabled");
     return;
   }
+
+  FSEventStreamEventId last_good;
 
   {
     auto wlock = watcher->items_.lock();

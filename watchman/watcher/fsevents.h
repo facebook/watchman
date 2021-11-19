@@ -19,7 +19,7 @@ struct watchman_client;
 namespace watchman {
 
 class Configuration;
-struct fse_stream;
+struct FSEventsStream;
 struct FSEventsLogEntry;
 
 struct watchman_fsevent {
@@ -68,7 +68,7 @@ class FSEventsWatcher : public Watcher {
       const json_ref& args);
 
  private:
-  static fse_stream* fse_stream_make(
+  static std::unique_ptr<FSEventsStream> fse_stream_make(
       const std::shared_ptr<Root>& root,
       FSEventsWatcher* watcher,
       FSEventStreamEventId since,
@@ -94,8 +94,8 @@ class FSEventsWatcher : public Watcher {
   };
   folly::Synchronized<Items, std::mutex> items_;
 
-  fse_stream* stream_{nullptr};
-  bool attemptResyncOnDrop_{false};
+  std::unique_ptr<FSEventsStream> stream_;
+  const bool attemptResyncOnDrop_{false};
   const bool hasFileWatching_{false};
   const bool enableStreamFlush_{true};
   std::optional<w_string> subdir{std::nullopt};
