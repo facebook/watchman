@@ -128,7 +128,7 @@ jobs:
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman 
     - name: Copy artifacts
       run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/windows  --final-install-prefix /usr/local
-    - uses: actions/upload-artifact@main
+    - uses: actions/upload-artifact@v2
       with:
         name: watchman
         path: _artifacts
