@@ -195,6 +195,13 @@ static void parse_empty_on_fresh_instance(Query* res, const json_ref& query) {
       parse_bool_param(query, "empty_on_fresh_instance", false);
 }
 
+static void parse_always_include_directories(
+    Query* res,
+    const json_ref& query) {
+  res->alwaysIncludeDirectories =
+      parse_bool_param(query, "always_include_directories", false);
+}
+
 static void parse_benchmark(Query* res, const json_ref& query) {
   // Preserve behavior by supporting a boolean value. Also support int values.
   auto bench = query.get_default("bench");
@@ -235,6 +242,7 @@ std::shared_ptr<Query> w_query_parse(
   parse_empty_on_fresh_instance(res, query);
   parse_fail_if_no_saved_state(res, query);
   parse_omit_changed_files(res, query);
+  parse_always_include_directories(res, query);
 
   /* Look for path generators */
   parse_paths(res, query);

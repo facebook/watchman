@@ -207,7 +207,8 @@ std::vector<w_string> Git::getFilesChangedSinceMergeBaseWith(
 
 SCM::StatusResult Git::getFilesChangedBetweenCommits(
     std::vector<std::string> commits,
-    w_string requestId) const {
+    w_string requestId,
+    bool /*includeDirectories*/) const {
   GitStatusAccumulator result;
   for (size_t i = 0; i + 1 < commits.size(); ++i) {
     auto mtime = getIndexMtime();

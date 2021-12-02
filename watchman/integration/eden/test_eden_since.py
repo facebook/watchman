@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import shutil
 
 import WatchmanEdenTestCase
 
@@ -196,3 +197,89 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
             },
         )
         self.assertEqual([{"name": "adir/file", "new": False}], res["files"])
+
+    def query_adir_change_since(self, root, clock):
+        return self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "anyof",
+                    ["match", "adir", "basename"],
+                    ["dirname", "adir"],
+                ],
+                "fields": ["name", "type"],
+                "since": clock,
+                "empty_on_fresh_instance": True,
+                "always_include_directories": True,
+            },
+        )
+
+    def test_eden_since_removal(self):
+        root = self.makeEdenMount(populate)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        first_clock = self.watchmanCommand(
+            "clock",
+            root,
+        )["clock"]
+
+        shutil.rmtree(os.path.join(root, "adir"))
+
+        first_res = self.query_adir_change_since(root, first_clock)
+
+        # TODO(T104564495): fix this incorrect behavior.
+        # we are asserting some behavior that deviates from non eden watchman
+        # here: "adir" is an "f" type.
+        # watchman tries to check the type of a file after it gets the
+        # notification that that file changed. That is useless for removals.
+        # We will never be able to report the type of file removed on eden.
+        # We should fix this, but for now Watchman just reports unknown types
+        # as f.
+        self.assertQueryRepsonseEqual(
+            [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
+            first_res["files"],
+        )
+
+    def test_eden_since_across_update(self):
+        root = self.makeEdenMount(populate)
+        repo = self.repoForPath(root)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        shutil.rmtree(os.path.join(root, "adir"))
+
+        # commit the removal so we can test the change across an update.
+        repo.hg("addremove")
+        repo.commit("removal commit.")
+
+        first_clock = self.watchmanCommand(
+            "clock",
+            root,
+        )["clock"]
+
+        repo.hg("prev")  # add the files back across commits
+
+        first_res = self.query_adir_change_since(root, first_clock)
+
+        self.assertQueryRepsonseEqual(
+            [{"name": "adir", "type": "d"}, {"name": "adir/file", "type": "f"}],
+            first_res["files"],
+        )
+
+        second_clock = self.watchmanCommand(
+            "clock",
+            root,
+        )["clock"]
+
+        repo.hg("next")  # remove the files again across commits
+
+        second_res = self.query_adir_change_since(root, second_clock)
+
+        self.assertQueryRepsonseEqual(
+            [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
+            second_res["files"],
+        )

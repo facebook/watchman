@@ -87,9 +87,15 @@ class SCM {
   //
   // This is purely a history operation and does not consider the working
   // copy status.
+  // includeDirectories controls if directory changes are reported here.
+  // Generally, Watchman wants to know about both the changes to files and
+  // directories. But it can be expensive to get directory information as well.
+  // So if a client does not care for directory information no need to report
+  // this.
   virtual StatusResult getFilesChangedBetweenCommits(
       std::vector<std::string> commits,
-      w_string requestId = nullptr) const = 0;
+      w_string requestId,
+      bool includeDirectories) const = 0;
 
   // Compute the source control date associated with the specified
   // commit.

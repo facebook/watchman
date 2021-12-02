@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 import errno
 import functools
 import inspect
+import json
 import os
 import os.path
 import tempfile
@@ -374,6 +375,16 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
                 )
             )
         self.assertFileListsEqual(self.last_file_list, expected_files, message)
+
+    def assertQueryRepsonseEqual(self, expected_resp, actual_resp) -> bool:
+        # converting the dict to a string version of the json is not
+        # exactly the fastest function to use to sort, but it is unambiguous.
+        sorted_expected = sorted(
+            expected_resp, key=lambda x: json.dumps(x, sort_keys=True)
+        )
+        sorted_actual = sorted(actual_resp, key=lambda x: json.dumps(x, sort_keys=True))
+
+        self.assertCountEqual(sorted_expected, sorted_actual)
 
     # Wait for the list of watched roots to match the input set
     def assertWatchListContains(self, roots, message=None):

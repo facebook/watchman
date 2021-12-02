@@ -29,6 +29,10 @@ void replaceEmbeddedNulls(std::string& str) {
   std::replace(str.begin(), str.end(), '\0', '\n');
 }
 
+void replaceEmbeddedNewLines(std::string& str) {
+  std::replace(str.begin(), str.end(), '\n', '\0');
+}
+
 std::string hgExecutablePath() {
   auto hg = getenv("EDEN_HG_BINARY");
   if (hg && strlen(hg) > 0) {
@@ -234,6 +238,11 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
       commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
   auto commitCopy = std::string{commitId.view()};
 
+  // This is not going to include changes to directories across commits because
+  // mercurial does not report them. Unclear if we need them in this case.
+  // We fixed missing directory events in getFilesChangedBetweenCommits, but
+  // this is a separate code path into hg status, so we need extra support to
+  // include directory support here if needed.
   return filesChangedSinceMergeBaseWith_
       .get(
           key,
@@ -262,7 +271,8 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     std::vector<std::string> commits,
-    w_string requestId) const {
+    w_string requestId,
+    bool includeDirectories) const {
   StatusAccumulator result;
   for (size_t i = 0; i + 1 < commits.size(); ++i) {
     auto mtime = getDirStateMtime();
@@ -275,6 +285,8 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     }
     auto key = folly::to<std::string>(
         commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
+    auto dirkey = folly::to<std::string>(
+        "dirs:", commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
 
     // This loop runs `hg status` commands sequentially. There's an opportunity
     // to run them concurrently, but:
@@ -311,6 +323,32 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
                 })
             .get()
             ->value());
+    if (includeDirectories) {
+      result.add(filesChangedBetweenCommits_
+                     .get(
+                         dirkey,
+                         [&](const std::string&) {
+                           auto hgresult = runMercurial(
+                               {hgExecutablePath(),
+                                "--traceback",
+                                "debugdiffdirs",
+                                "--rev",
+                                commitA,
+                                "--rev",
+                                commitB,
+                                // The "" argument at the end causes paths to be
+                                // printed out relative to the cwd (set to root
+                                // path above).
+                                ""},
+                               makeHgOptions(requestId),
+                               "get dirs changed between commits");
+                           auto output = std::string{hgresult.output.view()};
+                           replaceEmbeddedNewLines(output);
+                           return folly::makeFuture(w_string{output});
+                         })
+                     .get()
+                     ->value());
+    }
   }
   return result.finalize();
 }

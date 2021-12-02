@@ -37,9 +37,14 @@ class Git : public SCM {
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId,
       w_string requestId = nullptr) const override;
+
+  // Note: does not support includeDirectories. git does not report directory
+  // changes, though it does introduce them when the first file is introduced
+  // inside them and does prune them when the last file is deleted.
   StatusResult getFilesChangedBetweenCommits(
       std::vector<std::string> commits,
-      w_string requestId = nullptr) const override;
+      w_string requestId,
+      bool includeDirectories) const override;
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
       w_string_piece commitId,
       w_string requestId = nullptr) const override;

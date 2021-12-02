@@ -78,6 +78,8 @@ struct Query {
   w_string subscriptionName;
   pid_t clientPid{0};
 
+  bool alwaysIncludeDirectories{false};
+
   ~Query();
 
   /** Returns true if the supplied name is contained in

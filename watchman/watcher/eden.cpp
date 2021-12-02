@@ -616,8 +616,10 @@ class EdenWrappedSCM : public SCM {
 
   SCM::StatusResult getFilesChangedBetweenCommits(
       std::vector<std::string> commits,
-      w_string /* requestId */ = nullptr) const override {
-    return inner_->getFilesChangedBetweenCommits(std::move(commits));
+      w_string requestId,
+      bool includeDirectories) const override {
+    return inner_->getFilesChangedBetweenCommits(
+        std::move(commits), requestId, includeDirectories);
   }
 
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
@@ -876,8 +878,10 @@ class EdenView final : public QueryableView {
 
             std::vector<std::string> commits{
                 std::move(fromHash), std::move(toHash)};
-            changedBetweenCommits =
-                getSCM()->getFilesChangedBetweenCommits(std::move(commits));
+            changedBetweenCommits = getSCM()->getFilesChangedBetweenCommits(
+                std::move(commits),
+                /*requestId*/ nullptr,
+                ctx->query->alwaysIncludeDirectories);
           } else if (delta.snapshotTransitions_ref()->size() >= 2) {
             std::vector<std::string> commits;
             commits.reserve(delta.snapshotTransitions_ref()->size());
@@ -890,8 +894,10 @@ class EdenView final : public QueryableView {
                 " we changed commit hashes ",
                 folly::join(" -> ", commits),
                 "\n");
-            changedBetweenCommits =
-                getSCM()->getFilesChangedBetweenCommits(std::move(commits));
+            changedBetweenCommits = getSCM()->getFilesChangedBetweenCommits(
+                std::move(commits),
+                /*requestId*/ nullptr,
+                ctx->query->alwaysIncludeDirectories);
           }
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {

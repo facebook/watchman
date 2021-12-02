@@ -224,3 +224,16 @@ $ watchman -j <<-EOT
 }]
 EOT
 ~~~
+
+### Directory Events
+
+Generally, Watchman should report changes to directories for all queries.
+
+On EdenFS repositories there is an exception. When the user has changed commits
+in the duration of a time query, directory changes may not be reported across
+those commit changes.
+
+the option `always_include_directories` exists to include events for directories
+across commit transitions. This is only supported for mercurial. This can be
+expensive, so clients who do not need this are recommended not to use this.
+This value defaults to false.
