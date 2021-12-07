@@ -123,6 +123,22 @@ fn is_false(v: &bool) -> bool {
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(into = "i64")]
+pub struct SettleDurationMs(pub std::time::Duration);
+
+impl From<std::time::Duration> for SettleDurationMs {
+    fn from(duration: std::time::Duration) -> Self {
+        Self(duration)
+    }
+}
+
+impl Into<i64> for SettleDurationMs {
+    fn into(self) -> i64 {
+        self.0.as_millis() as i64
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(into = "i64")]
 pub enum SyncTimeout {
     /// Use the default cookie synchronization timeout
     Default,
@@ -332,6 +348,12 @@ pub struct QueryRequestCommon {
     /// * <https://facebook.github.io/watchman/docs/cmd/query.html#synchronization-timeout-since-21>
     #[serde(skip_serializing_if = "SyncTimeout::is_default", default)]
     pub sync_timeout: SyncTimeout,
+
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub settle_period: Option<SettleDurationMs>,
+
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub settle_timeout: Option<SettleDurationMs>,
 
     /// If set to true, when mixing generators (not recommended), dedup results by filename.
     /// This defaults to false.  When not enabled, if multiple generators match

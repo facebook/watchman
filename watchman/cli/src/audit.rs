@@ -28,11 +28,23 @@ pub(crate) struct AuditCmd {
     path: PathBuf,
 
     #[structopt(
-        long = "timeout",
+        long = "settle_period",
+        about = "milliseconds to wait for filesystem change notifications to settle"
+    )]
+    settle_period_ms: Option<u64>,
+
+    #[structopt(
+        long = "settle_timeout",
+        about = "fail query if settle_timeout milliseconds elapses before settle_period is reached"
+    )]
+    settle_timeout_ms: Option<u64>,
+
+    #[structopt(
+        long = "sync_timeout",
         about = "seconds to wait for Watchman query result",
         default_value = "120"
     )]
-    timeout_secs: u64,
+    sync_timeout_secs: u64,
 }
 
 query_result_type! {
@@ -206,7 +218,16 @@ impl AuditCmd {
                             }),
                         ]))),
                     ])),
-                    sync_timeout: SyncTimeout::Duration(Duration::new(self.timeout_secs, 0)),
+                    settle_period: self
+                        .settle_period_ms
+                        .map(Duration::from_millis)
+                        .map(SettleDurationMs),
+                    settle_timeout: self
+                        .settle_timeout_ms
+                        .map(Duration::from_millis)
+                        .map(SettleDurationMs),
+                    sync_timeout: SyncTimeout::Duration(Duration::new(self.sync_timeout_secs, 0)),
+
                     ..Default::default()
                 },
             )
