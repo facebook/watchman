@@ -222,6 +222,8 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
+  folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds settle_period);
   CookieSync::SyncResult syncToNow(std::chrono::milliseconds timeout);
   void scheduleRecrawl(const char* why);
   void recrawlTriggered(const char* why);

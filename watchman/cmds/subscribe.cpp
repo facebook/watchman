@@ -322,6 +322,7 @@ static void cmd_flush_subscriptions(
   int sync_timeout;
   json_ref subs(nullptr);
 
+  // TODO: merge this parse and sync logic with the logic in query evaluation
   if (json_array_size(args) == 3) {
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
     subs = args.at(2).get_default("subscriptions", nullptr);

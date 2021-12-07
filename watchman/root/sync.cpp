@@ -11,6 +11,11 @@
 
 using namespace watchman;
 
+folly::SemiFuture<folly::Unit> Root::waitForSettle(
+    std::chrono::milliseconds settle_period) {
+  return view()->waitForSettle(settle_period);
+}
+
 CookieSync::SyncResult Root::syncToNow(std::chrono::milliseconds timeout) {
   PerfSample sample("sync_to_now");
   auto root = shared_from_this();

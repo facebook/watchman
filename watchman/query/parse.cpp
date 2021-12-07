@@ -132,24 +132,46 @@ void parse_request_id(Query* res, const json_ref& query) {
   res->request_id = json_to_w_string(request_id);
 }
 
+namespace {
+json_int_t parse_nonnegative_integer(std::string_view name, json_ref v) {
+  if (!v.isInt()) {
+    throw QueryParseError(std::string{name} + " must be an integer value >= 0");
+  }
+  json_int_t value = v.asInt();
+  if (value < 0) {
+    throw QueryParseError(std::string{name} + " must be an integer value >= 0");
+  }
+  return value;
+}
+} // namespace
+
 void parse_sync(Query* res, const json_ref& query) {
+  auto settle_period = query.get_default("settle_period");
+  auto settle_timeout = query.get_default("settle_timeout");
+  if (settle_period && settle_timeout) {
+    auto settle_period_value =
+        parse_nonnegative_integer("settle_period", settle_period);
+    auto settle_timeout_value =
+        parse_nonnegative_integer("settle_timeout", settle_timeout);
+    Query::SettleTimeouts settle_timeouts;
+    settle_timeouts.settle_period =
+        std::chrono::milliseconds{settle_period_value};
+    settle_timeouts.settle_timeout =
+        std::chrono::milliseconds{settle_timeout_value};
+    res->settle_timeouts = settle_timeouts;
+  } else if (settle_period) {
+    throw QueryParseError("settle_period specified without settle_timeout");
+  } else if (settle_timeout) {
+    throw QueryParseError("settle_timeout specified without settle_period");
+  }
+
   auto sync_timeout = query.get_default(
       "sync_timeout",
       json_integer(std::chrono::duration_cast<std::chrono::milliseconds>(
                        kDefaultQuerySyncTimeout)
                        .count()));
-
-  if (!sync_timeout.isInt()) {
-    throw QueryParseError("sync_timeout must be an integer value >= 0");
-  }
-
-  auto value = sync_timeout.asInt();
-
-  if (value < 0) {
-    throw QueryParseError("sync_timeout must be an integer value >= 0");
-  }
-
-  res->sync_timeout = std::chrono::milliseconds(value);
+  res->sync_timeout = std::chrono::milliseconds{
+      parse_nonnegative_integer("sync_timeout", sync_timeout)};
 }
 
 void parse_lock_timeout(Query* res, const json_ref& query) {

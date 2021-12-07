@@ -57,6 +57,7 @@ static void annotate_with_clock(
 static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   int sync_timeout = 0;
 
+  // TODO: merge this parse and sync logic with the logic in query evaluation
   if (json_array_size(args) == 3) {
     auto& opts = args.at(2);
     if (!opts.isObject()) {

@@ -48,7 +48,9 @@ struct Query {
   bool dedup_results = false;
   uint32_t bench_iterations = 0;
 
-  /* optional full path to relative root, without and with trailing slash */
+  /**
+   * Optional full path to relative root, without and with trailing slash.
+   */
   w_string relative_root;
   w_string relative_root_slash;
 
@@ -56,10 +58,28 @@ struct Query {
 
   std::unique_ptr<GlobTree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator
-  int glob_flags{0};
+  int glob_flags = 0;
 
-  std::chrono::milliseconds sync_timeout{0};
-  uint32_t lock_timeout{0};
+  struct SettleTimeouts {
+    std::chrono::milliseconds settle_period;
+    std::chrono::milliseconds settle_timeout;
+  };
+
+  /**
+   * If set, the query will wait for a period of no new watcher events, up until
+   * the specified timeout.
+   */
+  std::optional<SettleTimeouts> settle_timeouts;
+
+  /**
+   * How long this query should attempt to wait for a cookie file to be
+   * observed.
+   *
+   * If zero, no syncing is performed.
+   */
+  std::chrono::milliseconds sync_timeout;
+
+  uint32_t lock_timeout = 0;
 
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have

@@ -994,6 +994,14 @@ class EdenView final : public QueryableView {
     ctx->bumpNumWalked(fileInfo.size());
   }
 
+  folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds /*settle_period*/) override {
+    // We could implement this feature for EdenFS, but since the
+    // Watchman-EdenFS integration is correct and waitForSettle is a workaround
+    // for broken filesystem notification APIs, do nothing for now.
+    return folly::unit;
+  }
+
   CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>&,
       std::chrono::milliseconds) override {

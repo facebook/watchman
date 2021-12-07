@@ -985,6 +985,21 @@ void InMemoryView::wakeThreads() {
   pendingFromWatcher_.lock()->ping();
 }
 
+folly::SemiFuture<folly::Unit> InMemoryView::waitForSettle(
+    std::chrono::milliseconds settle_period) {
+  auto [p, f] = folly::makePromiseContract<folly::Unit>();
+  pendingSettles_.withWLock(
+      [&, p = std::move(p)](auto& pendingSettles) mutable {
+        pendingSettles.insert(std::make_pair(settle_period, std::move(p)));
+      });
+
+  // iothread might be waiting, so wake it so it sees the new entry in
+  // pendingSettles_.
+  pendingFromWatcher_.lock()->ping();
+
+  return std::move(f);
+}
+
 /* Ensure that we're synchronized with the state of the
  * filesystem at the current time.
  * We do this by touching a cookie file and waiting to

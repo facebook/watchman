@@ -88,6 +88,11 @@ InMemoryView::Continue InMemoryView::doSettleThings(
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
+  std::chrono::milliseconds sinceUnsettle = state.lastUnsettle
+      ? std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - *state.lastUnsettle)
+      : std::chrono::milliseconds{0};
+
   warmContentCache();
 
   root.unilateralResponses->enqueue(json_object({{"settled", json_true()}}));
@@ -97,8 +102,28 @@ InMemoryView::Continue InMemoryView::doSettleThings(
     return Continue::Stop;
   }
 
-  state.currentTimeout =
-      std::min(state.biggestTimeout, state.currentTimeout * 2);
+  std::optional<std::chrono::milliseconds> nextPendingSettle;
+
+  {
+    auto pendingSettles = pendingSettles_.wlock();
+    auto iter = pendingSettles->begin();
+    while (iter != pendingSettles->end() && iter->first <= sinceUnsettle) {
+      auto node = pendingSettles->extract(iter++);
+      node.mapped().setValue();
+    }
+
+    if (iter != pendingSettles->end()) {
+      nextPendingSettle = iter->first;
+    }
+  }
+
+  if (nextPendingSettle) {
+    // There is another settle pending, so only wait until then.
+    state.currentTimeout = *nextPendingSettle - sinceUnsettle;
+  } else {
+    state.currentTimeout =
+        std::min(state.biggestTimeout, state.currentTimeout * 2);
+  }
 
   root.considerAgeOut();
   return Continue::Continue;
@@ -144,6 +169,7 @@ InMemoryView::Continue InMemoryView::stepIoThread(
   }
 
   auto markUnsettled = [&](IoThreadState& state) {
+    state.lastUnsettle = std::chrono::steady_clock::now();
     // Reduce sleep timeout to the settle duration ready for the next loop
     // through.
     state.currentTimeout = root->trigger_settle;
@@ -200,8 +226,6 @@ InMemoryView::Continue InMemoryView::stepIoThread(
 
   // Otherwise we have pending items to stat and crawl
 
-  markUnsettled(state);
-
   // Some Linux kernels between 5.3 and 5.6 will report inotify events before
   // the file has been evicted from the cache, causing Watchman to incorrectly
   // think the file is still on disk after it's unlinked. If configured, allow
@@ -223,6 +247,10 @@ InMemoryView::Continue InMemoryView::stepIoThread(
     logf(ERR, "recrawl complete, aborting all pending cookies\n");
     root->cookies.abortAllCookies();
   }
+
+  // Always mark unsettled after processing events because settle durations
+  // should only include idle time, not time spent processing events.
+  markUnsettled(state);
   return Continue::Continue;
 }
 

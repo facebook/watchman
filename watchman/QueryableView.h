@@ -51,6 +51,9 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
   virtual void ageOut(PerfSample& sample, std::chrono::seconds minAge);
+
+  virtual folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds settle_period) = 0;
   virtual CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) = 0;

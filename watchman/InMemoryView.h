@@ -7,6 +7,7 @@
 
 #pragma once
 #include <folly/Synchronized.h>
+#include <map>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -170,6 +171,9 @@ class InMemoryView final : public QueryableView {
   }
 
   void ageOut(PerfSample& sample, std::chrono::seconds minAge) override;
+
+  folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds settle_period) override;
   CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) override;
@@ -329,6 +333,9 @@ class InMemoryView final : public QueryableView {
 
     PendingChanges localPending;
     std::chrono::milliseconds currentTimeout;
+
+    // When the iothread last processed a pending event from the Watcher.
+    std::optional<std::chrono::steady_clock::time_point> lastUnsettle;
   };
 
   // Returns a reference to the ViewDatabase without synchronizing on the mutex.
@@ -372,6 +379,17 @@ class InMemoryView final : public QueryableView {
   // This is system_clock instead of steady_clock because it's compared with a
   // file's otime.
   std::chrono::system_clock::time_point lastAgeOutTimestamp_{};
+
+  using PendingSettles =
+      std::multimap<std::chrono::milliseconds, folly::Promise<folly::Unit>>;
+
+  /**
+   * Holds promises that are fulfilled when the IO thread has settled for the
+   * desired amount of time.
+   *
+   * Sorted by settle period.
+   */
+  folly::Synchronized<PendingSettles> pendingSettles_;
 
   /*
    * Queue of items that we need to stat/process.

@@ -6,6 +6,7 @@
  */
 
 #include "watchman/query/eval.h"
+#include <fmt/chrono.h>
 #include <folly/ScopeGuard.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
@@ -382,6 +383,17 @@ QueryResult w_query_execute(
   SCOPE_EXIT {
     root->queries.wlock()->erase(&ctx);
   };
+  if (query->settle_timeouts) {
+    auto future = root->waitForSettle(query->settle_timeouts->settle_period);
+    try {
+      std::move(future).get(query->settle_timeouts->settle_timeout);
+    } catch (const folly::FutureTimeout&) {
+      throw QueryExecError(fmt::format(
+          "waitForSettle: timed out waiting for settle {} in {}",
+          query->settle_timeouts->settle_period,
+          query->settle_timeouts->settle_timeout));
+    }
+  }
   if (query->sync_timeout.count()) {
     ctx.state = QueryContextState::WaitingForCookieSync;
     ctx.stopWatch.reset();
