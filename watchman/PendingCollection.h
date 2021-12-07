@@ -209,10 +209,9 @@ class PendingCollection
    * If previously pinged or non-empty, returns a locked PendingCollectionBase.
    * Otherwise, waits up to timeoutms (or indefinitely if -1 ms) for a ping().
    *
-   * pinged is set to true if pinged or non-empty. The internal pinged state is
-   * always false after this call.
+   * The internal pinged state is always false after this call.
    */
-  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
+  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms);
 
  private:
   // Notified on ping().

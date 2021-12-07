@@ -169,12 +169,11 @@ InMemoryView::Continue InMemoryView::stepIoThread(
 
   // Wait for the notify thread to give us pending items, or for
   // the settle period to expire
-  bool pinged;
   {
     logf(DBG, "poll_events timeout={}ms\n", state.currentTimeout);
     auto targetPendingLock =
-        pendingFromWatcher.lockAndWait(state.currentTimeout, pinged);
-    logf(DBG, " ... wake up (pinged={})\n", pinged);
+        pendingFromWatcher.lockAndWait(state.currentTimeout);
+    logf(DBG, " ... wake up\n");
     state.localPending.append(
         targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
   }
@@ -188,8 +187,9 @@ InMemoryView::Continue InMemoryView::stepIoThread(
     return Continue::Continue;
   }
 
-  // Waiting for an event timed out, so consider the root settled.
-  if (!pinged && state.localPending.empty()) {
+  // Waiting for an event timed out or we were woken with a ping, so still
+  // consider the root settled.
+  if (state.localPending.empty()) {
     if (Continue::Stop == doSettleThings(*root)) {
       return Continue::Stop;
     }

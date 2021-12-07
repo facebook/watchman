@@ -322,12 +322,10 @@ PendingCollection::PendingCollection()
           cond_} {}
 
 PendingCollection::LockedPtr PendingCollection::lockAndWait(
-    std::chrono::milliseconds timeoutms,
-    bool& pinged) {
+    std::chrono::milliseconds timeoutms) {
   auto lock = this->lock();
 
   if (lock->checkAndResetPinged()) {
-    pinged = true;
     return lock;
   }
 
@@ -337,8 +335,7 @@ PendingCollection::LockedPtr PendingCollection::lockAndWait(
     cond_.wait_for(lock.as_lock(), timeoutms);
   }
 
-  pinged = lock->checkAndResetPinged();
-
+  lock->checkAndResetPinged();
   return lock;
 }
 

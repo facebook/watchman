@@ -957,9 +957,7 @@ void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
   notifyThreadInstance.detach();
 
   // Wait for it to signal that the watcher has been initialized
-  bool pinged = false;
-  pendingFromWatcher_.lockAndWait(
-      std::chrono::milliseconds(-1) /* infinite */, pinged);
+  pendingFromWatcher_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */);
 
   // And now start the IO thread
   std::thread ioThreadInstance([self, root]() {
