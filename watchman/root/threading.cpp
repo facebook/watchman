@@ -47,31 +47,29 @@ void Root::stopThreads() {
 
 // Cancels a watch.
 bool Root::cancel() {
-  bool cancelled = false;
+  if (inner.cancelled.exchange(true, std::memory_order_acq_rel)) {
+    // Already cancelled. Return false.
+    return false;
+  }
 
-  if (!inner.cancelled) {
-    cancelled = true;
+  log(DBG, "marked ", root_path, " cancelled\n");
 
-    log(DBG, "marked ", root_path, " cancelled\n");
-    inner.cancelled = true;
+  // The client will fan this out to all matching subscriptions.
+  // This happens in listener.cpp.
+  unilateralResponses->enqueue(json_object(
+      {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
 
-    // The client will fan this out to all matching subscriptions.
-    // This happens in listener.cpp.
-    unilateralResponses->enqueue(json_object(
-        {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
+  stopThreads();
+  removeFromWatched();
 
-    stopThreads();
-    removeFromWatched();
-
-    {
-      auto map = triggers.rlock();
-      for (auto& it : *map) {
-        it.second->stop();
-      }
+  {
+    auto map = triggers.rlock();
+    for (auto& it : *map) {
+      it.second->stop();
     }
   }
 
-  return cancelled;
+  return true;
 }
 
 bool Root::stopWatch() {

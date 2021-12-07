@@ -179,7 +179,11 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
      * sometimes read it to produce log messages.
      */
     std::atomic<bool> done_initial{false};
-    bool cancelled{false};
+
+    /**
+     * Set if cancel() has been called. Once true, is never set to false.
+     */
+    std::atomic<bool> cancelled{false};
 
     /* map of cursor name => last observed tick value */
     folly::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;

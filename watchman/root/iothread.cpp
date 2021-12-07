@@ -117,7 +117,7 @@ bool InMemoryView::handleShouldRecrawl(Root& root) {
     }
   }
 
-  if (!root.inner.cancelled) {
+  if (!root.inner.cancelled.load(std::memory_order_acquire)) {
     auto info = root.recrawlInfo.wlock();
     info->recrawlCount++;
     root.inner.done_initial.store(false, std::memory_order_release);
