@@ -28,7 +28,7 @@ static bool parse_state_arg(
     struct watchman_client* client,
     const json_ref& args,
     struct state_arg* parsed) {
-  parsed->sync_timeout = DEFAULT_QUERY_SYNC_MS;
+  parsed->sync_timeout = kDefaultQuerySyncTimeout;
   parsed->metadata = nullptr;
   parsed->name = nullptr;
 

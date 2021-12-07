@@ -516,7 +516,7 @@ static void cmd_subscribe(
 
   query_spec = args.at(3);
 
-  query = w_query_parse(root, query_spec);
+  query = parseQuery(root, query_spec);
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
   query->subscriptionName = json_to_w_string(jname);
 

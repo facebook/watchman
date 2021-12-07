@@ -24,7 +24,7 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   const auto& query_spec = args.at(2);
-  auto query = w_query_parse(root, query_spec);
+  auto query = parseQuery(root, query_spec);
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
   if (client->client_mode) {

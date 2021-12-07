@@ -18,7 +18,10 @@
 #include "watchman/watchman_file.h"
 
 using std::make_unique;
-using namespace watchman;
+
+namespace watchman {
+
+namespace {
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
@@ -42,7 +45,7 @@ W_CAP_REG("glob_generator")
 // Look ahead in pattern; we want to find the directory separator.
 // While we are looking, check for wildmatch special characters.
 // If we do not find a directory separator, return NULL.
-static inline const char* find_sep_and_specials(
+const char* find_sep_and_specials(
     const char* pattern,
     const char* end,
     bool* had_specials) {
@@ -67,7 +70,7 @@ static inline const char* find_sep_and_specials(
 // Simple brute force lookup of pattern within a node.
 // This is run at compile time and most glob sets are low enough cardinality
 // that this doesn't turn out to be a hot spot in practice.
-static GlobTree* lookup_node_child(
+GlobTree* lookup_node_child(
     std::vector<std::unique_ptr<GlobTree>>* vec,
     const char* pattern,
     uint32_t pattern_len) {
@@ -83,7 +86,7 @@ static GlobTree* lookup_node_child(
 // Compile and add a new glob pattern to the tree.
 // Compilation splits a pattern into nodes, with one node for each directory
 // separator separated path component.
-static bool add_glob(GlobTree* tree, const w_string& glob_str) {
+bool add_glob(GlobTree* tree, const w_string& glob_str) {
   GlobTree* parent = tree;
   const char* pattern = glob_str.data();
   const char* pattern_end = pattern + glob_str.size();
@@ -145,6 +148,8 @@ static bool add_glob(GlobTree* tree, const w_string& glob_str) {
 
   return true;
 }
+
+} // namespace
 
 void parse_globs(Query* res, const json_ref& query) {
   size_t i;
@@ -235,5 +240,4 @@ void parse_suffixes(Query* res, const json_ref& query) {
   }
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

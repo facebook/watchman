@@ -12,17 +12,15 @@
 #include "watchman/query/QueryContext.h"
 #include "watchman/watchman_time.h"
 
-using namespace watchman;
+namespace watchman {
 
-static std::optional<json_ref> make_name(
-    FileResult* file,
-    const QueryContext* ctx) {
+namespace {
+
+std::optional<json_ref> make_name(FileResult* file, const QueryContext* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static std::optional<json_ref> make_symlink(
-    FileResult* file,
-    const QueryContext*) {
+std::optional<json_ref> make_symlink(FileResult* file, const QueryContext*) {
   auto target = file->readLink();
   if (!target.has_value()) {
     return std::nullopt;
@@ -30,9 +28,7 @@ static std::optional<json_ref> make_symlink(
   return *target ? w_string_to_json(*target) : json_null();
 }
 
-static std::optional<json_ref> make_sha1_hex(
-    FileResult* file,
-    const QueryContext*) {
+std::optional<json_ref> make_sha1_hex(FileResult* file, const QueryContext*) {
   try {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
@@ -66,9 +62,7 @@ static std::optional<json_ref> make_sha1_hex(
   }
 }
 
-static std::optional<json_ref> make_size(
-    FileResult* file,
-    const QueryContext*) {
+std::optional<json_ref> make_size(FileResult* file, const QueryContext*) {
   auto size = file->size();
   if (!size.has_value()) {
     return std::nullopt;
@@ -76,9 +70,7 @@ static std::optional<json_ref> make_size(
   return json_integer(size.value());
 }
 
-static std::optional<json_ref> make_exists(
-    FileResult* file,
-    const QueryContext*) {
+std::optional<json_ref> make_exists(FileResult* file, const QueryContext*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
     return std::nullopt;
@@ -86,9 +78,7 @@ static std::optional<json_ref> make_exists(
   return json_boolean(exists.value());
 }
 
-static std::optional<json_ref> make_new(
-    FileResult* file,
-    const QueryContext* ctx) {
+std::optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
   bool is_new = false;
 
   if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
@@ -205,9 +195,7 @@ MAKE_INT_FIELD(nlink, nlink)
   { #type "time_f", make_##type##time_f}
 // clang-format on
 
-static std::optional<json_ref> make_type_field(
-    FileResult* file,
-    const QueryContext*) {
+std::optional<json_ref> make_type_field(FileResult* file, const QueryContext*) {
   auto dtype = file->dtype();
   if (dtype.has_value()) {
     switch (*dtype) {
@@ -276,7 +264,7 @@ static std::optional<json_ref> make_type_field(
 }
 
 // Helper to construct the list of field defs
-static std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
+std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
   struct {
     const char* name;
     std::optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
@@ -311,10 +299,12 @@ static std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
 
 // Meyers singleton to avoid SIOF wrt. static constructors in this module
 // and the order that w_ctor_fn callbacks are dispatched.
-static std::unordered_map<w_string, QueryFieldRenderer>& field_defs() {
+std::unordered_map<w_string, QueryFieldRenderer>& field_defs() {
   static std::unordered_map<w_string, QueryFieldRenderer> map(build_defs());
   return map;
 }
+
+} // namespace
 
 void QueryFieldList::add(const w_string& name) {
   auto& defs = field_defs();
@@ -366,13 +356,16 @@ void parse_field_list(json_ref field_list, QueryFieldList* selected) {
   }
 }
 
-static w_ctor_fn_type(register_field_capabilities) {
-  for (auto& it : field_defs()) {
-    char capname[128];
-    snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
-    capability_register(capname);
+namespace {
+struct register_field_capabilities {
+  register_field_capabilities() {
+    for (auto& it : field_defs()) {
+      char capname[128];
+      snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
+      capability_register(capname);
+    }
   }
-}
+} reg;
+} // namespace
 
-// This is at the bottom because it confuses clang-format for things that follow
-w_ctor_fn_reg(register_field_capabilities)
+} // namespace watchman

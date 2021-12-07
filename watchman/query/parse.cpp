@@ -14,9 +14,11 @@
 #include "watchman/query/TermRegistry.h"
 #include "watchman/root/Root.h"
 
-using namespace watchman;
+namespace watchman {
 
-static bool parse_since(Query* res, const json_ref& query) {
+namespace {
+
+bool parse_since(Query* res, const json_ref& query) {
   auto since = query.get_default("since");
   if (!since) {
     return true;
@@ -32,7 +34,7 @@ static bool parse_since(Query* res, const json_ref& query) {
   throw QueryParseError("invalid value for 'since'");
 }
 
-static bool parse_paths(Query* res, const json_ref& query) {
+bool parse_paths(Query* res, const json_ref& query) {
   size_t i;
 
   auto paths = query.get_default("path");
@@ -80,7 +82,7 @@ static bool parse_paths(Query* res, const json_ref& query) {
 
 W_CAP_REG("relative_root")
 
-static void parse_relative_root(
+void parse_relative_root(
     const std::shared_ptr<Root>& root,
     Query* res,
     const json_ref& query) {
@@ -107,7 +109,7 @@ static void parse_relative_root(
   res->relative_root_slash = w_string::build(res->relative_root, "/");
 }
 
-static void parse_query_expression(Query* res, const json_ref& query) {
+void parse_query_expression(Query* res, const json_ref& query) {
   auto exp = query.get_default("expression");
   if (!exp) {
     // Empty expression means that we emit all generated files
@@ -117,7 +119,7 @@ static void parse_query_expression(Query* res, const json_ref& query) {
   res->expr = parseQueryExpr(res, exp);
 }
 
-static void parse_request_id(Query* res, const json_ref& query) {
+void parse_request_id(Query* res, const json_ref& query) {
   auto request_id = query.get_default("request_id");
   if (!request_id) {
     return;
@@ -130,9 +132,12 @@ static void parse_request_id(Query* res, const json_ref& query) {
   res->request_id = json_to_w_string(request_id);
 }
 
-static void parse_sync(Query* res, const json_ref& query) {
+void parse_sync(Query* res, const json_ref& query) {
   auto sync_timeout = query.get_default(
-      "sync_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
+      "sync_timeout",
+      json_integer(std::chrono::duration_cast<std::chrono::milliseconds>(
+                       kDefaultQuerySyncTimeout)
+                       .count()));
 
   if (!sync_timeout.isInt()) {
     throw QueryParseError("sync_timeout must be an integer value >= 0");
@@ -147,9 +152,12 @@ static void parse_sync(Query* res, const json_ref& query) {
   res->sync_timeout = std::chrono::milliseconds(value);
 }
 
-static void parse_lock_timeout(Query* res, const json_ref& query) {
+void parse_lock_timeout(Query* res, const json_ref& query) {
   auto lock_timeout = query.get_default(
-      "lock_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
+      "lock_timeout",
+      json_integer(std::chrono::duration_cast<std::chrono::milliseconds>(
+                       kDefaultQuerySyncTimeout)
+                       .count()));
 
   if (!lock_timeout.isInt()) {
     throw QueryParseError("lock_timeout must be an integer value >= 0");
@@ -164,8 +172,10 @@ static void parse_lock_timeout(Query* res, const json_ref& query) {
   res->lock_timeout = value;
 }
 
-static bool
-parse_bool_param(const json_ref& query, const char* name, bool default_value) {
+bool parse_bool_param(
+    const json_ref& query,
+    const char* name,
+    bool default_value) {
   auto value = query.get_default(name, json_boolean(default_value));
   if (!value.isBool()) {
     throw QueryParseError(folly::to<std::string>(name, " must be a boolean"));
@@ -176,33 +186,31 @@ parse_bool_param(const json_ref& query, const char* name, bool default_value) {
 
 W_CAP_REG("dedup_results")
 
-static void parse_dedup(Query* res, const json_ref& query) {
+void parse_dedup(Query* res, const json_ref& query) {
   res->dedup_results = parse_bool_param(query, "dedup_results", false);
 }
 
-static void parse_fail_if_no_saved_state(Query* res, const json_ref& query) {
+void parse_fail_if_no_saved_state(Query* res, const json_ref& query) {
   res->fail_if_no_saved_state =
       parse_bool_param(query, "fail_if_no_saved_state", false);
 }
 
-static void parse_omit_changed_files(Query* res, const json_ref& query) {
+void parse_omit_changed_files(Query* res, const json_ref& query) {
   res->omit_changed_files =
       parse_bool_param(query, "omit_changed_files", false);
 }
 
-static void parse_empty_on_fresh_instance(Query* res, const json_ref& query) {
+void parse_empty_on_fresh_instance(Query* res, const json_ref& query) {
   res->empty_on_fresh_instance =
       parse_bool_param(query, "empty_on_fresh_instance", false);
 }
 
-static void parse_always_include_directories(
-    Query* res,
-    const json_ref& query) {
+void parse_always_include_directories(Query* res, const json_ref& query) {
   res->alwaysIncludeDirectories =
       parse_bool_param(query, "always_include_directories", false);
 }
 
-static void parse_benchmark(Query* res, const json_ref& query) {
+void parse_benchmark(Query* res, const json_ref& query) {
   // Preserve behavior by supporting a boolean value. Also support int values.
   auto bench = query.get_default("bench");
   if (bench) {
@@ -214,7 +222,7 @@ static void parse_benchmark(Query* res, const json_ref& query) {
   }
 }
 
-static void parse_case_sensitive(
+void parse_case_sensitive(
     Query* res,
     const std::shared_ptr<Root>& root,
     const json_ref& query) {
@@ -227,7 +235,9 @@ static void parse_case_sensitive(
                                        : CaseSensitivity::CaseInSensitive;
 }
 
-std::shared_ptr<Query> w_query_parse(
+} // namespace
+
+std::shared_ptr<Query> parseQuery(
     const std::shared_ptr<Root>& root,
     const json_ref& query) {
   auto result = std::make_shared<Query>();
@@ -297,7 +307,7 @@ void w_query_legacy_field_list(QueryFieldList* flist) {
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
-std::shared_ptr<Query> w_query_parse_legacy(
+std::shared_ptr<Query> parseQueryLegacy(
     const std::shared_ptr<Root>& root,
     const json_ref& args,
     int start,
@@ -414,7 +424,7 @@ std::shared_ptr<Query> w_query_parse_legacy(
   }
 
   /* compose the query with the field list */
-  auto query = w_query_parse(root, query_obj);
+  auto query = parseQuery(root, query_obj);
 
   if (expr_p) {
     *expr_p = query_obj;
@@ -427,5 +437,4 @@ std::shared_ptr<Query> w_query_parse_legacy(
   return query;
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

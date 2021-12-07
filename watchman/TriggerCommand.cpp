@@ -307,7 +307,7 @@ TriggerCommand::TriggerCommand(
     json_object_set_nocheck(queryDef, "relative_root", relative_root);
   }
 
-  query = w_query_parse(root, queryDef);
+  query = parseQuery(root, queryDef);
   if (!query) {
     return;
   }

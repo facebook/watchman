@@ -24,7 +24,7 @@ static void cmd_find(struct watchman_client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  auto query = w_query_parse_legacy(root, args, 2, nullptr, nullptr, nullptr);
+  auto query = parseQueryLegacy(root, args, 2, nullptr, nullptr, nullptr);
   if (client->client_mode) {
     query->sync_timeout = std::chrono::milliseconds(0);
   }
