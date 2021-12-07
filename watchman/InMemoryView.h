@@ -349,7 +349,6 @@ class InMemoryView final : public QueryableView {
       PendingCollection& pendingFromWatcher);
 
  private:
-  bool handleShouldRecrawl(Root& root);
   void fullCrawl(
       const std::shared_ptr<Root>& root,
       PendingCollection& pendingFromWatcher,

@@ -151,10 +151,10 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
 
   struct RecrawlInfo {
     /* how many times we've had to recrawl */
-    int recrawlCount{0};
+    uint64_t recrawlCount = 0;
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
-    bool shouldRecrawl{true};
+    bool shouldRecrawl = true;
     // Last ad-hoc warning message
     w_string warning;
     std::chrono::steady_clock::time_point crawlStart;

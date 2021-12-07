@@ -976,7 +976,7 @@ void InMemoryView::startThreads(const std::shared_ptr<Root>& root) {
 
 void InMemoryView::stopThreads() {
   logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), rootPath_);
-  stopThreads_ = true;
+  stopThreads_.store(true, std::memory_order_release);
   watcher_->stopThreads();
   pendingFromWatcher_.lock()->ping();
 }

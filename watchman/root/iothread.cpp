@@ -109,23 +109,6 @@ void InMemoryView::clientModeCrawl(const std::shared_ptr<Root>& root) {
   fullCrawl(root, pendingFromWatcher_, pending);
 }
 
-bool InMemoryView::handleShouldRecrawl(Root& root) {
-  {
-    auto info = root.recrawlInfo.rlock();
-    if (!info->shouldRecrawl) {
-      return false;
-    }
-  }
-
-  if (!root.inner.cancelled.load(std::memory_order_acquire)) {
-    auto info = root.recrawlInfo.wlock();
-    info->recrawlCount++;
-    root.inner.done_initial.store(false, std::memory_order_release);
-  }
-
-  return true;
-}
-
 namespace {
 
 std::chrono::milliseconds getBiggestTimeout(const Root& root) {
@@ -178,12 +161,20 @@ InMemoryView::Continue InMemoryView::stepIoThread(
         targetPendingLock->stealItems(), targetPendingLock->stealSyncs());
   }
 
-  // Do we need to recrawl?
-  if (handleShouldRecrawl(*root)) {
-    // TODO: can this just continue? handleShouldRecrawl sets done_initial to
-    // false.
-    fullCrawl(root, pendingFromWatcher, state.localPending);
-    state.currentTimeout = root->trigger_settle;
+  if (root->inner.cancelled.load(std::memory_order_acquire)) {
+    // The root was cancelled. Root::cancel will call stopThreads() soon, so
+    // just exit early.
+    return Continue::Stop;
+  }
+
+  // Has a Watcher indicated this root needs a recrawl?
+  // TODO: scheduleRecrawl should be replaced with a regular event published in
+  // the PendingCollection.
+  if (root->recrawlInfo.rlock()->shouldRecrawl) {
+    auto info = root->recrawlInfo.wlock();
+    info->recrawlCount++;
+    root->inner.done_initial.store(false, std::memory_order_release);
+    // Now that done_initial is false, the next pass will recrawl.
     return Continue::Continue;
   }
 
@@ -270,7 +261,7 @@ InMemoryView::IsDesynced InMemoryView::processAllPending(
     }
 
     while (pending) {
-      if (!stopThreads_) {
+      if (!stopThreads_.load(std::memory_order_acquire)) {
         if (pending->flags & W_PENDING_IS_DESYNCED) {
           // The watcher is desynced but some cookies might be written to disk
           // while the recursive crawl is ongoing. We are going to specifically

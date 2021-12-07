@@ -34,7 +34,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<Root>& root) {
   // io thread after this point
   pendingFromWatcher_.lock()->ping();
 
-  while (!stopThreads_) {
+  while (!stopThreads_.load(std::memory_order_acquire)) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
     if (!watcher_->waitNotify(86400)) {
