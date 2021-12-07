@@ -82,14 +82,11 @@ void InMemoryView::fullCrawl(
   logf(ERR, "{}crawl complete\n", recrawlCount ? "re" : "");
 }
 
-InMemoryView::Continue InMemoryView::doSettleThings(Root& root) {
+InMemoryView::Continue InMemoryView::doSettleThings(
+    Root& root,
+    IoThreadState& state) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
-
-  if (!root.inner.done_initial.load(std::memory_order_acquire)) {
-    // we need to recrawl, stop what we're doing here
-    return Continue::Continue;
-  }
 
   warmContentCache();
 
@@ -99,6 +96,9 @@ InMemoryView::Continue InMemoryView::doSettleThings(Root& root) {
     root.stopWatch();
     return Continue::Stop;
   }
+
+  state.currentTimeout =
+      std::min(state.biggestTimeout, state.currentTimeout * 2);
 
   root.considerAgeOut();
   return Continue::Continue;
@@ -143,11 +143,18 @@ InMemoryView::Continue InMemoryView::stepIoThread(
     return Continue::Stop;
   }
 
+  auto markUnsettled = [&](IoThreadState& state) {
+    // Reduce sleep timeout to the settle duration ready for the next loop
+    // through.
+    state.currentTimeout = root->trigger_settle;
+  };
+
   if (!root->inner.done_initial.load(std::memory_order_acquire)) {
     /* first order of business is to find all the files under our root */
     fullCrawl(root, pendingFromWatcher, state.localPending);
 
-    state.currentTimeout = root->trigger_settle;
+    markUnsettled(state);
+    return Continue::Continue;
   }
 
   // Wait for the notify thread to give us pending items, or for
@@ -178,27 +185,27 @@ InMemoryView::Continue InMemoryView::stepIoThread(
     return Continue::Continue;
   }
 
+  // fullCrawl unconditionally sets done_initial to true and if
+  // handleShouldRecrawl set it false, execution wouldn't reach this part of
+  // the loop.
+  w_check(
+      root->inner.done_initial.load(std::memory_order_acquire),
+      "A full crawl should not be pending at this point in the loop.");
+
   // Waiting for an event timed out or we were woken with a ping, so still
   // consider the root settled.
   if (state.localPending.empty()) {
-    if (Continue::Stop == doSettleThings(*root)) {
-      return Continue::Stop;
-    }
-    state.currentTimeout =
-        std::min(state.biggestTimeout, state.currentTimeout * 2);
-    return Continue::Continue;
+    return doSettleThings(*root, state);
   }
 
   // Otherwise we have pending items to stat and crawl
 
-  // We are now, by definition, unsettled, so reduce sleep timeout
-  // to the settle duration ready for the next loop through
-  state.currentTimeout = root->trigger_settle;
+  markUnsettled(state);
 
-  // Some Linux 5.6 kernels will report inotify events before the file has
-  // been evicted from the cache, causing Watchman to incorrectly think the
-  // file is still on disk after it's unlinked. If configured, allow a brief
-  // sleep to mitigate.
+  // Some Linux kernels between 5.3 and 5.6 will report inotify events before
+  // the file has been evicted from the cache, causing Watchman to incorrectly
+  // think the file is still on disk after it's unlinked. If configured, allow
+  // a brief sleep to mitigate.
   //
   // Careful with this knob: it adds latency to every query by delaying cookie
   // processing.
@@ -208,13 +215,6 @@ InMemoryView::Continue InMemoryView::stepIoThread(
   }
 
   auto view = view_.wlock();
-
-  // fullCrawl unconditionally sets done_initial to true and if
-  // handleShouldRecrawl set it false, execution wouldn't reach this part of
-  // the loop.
-  w_check(
-      root->inner.done_initial.load(std::memory_order_acquire),
-      "A full crawl should not be pending at this point in the loop.");
 
   mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 

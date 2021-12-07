@@ -356,7 +356,7 @@ class InMemoryView final : public QueryableView {
 
   // Performs settle-time actions.
   // Returns whether the root was reaped and the IO thread should terminate.
-  Continue doSettleThings(Root& root);
+  Continue doSettleThings(Root& root, IoThreadState& state);
 
   FileSystem& fileSystem_;
   const Configuration config_;
