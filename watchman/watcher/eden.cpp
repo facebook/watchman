@@ -49,6 +49,7 @@ using facebook::eden::GlobParams;
 using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
+using facebook::eden::SyncBehavior;
 using folly::AsyncSocket;
 using folly::to;
 using std::make_unique;
@@ -84,6 +85,15 @@ DType getDTypeFromEden(EdenDtype dtype) {
   }
   return DType::Unknown;
 }
+
+SyncBehavior getSyncBehavior() {
+  // Use a no-sync behavior as syncToNow will be called if a synchronization is
+  // necessary which will do the proper synchronization.
+  auto sync = SyncBehavior{};
+  sync.syncTimeoutSeconds_ref() = 0;
+  return sync;
+}
+
 } // namespace
 
 namespace watchman {
@@ -415,7 +425,8 @@ class EdenFileResult : public FileResult {
 
     if (!getShaFiles.empty()) {
       std::vector<SHA1Result> sha1s;
-      client->sync_getSHA1(sha1s, std::string{rootPath_.view()}, getShaNames);
+      client->sync_getSHA1(
+          sha1s, std::string{rootPath_.view()}, getShaNames, getSyncBehavior());
 
       if (sha1s.size() != getShaFiles.size()) {
         log(ERR,
@@ -502,7 +513,7 @@ class EdenFileResult : public FileResult {
       std::vector<EntryInformationOrError> info;
       try {
         client->sync_getEntryInformation(
-            info, std::string{rootPath.view()}, names);
+            info, std::string{rootPath.view()}, names, getSyncBehavior());
         applyResults(info);
         return;
       } catch (const TApplicationException& ex) {
@@ -516,7 +527,8 @@ class EdenFileResult : public FileResult {
     }
 
     std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, std::string{rootPath.view()}, names);
+    client->sync_getFileInformation(
+        info, std::string{rootPath.view()}, names, getSyncBehavior());
     applyResults(info);
   }
 
@@ -682,6 +694,7 @@ std::vector<NameAndDType> globNameAndDType(
       params.globs_ref() = std::vector<std::string>{globPattern};
       params.includeDotfiles_ref() = includeDotfiles;
       params.wantDtype_ref() = true;
+      params.sync_ref() = getSyncBehavior();
 
       globFutures.emplace_back(
           client->semifuture_globFiles(params).via(executor));
@@ -699,6 +712,7 @@ std::vector<NameAndDType> globNameAndDType(
     params.globs_ref() = globPatterns;
     params.includeDotfiles_ref() = includeDotfiles;
     params.wantDtype_ref() = true;
+    params.sync_ref() = getSyncBehavior();
 
     Glob glob;
     client->sync_globFiles(glob, params);
@@ -1004,10 +1018,22 @@ class EdenView final : public QueryableView {
 
   CookieSync::SyncResult syncToNow(
       const std::shared_ptr<Root>&,
-      std::chrono::milliseconds) override {
-    // TODO: on FUSE and NFS, where all writes give synchronous notifications to
-    // the EdenFS daemon, cookie files are not necessary, and could be replaced
-    // with a Thrift call here.
+      std::chrono::milliseconds timeout) override {
+    auto client = getEdenClient(thriftChannel_);
+    try {
+      client
+          ->semifuture_synchronizeWorkingCopy(
+              mountPoint_, facebook::eden::SynchronizeWorkingCopyParams{})
+          .get(timeout);
+    } catch (const folly::FutureTimeout& ex) {
+      throw std::system_error(ETIMEDOUT, std::generic_category(), ex.what());
+    } catch (const TApplicationException& ex) {
+      if (ex.getType() != TApplicationException::UNKNOWN_METHOD) {
+        throw;
+      }
+
+      // On older EdenFS version, no synchronization is needed.
+    }
     return {};
   }
 

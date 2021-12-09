@@ -277,12 +277,41 @@ union FileAttributeDataOrError {
 }
 
 /**
+ *
+ * Ensure that all inflight working copy modification have completed.
+ *
+ * On some platforms, EdenFS is processing working copy modifications
+ * callbacks from the platform in an asynchronous manner, which means that by
+ * the time a write/creat/mkdir/unlink/etc syscall returns from the kernel,
+ * EdenFS may not have updated its internal state.
+ *
+ * Thus, an application making changes to the working copy and quickly
+ * requesting EdenFS to perform an operation on it will race with EdenFS
+ * updating its internal state and may thus get stale data.
+ *
+ * To avoid this, EdenFS queries need to internally synchronize the working
+ * copy before performing the query itself. This structure defines how EdenFS
+ * will do this.
+ *
+ * Applications that care about synchronizing EdenFS up to a certain point in
+ * time are expected to set a non-zero syncTimeout once to synchronize EdenFS
+ * and then issue all their thrift requests with a syncTimeout of 0.
+ */
+struct SyncBehavior {
+  // How many seconds to wait for the working copy to be synchronized. A value
+  // of 0 will not perform any working copy synchronization.
+  // If left unset, EdenFS will use a default synchronization timeout.
+  1: optional i64 syncTimeoutSeconds;
+}
+
+/**
  * Parameters for the getAttributesFromFiles() function
  */
 struct GetAttributesFromFilesParams {
   1: PathString mountPoint;
   2: list<PathString> paths;
   3: unsigned64 requestedAttributes;
+  4: SyncBehavior sync;
 }
 
 /**
@@ -829,6 +858,8 @@ struct GlobParams {
   // Note for Eden developers: when this is false the matchingFiles fileList
   // will not actually be the list that is fed into the backing store to prefetch.
   12: bool listOnlyFiles = false;
+  // Should this glob query also synchronize the working copy?
+  13: SyncBehavior sync;
 }
 
 struct Glob {
@@ -1007,6 +1038,10 @@ struct ResetParentCommitsParams {
   1: optional BinaryHash hgRootManifest;
 }
 
+struct SynchronizeWorkingCopyParams {
+  1: SyncBehavior sync;
+}
+
 service EdenService extends fb303_core.BaseService {
   list<MountInfo> listMounts() throws (1: EdenError ex);
   void mount(1: MountArgument info) throws (1: EdenError ex);
@@ -1033,6 +1068,8 @@ service EdenService extends fb303_core.BaseService {
    * point will point to the new snapshot, even if some paths had conflicts or
    * errors. The caller is responsible for taking appropriate action to update
    * these paths as desired after checkOutRevision() returns.
+   *
+   * Note: this internally synchronize the working copy.
    */
   list<CheckoutConflict> checkOutRevision(
     1: PathString mountPoint,
@@ -1054,16 +1091,50 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
+   * Ensure that all inflight working copy modification have completed.
+   *
+   * On some platforms, EdenFS is processing working copy modifications
+   * callbacks from the platform in an asynchronous manner, which means that by
+   * the time a write/creat/mkdir/unlink/etc syscall returns from the kernel,
+   * EdenFS may not have updated its internal state.
+   *
+   * Thus, an application making changes to the working copy and quickly
+   * requesting EdenFS to perform an operation on it will race with EdenFS
+   * updating its internal state and may thus get stale data.
+   *
+   * To avoid this, applications can call this method prior to issuing other
+   * Thrift requests (such as getSHA1, globFiles, etc) to wait for EdenFS to
+   * update its internal state. Applications that care about synchronizing
+   * EdenFS up to a certain point in time are expected to call this once and
+   * then issue all their thrift requests without synchronizing.
+   *
+   * As an alternative, applications may also set the SyncBehavior of a Thrift
+   * method to a non-zero value to achieve the same result.
+   *
+   * Some Thrift methods are implicitely synchronizing, their documentation
+   * will state it.
+   */
+  void synchronizeWorkingCopy(
+    1: PathString mountPoint,
+    2: SynchronizeWorkingCopyParams params,
+  ) throws (1: EdenError ex);
+
+  /**
    * For each path, returns an EdenError instead of the SHA-1 if any of the
    * following occur:
    * - path is the empty string.
    * - path identifies a non-existent file.
    * - path identifies something that is not an ordinary file (e.g., symlink
    *   or directory).
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   list<SHA1Result> getSHA1(
     1: PathString mountPoint,
     2: list<PathString> paths,
+    3: SyncBehavior sync,
   ) throws (1: EdenError ex);
 
   /**
@@ -1152,10 +1223,15 @@ service EdenService extends fb303_core.BaseService {
    * Returns the subset of information about a list of paths that can
    * be determined from each's parent directory tree. For now, that
    * includes whether the entry exists and its dtype.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   list<EntryInformationOrError> getEntryInformation(
     1: PathString mountPoint,
     2: list<PathString> paths,
+    3: SyncBehavior sync,
   ) throws (1: EdenError ex);
 
   /**
@@ -1165,16 +1241,25 @@ service EdenService extends fb303_core.BaseService {
    * We only support returning the instantaneous information about
    * these paths, as we cannot answer with historical information about
    * files in the overlay.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   list<FileInformationOrError> getFileInformation(
     1: PathString mountPoint,
     2: list<PathString> paths,
+    3: SyncBehavior sync,
   ) throws (1: EdenError ex);
 
   /**
    * Returns the requested file attributes for the provided list of files.
    * The result maps the files to attribute results which may be an EdenError
    * or a FileAttributeData struct.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   GetAttributesFromFilesResult getAttributesFromFiles(
     1: GetAttributesFromFilesParams params,
@@ -1182,6 +1267,9 @@ service EdenService extends fb303_core.BaseService {
 
   /**
    * DEPRECATED: Use globFiles().
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, see the
+   * documentation for that method.
    */
   list<PathString> glob(
     1: PathString mountPoint,
@@ -1192,6 +1280,10 @@ service EdenService extends fb303_core.BaseService {
    * Returns a list of files that match the GlobParams, notably,
    * the list of glob patterns.
    * There are no duplicate values in the result.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   Glob globFiles(1: GlobParams params) throws (1: EdenError ex);
 
@@ -1200,6 +1292,10 @@ service EdenService extends fb303_core.BaseService {
    * prefetching as specified by PredictiveGlobParams, and returns
    * a list of files matching the glob patterns.
    * There are no duplicate values in the result.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   Glob predictiveGlobFiles(1: GlobParams params) throws (1: EdenError ex);
 
@@ -1211,6 +1307,10 @@ service EdenService extends fb303_core.BaseService {
   /**
    * Return the list of files that are different from the specified source
    * control commit.
+   *
+   * Note: this internally synchronize the working copy and thus the returned
+   * data is guaranteed to return be the set of files that changed prior to
+   * calling this method.
    */
   GetScmStatusResult getScmStatusV2(1: GetScmStatusParams params) throws (
     1: EdenError ex,
@@ -1218,6 +1318,10 @@ service EdenService extends fb303_core.BaseService {
 
   /**
    * Get the status of the working directory against the specified commit.
+   *
+   * Note: this internally synchronize the working copy and thus the returned
+   * data is guaranteed to return be the set of files that changed prior to
+   * calling this method.
    *
    * DEPRECATED: Prefer using getScmStatusV2() in new code.  Callers may still
    * need to fall back to getScmStatus() if talking to an older edenfs daemon
@@ -1345,11 +1449,16 @@ service EdenService extends fb303_core.BaseService {
    *
    * This API cannot return data about inodes that have been unlinked but still
    * have outstanding references.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
    */
   list<TreeInodeDebugInfo> debugInodeStatus(
     1: PathString mountPoint,
     2: PathString path,
     3: i64 flags,
+    4: SyncBehavior sync,
   ) throws (1: EdenError ex);
 
   /**
