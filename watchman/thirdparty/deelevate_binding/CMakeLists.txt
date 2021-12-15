@@ -19,6 +19,7 @@ target_link_libraries(
   INTERFACE
   rust_deelevate
   Userenv.lib
+  Bcrypt.lib
 )
 
 install(
