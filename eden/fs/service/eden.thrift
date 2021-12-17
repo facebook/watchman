@@ -115,7 +115,11 @@ struct DaemonInfo {
   2: list<string> commandLine;
   /**
    * The service status.
-   * This is the same data reported by fb303_core.getStatus()
+   *
+   * This is almost the same value reported by
+   * fb303_core.BaseService.getStatus(). fb303_core.BaseService.getStatus()
+   * only returns the Thrift server status and does not understand mounts or
+   * graceful restarts.
    */
   3: optional fb303_core.fb303_status status;
   /**
