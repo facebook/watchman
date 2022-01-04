@@ -1,4 +1,4 @@
-# Copyright (c) 2014-present Facebook. All Rights Reserved.
+# Copyright (c) Meta Platforms, Inc. All Rights Reserved.
 
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)

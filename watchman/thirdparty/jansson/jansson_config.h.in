@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2010-2012 Petri Lehtinen <petri@digip.org>
- * Copyright 2012 Facebook, Inc. (modified to integrate with watchman)
+ * Copyright 2012 Meta Platforms, Inc. (modified to integrate with watchman)
  *
  * Jansson is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
