@@ -6,6 +6,9 @@ cmake
 
 [dependencies]
 ninja
+
+# We use the system openssl on linux
+[dependencies.not(os=linux)]
 openssl
 
 [download.os=windows]
