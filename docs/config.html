@@ -17,9 +17,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
+<meta property="article:published_time" content="2022-01-18T12:12:47-06:00" />
 <script type="application/ld+json">
-{"headline":"Configuration Files","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Watchman looks for configuration files in two places:","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"url":"https://facebook.github.io/watchman/docs/config.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
+{"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@type":"BlogPosting","description":"Watchman looks for configuration files in two places:","url":"https://facebook.github.io/watchman/docs/config.html","image":"https://facebook.github.io/watchman/static/og_image.png","headline":"Configuration Files","dateModified":"2022-01-18T12:12:47-06:00","datePublished":"2022-01-18T12:12:47-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -1042,6 +1042,11 @@ original strategy of recrawling the watched directory tree is used instead.</p>
 
 <p>The default changed to <code class="language-plaintext highlighter-rouge">true</code>.  In addition, this resync strategy is now
 also applied to <code class="language-plaintext highlighter-rouge">kFSEventStreamEventFlagKernelDropped</code> events.</p>
+
+<p><em>Since December 2021.</em></p>
+
+<p>The default changed to <code class="language-plaintext highlighter-rouge">false</code>. There are possible undiagnosed
+correctness issues with this setting.</p>
 
 <h3 id="prefer_split_fsevents_watcher">prefer_split_fsevents_watcher</h3>
 

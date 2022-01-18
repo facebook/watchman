@@ -17,9 +17,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
+<meta property="article:published_time" content="2022-01-18T12:12:47-06:00" />
 <script type="application/ld+json">
-{"headline":"query","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 1.6.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/query.html"},"url":"https://facebook.github.io/watchman/docs/cmd/query.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
+{"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@type":"BlogPosting","description":"Since 1.6.","url":"https://facebook.github.io/watchman/docs/cmd/query.html","image":"https://facebook.github.io/watchman/static/og_image.png","headline":"query","dateModified":"2022-01-18T12:12:47-06:00","datePublished":"2022-01-18T12:12:47-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/query.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -927,6 +927,19 @@ accelerated by using alternative algorithms.</p>
 }]
 </span><span class="no">EOT
 </span></code></pre></div></div>
+
+<h3 id="directory-events">Directory Events</h3>
+
+<p>Generally, Watchman should report changes to directories for all queries.</p>
+
+<p>On EdenFS repositories there is an exception. When the user has changed commits
+in the duration of a time query, directory changes may not be reported across
+those commit changes.</p>
+
+<p>the option <code class="language-plaintext highlighter-rouge">always_include_directories</code> exists to include events for directories
+across commit transitions. This is only supported for mercurial. This can be
+expensive, so clients who do not need this are recommended not to use this.
+This value defaults to false.</p>
 
     
   </article>

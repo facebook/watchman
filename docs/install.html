@@ -17,9 +17,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
+<meta property="article:published_time" content="2022-01-18T12:12:47-06:00" />
 <script type="application/ld+json">
-{"headline":"Installation","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"System Requirements","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
+{"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@type":"BlogPosting","description":"System Requirements","url":"https://facebook.github.io/watchman/docs/install.html","image":"https://facebook.github.io/watchman/static/og_image.png","headline":"Installation","dateModified":"2022-01-18T12:12:47-06:00","datePublished":"2022-01-18T12:12:47-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -749,15 +749,15 @@ to remove the beta label in the coming months.</p>
 <p>Watchman was built to support Windows Server 2012 R2 and later, but has
 had community-provided patches that enable support for Windows 7 and later.</p>
 
-<p>At this time, we recommend running the latest master build of watchman on
-Windows; see below for binary downloads!</p>
+<p>At this time, we recommend running the latest build of watchman on Windows; see
+below for binary downloads!</p>
 
 <p>If you encounter issues with the Windows version of watchman, please report
 them via GitHub!  <a href="https://github.com/facebook/watchman/issues?utf8=%E2%9C%93&amp;q=is%3Aopen+Windows">You can find the list of known Windows issues here</a>.</p>
 
 <h2 id="binary-downloads-for-linux-macos-and-windows-beta">Binary Downloads for Linux, macOS and Windows (Beta)</h2>
 
-<p><em>Note: binaries are built from master only.  We don’t provide binaries for v4.9.0</em></p>
+<p><em>Note: binaries are built from the main branch only.  We don’t provide binaries for v4.9.0</em></p>
 
 <p>Watchman is continuously deployed as it passes our internal test validation
 inside Facebook and doesn’t use manually assigned or “approved” version numbers.</p>
@@ -839,7 +839,7 @@ need to install <code class="language-plaintext highlighter-rouge">libfolly</cod
 <p>See below for some more information on options to configure your build.</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="c"># use the latest stable release</span>
-<span class="nv">$ </span>git clone https://github.com/facebook/watchman.git <span class="nt">-b</span> v4.9.0 <span class="nt">--depth</span> 1
+<span class="nv">$ </span>git clone https://github.com/facebook/watchman.git <span class="nt">-b</span> v2021.09.20.00 <span class="nt">--depth</span> 1
 <span class="nv">$ </span><span class="nb">cd </span>watchman
 <span class="nv">$ </span>./autogen.sh
 <span class="nv">$ </span>./configure

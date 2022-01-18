@@ -17,9 +17,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2021-08-27T15:31:54-07:00" />
+<meta property="article:published_time" content="2022-01-18T12:12:47-06:00" />
 <script type="application/ld+json">
-{"headline":"Source Control Aware Queries","dateModified":"2021-08-27T15:31:54-07:00","datePublished":"2021-08-27T15:31:54-07:00","@type":"BlogPosting","description":"Since 4.9.","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/scm-query.html"},"url":"https://facebook.github.io/watchman/docs/scm-query.html","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@context":"https://schema.org"}</script>
+{"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@type":"BlogPosting","description":"Since 4.9.","url":"https://facebook.github.io/watchman/docs/scm-query.html","image":"https://facebook.github.io/watchman/static/og_image.png","headline":"Source Control Aware Queries","dateModified":"2022-01-18T12:12:47-06:00","datePublished":"2022-01-18T12:12:47-06:00","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/scm-query.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -736,7 +736,7 @@ and use that to locate the pre-built data and process only the delta
 between that state and the current state of the repo.</p>
 
 <p>An illustration may help.  Here we see that a user has a stack of two commits
-based off the symbolic <code class="language-plaintext highlighter-rouge">master</code> commit.  In this scenario, <code class="language-plaintext highlighter-rouge">master</code> is tracking
+based off the symbolic <code class="language-plaintext highlighter-rouge">main</code> commit.  In this scenario, <code class="language-plaintext highlighter-rouge">main</code> is tracking
 the tip of the repo to which the local repo is published, and the user is
 checked out at the 6b38a5 commit:</p>
 
@@ -746,7 +746,7 @@ checked out at the 6b38a5 commit:</p>
 | o  fa2e92  wez
 |/   Add cat.jpg
 |
-o f12345 master
+o f12345 main
 </code></pre></div></div>
 
 <p>Now the user synchronizes their repo with the remote, fetching the commits but
@@ -754,7 +754,7 @@ not changing their work yet.   This is often combined with the step that follows
 but we are breaking it out here for the purposes of illustration.  This is
 equivalent to running <code class="language-plaintext highlighter-rouge">hg pull</code> or <code class="language-plaintext highlighter-rouge">git fetch</code>:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>o  fabf87  coworker     master
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>o  fabf87  coworker     main
 .  Amazing new feature
 .
 | @  6b38a5  wez
@@ -770,8 +770,8 @@ o
 may be hundreds of files changed by those commits, but <code class="language-plaintext highlighter-rouge">wez</code> only cares about the
 work in their local branch of the DAG.</p>
 
-<p>Now <code class="language-plaintext highlighter-rouge">wez</code> wants to rebase their work on master.  This would be done using
-a command like <code class="language-plaintext highlighter-rouge">hg rebase -d master -s fa2e92</code>:</p>
+<p>Now <code class="language-plaintext highlighter-rouge">wez</code> wants to rebase their work on main.  This would be done using
+a command like <code class="language-plaintext highlighter-rouge">hg rebase -d main -s fa2e92</code>:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code>| @  bbbbbb  wez
 | |  Add cats.cpp
@@ -779,7 +779,7 @@ a command like <code class="language-plaintext highlighter-rouge">hg rebase -d m
 | o  aaaaaa  wez
 |/   Add cat.jpg
 |
-o  fabf87  coworker     master
+o  fabf87  coworker     main
 .  Amazing new feature
 .
 </code></pre></div></div>
@@ -790,7 +790,7 @@ changed across the rebase and pass this information on to the tools that are sub
 or are querying for this information.</p>
 
 <p>If your tooling is source control aware then you can ask watchman to run since queries
-in a mode where it will return you information about the merge base with <code class="language-plaintext highlighter-rouge">master</code> and
+in a mode where it will return you information about the merge base with <code class="language-plaintext highlighter-rouge">main</code> and
 the minimized set of files that changed.</p>
 
 <p>To enable this mode you issue a query using a new <em>fat clock</em> as the <code class="language-plaintext highlighter-rouge">since</code> parameter
@@ -800,7 +800,7 @@ for the query:</p>
 ["query", "/path/to/root", {
   "since": {
       "scm": {
-        "mergebase-with": "master"
+        "mergebase-with": "main"
       }
   },
   "expression": ["type", "f"],
@@ -810,7 +810,7 @@ for the query:</p>
 </span></code></pre></div></div>
 
 <p>This particular <code class="language-plaintext highlighter-rouge">since</code> value starts with an unspecified clock value and requests that
-watchman run the query in source control aware mode, using the symbolic name <code class="language-plaintext highlighter-rouge">master</code>
+watchman run the query in source control aware mode, using the symbolic name <code class="language-plaintext highlighter-rouge">main</code>
 to compute the merge base for the commit graph.</p>
 
 <p>If we look back to the illustrations above and rewind to the first scenario,
@@ -821,15 +821,15 @@ the results of this query will look something like this:</p>
        "clock": "c:123:123",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
     },
     "files": ["cat.jpg", "cats.cpp"]
 }
 </code></pre></div></div>
 
-<p>This result informs the client of the merge base with master (which happens to
-be master itself) and the list of changes since that merge base.</p>
+<p>This result informs the client of the merge base with main (which happens to
+be main itself) and the list of changes since that merge base.</p>
 
 <p>To get the next incremental change the client feeds that clock value back in to its
 next query.  Looking back to the second illustration above, if we were to run this query
@@ -841,7 +841,7 @@ after the running <code class="language-plaintext highlighter-rouge">hg pull</co
        "clock": "c:123:123",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
   },
   "expression": ["type", "f"],
@@ -857,7 +857,7 @@ after the running <code class="language-plaintext highlighter-rouge">hg pull</co
        </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:124"</span><span class="p">,</span><span class="w">
        </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
             </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
-            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"main"</span><span class="w">
        </span><span class="p">}</span><span class="w">
     </span><span class="p">},</span><span class="w">
     </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
@@ -885,7 +885,7 @@ query to get the correct incremental result:</p>
        "clock": "c:123:124",
        "scm": {
             "mergebase": "f12345",
-            "mergebase-with": "master"
+            "mergebase-with": "main"
        }
   },
   "expression": ["type", "f"],
@@ -901,7 +901,7 @@ query to get the correct incremental result:</p>
        </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:125"</span><span class="p">,</span><span class="w">
        </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
             </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
-            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+            </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"main"</span><span class="w">
        </span><span class="p">}</span><span class="w">
     </span><span class="p">},</span><span class="w">
     </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
@@ -941,7 +941,7 @@ operation; that would defeat the point of using source control awareness.</li>
   </span><span class="nl">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span><span class="w">
   </span><span class="nl">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
     </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
-      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"main"</span><span class="w">
     </span><span class="p">}</span><span class="w">
   </span><span class="p">}</span><span class="w">
 </span><span class="p">}]</span><span class="w">
@@ -956,14 +956,14 @@ will contain <em>fat clock</em> values for the <code class="language-plaintext h
     </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:125"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
       </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
-      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"main"</span><span class="p">,</span><span class="w">
     </span><span class="p">}</span><span class="w">
   </span><span class="p">},</span><span class="w">
   </span><span class="nl">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
     </span><span class="nl">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
     </span><span class="nl">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
       </span><span class="nl">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
-      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"main"</span><span class="p">,</span><span class="w">
     </span><span class="p">}</span><span class="w">
   </span><span class="p">},</span><span class="w">
   </span><span class="nl">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">],</span><span class="w">
