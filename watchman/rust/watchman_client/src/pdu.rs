@@ -377,6 +377,14 @@ pub struct QueryRequestCommon {
     /// aware queries.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
+
+    /// If this is set Watchman should guarantee that events are sent for
+    /// directories. When this is not set watchman is known to skip sending
+    /// events for directories on EdenFS repos that change across commits.
+    /// Collecting these events can be slow when there were many recent commit
+    /// transitions.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub always_include_directories: bool,
 }
 
 #[derive(Deserialize, Clone, Debug)]
