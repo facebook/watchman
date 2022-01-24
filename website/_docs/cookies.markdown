@@ -86,6 +86,29 @@ On other platforms, this becomes more complicated because the respective
 monitoring system only tells us that something inside a directory was created,
 not what was created. This is currently an unresolved issue.
 
+## Limitation: macOS FSEvents
+
+On macOS, Watchman uses
+[FSEvents](https://developer.apple.com/documentation/coreservices/file_system_events)
+to monitor filesystem changes. Watchman uses a combination of cookie files
+described above and
+[FSEventStreamFlushSync](https://developer.apple.com/documentation/coreservices/1445629-fseventstreamflushsync)
+to attempt to catch up with all prior changes.
+
+Unfortunately, in high-load situations like a large `git checkout` on a busy
+host, we have observed that FSEvents from the `git checkout` may be received
+after the cookie file notification and FSEventStreamFlushSync returning.
+
+It turns out that FSEvents provides no guarantees here, and relying on it for
+query synchronization is unsupported on any current Apple platform.  Their
+suggested workaround is to implement a watcher with [Endpoint
+Security](https://developer.apple.com/documentation/endpointsecurity).  Nobody
+has evaluated the feasibility of this yet.
+
+In the meantime, you can set a `settle_period` and `settle_timeout` on the
+query. Both are integer milliseconds, and `settle_period` specifies the required
+quiescence before the watcher is considered caught up.
+
 ## Credits
 
 The idea was originally proposed by Matt Mackall <mpm@selenic.com>.
