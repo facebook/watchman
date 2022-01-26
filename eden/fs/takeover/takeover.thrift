@@ -59,7 +59,31 @@ struct SerializedMountInfo {
   7: TakeoverMountProtocol mountProtocol = TakeoverMountProtocol.UNKNOWN;
 }
 
+// TODO(T110300475): remove after SerializedTakeoverResult becomes stable. Should be
+// removable in March 2022.
+// Deprecated only old versions of EdenFS will send takeover data using this
+// struct. All new versions should use SerializedTakeoverResult. This is because
+// SerializedTakeoverData does not allow us to send non mount specific data in
+// the non error case.
 union SerializedTakeoverData {
   1: list<SerializedMountInfo> mounts;
+  2: string errorReason;
+}
+
+enum FileDescriptorType {
+  LOCK_FILE = 0,
+  THRIFT_SOCKET = 1,
+  MOUNTD_SOCKET = 2,
+}
+
+struct SerializedTakeoverInfo {
+  1: list<SerializedMountInfo> mounts;
+  2: list<FileDescriptorType> fileDescriptors;
+}
+
+// This is the highlevel structure we use to send takeover data between the
+// client and server.
+union SerializedTakeoverResult {
+  1: SerializedTakeoverInfo takeoverData;
   2: string errorReason;
 }
