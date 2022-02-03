@@ -14,6 +14,19 @@
 
 using namespace watchman;
 
+namespace watchman {
+FOLLY_MAYBE_UNUSED static std::ostream& operator<<(
+    std::ostream& out,
+    PendingChanges const& item) {
+  return out << (const void*)&item;
+}
+FOLLY_MAYBE_UNUSED static std::ostream& operator<<(
+    std::ostream& out,
+    watchman_pending_fs const& item) {
+  return out << (const void*)&item;
+}
+} // namespace watchman
+
 namespace {
 
 void build_list(

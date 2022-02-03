@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 #include <initializer_list>
+#include <iosfwd>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -158,6 +159,13 @@ class OptionSet {
     assert(static_cast<size_t>(p - result.data()) == length);
 
     return result;
+  }
+
+  template <typename... A>
+  friend std::basic_ostream<A...>& operator<<(
+      std::basic_ostream<A...>& out,
+      const OptionSet& opts) {
+    return out << opts.format();
   }
 
   Derived& operator|=(Derived that) {

@@ -8,6 +8,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
+#include <gtest/gtest-printers.h>
 #include <deque>
 #include <stdexcept>
 #include <string>
@@ -17,6 +18,15 @@
 using namespace watchman;
 
 static constexpr const std::chrono::milliseconds kErrorTTL(1000);
+
+namespace watchman::lrucache {
+template <typename... A>
+FOLLY_MAYBE_UNUSED static std::ostream& operator<<(
+    std::ostream& out,
+    Node<A...> const& node) {
+  return out << (const void*)&node;
+}
+} // namespace watchman::lrucache
 
 TEST(CacheTest, basics) {
   LRUCache<std::string, bool> cache(5, kErrorTTL);
