@@ -1008,6 +1008,8 @@ struct SetPathObjectIdParams {
   3: BinaryHash objectId;
   4: ObjectType type;
   5: CheckoutMode mode;
+  // Extra request infomation. i.e. build uuid, cache session id.
+  6: optional map<string, string> requestInfo;
 }
 
 struct SetPathObjectIdResult {
