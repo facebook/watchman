@@ -1,0 +1,98 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+WATCHMAN_SOURCE = ENV["WATCHMAN_SOURCE"]
+
+def provision_ubuntu(config)
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+    #apt-get dist-upgrade -y
+
+    # To avoid falling over during spiky RAM utilization, allow swap to
+    # dynamically expand.
+    apt-get install -y swapspace
+
+    apt-get install -y gcc g++ m4 make pkg-config libssl-dev libz-dev
+
+    su -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y' - vagrant
+  SHELL
+end
+
+def provision_fedora(config)
+  config.vm.provision "shell", inline: <<-SHELL
+    # dnf update
+
+    # developer packages
+    #dnf install -y emacs-nox htop tmux
+
+    dnf install -y python3-devel
+
+    #apt-get install -y gcc g++ m4 make libssl-dev libz-dev python-dev
+
+    su -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y' - vagrant
+  SHELL
+end
+
+Vagrant.configure("2") do |config|
+  if WATCHMAN_SOURCE.nil?
+    STDERR.puts "Please set WATCHMAN_SOURCE to the directory containing Watchman's source code"
+  else
+    config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman"
+  end
+
+  # TODO: autogen.sh will put its built artifacts in /tmp by
+  # default. The VMs automatically clear /tmp on boot, so it might
+  # make sense to consider a different scratch path.
+
+  config.vm.define "watchman-ubuntu-18", autostart: false do |ubuntu18|
+    ubuntu18.vm.box = "generic/ubuntu1804"
+    ubuntu18.vm.hostname = "watchman-ubuntu-18"
+
+    provision_ubuntu ubuntu18
+  end
+
+  config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu20|
+    ubuntu20.vm.box = "generic/ubuntu2004"
+    ubuntu20.vm.hostname = "watchman-ubuntu-20"
+
+    provision_ubuntu ubuntu20
+  end
+
+  # TODO: Fedora 35's gcc has a bug that breaks Folly:
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=104008
+  config.vm.define "watchman-fedora-33", autostart: false do |fedora33|
+    fedora33.vm.box = "generic/fedora33"
+    fedora33.vm.hostname = "watchman-fedora-33"
+
+    provision_fedora fedora33
+  end
+
+  # TODO: Watchman's documentation claims to support FreeBSD, but many
+  # of our dependencies fail to compile out of the box. Here are some
+  # notes about what needs to happen:
+  #
+  # The above config.vm.synced_folder needs type: rsync
+  #
+  # dev dependencies: sudo pkg install -y tmux htop emacs
+  # build dependencies: sudo pkg install -y python3
+  #
+  # Can we use --allow-system-packages?
+  #
+  # cmake manifest needs an os override for freebsd, and getdeps needs to use that.
+  # boost needs --with-toolchain=clang
+  # cpptoml needs -DENABLE_LIBCXX=OFF
+  # glog needs to stop looking at std::tr1 (or we're using a very old glog)
+  # glog undefined reference to backtrace.so
+
+  config.vm.define "watchman-freebsd" do |freebsd|
+    freebsd.vm.box = "generic/freebsd12"
+    freebsd.vm.hostname = "watchman-freebsd-12"
+  end
+
+  config.vm.provider "vmware_fusion" do |v, override|
+    # Facebook style C++ uses 1.5 GB per compiler process :|
+    CPU_COUNT = 6
+    v.cpus = CPU_COUNT
+    v.memory = 1536 * CPU_COUNT
+  end
+end
