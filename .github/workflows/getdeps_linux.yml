@@ -17,8 +17,12 @@ jobs:
     - uses: actions/checkout@v2
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
-    - name: Fetch rust
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests rust
+    - name: Install Rust Stable
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        default: true
+        profile: minimal
     - name: Fetch ninja
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
@@ -77,8 +81,6 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
       run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
-    - name: Build rust
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests rust
     - name: Build ninja
       run: python3 build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
