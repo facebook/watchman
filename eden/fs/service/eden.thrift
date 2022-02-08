@@ -772,6 +772,31 @@ struct NfsCall {
   3: string procName;
 }
 
+enum PrjfsTraceCallType {
+  INVALID = 0,
+  /* Write operations */
+  FILE_OPENED = 1,
+  NEW_FILE_CREATED = 2,
+  FILE_OVERWRITTEN = 3,
+  PRE_DELETE = 4,
+  PRE_RENAME = 5,
+  PRE_SET_HARDLINK = 6,
+  FILE_RENAMED = 7,
+  HARDLINK_CREATED = 8,
+  FILE_HANDLE_CLOSED_NO_MODIFICATION = 9,
+  FILE_HANDLE_CLOSED_FILE_MODIFIED = 10,
+  FILE_HANDLE_CLOSED_FILE_DELETED = 11,
+  FILE_PRE_CONVERT_TO_FULL = 12,
+  /* Read operations */
+  START_ENUMERATION = 13,
+  END_ENUMERATION = 14,
+  GET_ENUMERATION_DATA = 15,
+  GET_PLACEHOLDER_INFO = 16,
+  QUERY_FILE_NAME = 17,
+  GET_FILE_DATA = 18,
+  CANCEL_COMMAND = 19,
+}
+
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
