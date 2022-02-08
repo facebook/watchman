@@ -797,6 +797,12 @@ enum PrjfsTraceCallType {
   CANCEL_COMMAND = 19,
 }
 
+struct PrjfsCall {
+  1: i32 commandId;
+  2: i32 pid;
+  3: PrjfsTraceCallType callType;
+}
+
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
@@ -1506,6 +1512,14 @@ service EdenService extends fb303_core.BaseService {
    * This will return the list of NfsCall structure containing the data from the RPC request.
    */
   list<NfsCall> debugOutstandingNfsCalls(1: PathString mountPoint);
+
+  /**
+   * Get the list of outstanding ProjectedFS requests
+   *
+   * This will return the list of PrjfsCall structure containing the data from
+   * the PRJ_CALLBACK_DATA.
+   */
+  list<PrjfsCall> debugOutstandingPrjfsCalls(1: PathString mountPoint);
 
   /**
    * Start recording performance metrics such as files read

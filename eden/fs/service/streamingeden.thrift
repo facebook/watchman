@@ -51,8 +51,7 @@ struct FsEvent {
   // At most one of the *Request fields will be set, depending on the filesystem implementation.
   5: optional eden.FuseCall fuseRequest;
   10: optional eden.NfsCall nfsRequest;
-  // To add Windows support:
-  // 6: optional eden.PrjfsCall prjfsRequest;
+  11: optional eden.PrjfsCall prjfsRequest;
 
   8: RequestInfo requestInfo;
 
