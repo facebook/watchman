@@ -17,6 +17,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
+    - name: Fetch rust
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests rust
     - name: Fetch ninja
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
@@ -43,8 +45,6 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests lz4
     - name: Fetch snappy
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests snappy
-    - name: Fetch folly
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch pcre
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests pcre
     - name: Fetch zlib
@@ -59,6 +59,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests bison
     - name: Fetch libsodium
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libsodium
+    - name: Fetch folly
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch fizz
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fizz
     - name: Fetch flex
@@ -75,6 +77,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
       run: python3 build/fbcode_builder/getdeps.py build --no-tests boost
+    - name: Build rust
+      run: python3 build/fbcode_builder/getdeps.py build --no-tests rust
     - name: Build ninja
       run: python3 build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
@@ -101,8 +105,6 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests lz4
     - name: Build snappy
       run: python3 build/fbcode_builder/getdeps.py build --no-tests snappy
-    - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py build --no-tests folly
     - name: Build pcre
       run: python3 build/fbcode_builder/getdeps.py build --no-tests pcre
     - name: Build zlib
@@ -117,6 +119,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests bison
     - name: Build libsodium
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libsodium
+    - name: Build folly
+      run: python3 build/fbcode_builder/getdeps.py build --no-tests folly
     - name: Build fizz
       run: python3 build/fbcode_builder/getdeps.py build --no-tests fizz
     - name: Build flex
