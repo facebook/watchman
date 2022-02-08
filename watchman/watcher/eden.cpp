@@ -90,7 +90,7 @@ SyncBehavior getSyncBehavior() {
   // Use a no-sync behavior as syncToNow will be called if a synchronization is
   // necessary which will do the proper synchronization.
   auto sync = SyncBehavior{};
-  sync.syncTimeoutSeconds_ref() = 0;
+  sync.syncTimeoutSeconds() = 0;
   return sync;
 }
 
@@ -204,7 +204,7 @@ class EdenFileResult : public FileResult {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
-      otime_.ticks = *position->sequenceNumber_ref();
+      otime_.ticks = *position->sequenceNumber();
       if (isNew) {
         // the "ctime" in the context of FileResult represents the point
         // in time that we saw the file transition !exists -> exists.
@@ -534,7 +534,7 @@ class EdenFileResult : public FileResult {
 
   void applyInformationOrError(const EntryInformationOrError& infoOrErr) {
     if (infoOrErr.getType() == EntryInformationOrError::Type::info) {
-      dtype_ = getDTypeFromEden(*infoOrErr.get_info().dtype_ref());
+      dtype_ = getDTypeFromEden(*infoOrErr.get_info().dtype());
       setExists(true);
     } else {
       setExists(false);
@@ -545,10 +545,10 @@ class EdenFileResult : public FileResult {
     if (infoOrErr.getType() == FileInformationOrError::Type::info) {
       FileInformation stat;
 
-      stat.size = *infoOrErr.get_info().size_ref();
-      stat.mode = *infoOrErr.get_info().mode_ref();
-      stat.mtime.tv_sec = *infoOrErr.get_info().mtime_ref()->seconds_ref();
-      stat.mtime.tv_nsec = *infoOrErr.get_info().mtime_ref()->nanoSeconds_ref();
+      stat.size = *infoOrErr.get_info().size();
+      stat.mode = *infoOrErr.get_info().mode();
+      stat.mtime.tv_sec = *infoOrErr.get_info().mtime()->seconds();
+      stat.mtime.tv_nsec = *infoOrErr.get_info().mtime()->nanoSeconds();
 
       stat_ = std::move(stat);
       setExists(true);
@@ -690,11 +690,11 @@ std::vector<NameAndDType> globNameAndDType(
     globFutures.reserve(globPatterns.size());
     for (const std::string& globPattern : globPatterns) {
       GlobParams params;
-      params.mountPoint_ref() = mountPoint;
-      params.globs_ref() = std::vector<std::string>{globPattern};
-      params.includeDotfiles_ref() = includeDotfiles;
-      params.wantDtype_ref() = true;
-      params.sync_ref() = getSyncBehavior();
+      params.mountPoint() = mountPoint;
+      params.globs() = std::vector<std::string>{globPattern};
+      params.includeDotfiles() = includeDotfiles;
+      params.wantDtype() = true;
+      params.sync() = getSyncBehavior();
 
       globFutures.emplace_back(
           client->semifuture_globFiles(params).via(executor));
@@ -708,11 +708,11 @@ std::vector<NameAndDType> globNameAndDType(
     return allResults;
   } else {
     GlobParams params;
-    params.mountPoint_ref() = mountPoint;
-    params.globs_ref() = globPatterns;
-    params.includeDotfiles_ref() = includeDotfiles;
-    params.wantDtype_ref() = true;
-    params.sync_ref() = getSyncBehavior();
+    params.mountPoint() = mountPoint;
+    params.globs() = globPatterns;
+    params.includeDotfiles() = includeDotfiles;
+    params.wantDtype() = true;
+    params.sync() = getSyncBehavior();
 
     Glob glob;
     client->sync_globFiles(glob, params);
@@ -834,30 +834,30 @@ class EdenView final : public QueryableView {
       JournalPosition position;
       client->sync_getCurrentJournalPosition(position, mountPoint_);
       // dial back to the sequence number from the query
-      *position.sequenceNumber_ref() = ctx->since.clock.ticks;
+      *position.sequenceNumber() = ctx->since.clock.ticks;
 
       // Now we can get the change journal from eden
       try {
         client->sync_getFilesChangedSince(delta, mountPoint_, position);
 
         createdFileNames.insert(
-            delta.createdPaths_ref()->begin(), delta.createdPaths_ref()->end());
+            delta.createdPaths()->begin(), delta.createdPaths()->end());
 
         // The list of changed files is the union of the created, added,
         // and removed sets returned from eden in list form.
-        for (auto& name : *delta.changedPaths_ref()) {
+        for (auto& name : *delta.changedPaths()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
-        for (auto& name : *delta.removedPaths_ref()) {
+        for (auto& name : *delta.removedPaths()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
-        for (auto& name : *delta.createdPaths_ref()) {
+        for (auto& name : *delta.createdPaths()) {
           fileInfo.emplace_back(NameAndDType(std::move(name)));
         }
 
-        bool didChangeCommits = delta.snapshotTransitions_ref()->size() >= 2 ||
-            (delta.fromPosition_ref()->snapshotHash_ref() !=
-             delta.toPosition_ref()->snapshotHash_ref());
+        bool didChangeCommits = delta.snapshotTransitions()->size() >= 2 ||
+            (delta.fromPosition()->snapshotHash() !=
+             delta.toPosition()->snapshotHash());
 
         if (scm_ && didChangeCommits) {
           // Check whether they checked out a new commit or reset the commit to
@@ -873,17 +873,16 @@ class EdenView final : public QueryableView {
           }
 
           SCM::StatusResult changedBetweenCommits;
-          if (delta.snapshotTransitions_ref()->empty()) {
+          if (delta.snapshotTransitions()->empty()) {
             auto fromHash =
-                folly::hexlify(*delta.fromPosition_ref()->snapshotHash_ref());
-            auto toHash =
-                folly::hexlify(*delta.toPosition_ref()->snapshotHash_ref());
+                folly::hexlify(*delta.fromPosition()->snapshotHash());
+            auto toHash = folly::hexlify(*delta.toPosition()->snapshotHash());
 
             // Legacy path: this (incorrectly) ignores any commit transitions
             // between the initial commit hash and the final commit hash.
             log(ERR,
                 "since ",
-                *position.sequenceNumber_ref(),
+                *position.sequenceNumber(),
                 " we changed commit hashes from ",
                 fromHash,
                 " to ",
@@ -896,15 +895,15 @@ class EdenView final : public QueryableView {
                 std::move(commits),
                 /*requestId*/ nullptr,
                 ctx->query->alwaysIncludeDirectories);
-          } else if (delta.snapshotTransitions_ref()->size() >= 2) {
+          } else if (delta.snapshotTransitions()->size() >= 2) {
             std::vector<std::string> commits;
-            commits.reserve(delta.snapshotTransitions_ref()->size());
-            for (auto& hash : *delta.snapshotTransitions_ref()) {
+            commits.reserve(delta.snapshotTransitions()->size());
+            for (auto& hash : *delta.snapshotTransitions()) {
               commits.push_back(folly::hexlify(hash));
             }
             log(ERR,
                 "since ",
-                *position.sequenceNumber_ref(),
+                *position.sequenceNumber(),
                 " we changed commit hashes ",
                 folly::join(" -> ", commits),
                 "\n");
@@ -928,8 +927,8 @@ class EdenView final : public QueryableView {
           // We don't know whether the unclean paths are added, removed
           // or just changed.  We're going to treat them as changed.
           mergedFileList.insert(
-              std::make_move_iterator(delta.uncleanPaths_ref()->begin()),
-              std::make_move_iterator(delta.uncleanPaths_ref()->end()));
+              std::make_move_iterator(delta.uncleanPaths()->begin()),
+              std::make_move_iterator(delta.uncleanPaths()->end()));
 
           // Replace the list of fileNames with the de-duped set
           // of names we've extracted from source control
@@ -939,14 +938,14 @@ class EdenView final : public QueryableView {
           }
         }
 
-        resultPosition = *delta.toPosition_ref();
+        resultPosition = *delta.toPosition();
         log(DBG,
             "wanted from ",
-            *position.sequenceNumber_ref(),
+            *position.sequenceNumber(),
             " result delta from ",
-            *delta.fromPosition_ref()->sequenceNumber_ref(),
+            *delta.fromPosition()->sequenceNumber(),
             " to ",
-            *delta.toPosition_ref()->sequenceNumber_ref(),
+            *delta.toPosition()->sequenceNumber(),
             " with ",
             fileInfo.size(),
             " changed files\n");
@@ -1177,7 +1176,7 @@ class EdenView final : public QueryableView {
     JournalPosition position;
     client->sync_getCurrentJournalPosition(position, mountPoint_);
     return ClockPosition(
-        *position.mountGeneration_ref(), *position.sequenceNumber_ref());
+        *position.mountGeneration(), *position.sequenceNumber());
   }
 
   w_string getCurrentClockString() const override {
@@ -1225,13 +1224,13 @@ class EdenView final : public QueryableView {
       // TODO: in the future it would be nice to compute the paths in a loop
       // first, and then add a bulk CookieSync::notifyCookies() method to avoid
       // locking and unlocking its internal mutex so frequently.
-      for (auto& file : *delta.createdPaths_ref()) {
+      for (auto& file : *delta.createdPaths()) {
         auto full = w_string::pathCat({rootPath_, file});
         root->cookies.notifyCookie(full);
       }
 
       // Remember this position for subsequent calls
-      lastCookiePosition_ = *delta.toPosition_ref();
+      lastCookiePosition_ = *delta.toPosition();
     } catch (const EdenError& err) {
       // EDOM is journal truncation, which we can recover from.
       // Other errors (including ERANGE/mountGeneration changed)
