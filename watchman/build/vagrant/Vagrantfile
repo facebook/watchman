@@ -4,11 +4,27 @@
 require 'etc'
 
 WATCHMAN_SOURCE = ENV["WATCHMAN_SOURCE"]
+DEV = ENV["DEV"]
 
 def provision_ubuntu(config)
+  if DEV
+    system_update = ""
+    dev_packages = <<-SHELL
+      apt-get install -y emacs-nox htop tmux
+    SHELL
+  else
+    system_update = <<-SHELL
+      apt-get dist-upgrade -y
+    SHELL
+    dev_packages = ""
+  end
+
   config.vm.provision "shell", inline: <<-SHELL
+    set -x
+
     apt-get update
-    #apt-get dist-upgrade -y
+
+    #{system_update}
 
     # To avoid falling over during spiky RAM utilization, allow swap to
     # dynamically expand.
@@ -17,33 +33,62 @@ def provision_ubuntu(config)
     apt-get install -y gcc g++ m4 make pkg-config libssl-dev libz-dev
 
     su -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y' - vagrant
+
+    #{dev_packages}
   SHELL
 end
 
 def provision_fedora(config)
-  config.vm.provision "shell", inline: <<-SHELL
-    # dnf update
+  if DEV
+    system_update = ""
+    dev_packages = <<-SHELL
+      dnf install -y emacs-nox htop tmux
+    SHELL
+  else
+    system_update = <<-SHELL
+      dnf update
+    SHELL
+    dev_packages = ""
+  end
 
-    # developer packages
-    #dnf install -y emacs-nox htop tmux
+  config.vm.provision "shell", inline: <<-SHELL
+    set -x
+
+    #{system_update}
 
     dnf install -y python3-devel
 
-    #apt-get install -y gcc g++ m4 make libssl-dev libz-dev python-dev
-
     su -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y' - vagrant
+
+    #{dev_packages}
   SHELL
 end
 
 def provision_freebsd(config)
-  config.vm.provision "shell", inline: <<-SHELL
-    # dev dependencies:
-    # pkg install -y tmux htop emacs-nox
+  if DEV
+    system_update = ""
+    dev_packages = <<-SHELL
+      pkg install -y emacs-nox htop tmux
+    SHELL
+  else
+    system_update = <<-SHELL
+      pkg upgrade -y
+    SHELL
+    dev_packages = ""
+  end
 
-    # build dependencies:
+  config.vm.provision "shell", inline: <<-SHELL
+    set -x
+
+    pkg update
+
+    #{system_update}
+
     pkg install -y elfutils git gmake m4 patchelf python3
 
     su -l vagrant -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y'
+
+    #{dev_packages}
   SHELL
 end
 
@@ -102,23 +147,6 @@ Vagrant.configure("2") do |config|
     provision_fedora fedora33
     provider_linux fedora33
   end
-
-  # TODO: Watchman's documentation claims to support FreeBSD, but many
-  # of our dependencies fail to compile out of the box. Here are some
-  # notes about what needs to happen:
-  #
-  # The above config.vm.synced_folder needs type: rsync
-  #
-  # dev dependencies: sudo pkg install -y tmux htop emacs-nox
-  # build dependencies: sudo pkg install -y git m4 patchelf python3
-  #
-  # Can we use --allow-system-packages?
-  #
-  # cmake manifest needs an os override for freebsd, and getdeps needs to use that.
-  # boost needs --with-toolchain=clang
-  # cpptoml needs -DENABLE_LIBCXX=OFF
-  # glog needs to stop looking at std::tr1 (or we're using a very old glog)
-  # glog undefined reference to backtrace.so
 
   config.vm.define "watchman-freebsd" do |freebsd|
     freebsd.vm.box = "generic/freebsd12"
