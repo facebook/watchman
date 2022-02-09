@@ -5,8 +5,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import os
 
 try:
@@ -14,7 +12,7 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
 
-watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
+watchman_src_dir = os.environ.get("SRCD")
 if watchman_src_dir is None:
     watchman_src_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
