@@ -7,6 +7,8 @@
 
 import os
 
+os.environ['DISTUTILS_USE_SDK'] = "1"
+
 try:
     from setuptools import setup, Extension
 
