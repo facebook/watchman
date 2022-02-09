@@ -1,6 +1,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require 'etc'
+
 WATCHMAN_SOURCE = ENV["WATCHMAN_SOURCE"]
 
 def provision_ubuntu(config)
@@ -33,11 +35,42 @@ def provision_fedora(config)
   SHELL
 end
 
+def provision_freebsd(config)
+  config.vm.provision "shell", inline: <<-SHELL
+    # dev dependencies:
+    # pkg install -y tmux htop emacs-nox
+
+    # build dependencies:
+    pkg install -y elfutils git gmake m4 patchelf python3
+
+    su -l vagrant -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y'
+  SHELL
+end
+
+def provider_linux(config)
+  config.vm.provider "vmware_fusion" do |vmware, override|
+    # gcc uses 1.5 GB per process with Facebook style C++ :|
+    cpu_count = Etc.nprocessors / 2
+    vmware.cpus = cpu_count
+    vmware.memory = 1536 * cpu_count
+  end
+end
+
+def provider_freebsd(config)
+  config.vm.provider "vmware_fusion" do |vmware, override|
+    # FreeBSD and clang are quite memory-efficient relative to Linux
+    # and gcc.
+    cpu_count = Etc.nprocessors - 2
+    vmware.cpus = cpu_count
+    vmware.memory = 768 * cpu_count
+  end
+end
+
 Vagrant.configure("2") do |config|
   if WATCHMAN_SOURCE.nil?
     STDERR.puts "Please set WATCHMAN_SOURCE to the directory containing Watchman's source code"
   else
-    config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman"
+    config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman", type: "nfs"
   end
 
   # TODO: autogen.sh will put its built artifacts in /tmp by
@@ -49,6 +82,7 @@ Vagrant.configure("2") do |config|
     ubuntu18.vm.hostname = "watchman-ubuntu-18"
 
     provision_ubuntu ubuntu18
+    provider_linux ubuntu18
   end
 
   config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu20|
@@ -56,6 +90,7 @@ Vagrant.configure("2") do |config|
     ubuntu20.vm.hostname = "watchman-ubuntu-20"
 
     provision_ubuntu ubuntu20
+    provider_linux ubuntu20
   end
 
   # TODO: Fedora 35's gcc has a bug that breaks Folly:
@@ -65,6 +100,7 @@ Vagrant.configure("2") do |config|
     fedora33.vm.hostname = "watchman-fedora-33"
 
     provision_fedora fedora33
+    provider_linux fedora33
   end
 
   # TODO: Watchman's documentation claims to support FreeBSD, but many
@@ -73,8 +109,8 @@ Vagrant.configure("2") do |config|
   #
   # The above config.vm.synced_folder needs type: rsync
   #
-  # dev dependencies: sudo pkg install -y tmux htop emacs
-  # build dependencies: sudo pkg install -y python3
+  # dev dependencies: sudo pkg install -y tmux htop emacs-nox
+  # build dependencies: sudo pkg install -y git m4 patchelf python3
   #
   # Can we use --allow-system-packages?
   #
@@ -87,12 +123,9 @@ Vagrant.configure("2") do |config|
   config.vm.define "watchman-freebsd" do |freebsd|
     freebsd.vm.box = "generic/freebsd12"
     freebsd.vm.hostname = "watchman-freebsd-12"
+
+    provision_freebsd freebsd
+    provider_freebsd freebsd
   end
 
-  config.vm.provider "vmware_fusion" do |v, override|
-    # Facebook style C++ uses 1.5 GB per compiler process :|
-    CPU_COUNT = 6
-    v.cpus = CPU_COUNT
-    v.memory = 1536 * CPU_COUNT
-  end
 end

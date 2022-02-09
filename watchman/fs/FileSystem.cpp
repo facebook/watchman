@@ -114,7 +114,7 @@ void checkCanonicalBaseName(const char* path) {
   // a system specific way to detect this.
   w_string_piece pathPiece(path);
   auto parent = pathPiece.dirName().asWString();
-  auto dir = w_dir_open(parent.c_str());
+  auto dir = realFileSystem.openDir(parent.c_str());
   auto base = pathPiece.baseName();
 
   while (true) {

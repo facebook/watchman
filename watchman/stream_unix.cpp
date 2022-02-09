@@ -135,9 +135,15 @@ class UnixStream : public watchman_stream {
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
 #endif
     if (credvalid) {
+#if defined(__APPLE__)
       len = sizeof(epid);
       credvalid =
           getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEEREPID, &epid, &len) == 0;
+#elif defined(__FreeBSD__)
+      epid = cred.cr_pid;
+#else
+      credvalid = false;
+#endif
     }
 #elif defined(SO_RECVUCRED)
     ucred_t* peer_cred{nullptr};
