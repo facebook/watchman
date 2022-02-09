@@ -80,13 +80,11 @@ class WatchmanEdenTestCase(TestParent):
         # Start the EdenFS instance
         self.eden.start()
 
-    def _restoreHome(self):
-        # type: () -> None
+    def _restoreHome(self) -> None:
         assert self.save_home is not None
         os.environ["HOME"] = self.save_home
 
-    def cleanUpEden(self):
-        # type: () -> None
+    def cleanUpEden(self) -> None:
         assert self.eden is not None
         self.eden.cleanup()
         self.eden = None

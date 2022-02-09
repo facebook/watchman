@@ -211,8 +211,7 @@ class SOCKADDR_UN(ctypes.Structure):
 
 
 class WindowsSocketException(Exception):
-    def __init__(self, code):
-        # type: (int) -> None
+    def __init__(self, code: int) -> None:
         super(WindowsSocketException, self).__init__(
             "Windows Socket Error: {}".format(code)
         )
@@ -222,8 +221,8 @@ class WindowsSocketHandle(object):
     AF_UNIX = 1
     SOCK_STREAM = 1
 
-    fd = -1  # type: int
-    address = ""  # type: str
+    fd: int = -1
+    address: str = ""
 
     @staticmethod
     def _checkReturnCode(retcode):
@@ -245,12 +244,10 @@ class WindowsSocketHandle(object):
         self._checkReturnCode(fd)
         self.fd = fd
 
-    def fileno(self):
-        # type: () -> int
+    def fileno(self) -> int:
         return self.fd
 
-    def settimeout(self, timeout):
-        # type: (int) -> None
+    def settimeout(self, timeout: int) -> None:
         timeout = wintypes.DWORD(0 if timeout is None else int(timeout * 1000))
         retcode = WinSetIntSockOpt(
             self.fd,
@@ -270,8 +267,7 @@ class WindowsSocketHandle(object):
         self._checkReturnCode(retcode)
         return None
 
-    def connect(self, address):
-        # type: (str) -> None
+    def connect(self, address: str) -> None:
         address = os.path.normpath(address)
         if compat.PYTHON3:
             address = os.fsencode(address)
@@ -281,14 +277,12 @@ class WindowsSocketHandle(object):
         )
         self.address = address
 
-    def send(self, buff):
-        # type: (bytes) -> int
+    def send(self, buff: bytes) -> int:
         retcode = WinSend(self.fd, buff, len(buff), 0)
         self._checkReturnCode(retcode)
         return retcode
 
-    def sendall(self, buff):
-        # type: (bytes) -> None
+    def sendall(self, buff: bytes) -> None:
         while len(buff) > 0:
             x = self.send(buff)
             if x > 0:
@@ -297,21 +291,17 @@ class WindowsSocketHandle(object):
                 break
         return None
 
-    def recv(self, size):
-        # type: (int) -> bytes
+    def recv(self, size: int) -> bytes:
         buff = ctypes.create_string_buffer(size)
         retsize = WinRecv(self.fd, buff, size, 0)
         self._checkReturnCode(retsize)
         return buff.raw[0:retsize]
 
-    def getpeername(self):
-        # type: () -> str
+    def getpeername(self) -> str:
         return self.address
 
-    def getsockname(self):
-        # type: () -> str
+    def getsockname(self) -> str:
         return self.address
 
-    def close(self):
-        # type: () -> int
+    def close(self) -> int:
         return closesocket(self.fd)

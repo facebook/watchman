@@ -166,8 +166,7 @@ class CommandError(WatchmanError):
         super(CommandError, self).__init__("watchman command error: %s" % (msg,), cmd)
 
 
-def is_named_pipe_path(path):
-    # type: (str) -> bool
+def is_named_pipe_path(path: str) -> bool:
     """Returns True if path is a watchman named pipe path"""
     return path.startswith("\\\\.\\pipe\\watchman")
 
