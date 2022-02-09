@@ -9,6 +9,11 @@ import os
 
 try:
     from setuptools import setup, Extension
+
+    def patched_augment_exception(exc, version, arch=''):
+        return exc
+    import setuptools.msvc
+    setuptools.msvc._augment_exception = patched_augment_exception
 except ImportError:
     from distutils.core import setup, Extension
 
