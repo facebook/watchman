@@ -202,6 +202,9 @@ class BuildOptions(object):
         env["GETDEPS_BUILD_DIR"] = os.path.join(self.scratch_dir, "build")
         env["GETDEPS_INSTALL_DIR"] = self.install_dir
 
+        if self.is_windows() and self.get_vcvars_path():
+            env["DISTUTILS_USE_SDK"] = "1"
+
         # On macOS we need to set `SDKROOT` when we use clang for system
         # header files.
         if self.is_darwin() and "SDKROOT" not in env:
