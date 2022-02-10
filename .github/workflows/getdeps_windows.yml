@@ -15,8 +15,6 @@ jobs:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v2
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
     - name: Export boost environment
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_78_0% >> %GITHUB_ENV%"
       shell: cmd
@@ -140,5 +138,7 @@ jobs:
       with:
         name: watchman
         path: _artifacts
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     - name: Test watchman
       run: python build/fbcode_builder/getdeps.py test --src-dir=. watchman 
