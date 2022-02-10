@@ -15,6 +15,8 @@ jobs:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v2
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     - name: Export boost environment
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_78_0% >> %GITHUB_ENV%"
       shell: cmd
