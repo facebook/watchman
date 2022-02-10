@@ -28,6 +28,22 @@ yarn_bin = os.environ.get("YARN_PATH", distutils.spawn.find_executable("yarn"))
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests")
 
+# To avoid CI environments that put broken yarn and node executables in PATH,
+# verify they at least run.
+def _ensure_can_run(binary_path):
+    if binary_path is None:
+        return None
+    try:
+        if 0 != subprocess.call([binary_path, "--version"], stdout=subprocess.DEVNULL):
+            return None
+    except OSError:
+        return None
+    return binary_path
+
+
+node_bin = _ensure_can_run(node_bin)
+yarn_bin = _ensure_can_run(yarn_bin)
+
 
 class BserTestCase(unittest.TestCase):
     @unittest.skipIf(
