@@ -44,6 +44,7 @@ use futures::{future::FutureExt, stream::StreamExt};
 use serde_bser::de::{Bunser, SliceRead};
 use serde_bser::value::Value;
 use std::collections::{HashMap, VecDeque};
+use std::io::{self, Write};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -272,7 +273,7 @@ impl Connector {
         };
         tokio::spawn(async move {
             if let Err(err) = task.run().await {
-                eprintln!("watchman client task failed: {}", err);
+                let _ignored = writeln!(io::stderr(), "watchman client task failed: {}", err);
             }
         });
 
