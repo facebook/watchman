@@ -13,7 +13,6 @@
 #include <stdexcept>
 #include <string>
 #include "watchman/LRUCache.h"
-#include "watchman/watchman_system.h"
 
 using namespace watchman;
 

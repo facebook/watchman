@@ -10,7 +10,6 @@
 
 namespace {
 
-using namespace ::testing;
 using namespace watchman;
 
 TEST(FakeFileSystemTest, get_root) {
