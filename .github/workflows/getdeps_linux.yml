@@ -53,6 +53,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests pcre
     - name: Fetch zlib
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests zlib
+    - name: Fetch bz2
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests bz2
     - name: Fetch autoconf
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests autoconf
     - name: Fetch automake
@@ -71,6 +73,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch libffi
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests libffi
+    - name: Fetch ncurses
+      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests ncurses
     - name: Fetch python
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests python
     - name: Fetch wangle
@@ -111,6 +115,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests pcre
     - name: Build zlib
       run: python3 build/fbcode_builder/getdeps.py build --no-tests zlib
+    - name: Build bz2
+      run: python3 build/fbcode_builder/getdeps.py build --no-tests bz2
     - name: Build autoconf
       run: python3 build/fbcode_builder/getdeps.py build --no-tests autoconf
     - name: Build automake
@@ -129,6 +135,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build libffi
       run: python3 build/fbcode_builder/getdeps.py build --no-tests libffi
+    - name: Build ncurses
+      run: python3 build/fbcode_builder/getdeps.py build --no-tests ncurses
     - name: Build python
       run: python3 build/fbcode_builder/getdeps.py build --no-tests python
     - name: Build wangle
