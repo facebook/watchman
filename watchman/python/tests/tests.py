@@ -414,5 +414,4 @@ class TestBSERDump(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    suite = load_tests(unittest.TestLoader())
-    unittest.TextTestRunner().run(suite)
+    unittest.main()
