@@ -34,7 +34,7 @@ class TempDir(object):
         # We'll put all our temporary stuff under one dir so that we
         # can clean it all up at the end.
 
-        parent_dir = tempfile.tempdir or os.environ.get("TMP", "/tmp")
+        parent_dir = tempfile.gettempdir()
         prefix = "watchmantest"
 
         self.temp_dir = path.get_canonical_filesystem_path(
