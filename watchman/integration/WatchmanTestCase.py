@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 # no unicode literals
-from __future__ import absolute_import, division, print_function
 
 import errno
 import functools
