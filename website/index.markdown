@@ -6,6 +6,7 @@ permalink: index.html
 
 Watchman exists to watch files and record when they change.  It can
 also trigger actions (such as rebuilding assets) when matching files change.
+
 ### Watch Introductory Video
 
 <div class="videoBlock">
