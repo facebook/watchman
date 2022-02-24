@@ -9,7 +9,7 @@
 import os
 
 import pywatchman
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenWatchRoot(WatchmanEdenTestCase.WatchmanEdenTestCase):

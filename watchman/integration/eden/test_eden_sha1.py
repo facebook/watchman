@@ -9,7 +9,7 @@
 import hashlib
 import os
 
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):

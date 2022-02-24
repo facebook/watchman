@@ -10,7 +10,7 @@ import os
 import os.path
 import shutil
 
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

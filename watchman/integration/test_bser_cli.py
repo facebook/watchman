@@ -13,8 +13,8 @@ import os.path
 import subprocess
 import unittest
 
-import WatchmanInstance
 from pywatchman import bser, compat, encoding
+from watchman.integration.lib import WatchmanInstance
 
 
 class TestDashJCliOption(unittest.TestCase):

@@ -9,7 +9,7 @@
 import os
 import subprocess
 
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 try:

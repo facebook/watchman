@@ -5,8 +5,8 @@
 
 # no unicode literals
 
-import WatchmanInstance
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanInstance
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

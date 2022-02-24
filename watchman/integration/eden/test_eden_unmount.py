@@ -7,7 +7,7 @@
 # no unicode literals
 
 import pywatchman
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenUnmount(WatchmanEdenTestCase.WatchmanEdenTestCase):

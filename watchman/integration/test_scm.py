@@ -10,8 +10,8 @@ import os
 import unittest
 
 import pywatchman
-import WatchmanSCMTestCase
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanSCMTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 def is_ubuntu():

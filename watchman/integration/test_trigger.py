@@ -12,7 +12,7 @@ import os.path
 import re
 import sys
 
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())

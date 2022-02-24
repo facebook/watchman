@@ -9,7 +9,7 @@
 import time
 from os import path
 
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):

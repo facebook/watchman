@@ -18,7 +18,8 @@ import time
 import uuid
 
 import pywatchman
-import TempDir
+
+from . import TempDir
 
 
 try:

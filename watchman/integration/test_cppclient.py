@@ -11,8 +11,8 @@ import subprocess
 import tempfile
 import unittest
 
-import Interrupt
-import WatchmanInstance
+from watchman.integration.lib import Interrupt
+from watchman.integration.lib import WatchmanInstance
 
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 TEST_BINARY = (

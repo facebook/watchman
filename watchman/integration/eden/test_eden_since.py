@@ -9,7 +9,7 @@
 import os
 import shutil
 
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 def populate(repo):

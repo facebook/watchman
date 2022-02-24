@@ -14,7 +14,7 @@ import sys
 import time
 
 import pywatchman
-import WatchmanInstance
+from watchman.integration.lib import WatchmanInstance
 
 
 try:

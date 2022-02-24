@@ -10,7 +10,7 @@ import os
 import sys
 
 import pywatchman
-import WatchmanInstance
+from watchman.integration.lib import WatchmanInstance
 
 
 try:

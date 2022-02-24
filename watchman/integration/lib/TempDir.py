@@ -13,8 +13,9 @@ import sys
 import tempfile
 import time
 
-import path_utils as path
 import pywatchman
+
+from . import path_utils as path
 
 
 global_temp_dir = None

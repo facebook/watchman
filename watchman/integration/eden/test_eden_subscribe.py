@@ -8,7 +8,7 @@
 
 import os
 
-import WatchmanEdenTestCase
+from watchman.integration.lib import WatchmanEdenTestCase
 
 
 def possible_cookie(name):

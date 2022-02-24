@@ -7,8 +7,8 @@
 # no unicode literals
 
 import pywatchman
-import WatchmanSCMTestCase
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanSCMTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

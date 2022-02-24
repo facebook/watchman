@@ -8,8 +8,8 @@
 
 import os
 
-import WatchmanInstance
-import WatchmanTestCase
+from . import WatchmanInstance
+from . import WatchmanTestCase
 
 
 TestParent = object

@@ -16,9 +16,9 @@ import signal
 import subprocess
 import unittest
 
-import Interrupt
-import WatchmanInstance
-import WatchmanTestCase
+from watchman.integration.lib import Interrupt
+from watchman.integration.lib import WatchmanInstance
+from watchman.integration.lib import WatchmanTestCase
 
 
 def find_node():

@@ -11,8 +11,8 @@ import os
 import os.path
 
 import pywatchman
-import WatchmanTestCase
-from path_utils import norm_relative_path
+from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib.path_utils import norm_relative_path
 
 
 try:

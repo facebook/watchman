@@ -9,7 +9,7 @@ import sys
 
 import pywatchman
 import pywatchman.capabilities
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

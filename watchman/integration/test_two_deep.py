@@ -9,7 +9,7 @@
 import os
 import time
 
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

@@ -3,16 +3,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-add_fb_python_library(test_support_py
+add_fb_python_library(integration_lib
   SOURCES
-    Interrupt.py
-    TempDir.py
-    WatchmanEdenTestCase.py
-    WatchmanInstance.py
-    WatchmanSCMTestCase.py
-    WatchmanTestCase.py
-    path_utils.py
-  NAMESPACE ""
+    lib/Interrupt.py
+    lib/TempDir.py
+    lib/WatchmanEdenTestCase.py
+    lib/WatchmanInstance.py
+    lib/WatchmanSCMTestCase.py
+    lib/WatchmanTestCase.py
+    lib/path_utils.py
 )
 
 file(GLOB TEST_MODULES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "test_*.py")
@@ -37,7 +36,7 @@ add_fb_python_unittest(test_py
 
   DEPENDS
     pywatchman
-    test_support_py
+    integration_lib
 
   WORKING_DIRECTORY
     ${CMAKE_BINARY_DIR}

@@ -10,7 +10,7 @@ import json
 import os
 
 import pywatchman
-import WatchmanInstance
+from watchman.integration.lib import WatchmanInstance
 
 
 try:

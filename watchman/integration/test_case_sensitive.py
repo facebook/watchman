@@ -7,7 +7,7 @@
 
 import os
 
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

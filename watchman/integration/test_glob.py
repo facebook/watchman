@@ -11,7 +11,7 @@ import os.path
 import shutil
 
 import pywatchman
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

@@ -15,11 +15,12 @@ import os.path
 import tempfile
 import time
 
-import Interrupt
 import pywatchman
-import TempDir
-import WatchmanInstance
-from path_utils import norm_absolute_path, norm_relative_path
+
+from . import Interrupt
+from . import TempDir
+from . import WatchmanInstance
+from .path_utils import norm_absolute_path, norm_relative_path
 
 
 try:

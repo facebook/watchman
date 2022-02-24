@@ -11,8 +11,8 @@ import os
 import re
 import subprocess
 
-import WatchmanInstance
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanInstance
+from watchman.integration.lib import WatchmanTestCase
 
 
 def is_hg_installed():

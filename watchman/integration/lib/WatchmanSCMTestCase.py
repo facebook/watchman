@@ -10,8 +10,9 @@ import os
 import subprocess
 
 import pywatchman
-import WatchmanInstance
-import WatchmanTestCase
+
+from . import WatchmanInstance
+from . import WatchmanTestCase
 
 
 if pywatchman.compat.PYTHON3:

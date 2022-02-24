@@ -9,8 +9,8 @@ import os
 import subprocess
 import sys
 
-import WatchmanInstance
-import WatchmanTestCase
+from watchman.integration.lib import WatchmanInstance
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix
