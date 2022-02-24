@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 # This is a simple script that spawns a watchman process in the background
-# no unicode literals
 
 import os
 import subprocess

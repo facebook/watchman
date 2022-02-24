@@ -4,21 +4,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# no unicode literals
 
 import json
 import os
 import os.path
+import unittest
 
 import pywatchman
 from watchman.integration.lib import WatchmanTestCase
 from watchman.integration.lib.path_utils import norm_relative_path
-
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 
 @WatchmanTestCase.expand_matrix

@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 
-# no unicode literals
 import asyncio
 import os
 import subprocess

@@ -5,7 +5,6 @@
 
 # Portable simple implementation of `touch`
 
-# no unicode literals
 
 import errno
 import os

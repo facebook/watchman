@@ -12,6 +12,7 @@ import inspect
 import os
 import sys
 import tempfile
+import unittest
 import uuid
 
 from pywatchman import (
@@ -25,15 +26,6 @@ from pywatchman import (
     load,
     pybser,
 )
-
-
-# no unicode literals
-
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 
 if os.path.basename(bser.__file__) == "pybser.py":

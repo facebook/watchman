@@ -4,7 +4,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# no unicode literals
 
 import errno
 import functools
@@ -14,6 +13,7 @@ import os
 import os.path
 import tempfile
 import time
+import unittest
 
 import pywatchman
 
@@ -22,11 +22,6 @@ from . import TempDir
 from . import WatchmanInstance
 from .path_utils import norm_absolute_path, norm_relative_path
 
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)

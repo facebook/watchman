@@ -5,7 +5,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# no unicode literals
 
 import argparse
 import json
@@ -22,6 +21,7 @@ import tempfile
 import threading
 import time
 import traceback
+import unittest
 
 
 # in the FB internal test infra, ensure that we are running from the
@@ -31,11 +31,6 @@ import traceback
 # which won't resolve to anything useful by the time we get here.
 if not os.path.exists("runtests.py") and os.path.exists("watchman/runtests.py"):
     os.chdir("watchman")
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 # Ensure that we can find pywatchman and integration tests (if we're not the
 # main module, a wrapper is probably loading us up and we shouldn't screw around

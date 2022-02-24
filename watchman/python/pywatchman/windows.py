@@ -4,8 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 
-# no unicode literals
-
 import ctypes
 import ctypes.wintypes
 import os

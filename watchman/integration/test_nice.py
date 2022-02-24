@@ -4,19 +4,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# no unicode literals
 
 import os
 import sys
+import unittest
 
 import pywatchman
 from watchman.integration.lib import WatchmanInstance
-
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 
 @unittest.skipIf(os.name == "nt", "N/A on windows")
