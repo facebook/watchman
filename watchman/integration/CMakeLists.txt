@@ -11,6 +11,7 @@ add_fb_python_library(integration_lib
     lib/WatchmanInstance.py
     lib/WatchmanSCMTestCase.py
     lib/WatchmanTestCase.py
+    lib/node.py
     lib/path_utils.py
 )
 

@@ -7,6 +7,9 @@ add_fb_python_unittest(bser_js
   SOURCES
     test_bser.py
 
+  DEPENDS
+    integration_lib
+
   WORKING_DIRECTORY
     ${CMAKE_BINARY_DIR}
 
