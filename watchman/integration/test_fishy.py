@@ -4,17 +4,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-
 import os
 import subprocess
 
 from watchman.integration.lib import WatchmanTestCase
-
-
-try:
-    from shlex import quote as shellquote
-except ImportError:
-    from pipes import quote as shellquote
 
 
 @WatchmanTestCase.expand_matrix
@@ -39,7 +32,9 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         # the problem with whatever sequence and timing of
         # operations was produced by the original php test
         subprocess.check_call(
-            "cd %s && mv foo bar && ln -s bar foo" % shellquote(root), shell=True
+            "mv foo bar && ln -s bar foo",
+            shell=True,
+            cwd=root,
         )
 
         self.resumeWatchman()
@@ -57,9 +52,9 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         # the problem with whatever sequence and timing of
         # operations was produced by the original php test
         subprocess.check_call(
-            "cd %s && touch a && mkdir d1 d2 && mv d1 d2 && mv d2/d1 . && mv a d1"
-            % shellquote(root),
+            "touch a && mkdir d1 d2 && mv d1 d2 && mv d2/d1 . && mv a d1",
             shell=True,
+            cwd=root,
         )
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d1/a", "d2"], cursor=clock)
@@ -77,7 +72,6 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         # operations was produced by the original php test
         subprocess.check_call(
             (
-                "cd %s && "
                 "mkdir d1 d2 && "
                 "touch d1/a && "
                 "mkdir d3 && "
@@ -86,9 +80,9 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
                 "mv d1 d2 d3 && "
                 "mv d3/* . && "
                 "mv d1/a d2"
-            )
-            % shellquote(root),
+            ),
             shell=True,
+            cwd=root,
         )
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d2", "d2/a", "d3"], cursor=clock)
