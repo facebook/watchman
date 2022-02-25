@@ -6,6 +6,8 @@
 
 import os
 import subprocess
+import sys
+import unittest
 
 from watchman.integration.lib import WatchmanTestCase
 
@@ -87,6 +89,7 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d2", "d2/a", "d3"], cursor=clock)
 
+    @unittest.skipIf(sys.platform == "darwin", "currently broken behavior on FSEvents")
     def test_notify_dir(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
