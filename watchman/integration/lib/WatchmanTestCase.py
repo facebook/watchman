@@ -23,10 +23,7 @@ from . import WatchmanInstance
 from .path_utils import norm_absolute_path, norm_relative_path
 
 
-if pywatchman.compat.PYTHON3:
-    STRING_TYPES = (str, bytes)
-else:
-    STRING_TYPES = (str, unicode)  # noqa: F821
+STRING_TYPES = (str, bytes)
 
 
 if os.name == "nt":
@@ -55,12 +52,6 @@ if os.name == "nt":
 
     for name in ["rename", "unlink", "remove", "rmdir", "makedirs"]:
         setattr(os, name, wrap_with_backoff(getattr(os, name)))
-
-
-if not pywatchman.compat.PYTHON3:
-    unittest.TestCase.assertCountEqual = unittest.TestCase.assertItemsEqual
-    unittest.TestCase.assertRegex = unittest.TestCase.assertRegexpMatches
-    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
 class TempDirPerTestMixin(unittest.TestCase):
@@ -495,9 +486,6 @@ def expand_matrix(test_class):
         ("unix", "json", "UnixJson"),
         ("cli", "json", "CliJson"),
     ]
-
-    if not pywatchman.compat.PYTHON3:
-        matrix += [("unix", "bser-v1", "UnixBser")]
 
     if os.name == "nt":
         matrix += [("namedpipe", "bser", "NamedPipeBser2")]

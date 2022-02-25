@@ -19,9 +19,6 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
 
 @unittest.skipIf(os.name == "nt", "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
-    if not pywatchman.compat.PYTHON3:
-        assertRegex = unittest.TestCase.assertRegexpMatches
-
     def test_failingSpawner(self):
         config = {
             "spawn_watchman_service": os.path.join(THIS_DIR, "site_spawn_fail.py")

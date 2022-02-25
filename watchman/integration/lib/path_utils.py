@@ -9,8 +9,6 @@ import os
 import os.path
 import platform
 
-from pywatchman import compat
-
 
 if os.name == "nt":
 
@@ -46,10 +44,7 @@ if os.name == "nt":
 
                 # The first four chars are //?/
                 if result <= numwchars:
-                    path = buf.value[4:].replace("\\", "/")
-                    if compat.PYTHON2:
-                        path = path.encode("utf8")
-                    return path
+                    return buf.value[4:].replace("\\", "/")
 
                 # Not big enough; the result is the amount we need
                 numwchars = result + 1
@@ -79,7 +74,7 @@ elif platform.system() == "Darwin":
                 raise OSError(ctypes.get_errno())
             # buf is a bytes buffer, so normalize it if necessary
             ret = buf.value
-            if isinstance(name, compat.UNICODE):
+            if isinstance(name, str):
                 ret = os.fsdecode(ret)
             return ret
         finally:

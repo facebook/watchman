@@ -15,9 +15,6 @@ from watchman.integration.lib import WatchmanInstance
 
 @unittest.skipIf(os.name == "nt", "N/A on windows")
 class TestNice(unittest.TestCase):
-    if not pywatchman.compat.PYTHON3:
-        assertRegex = unittest.TestCase.assertRegexpMatches
-
     def test_failing_to_start_when_nice(self):
         if sys.platform == "darwin":
             self.skipTest("launchd renders this test invalid on macOS")

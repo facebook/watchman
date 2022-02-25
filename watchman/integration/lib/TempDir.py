@@ -50,10 +50,7 @@ class TempDir(object):
             # directories too open and break tests.
             os.umask(0o022)
         # Redirect all temporary files to that location
-        if pywatchman.compat.PYTHON3:
-            tempfile.tempdir = os.fsdecode(self.temp_dir)
-        else:
-            tempfile.tempdir = self.temp_dir
+        tempfile.tempdir = os.fsdecode(self.temp_dir)
 
         self.keep = keepAtShutdown
 

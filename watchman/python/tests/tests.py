@@ -22,7 +22,6 @@ from pywatchman import (
     WatchmanError,
     bser,
     client,
-    compat,
     load,
     pybser,
 )
@@ -330,8 +329,6 @@ class TestBSERDump(unittest.TestCase):
         self.assertEqual(1, len(obj))
         self.assertEqual(b"there", obj.hello)
         self.assertEqual(b"there", obj[u"hello"])
-        if not compat.PYTHON3:
-            self.assertEqual(b"there", obj[b"hello"])
         self.assertEqual(b"there", obj[0])
         # make sure this doesn't crash
         self.assertRaises(Exception, lambda: obj[45.25])

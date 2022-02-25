@@ -14,10 +14,7 @@ from . import WatchmanInstance
 from . import WatchmanTestCase
 
 
-if pywatchman.compat.PYTHON3:
-    STRING_TYPES = (str, bytes)
-else:
-    STRING_TYPES = (str, unicode)  # noqa: F821
+STRING_TYPES = (str, bytes)
 
 
 class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):

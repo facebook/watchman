@@ -12,7 +12,7 @@ import os.path
 import subprocess
 import unittest
 
-from pywatchman import bser, compat, encoding
+from pywatchman import bser, encoding
 from watchman.integration.lib import WatchmanInstance
 
 
@@ -26,8 +26,7 @@ class TestDashJCliOption(unittest.TestCase):
             watchman_cmd = b'[\n"get-sockname"\n]'
         else:
             watchman_cmd = json.dumps(["get-sockname"])
-            if compat.PYTHON3:
-                watchman_cmd = watchman_cmd.encode("ascii")
+            watchman_cmd = watchman_cmd.encode("ascii")
         if addNewLine:
             watchman_cmd = watchman_cmd + b"\n"
 
@@ -88,8 +87,7 @@ class TestDashJCliOption(unittest.TestCase):
         # the response should be bser to match our input
         result = bser.loads(stdout)
         result_sockname = result["unix_domain"]
-        if compat.PYTHON3:
-            result_sockname = encoding.decode_local(result_sockname)
+        result_sockname = encoding.decode_local(result_sockname)
         self.assertEqual(
             result_sockname,
             sockpath.unix_domain,

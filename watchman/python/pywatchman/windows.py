@@ -9,8 +9,6 @@ import ctypes.wintypes
 import os
 import socket
 
-from . import compat
-
 
 wintypes = ctypes.wintypes
 GENERIC_READ = 0x80000000
@@ -266,8 +264,7 @@ class WindowsSocketHandle(object):
 
     def connect(self, address: str) -> None:
         address = os.path.normpath(address)
-        if compat.PYTHON3:
-            address = os.fsencode(address)
+        address = os.fsencode(address)
         addr = SOCKADDR_UN(sun_family=self.AF_UNIX, sun_path=address)
         self._checkReturnCode(
             WinConnect(self.fd, ctypes.pointer(addr), ctypes.sizeof(addr))

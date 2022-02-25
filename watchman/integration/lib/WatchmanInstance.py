@@ -206,7 +206,7 @@ class _Instance(object):
         if self.pid is None:
             # self.proc didn't come up: wait for it to die
             self.stop()
-            pywatchman.compat.reraise(t, val, tb)
+            raise val
 
     def _waitForSuspend(self, suspended, timeout):
         if os.name == "nt":
