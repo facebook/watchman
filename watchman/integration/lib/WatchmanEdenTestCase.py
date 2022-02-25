@@ -7,6 +7,7 @@
 # no unicode literals
 
 import os
+from typing import Optional
 
 from . import WatchmanInstance
 from . import WatchmanTestCase
@@ -14,8 +15,6 @@ from . import WatchmanTestCase
 
 TestParent = object
 try:
-    import configparser  # python3
-
     from eden.integration.lib import edenclient, hgrepo
 
     def is_sandcastle():
@@ -40,93 +39,105 @@ except ImportError:
     def can_run_eden():
         return False
 
+    class WatchmanEdenTestCase(object):
+        pass
 
-class WatchmanEdenTestCase(TestParent):
-    # The contents of the .eden directory
-    # This is used by several tests when checking reported file lists
-    eden_dir_entries = [".eden/root", ".eden/socket", ".eden/client", ".eden/this-dir"]
 
-    def setUp(self):
-        super(WatchmanEdenTestCase, self).setUp()
+else:
 
-        # The test EdenFS instance.
-        # We let it create and manage its own temporary test directory, rather than
-        # using the one scoped to the test because we have very real length limits on
-        # the socket path name that we're likely to hit otherwise.
-        self.eden = edenclient.EdenFS()
-        self.addCleanup(lambda: self.cleanUpEden())
+    class WatchmanEdenTestCase(WatchmanTestCase.WatchmanTestCase):
+        # The contents of the .eden directory
+        # This is used by several tests when checking reported file lists
+        eden_dir_entries = [
+            ".eden/root",
+            ".eden/socket",
+            ".eden/client",
+            ".eden/this-dir",
+        ]
 
-        # where we'll mount the eden client(s)
-        self.mounts_dir = self.mkdtemp(prefix="eden_mounts")
+        eden: Optional[edenclient.EdenFS]
 
-        # Watchman needs to start up with the same HOME as eden, otherwise
-        # it won't be able to locate the eden socket
-        self.save_home = os.environ["HOME"]
-        os.environ["HOME"] = str(self.eden.home_dir)
-        self.addCleanup(lambda: self._restoreHome())
+        def setUp(self):
+            super(WatchmanEdenTestCase, self).setUp()
 
-        self.system_hgrc = None
+            # The test EdenFS instance.
+            # We let it create and manage its own temporary test directory, rather than
+            # using the one scoped to the test because we have very real length limits on
+            # the socket path name that we're likely to hit otherwise.
+            self.eden = edenclient.EdenFS()
+            self.addCleanup(lambda: self.cleanUpEden())
 
-        self.eden_watchman = WatchmanInstance.Instance()
-        self.eden_watchman.start()
-        self.addCleanup(self.cleanUpWatchman)
+            # where we'll mount the eden client(s)
+            self.mounts_dir = self.mkdtemp(prefix="eden_mounts")
 
-        self.client = self.getClient(self.eden_watchman)
+            # Watchman needs to start up with the same HOME as eden, otherwise
+            # it won't be able to locate the eden socket
+            self.save_home = os.environ["HOME"]
+            os.environ["HOME"] = str(self.eden.home_dir)
+            self.addCleanup(lambda: self._restoreHome())
 
-        # chg can interfere with eden, so disable it up front
-        os.environ["CHGDISABLE"] = "1"
+            self.system_hgrc = None
 
-        # Start the EdenFS instance
-        self.eden.start()
+            self.eden_watchman = WatchmanInstance.Instance()
+            self.eden_watchman.start()
+            self.addCleanup(self.cleanUpWatchman)
 
-    def _restoreHome(self) -> None:
-        assert self.save_home is not None
-        os.environ["HOME"] = self.save_home
+            self.client = self.getClient(self.eden_watchman)
 
-    def cleanUpEden(self) -> None:
-        assert self.eden is not None
-        self.eden.cleanup()
-        self.eden = None
+            # chg can interfere with eden, so disable it up front
+            os.environ["CHGDISABLE"] = "1"
 
-    def cleanUpWatchman(self):
-        roots = self.watchmanCommand("watch-list")["roots"]
-        self.watchmanCommand("watch-del-all")
-        for root in roots:
-            try:
-                self.eden.unmount(root)
-            except Exception:
-                pass
+            # Start the EdenFS instance
+            self.eden.start()
 
-        self.eden_watchman.stop()
-        self.eden_watchman = None
+        def _restoreHome(self) -> None:
+            assert self.save_home is not None
+            os.environ["HOME"] = self.save_home
 
-    def makeEdenMount(self, populate_fn=None):
-        """populate_fn is a function that accepts a repo object and
-        that is expected to populate it as a pre-requisite to
-        starting up the eden mount for it.
-        """
+        def cleanUpEden(self) -> None:
+            assert self.eden is not None
+            self.eden.cleanup()
+            self.eden = None
 
-        repo_path = self.mkdtemp(prefix="eden_repo_")
-        repo_name = os.path.basename(repo_path)
-        repo = self.repoForPath(repo_path)
-        repo.init()
+        def cleanUpWatchman(self):
+            roots = self.watchmanCommand("watch-list")["roots"]
+            self.watchmanCommand("watch-del-all")
+            for root in roots:
+                try:
+                    self.eden.unmount(root)
+                except Exception:
+                    pass
 
-        if populate_fn:
-            populate_fn(repo)
+            self.eden_watchman.stop()
+            self.eden_watchman = None
 
-        mount_path = os.path.join(self.mounts_dir, repo_name)
+        def makeEdenMount(self, populate_fn=None):
+            """populate_fn is a function that accepts a repo object and
+            that is expected to populate it as a pre-requisite to
+            starting up the eden mount for it.
+            """
 
-        self.eden.clone(repo_path, mount_path)
-        return mount_path
+            repo_path = self.mkdtemp(prefix="eden_repo_")
+            repo_name = os.path.basename(repo_path)
+            repo = self.repoForPath(repo_path)
+            repo.init()
 
-    def repoForPath(self, path):
-        if self.system_hgrc is None:
-            system_hgrc_path = self.mktemp("hgrc")
-            with open(system_hgrc_path, "w") as f:
-                f.write(hgrepo.HgRepository.get_system_hgrc_contents())
-            self.system_hgrc = system_hgrc_path
+            if populate_fn:
+                populate_fn(repo)
 
-        return hgrepo.HgRepository(path, system_hgrc=self.system_hgrc)
+            mount_path = os.path.join(self.mounts_dir, repo_name)
 
-    def setDefaultConfiguration(self):
-        self.setConfiguration("local", "bser")
+            self.eden.clone(repo_path, mount_path)
+            return mount_path
+
+        def repoForPath(self, path):
+            if self.system_hgrc is None:
+                system_hgrc_path = self.mktemp("hgrc")
+                with open(system_hgrc_path, "w") as f:
+                    f.write(hgrepo.HgRepository.get_system_hgrc_contents())
+                self.system_hgrc = system_hgrc_path
+
+            return hgrepo.HgRepository(path, system_hgrc=self.system_hgrc)
+
+        def setDefaultConfiguration(self):
+            self.setConfiguration("local", "bser")
