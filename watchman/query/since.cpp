@@ -108,7 +108,7 @@ class SinceExpr : public QueryExpr {
     if (!spec) {
       throw QueryParseError("invalid clockspec for \"since\" term");
     }
-    if (spec->tag == w_cs_named_cursor) {
+    if (std::holds_alternative<ClockSpec::NamedCursor>(spec->spec)) {
       throw QueryParseError("named cursors are not allowed in \"since\" terms");
     }
 
@@ -139,7 +139,7 @@ class SinceExpr : public QueryExpr {
     switch (selected_field) {
       case since_what::SINCE_CTIME:
       case since_what::SINCE_MTIME:
-        if (spec->tag != w_cs_timestamp) {
+        if (!std::holds_alternative<ClockSpec::Timestamp>(spec->spec)) {
           throw QueryParseError(
               "field \"",
               fieldname,

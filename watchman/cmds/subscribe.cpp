@@ -216,12 +216,14 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     OnStateTransition onStateTransition) {
   auto since_spec = query->since_spec.get();
 
-  if (since_spec && since_spec->tag == w_cs_clock) {
+  if (const auto* clock = since_spec
+          ? std::get_if<ClockSpec::Clock>(&since_spec->spec)
+          : nullptr) {
     log(DBG,
         "running subscription ",
         name,
         " rules since ",
-        since_spec->clock.position.ticks,
+        clock->position.ticks,
         "\n");
   } else {
     log(DBG, "running subscription ", name, " rules (no since)\n");
@@ -276,7 +278,8 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     // It is way too much of a hassle to try to recreate the clock value if it's
     // not a relative clock spec, and it's only going to happen on the first run
     // anyway, so just skip doing that entirely.
-    if (since_spec && since_spec->tag == w_cs_clock) {
+    if (since_spec &&
+        std::holds_alternative<ClockSpec::Clock>(since_spec->spec)) {
       response.set("since", since_spec->toJson());
     }
     updateSubscriptionTicks(&res);

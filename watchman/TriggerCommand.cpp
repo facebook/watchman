@@ -173,8 +173,10 @@ void spawn_command(
   // It is way too much of a hassle to try to recreate the clock value if it's
   // not a relative clock spec, and it's only going to happen on the first run
   // anyway, so just skip doing that entirely.
-  if (since_spec && since_spec->tag == w_cs_clock) {
-    cmd->env.set("WATCHMAN_SINCE", since_spec->clock.position.toClockString());
+  if (const auto* clock = since_spec
+          ? std::get_if<ClockSpec::Clock>(&since_spec->spec)
+          : nullptr) {
+    cmd->env.set("WATCHMAN_SINCE", clock->position.toClockString());
   } else {
     cmd->env.unset("WATCHMAN_SINCE");
   }
@@ -461,12 +463,14 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
 
   auto since_spec = query->since_spec.get();
 
-  if (since_spec && since_spec->tag == w_cs_clock) {
+  if (const auto* clock = since_spec
+          ? std::get_if<ClockSpec::Clock>(&since_spec->spec)
+          : nullptr) {
     logf(
         DBG,
         "running trigger \"{}\" rules! since {}\n",
         triggername,
-        since_spec->clock.position.ticks);
+        clock->position.ticks);
   } else {
     logf(DBG, "running trigger \"{}\" rules!\n", triggername);
   }

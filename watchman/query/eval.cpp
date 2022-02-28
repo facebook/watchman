@@ -423,7 +423,8 @@ QueryResult w_query_execute(
   // Copy in any scm parameters
   res.clockAtStartOfQuery = resultClock;
   // then update the clock position portion
-  res.clockAtStartOfQuery.clock = ctx.clockAtStartOfQuery.clock;
+  std::get<ClockSpec::Clock>(res.clockAtStartOfQuery.spec) =
+      std::get<ClockSpec::Clock>(ctx.clockAtStartOfQuery.spec);
 
   // Evaluate the cursor for this root
   ctx.since = query->since_spec ? query->since_spec->evaluate(

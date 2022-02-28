@@ -6,8 +6,10 @@
  */
 
 #pragma once
+
 #include <folly/Synchronized.h>
 #include <unordered_map>
+#include <variant>
 #include "watchman/Logging.h"
 
 namespace watchman {
@@ -43,19 +45,22 @@ struct ClockPosition {
   w_string toClockString() const;
 };
 
-enum w_clockspec_tag { w_cs_timestamp, w_cs_clock, w_cs_named_cursor };
-
 struct ClockSpec {
-  w_clockspec_tag tag;
-  time_t timestamp;
-  struct {
+  struct Timestamp {
+    time_t time;
+  };
+
+  struct Clock {
     uint64_t start_time;
     int pid;
     ClockPosition position;
-  } clock;
-  struct {
+  };
+
+  struct NamedCursor {
     w_string cursor;
-  } named_cursor;
+  };
+
+  std::variant<Timestamp, Clock, NamedCursor> spec;
 
   // Optional SCM merge base parameters
   w_string scmMergeBase;
@@ -91,8 +96,9 @@ struct ClockSpec {
   static void init();
 
   inline const ClockPosition& position() const {
-    w_check(tag == w_cs_clock, "position() called for non-clock clockspec");
-    return clock.position;
+    auto* c = std::get_if<Clock>(&spec);
+    w_check(c, "position() called for non-clock clockspec");
+    return c->position;
   }
 
   bool hasScmParams() const;

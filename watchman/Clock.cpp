@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Clock.h"
+#include <folly/Overload.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <memory>
@@ -39,22 +40,14 @@ ClockSpec::ClockSpec(const json_ref& value) {
             &pid,
             &root_number,
             &ticks) == 4) {
-      tag = w_cs_clock;
-      clock.start_time = start_time;
-      clock.pid = pid;
-      clock.position.rootNumber = root_number;
-      clock.position.ticks = ticks;
+      spec = Clock{start_time, pid, ClockPosition{root_number, ticks}};
       return true;
     }
 
     if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
       // old-style clock value (<= 2.8.2) -- by setting clock time and root
       // number to 0 we guarantee that this is treated as a fresh instance
-      tag = w_cs_clock;
-      clock.start_time = 0;
-      clock.pid = pid;
-      clock.position.rootNumber = root_number;
-      clock.position.ticks = ticks;
+      spec = Clock{0, pid, ClockPosition{root_number, ticks}};
       return true;
     }
 
@@ -63,8 +56,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
 
   switch (json_typeof(value)) {
     case JSON_INTEGER:
-      tag = w_cs_timestamp;
-      timestamp = (time_t)value.asInt();
+      spec = Timestamp{static_cast<time_t>(value.asInt())};
       return;
 
     case JSON_OBJECT: {
@@ -74,11 +66,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
           throw std::domain_error("invalid clockspec");
         }
       } else {
-        tag = w_cs_clock;
-        clock.start_time = 0;
-        clock.pid = 0;
-        clock.position.rootNumber = 0;
-        clock.position.ticks = 0;
+        spec = Clock{0, 0, ClockPosition{0, 0}};
       }
 
       auto scm = value.get_default("scm");
@@ -106,8 +94,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
       auto str = json_string_value(value);
 
       if (str[0] == 'n' && str[1] == ':') {
-        tag = w_cs_named_cursor;
-        named_cursor.cursor = json_to_w_string(value);
+        spec = NamedCursor{json_to_w_string(value)};
         return;
       }
 
@@ -134,83 +121,81 @@ std::unique_ptr<ClockSpec> ClockSpec::parseOptionalClockSpec(
   return std::make_unique<ClockSpec>(value);
 }
 
-ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}
+ClockSpec::ClockSpec() : spec{Timestamp{0}} {}
 
 ClockSpec::ClockSpec(const ClockPosition& position)
-    : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
+    : spec{Clock{proc_start_time, proc_pid, position}} {}
 
 QuerySince ClockSpec::evaluate(
     const ClockPosition& position,
     ClockTicks lastAgeOutTick,
     folly::Synchronized<std::unordered_map<w_string, ClockTicks>>* cursorMap)
     const {
-  QuerySince since;
-
-  switch (tag) {
-    case w_cs_timestamp:
-      // just copy the values over
-      since.is_timestamp = true;
-      since.timestamp = timestamp;
-      return since;
-
-    case w_cs_named_cursor: {
-      if (!cursorMap) {
-        // This is checked for and handled at parse time in SinceExpr::parse,
-        // so this should be impossible to hit.
-        throw std::runtime_error(
-            "illegal to use a named cursor in this context");
-      }
-
-      {
-        auto wlock = cursorMap->wlock();
-        auto& cursors = *wlock;
-        auto it = cursors.find(named_cursor.cursor);
-
-        if (it == cursors.end()) {
+  return folly::variant_match(
+      spec,
+      [](const Timestamp& ts) {
+        QuerySince since;
+        // just copy the values over
+        since.is_timestamp = true;
+        since.timestamp = ts.time;
+        return since;
+      },
+      [&](const Clock& clock) {
+        QuerySince since;
+        if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
+            clock.position.rootNumber == position.rootNumber) {
+          since.clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
+          if (since.clock.is_fresh_instance) {
+            since.clock.ticks = 0;
+          } else {
+            since.clock.ticks = clock.position.ticks;
+          }
+        } else {
+          // If the pid, start time or root number don't match, they asked a
+          // different incarnation of the server or a different instance of this
+          // root, so we treat them as having never spoken to us before.
           since.clock.is_fresh_instance = true;
           since.clock.ticks = 0;
-        } else {
-          since.clock.ticks = it->second;
-          since.clock.is_fresh_instance = since.clock.ticks < lastAgeOutTick;
+        }
+        return since;
+      },
+      [&](const NamedCursor& named_cursor) {
+        if (!cursorMap) {
+          // This is checked for and handled at parse time in SinceExpr::parse,
+          // so this should be impossible to hit.
+          throw std::runtime_error(
+              "illegal to use a named cursor in this context");
         }
 
-        // record the current tick value against the cursor so that we use that
-        // as the basis for a subsequent query.
-        cursors[named_cursor.cursor] = position.ticks;
-      }
+        QuerySince since;
 
-      log(DBG,
-          "resolved cursor ",
-          named_cursor.cursor,
-          " -> ",
-          since.clock.ticks,
-          "\n");
+        {
+          auto wlock = cursorMap->wlock();
+          auto& cursors = *wlock;
+          auto it = cursors.find(named_cursor.cursor);
 
-      return since;
-    }
+          if (it == cursors.end()) {
+            since.clock.is_fresh_instance = true;
+            since.clock.ticks = 0;
+          } else {
+            since.clock.ticks = it->second;
+            since.clock.is_fresh_instance = since.clock.ticks < lastAgeOutTick;
+          }
 
-    case w_cs_clock: {
-      if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
-          clock.position.rootNumber == position.rootNumber) {
-        since.clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
-        if (since.clock.is_fresh_instance) {
-          since.clock.ticks = 0;
-        } else {
-          since.clock.ticks = clock.position.ticks;
+          // record the current tick value against the cursor so that we use
+          // that as the basis for a subsequent query.
+          cursors[named_cursor.cursor] = position.ticks;
         }
-      } else {
-        // If the pid, start time or root number don't match, they asked a
-        // different incarnation of the server or a different instance of this
-        // root, so we treat them as having never spoken to us before.
-        since.clock.is_fresh_instance = true;
-        since.clock.ticks = 0;
-      }
-      return since;
-    }
 
-    default:
-      throw std::runtime_error("impossible case in ClockSpec::evaluate");
-  }
+        log(DBG,
+            "resolved cursor ",
+            named_cursor.cursor,
+            " -> ",
+            since.clock.ticks,
+            "\n");
+
+        return since;
+      });
 }
 
 bool clock_id_string(
