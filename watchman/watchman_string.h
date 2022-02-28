@@ -313,6 +313,38 @@ class w_string {
   bool operator!=(const w_string& other) const;
   bool operator<(const w_string& other) const;
 
+  friend bool operator==(const w_string& lhs, const char* rhs) {
+    return lhs.view() == rhs;
+  }
+
+  friend bool operator!=(const w_string& lhs, const char* rhs) {
+    return lhs.view() != rhs;
+  }
+
+  friend bool operator==(const char* lhs, const w_string& rhs) {
+    return lhs == rhs.view();
+  }
+
+  friend bool operator!=(const char* lhs, const w_string& rhs) {
+    return lhs != rhs.view();
+  }
+
+  friend bool operator==(const w_string& lhs, std::nullptr_t) {
+    return lhs.str_ == nullptr;
+  }
+
+  friend bool operator!=(const w_string& lhs, std::nullptr_t) {
+    return lhs.str_ != nullptr;
+  }
+
+  friend bool operator==(std::nullptr_t, const w_string& rhs) {
+    return nullptr == rhs.str_;
+  }
+
+  friend bool operator!=(std::nullptr_t, const w_string& rhs) {
+    return nullptr != rhs.str_;
+  }
+
   /** path concatenation
    * Pass in a list of w_string_pieces to join them all similarly to
    * the python os.path.join() function. */
