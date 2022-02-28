@@ -60,8 +60,8 @@ class InMemoryFileResult final : public FileResult {
   w_string_piece dirName() override;
   std::optional<bool> exists() override;
   std::optional<w_string> readLink() override;
-  std::optional<w_clock_t> ctime() override;
-  std::optional<w_clock_t> otime() override;
+  std::optional<ClockStamp> ctime() override;
+  std::optional<ClockStamp> otime() override;
   std::optional<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
@@ -107,13 +107,13 @@ class ViewDatabase {
       Watcher& watcher,
       watchman_dir* dir,
       const w_string& file_name,
-      w_clock_t ctime);
+      ClockStamp ctime);
 
   /**
    * Updates the otime for the file and bubbles it to the front of recency
    * index.
    */
-  void markFileChanged(Watcher& watcher, watchman_file* file, w_clock_t otime);
+  void markFileChanged(Watcher& watcher, watchman_file* file, ClockStamp otime);
 
   /**
    * Mark a directory as being removed from the view. Marks the contained set of
@@ -123,7 +123,7 @@ class ViewDatabase {
   void markDirDeleted(
       Watcher& watcher,
       watchman_dir* dir,
-      w_clock_t otime,
+      ClockStamp otime,
       bool recursive);
 
  private:
@@ -163,8 +163,8 @@ class InMemoryView final : public QueryableView {
   std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
 
-  w_clock_t getClock(std::chrono::system_clock::time_point now) const {
-    return w_clock_t{
+  ClockStamp getClock(std::chrono::system_clock::time_point now) const {
+    return ClockStamp{
         mostRecentTick_.load(std::memory_order_acquire),
         std::chrono::system_clock::to_time_t(now),
     };
@@ -226,7 +226,7 @@ class InMemoryView final : public QueryableView {
       std::chrono::milliseconds timeout);
 
   // Returns the erased file's otime.
-  w_clock_t ageOutFile(
+  ClockStamp ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
 

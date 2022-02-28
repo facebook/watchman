@@ -21,11 +21,11 @@ struct watchman_file {
   struct watchman_file **prev, *next;
 
   /* the time we last observed a change to this file */
-  w_clock_t otime;
+  watchman::ClockStamp otime;
   /* the time we first observed this file OR the time
    * that this file switched from !exists to exists.
    * This is thus the "created time" */
-  w_clock_t ctime;
+  watchman::ClockStamp ctime;
 
   /* whether we believe that this file still exists */
   bool exists;

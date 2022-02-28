@@ -187,11 +187,11 @@ std::optional<bool> InMemoryFileResult::exists() {
   return file_->exists;
 }
 
-std::optional<w_clock_t> InMemoryFileResult::ctime() {
+std::optional<ClockStamp> InMemoryFileResult::ctime() {
   return file_->ctime;
 }
 
-std::optional<w_clock_t> InMemoryFileResult::otime() {
+std::optional<ClockStamp> InMemoryFileResult::otime() {
   return file_->otime;
 }
 
@@ -356,7 +356,7 @@ watchman_file* ViewDatabase::getOrCreateChildFile(
     Watcher& watcher,
     watchman_dir* dir,
     const w_string& file_name,
-    w_clock_t ctime) {
+    ClockStamp ctime) {
   // file_name is typically a baseName slice; let's use it as-is
   // to look up a child...
   auto it = dir->files.find(file_name);
@@ -380,7 +380,7 @@ watchman_file* ViewDatabase::getOrCreateChildFile(
 void ViewDatabase::markFileChanged(
     Watcher& watcher,
     watchman_file* file,
-    w_clock_t otime) {
+    ClockStamp otime) {
   if (file->exists) {
     watcher.startWatchFile(file);
   }
@@ -399,7 +399,7 @@ void ViewDatabase::markFileChanged(
 void ViewDatabase::markDirDeleted(
     Watcher& watcher,
     watchman_dir* dir,
-    w_clock_t otime,
+    ClockStamp otime,
     bool recursive) {
   if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
@@ -499,7 +499,7 @@ InMemoryView::InMemoryView(
 
 InMemoryView::~InMemoryView() = default;
 
-w_clock_t InMemoryView::ageOutFile(
+ClockStamp InMemoryView::ageOutFile(
     std::unordered_set<w_string>& dirs_to_erase,
     watchman_file* file) {
   auto parent = file->parent;

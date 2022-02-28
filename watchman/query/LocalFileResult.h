@@ -30,7 +30,7 @@ class LocalFileResult : public FileResult {
  public:
   LocalFileResult(
       w_string fullPath,
-      w_clock_t clock,
+      ClockStamp clock,
       CaseSensitivity caseSensitivity);
 
   // Returns stat-like information about this file.  If the file doesn't
@@ -55,8 +55,8 @@ class LocalFileResult : public FileResult {
   // Returns the symlink target
   std::optional<w_string> readLink() override;
 
-  std::optional<w_clock_t> ctime() override;
-  std::optional<w_clock_t> otime() override;
+  std::optional<ClockStamp> ctime() override;
+  std::optional<ClockStamp> otime() override;
 
   // Returns the SHA-1 hash of the file contents
   std::optional<FileResult::ContentHash> getContentSha1() override;
@@ -71,7 +71,7 @@ class LocalFileResult : public FileResult {
   bool exists_{true};
   std::optional<FileInformation> info_;
   w_string fullPath_;
-  w_clock_t clock_;
+  ClockStamp clock_;
   CaseSensitivity caseSensitivity_;
   std::optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;

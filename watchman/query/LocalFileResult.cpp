@@ -12,7 +12,7 @@ namespace watchman {
 
 LocalFileResult::LocalFileResult(
     w_string fullPath,
-    w_clock_t clock,
+    ClockStamp clock,
     CaseSensitivity caseSensitivity)
     : fullPath_(std::move(fullPath)),
       clock_(clock),
@@ -96,11 +96,11 @@ std::optional<w_string> LocalFileResult::readLink() {
   return std::nullopt;
 }
 
-std::optional<w_clock_t> LocalFileResult::ctime() {
+std::optional<ClockStamp> LocalFileResult::ctime() {
   return clock_;
 }
 
-std::optional<w_clock_t> LocalFileResult::otime() {
+std::optional<ClockStamp> LocalFileResult::otime() {
   return clock_;
 }
 

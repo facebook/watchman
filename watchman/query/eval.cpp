@@ -329,9 +329,7 @@ QueryResult w_query_execute(
           }
 
           auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-          w_clock_t clock{0, 0};
-          clock.ticks = spec.ticks;
-          time(&clock.timestamp);
+          ClockStamp clock{spec.ticks, ::time(nullptr)};
           for (auto& pathEntry : pathList.array()) {
             auto path = json_to_w_string(pathEntry);
 
@@ -432,7 +430,7 @@ QueryResult w_query_execute(
                                       ctx.clockAtStartOfQuery.position(),
                                       ctx.lastAgeOutTickValueAtStartOfQuery,
                                       &root->inner.cursors)
-                                : w_query_since();
+                                : QuerySince{};
 
   if (query->bench_iterations > 0) {
     for (uint32_t i = 0; i < query->bench_iterations; ++i) {

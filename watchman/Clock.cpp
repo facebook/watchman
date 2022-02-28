@@ -30,7 +30,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
     uint64_t start_time;
     int pid;
     uint32_t root_number;
-    uint32_t ticks;
+    ClockTicks ticks;
     // Parse a >= 2.8.2 version clock string
     if (sscanf(
             str,
@@ -141,8 +141,8 @@ ClockSpec::ClockSpec(const ClockPosition& position)
 
 QuerySince ClockSpec::evaluate(
     const ClockPosition& position,
-    const uint32_t lastAgeOutTick,
-    folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
+    ClockTicks lastAgeOutTick,
+    folly::Synchronized<std::unordered_map<w_string, ClockTicks>>* cursorMap)
     const {
   QuerySince since;
 
@@ -215,7 +215,7 @@ QuerySince ClockSpec::evaluate(
 
 bool clock_id_string(
     uint32_t root_number,
-    uint32_t ticks,
+    ClockTicks ticks,
     char* buf,
     size_t bufsize) {
   int res = snprintf(

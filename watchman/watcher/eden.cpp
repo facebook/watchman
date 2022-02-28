@@ -310,11 +310,11 @@ class EdenFileResult : public FileResult {
     return std::nullopt;
   }
 
-  std::optional<w_clock_t> ctime() override {
+  std::optional<ClockStamp> ctime() override {
     return ctime_;
   }
 
-  std::optional<w_clock_t> otime() override {
+  std::optional<ClockStamp> otime() override {
     return otime_;
   }
 
@@ -450,8 +450,8 @@ class EdenFileResult : public FileResult {
   w_string fullName_;
   std::optional<FileInformation> stat_;
   std::optional<bool> exists_;
-  w_clock_t ctime_;
-  w_clock_t otime_;
+  ClockStamp ctime_;
+  ClockStamp otime_;
   std::optional<SHA1Result> sha1_;
   std::optional<w_string> symlinkTarget_;
   DType dtype_{DType::Unknown};

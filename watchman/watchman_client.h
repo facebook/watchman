@@ -61,6 +61,7 @@ enum class OnStateTransition { QueryAnyway, DontAdvance };
 
 struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
+  using ClockSpec = watchman::ClockSpec;
   using Query = watchman::Query;
 
   struct LoggedResponse {

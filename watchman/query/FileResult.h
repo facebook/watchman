@@ -55,11 +55,11 @@ class FileResult {
 
   // Maybe return the change time.
   // Returns folly::none if ctime is not currently known
-  virtual std::optional<w_clock_t> ctime() = 0;
+  virtual std::optional<ClockStamp> ctime() = 0;
 
   // Maybe return the observed time.
   // Returns folly::none if otime is not currently known
-  virtual std::optional<w_clock_t> otime() = 0;
+  virtual std::optional<ClockStamp> otime() = 0;
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;

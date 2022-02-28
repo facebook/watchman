@@ -10,12 +10,14 @@
 #include <unordered_map>
 #include "watchman/Logging.h"
 
-struct w_clock_t {
-  uint32_t ticks;
+namespace watchman {
+
+using ClockTicks = uint32_t;
+
+struct ClockStamp {
+  ClockTicks ticks;
   time_t timestamp;
 };
-
-namespace watchman {
 
 struct QuerySince {
   bool is_timestamp;
@@ -23,7 +25,7 @@ struct QuerySince {
     time_t timestamp;
     struct {
       bool is_fresh_instance;
-      uint32_t ticks;
+      ClockTicks ticks;
     } clock;
   };
 
@@ -32,10 +34,10 @@ struct QuerySince {
 
 struct ClockPosition {
   uint32_t rootNumber{0};
-  uint32_t ticks{0};
+  ClockTicks ticks{0};
 
   ClockPosition() = default;
-  ClockPosition(uint32_t rootNumber, uint32_t ticks)
+  ClockPosition(uint32_t rootNumber, ClockTicks ticks)
       : rootNumber(rootNumber), ticks(ticks) {}
 
   w_string toClockString() const;
@@ -81,8 +83,8 @@ struct ClockSpec {
    * will acquire a lock to evaluate a named cursor. */
   QuerySince evaluate(
       const ClockPosition& position,
-      const uint32_t lastAgeOutTick,
-      folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap =
+      const ClockTicks lastAgeOutTick,
+      folly::Synchronized<std::unordered_map<w_string, ClockTicks>>* cursorMap =
           nullptr) const;
 
   /** Initializes some global state needed for clockspec evaluation */
@@ -106,11 +108,6 @@ struct ClockSpec {
 
 bool clock_id_string(
     uint32_t root_number,
-    uint32_t ticks,
+    watchman::ClockTicks ticks,
     char* buf,
     size_t bufsize);
-
-// Legacy exports into global namespace.
-// TODO: remove these.
-using w_query_since = watchman::QuerySince;
-using ClockSpec = watchman::ClockSpec;

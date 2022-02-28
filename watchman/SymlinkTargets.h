@@ -18,7 +18,7 @@ struct SymlinkTargetCacheKey {
   // Path relative to the watched root
   w_string relativePath;
   // The modification time
-  w_clock_t otime;
+  ClockStamp otime;
 
   // Computes a hash value for use in the cache map
   std::size_t hashValue() const;
