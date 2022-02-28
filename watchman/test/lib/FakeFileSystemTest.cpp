@@ -6,10 +6,12 @@
  */
 
 #include "watchman/test/lib/FakeFileSystem.h"
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 namespace {
 
+using namespace testing;
 using namespace watchman;
 
 TEST(FakeFileSystemTest, get_root) {
@@ -116,6 +118,45 @@ TEST(FakeFileSystemTest, touch_makes_an_empty_file) {
   info = fs.getFileInformation("/atroot.txt");
   EXPECT_TRUE(info.isFile());
   EXPECT_EQ(0, info.size);
+}
+
+TEST(FakeFileSystemTest, recursively_remove_directory) {
+  FakeFileSystem fs;
+  fs.defineContents({
+      "/fake/dir/one.txt",
+      "/fake/dir/two.txt",
+  });
+
+  fs.removeRecursively("/fake/dir");
+
+  auto dh = fs.openDir("/fake");
+  EXPECT_EQ(nullptr, dh->readDir());
+}
+
+TEST(FakeFileSystemTest, recursive_removal_fails_if_parent_is_file) {
+  FakeFileSystem fs;
+  fs.defineContents({
+      "/fake/dir/one.txt",
+  });
+
+  EXPECT_THAT(
+      [&] { fs.removeRecursively("/fake/dir/one.txt/nothing"); },
+      Throws<std::system_error>(Property(
+          &std::system_error::code,
+          Eq(std::error_code(ENOTDIR, std::generic_category())))));
+}
+
+TEST(FakeFileSystemTest, recursive_removal_fails_if_child_does_not_exist) {
+  FakeFileSystem fs;
+  fs.defineContents({
+      "/fake/dir/one.txt",
+  });
+
+  EXPECT_THAT(
+      [&] { fs.removeRecursively("/fake/dir/two.txt"); },
+      Throws<std::system_error>(Property(
+          &std::system_error::code,
+          Eq(std::error_code(ENOENT, std::generic_category())))));
 }
 
 } // namespace

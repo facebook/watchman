@@ -262,6 +262,29 @@ void FakeFileSystem::updateMetadata(
       });
 }
 
+void FakeFileSystem::removeRecursively(const char* path) {
+  auto pair = parseAbsoluteBasename(path);
+  auto& dirname = pair.first;
+  auto& basename = pair.second;
+  auto root = root_.wlock();
+  return withPath(*root, dirname, "recursivelyRemove", [&](FakeInode& parent) {
+    if (!parent.metadata.isDir()) {
+      throw std::system_error(
+          ENOTDIR,
+          std::generic_category(),
+          fmt::format("{} is not a directory", dirname));
+    }
+    size_t count = parent.children.erase(basename.str());
+    if (count == 0) {
+      throw std::system_error(
+          ENOENT,
+          std::generic_category(),
+          fmt::format("{} does not exist", path));
+    }
+    (void)count;
+  });
+}
+
 FileInformation FakeFileSystem::fakeDir() {
   FileInformation fi{};
   fi.mode = S_IFDIR;

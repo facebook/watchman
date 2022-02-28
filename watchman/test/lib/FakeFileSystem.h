@@ -63,6 +63,8 @@ class FakeFileSystem final : public FileSystem {
       const char* path,
       std::function<void(FileInformation&)> func);
 
+  void removeRecursively(const char* path);
+
   FileInformation fakeDir();
   FileInformation fakeFile();
 
