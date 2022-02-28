@@ -51,6 +51,8 @@ def _resolve_sockname_helper():
     exitcode = p.poll()
 
     if exitcode:
+        print(stdout, file=sys.stdout)
+        print(stderr, file=sys.stderr)
         raise WatchmanError("watchman exited with code %d" % exitcode)
 
     result = bser.loads(stdout)
