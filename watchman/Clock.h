@@ -22,16 +22,29 @@ struct ClockStamp {
 };
 
 struct QuerySince {
-  bool is_timestamp;
-  union {
-    time_t timestamp;
-    struct {
-      bool is_fresh_instance;
-      ClockTicks ticks;
-    } clock;
+  struct Timestamp {
+    time_t time;
   };
+  struct Clock {
+    bool is_fresh_instance;
+    ClockTicks ticks;
+  };
+  std::variant<Timestamp, Clock> since;
 
-  QuerySince() : is_timestamp(false), clock{true, 0} {}
+  QuerySince() : since{Clock{true, 0}} {}
+  /* implicit */ QuerySince(Timestamp ts) : since{ts} {}
+  /* implicit */ QuerySince(Clock clock) : since{clock} {}
+
+  bool is_timestamp() const {
+    return std::holds_alternative<Timestamp>(since);
+  }
+
+  /**
+   * Throws if this holds a Timestamp.
+   */
+  bool is_fresh_instance() const {
+    return std::get<Clock>(since).is_fresh_instance;
+  }
 };
 
 struct ClockPosition {

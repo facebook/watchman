@@ -66,8 +66,9 @@ void w_query_process_file(
   // instead of query->expr so that the lazy evaluation logic can
   // be automatically applied and avoid fetching the exists flag
   // for every file.  See also related TODO in batchFetchNow.
-  if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
-      ctx->since.clock.is_fresh_instance) {
+  if (!ctx->disableFreshInstance &&
+      std::holds_alternative<QuerySince::Clock>(ctx->since.since) &&
+      std::get<QuerySince::Clock>(ctx->since.since).is_fresh_instance) {
     auto exists = ctx->file->exists();
     if (!exists.has_value()) {
       // Reconsider this one later
@@ -131,7 +132,7 @@ static void default_generators(
   bool generated = false;
 
   // Time based query
-  if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
+  if (ctx->since.is_timestamp() || !ctx->since.is_fresh_instance()) {
     time_generator(query, root, ctx);
     generated = true;
   }
@@ -165,8 +166,10 @@ static void execute_common(
   }
 
   // isFreshInstance is also later set by the value in ctx after generator
-  res->isFreshInstance =
-      !ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance;
+  {
+    auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+    res->isFreshInstance = since_clock && since_clock->is_fresh_instance;
+  }
 
   if (!(res->isFreshInstance && ctx->query->empty_on_fresh_instance)) {
     if (!generator) {
@@ -193,8 +196,10 @@ static void execute_common(
   // For Eden instances it is possible that when running the query it was
   // discovered that it is actually a fresh instance [e.g. mount generation
   // changes or journal truncation]; update res to match
-  res->isFreshInstance |= ctx->since.clock.is_fresh_instance;
-
+  {
+    auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+    res->isFreshInstance |= since_clock && since_clock->is_fresh_instance;
+  }
   if (sample && !ctx->namesToLog.empty()) {
     auto nameList = json_array_of_size(ctx->namesToLog.size());
     for (auto& name : ctx->namesToLog) {

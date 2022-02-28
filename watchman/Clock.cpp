@@ -133,33 +133,29 @@ QuerySince ClockSpec::evaluate(
     const {
   return folly::variant_match(
       spec,
-      [](const Timestamp& ts) {
-        QuerySince since;
-        // just copy the values over
-        since.is_timestamp = true;
-        since.timestamp = ts.time;
-        return since;
+      [](const Timestamp& ts) -> QuerySince {
+        return QuerySince::Timestamp{ts.time};
       },
-      [&](const Clock& clock) {
-        QuerySince since;
+      [&](const Clock& clock) -> QuerySince {
+        QuerySince::Clock since_clock;
         if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
             clock.position.rootNumber == position.rootNumber) {
-          since.clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
-          if (since.clock.is_fresh_instance) {
-            since.clock.ticks = 0;
+          since_clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
+          if (since_clock.is_fresh_instance) {
+            since_clock.ticks = 0;
           } else {
-            since.clock.ticks = clock.position.ticks;
+            since_clock.ticks = clock.position.ticks;
           }
         } else {
           // If the pid, start time or root number don't match, they asked a
           // different incarnation of the server or a different instance of this
           // root, so we treat them as having never spoken to us before.
-          since.clock.is_fresh_instance = true;
-          since.clock.ticks = 0;
+          since_clock.is_fresh_instance = true;
+          since_clock.ticks = 0;
         }
-        return since;
+        return since_clock;
       },
-      [&](const NamedCursor& named_cursor) {
+      [&](const NamedCursor& named_cursor) -> QuerySince {
         if (!cursorMap) {
           // This is checked for and handled at parse time in SinceExpr::parse,
           // so this should be impossible to hit.
@@ -167,7 +163,7 @@ QuerySince ClockSpec::evaluate(
               "illegal to use a named cursor in this context");
         }
 
-        QuerySince since;
+        QuerySince::Clock since_clock;
 
         {
           auto wlock = cursorMap->wlock();
@@ -175,11 +171,11 @@ QuerySince ClockSpec::evaluate(
           auto it = cursors.find(named_cursor.cursor);
 
           if (it == cursors.end()) {
-            since.clock.is_fresh_instance = true;
-            since.clock.ticks = 0;
+            since_clock.is_fresh_instance = true;
+            since_clock.ticks = 0;
           } else {
-            since.clock.ticks = it->second;
-            since.clock.is_fresh_instance = since.clock.ticks < lastAgeOutTick;
+            since_clock.ticks = it->second;
+            since_clock.is_fresh_instance = since_clock.ticks < lastAgeOutTick;
           }
 
           // record the current tick value against the cursor so that we use
@@ -191,10 +187,10 @@ QuerySince ClockSpec::evaluate(
             "resolved cursor ",
             named_cursor.cursor,
             " -> ",
-            since.clock.ticks,
+            since_clock.ticks,
             "\n");
 
-        return since;
+        return since_clock;
       });
 }
 

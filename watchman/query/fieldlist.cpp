@@ -81,7 +81,8 @@ std::optional<json_ref> make_exists(FileResult* file, const QueryContext*) {
 std::optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
   bool is_new = false;
 
-  if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
+  auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+  if (since_clock && since_clock->is_fresh_instance) {
     is_new = true;
   } else {
     auto ctime = file->ctime();
@@ -89,10 +90,11 @@ std::optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
       // Reconsider this one later
       return std::nullopt;
     }
-    if (ctx->since.is_timestamp) {
-      is_new = ctx->since.timestamp > ctime->timestamp;
+    if (since_clock) {
+      is_new = ctime->ticks > since_clock->ticks;
     } else {
-      is_new = ctime->ticks > ctx->since.clock.ticks;
+      auto& since_ts = std::get<QuerySince::Timestamp>(ctx->since.since);
+      is_new = since_ts.time > ctime->timestamp;
     }
   }
 

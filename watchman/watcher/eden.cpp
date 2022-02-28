@@ -784,7 +784,7 @@ class EdenView final : public QueryableView {
     FileDelta delta;
     JournalPosition resultPosition;
 
-    if (ctx->since.is_timestamp) {
+    if (ctx->since.is_timestamp()) {
       throw QueryExecError(
           "timestamp based since queries are not supported with eden");
     }
@@ -822,7 +822,11 @@ class EdenView final : public QueryableView {
     // in the file results
     std::unordered_set<std::string> createdFileNames;
 
-    if (ctx->since.clock.is_fresh_instance) {
+    // The code that was previously here was UB if given a timestamp since.
+    // Instead, at least throw an exception at this point.
+    auto& since_clock = std::get<QuerySince::Clock>(ctx->since.since);
+
+    if (since_clock.is_fresh_instance) {
       // Earlier in the processing flow, we decided that the rootNumber
       // didn't match the current root which means that eden was restarted.
       // We need to translate this to a fresh instance result set and
@@ -834,7 +838,7 @@ class EdenView final : public QueryableView {
       JournalPosition position;
       client->sync_getCurrentJournalPosition(position, mountPoint_);
       // dial back to the sequence number from the query
-      *position.sequenceNumber() = ctx->since.clock.ticks;
+      *position.sequenceNumber() = since_clock.ticks;
 
       // Now we can get the change journal from eden
       try {
@@ -959,7 +963,7 @@ class EdenView final : public QueryableView {
         }
         // mountGeneration differs, or journal was truncated,
         // so treat this as equivalent to a fresh instance result
-        ctx->since.clock.is_fresh_instance = true;
+        since_clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
         fileInfo = getAllFiles();
       } catch (const SCMError& err) {
@@ -971,7 +975,7 @@ class EdenView final : public QueryableView {
             "SCM error while processing EdenFS journal update: ",
             err.what(),
             "\n");
-        ctx->since.clock.is_fresh_instance = true;
+        since_clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
         fileInfo = getAllFiles();
       }
@@ -993,7 +997,7 @@ class EdenView final : public QueryableView {
           isNew,
           item.dtype);
 
-      if (ctx->since.clock.is_fresh_instance) {
+      if (since_clock.is_fresh_instance) {
         // Fresh instance queries only return data about files
         // that currently exist, and we know this to be true
         // here because our list of files comes from evaluating

@@ -575,23 +575,23 @@ void InMemoryView::ageOut(PerfSample& sample, std::chrono::seconds minAge) {
 }
 
 void InMemoryView::timeGenerator(const Query* query, QueryContext* ctx) const {
-  struct watchman_file* f;
-
   // Walk back in time until we hit the boundary
   auto view = view_.rlock();
   ctx->generationStarted();
 
-  for (f = view->getLatestFile(); f; f = f->next) {
+  for (watchman_file* f = view->getLatestFile(); f; f = f->next) {
     ctx->bumpNumWalked();
     // Note that we use <= for the time comparisons in here so that we
     // report the things that changed inclusive of the boundary presented.
     // This is especially important for clients using the coarse unix
     // timestamp as the since basis, as they would be much more
     // likely to miss out on changes if we didn't.
-    if (ctx->since.is_timestamp && f->otime.timestamp <= ctx->since.timestamp) {
+    if (auto* since_ts = std::get_if<QuerySince::Timestamp>(&ctx->since.since);
+        since_ts && f->otime.timestamp <= since_ts->time) {
       break;
     }
-    if (!ctx->since.is_timestamp && f->otime.ticks <= ctx->since.clock.ticks) {
+    if (auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+        since_clock && f->otime.ticks <= since_clock->ticks) {
       break;
     }
 

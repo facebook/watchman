@@ -11,6 +11,8 @@
 #include "watchman/query/QueryExpr.h"
 #include "watchman/query/TermRegistry.h"
 
+#include <folly/Overload.h>
+
 #include <memory>
 
 using namespace watchman;
@@ -61,13 +63,17 @@ class SinceExpr : public QueryExpr {
           return std::nullopt;
         }
 
-        if (since.is_timestamp) {
-          return clock->timestamp >= since.timestamp;
-        }
-        if (since.clock.is_fresh_instance) {
-          return file->exists();
-        }
-        return clock->ticks > since.clock.ticks;
+        return folly::variant_match(
+            since.since,
+            [&](const QuerySince::Timestamp& since_ts) -> std::optional<bool> {
+              return clock->timestamp >= since_ts.time;
+            },
+            [&](const QuerySince::Clock& since_clock) -> std::optional<bool> {
+              if (since_clock.is_fresh_instance) {
+                return file->exists();
+              }
+              return clock->ticks > since_clock.ticks;
+            });
       }
       case since_what::SINCE_MTIME: {
         auto stat = file->stat();
@@ -87,8 +93,9 @@ class SinceExpr : public QueryExpr {
       }
     }
 
-    assert(since.is_timestamp);
-    return tval >= since.timestamp;
+    auto* since_ts = std::get_if<QuerySince::Timestamp>(&since.since);
+    w_check(since_ts, "expect a timestamp since");
+    return tval >= since_ts->time;
   }
 
   static std::unique_ptr<QueryExpr> parse(Query*, const json_ref& term) {
