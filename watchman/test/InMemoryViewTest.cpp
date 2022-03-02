@@ -430,4 +430,59 @@ TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   std::move(syncFuture).get();
 }
 
+TEST_F(InMemoryViewTest, directory_removal_does_not_report_parent) {
+  getLog().setStdErrLoggingLevel(DBG);
+
+  fs.defineContents({
+      "/root/dir/foo/file.txt",
+  });
+
+  auto root = std::make_shared<Root>(
+      fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
+
+  auto beforeFirstStep = view->getMostRecentRootNumberAndTickValue();
+
+  InMemoryView::IoThreadState state{std::chrono::minutes(5)};
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  Query query;
+  query.fieldList.add("name");
+  query.paths.emplace();
+  query.paths->emplace_back(QueryPath{"", 1});
+
+  QueryContext ctx1{&query, root, false};
+  ctx1.since = QuerySince::Clock{false, beforeFirstStep.ticks};
+
+  view->timeGenerator(&query, &ctx1);
+
+  ASSERT_EQ(3, ctx1.resultsArray.size());
+
+  auto one = ctx1.resultsArray.at(0);
+  EXPECT_EQ("dir/foo/file.txt", ctx1.resultsArray.at(0).asString());
+  EXPECT_EQ("dir/foo", ctx1.resultsArray.at(1).asString());
+  EXPECT_EQ("dir", ctx1.resultsArray.at(2).asString());
+
+  auto beforeChanges = view->getMostRecentRootNumberAndTickValue();
+
+  // Now remove all of foo/ and notify the iothread of the change as if we are
+  // the FSEvents watcher.
+  fs.removeRecursively("/root/dir/foo");
+  pending.lock()->add(
+      "/root/dir/foo", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+  pending.lock()->ping();
+  EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  QueryContext ctx2{&query, root, false};
+  ctx2.since = QuerySince::Clock{false, beforeChanges.ticks};
+
+  view->timeGenerator(&query, &ctx2);
+
+  ASSERT_EQ(2, ctx2.resultsArray.size());
+  EXPECT_EQ("dir/foo", ctx2.resultsArray.at(0).asString());
+  EXPECT_EQ("dir/foo/file.txt", ctx2.resultsArray.at(1).asString());
+
+  // iothread will not update the view for dir/ until it sees an actual
+  // notification from the watcher for that directory.
+}
+
 } // namespace
