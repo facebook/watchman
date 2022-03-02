@@ -292,15 +292,6 @@ class InMemoryView final : public QueryableView {
       const PendingChange& pending,
       std::vector<w_string>& pendingCookies);
 
-  bool propagateToParentDirIfAppropriate(
-      const RootConfig& root,
-      PendingChanges& coll,
-      std::chrono::system_clock::time_point now,
-      const FileInformation& entryStat,
-      const w_string& dirName,
-      const watchman_dir* parentDir,
-      bool isUnlink);
-
   /**
    * Called on the IO thread. If `pending` is not in the ignored directory list,
    * lstat() the file and update the InMemoryView. This may insert work into

@@ -55,7 +55,14 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         # now check the delta for the since
         expected = ["foo/bar", "foo/bar/222"]
         files = self.getFileList(root, cursor="n:foo")
-        if watch["watcher"] in ("portfs", "kqueue", "dirfsevents", "kqueue+fsevents"):
+        if watch["watcher"] in (
+            "inotify",
+            "portfs",
+            "kqueue",
+            "fsevents",
+            "dirfsevents",
+            "kqueue+fsevents",
+        ):
             # These systems also show the containing dir as modified
             expected.append("foo")
         elif watch["watcher"] == "win32":

@@ -19,14 +19,13 @@
 #include <mutex>
 #include <tuple>
 
-using watchman::FileDescriptor;
 using namespace watchman;
 
 #ifdef _WIN32
 
-#define NETWORK_BUF_SIZE (64 * 1024)
-
 namespace {
+
+constexpr DWORD kNetworkBufSize = 64 * 1024;
 
 struct Item {
   w_string path;
@@ -39,7 +38,8 @@ struct Item {
 } // namespace
 
 struct WinWatcher : public Watcher {
-  HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
+  HANDLE ping{INVALID_HANDLE_VALUE};
+  HANDLE olapEvent{INVALID_HANDLE_VALUE};
   FileDescriptor dir_handle;
 
   std::condition_variable cond;
@@ -115,7 +115,6 @@ void WinWatcher::stopThreads() {
 
 void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
   std::vector<uint8_t> buf;
-  DWORD err, filter;
   auto olap = OVERLAPPED();
   BOOL initiate_read = true;
   HANDLE handles[2] = {olapEvent, ping};
@@ -132,13 +131,13 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
 
   DWORD size = root->config.getInt("win32_rdcw_buf_size", 16384);
 
+  DWORD filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+      FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
+      FILE_NOTIFY_CHANGE_LAST_WRITE;
+
   // Block until winmatch_root_st is waiting for our initialization
   {
     auto wlock = changedItems.lock();
-
-    filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
-        FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
-        FILE_NOTIFY_CHANGE_LAST_WRITE;
 
     olap.hEvent = olapEvent;
 
@@ -153,7 +152,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
             nullptr,
             &olap,
             nullptr)) {
-      err = GetLastError();
+      DWORD err = GetLastError();
       logf(
           ERR,
           "ReadDirectoryChangesW: failed, cancel watch. {}\n",
@@ -184,7 +183,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
               nullptr,
               &olap,
               nullptr)) {
-        err = GetLastError();
+        DWORD err = GetLastError();
         logf(
             ERR,
             "ReadDirectoryChangesW: failed, cancel watch. {}\n",
@@ -214,7 +213,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
       bytes = 0;
       if (!GetOverlappedResult(
               (HANDLE)dir_handle.handle(), &olap, &bytes, FALSE)) {
-        err = GetLastError();
+        DWORD err = GetLastError();
         logf(
             ERR,
             "overlapped ReadDirectoryChangesW({}): {:x} {}\n",
@@ -222,7 +221,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
             err,
             win32_strerror(err));
 
-        if (err == ERROR_INVALID_PARAMETER && size > NETWORK_BUF_SIZE) {
+        if (err == ERROR_INVALID_PARAMETER && size > kNetworkBufSize) {
           // May be a network buffer related size issue; the docs say that
           // we can hit this when watching a UNC path. Let's downsize and
           // retry the read just one time
@@ -231,7 +230,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
               "retrying watch for possible network location {} "
               "with smaller buffer\n",
               root->root_path);
-          size = NETWORK_BUF_SIZE;
+          size = kNetworkBufSize;
           initiate_read = true;
           continue;
         }
@@ -247,10 +246,8 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
         PFILE_NOTIFY_INFORMATION notify = (PFILE_NOTIFY_INFORMATION)buf.data();
 
         while (true) {
-          DWORD n_chars;
-
           // FileNameLength is in BYTES, but FileName is WCHAR
-          n_chars = notify->FileNameLength / sizeof(notify->FileName[0]);
+          DWORD n_chars = notify->FileNameLength / sizeof(notify->FileName[0]);
           w_string name(notify->FileName, n_chars);
 
           auto full = w_string::pathCat({root->root_path, name});
@@ -266,11 +263,23 @@ void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
             // later.  We don't do that here in this thread because
             // we're trying to minimize latency in this context.
             items.emplace_back(
-                std::move(full),
-                (notify->Action &
-                 (FILE_ACTION_REMOVED | FILE_ACTION_RENAMED_OLD_NAME)) != 0
+                w_string{full},
+                (notify->Action == FILE_ACTION_REMOVED ||
+                 notify->Action == FILE_ACTION_RENAMED_OLD_NAME)
                     ? W_PENDING_RECURSIVE
                     : 0);
+
+            if (!name.empty() &&
+                (notify->Action == FILE_ACTION_ADDED ||
+                 notify->Action == FILE_ACTION_REMOVED ||
+                 notify->Action == FILE_ACTION_RENAMED_OLD_NAME ||
+                 notify->Action == FILE_ACTION_RENAMED_NEW_NAME)) {
+              // ReadDirectoryChangesW provides change events when the child
+              // entry list changes, but may not provide a notification for the
+              // parent when its mtime changes. It should be rescanned, so
+              // synthesize an event for the IO thread here.
+              items.emplace_back(full.dirName(), PendingFlags{});
+            }
           }
 
           // Advance to next item

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "fsevents.h"
+#include "watchman/watcher/fsevents.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <condition_variable>
@@ -770,6 +770,26 @@ Watcher::ConsumeNotifyRet FSEventsWatcher::consumeNotify(
       }
 
       coll.add(item.path, now, flags);
+
+      if (hasFileWatching_ && item.path.size() > root->root_path.size() &&
+          (item.flags &
+           (kFSEventStreamEventFlagItemRenamed |
+            kFSEventStreamEventFlagItemCreated |
+            kFSEventStreamEventFlagItemRemoved))) {
+        // When the list of directory entries is modified, we hear
+        // about the modification, but perhaps not the directory
+        // change itself. Its mtime probably changed, so synthesize
+        // an event to consider it for examination.
+        //
+        // Note these two issues:
+        // - https://github.com/facebook/watchman/issues/305
+        // - https://github.com/facebook/watchman/issues/307
+        //
+        // Watchman does not guarantee minimal notifications, but limiting
+        // the event types above should avoid unnecessary results in
+        // queries.
+        coll.add(item.path.dirName(), now, W_PENDING_VIA_NOTIFY);
+      }
     }
   }
 

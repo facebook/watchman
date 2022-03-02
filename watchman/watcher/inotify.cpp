@@ -365,9 +365,16 @@ bool InotifyWatcher::process_inotify_event(
           name.c_str());
       coll.add(name, now, pending_flags);
 
+      if (ine->mask & (IN_CREATE | IN_DELETE)) {
+        // When a directory's child is created or unlinked, inotify does not
+        // tell us its parent has also changed. It should be rescanned, so
+        // synthesize an event for the IO thread here.
+        coll.add(name.dirName(), now, W_PENDING_VIA_NOTIFY);
+      }
+
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also
-      if ((ine->mask & IN_IGNORED) != 0) {
+      if (ine->mask & IN_IGNORED) {
         logf(
             DBG,
             "mask={:x}: remove watch {} {}\n",

@@ -346,9 +346,15 @@ void InMemoryView::processPath(
     const PendingChange& pending,
     const DirEntry* pre_stat,
     std::vector<w_string>& pendingCookies) {
-  w_assert(
+  w_check(
       pending.path.size() >= rootPath_.size(),
-      "full_path must be a descendant of the root directory\n");
+      "full_path must be a descendant of the root directory\n",
+      "rootPath_:    ",
+      rootPath_,
+      "\n",
+      "pending.path: ",
+      pending.path,
+      "\n");
 
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
@@ -611,51 +617,6 @@ bool did_file_change(
 }
 } // namespace
 
-/**
- * The purpose of this function is to help us decide whether we should
- * update the parent directory when a non-directory directory entry is changed.
- * If so, we schedule re-examining the parent. Not all systems report the
- * containing directory as changed in that situation, so we decide this based on
- * the capabilities of the watcher. If the directory is added to the
- * PendingCollection, this function returns true. Otherwise, this function
- * returns false.
- */
-bool InMemoryView::propagateToParentDirIfAppropriate(
-    const RootConfig& root,
-    PendingChanges& coll,
-    std::chrono::system_clock::time_point now,
-    const FileInformation& entryStat,
-    const w_string& dirName,
-    const watchman_dir* parentDir,
-    bool isUnlink) {
-  if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
-      dirName != root.root_path && !entryStat.isDir() &&
-      parentDir->last_check_existed) {
-    /* We're deliberately not propagating any of the flags through
-     * from statPath() (which calls us); we
-     * definitely don't want this to be a recursive evaluation.
-     * Previously, we took pains to avoid turning on VIA_NOTIFY
-     * here to avoid spuriously marking the node as changed when
-     * only its atime was changed to avoid tickling some behavior
-     * in the Pants build system:
-     * https://github.com/facebook/watchman/issues/305 and
-     * https://github.com/facebook/watchman/issues/307, but
-     * unfortunately we do need to set it here because eg:
-     * Linux doesn't send an inotify event for the parent
-     * directory for an unlink, and if we rely on stat()
-     * alone, the filesystem mtime granularity may be too
-     * low for us to detect that the parent has changed.
-     * As a compromize, if we're told that the change was due
-     * to an unlink, then we force delivery of a change event,
-     * otherwise we'll only do so if the directory has
-     * observably changed via stat().
-     */
-    coll.add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : PendingFlags{});
-    return true;
-  }
-  return false;
-}
-
 void InMemoryView::statPath(
     const RootConfig& root,
     const CookieSync& cookies,
@@ -673,8 +634,10 @@ void InMemoryView::statPath(
   }
 
   auto& path = pending.path;
+  w_check(path, "must have path");
   auto dir_name = pending.path.dirName();
   auto file_name = pending.path.baseName();
+  w_check(dir_name, "must have dir_name");
   auto parentDir = view.resolveDir(dir_name, true);
 
   auto file = parentDir->getChildFile(file_name);
@@ -758,17 +721,8 @@ void InMemoryView::statPath(
       view.markFileChanged(*watcher_, file, getClock(pending.now));
     }
 
-    if (!propagateToParentDirIfAppropriate(
-            root,
-            coll,
-            pending.now,
-            file->stat,
-            dir_name,
-            parentDir,
-            /* isUnlink= */ true) &&
-        root.case_sensitive == CaseSensitivity::CaseInSensitive &&
-        !w_string_equal(dir_name, root.root_path) &&
-        parentDir->last_check_existed) {
+    if (root.case_sensitive == CaseSensitivity::CaseInSensitive &&
+        dir_name != root.root_path && parentDir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
@@ -878,14 +832,6 @@ void InMemoryView::statPath(
       // our former tree here
       view.markDirDeleted(*watcher_, dir_ent, getClock(pending.now), true);
     }
-    propagateToParentDirIfAppropriate(
-        root,
-        coll,
-        pending.now,
-        st,
-        dir_name,
-        parentDir,
-        /* isUnlink= */ false);
   }
 }
 
