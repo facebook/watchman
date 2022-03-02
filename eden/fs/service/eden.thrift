@@ -875,9 +875,7 @@ struct GlobParams {
   // there maybe duplicate machingFile and originHash pairs in the coresponding
   // output Glob.
   7: list<ThriftRootId> revisions;
-  // If false we will not prefetch metadata while evaluating this glob. In
-  // in general we want to prefetch metadata, but some large globs can
-  // trigger too many metadata prefetches, so we allow skipping this.
+  // This has no effect.
   8: bool prefetchMetadata = true;
   // The directory from which the glob should be evaluated. Defaults to the
   // repository root.
