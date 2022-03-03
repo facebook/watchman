@@ -19,7 +19,11 @@ struct SerializedInodeMapEntry {
   3: string name;
   4: bool isUnlinked;
   5: i64 numFsReferences;
-  6: string hash;
+  // If unset, the inode is materialized.
+  // LEGACY: if the empty string, the inode is materialized. In the future,
+  // the semantics will change here, as a BackingStore might use the empty
+  // string as a valid ID.
+  6: optional string hash;
   7: i32 mode;
 }
 
