@@ -7,12 +7,6 @@ permalink: index.html
 Watchman exists to watch files and record when they change.  It can
 also trigger actions (such as rebuilding assets) when matching files change.
 
-### Watch Introductory Video
-
-<div class="videoBlock">
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/gEsTMR2erAM" title="Explain Like I'm 5: Watchman" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen ></iframe>
-</div>
-
 ### Concepts
 
  * Watchman can recursively watch one or more directory trees
