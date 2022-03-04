@@ -40,6 +40,8 @@ typedef i32 pid_t
  */
 typedef binary ThriftRootId
 
+typedef binary ThriftObjectId
+
 /**
  * A source control hash.
  *
@@ -544,7 +546,7 @@ struct ScmBlobMetadata {
 struct ScmTreeEntry {
   1: binary name;
   2: i32 mode;
-  3: BinaryHash id;
+  3: ThriftObjectId id;
 }
 
 /*
@@ -605,7 +607,7 @@ struct TreeInodeEntryDebugInfo {
    * If materialized is false, hash contains the ID of the underlying source
    * control Blob or Tree.
    */
-  6: BinaryHash hash;
+  6: ThriftObjectId hash;
   /**
    * Size of the file in bytes. It won't be set for directories.
    */
@@ -626,7 +628,9 @@ struct TreeInodeDebugInfo {
   1: i64 inodeNumber;
   2: binary path;
   3: bool materialized;
-  4: BinaryHash treeHash;
+  // Traditionally, treeHash was a 20-byte binary hash, but now it's an
+  // arbitrary-length human-readable string.
+  4: ThriftObjectId treeHash;
   5: list<TreeInodeEntryDebugInfo> entries;
   6: i64 refcount;
 }
@@ -1034,7 +1038,7 @@ enum ObjectType {
 struct SetPathObjectIdParams {
   1: PathString mountPoint;
   2: PathString path;
-  3: BinaryHash objectId;
+  3: ThriftObjectId objectId;
   4: ObjectType type;
   5: CheckoutMode mode;
   // Extra request infomation. i.e. build uuid, cache session id.
@@ -1434,7 +1438,7 @@ service EdenService extends fb303_core.BaseService {
    */
   list<ScmTreeEntry> debugGetScmTree(
     1: PathString mountPoint,
-    2: BinaryHash id,
+    2: ThriftObjectId id,
     3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
@@ -1446,7 +1450,7 @@ service EdenService extends fb303_core.BaseService {
    */
   binary debugGetScmBlob(
     1: PathString mountPoint,
-    2: BinaryHash id,
+    2: ThriftObjectId id,
     3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
@@ -1460,7 +1464,7 @@ service EdenService extends fb303_core.BaseService {
    */
   ScmBlobMetadata debugGetScmBlobMetadata(
     1: PathString mountPoint,
-    2: BinaryHash id,
+    2: ThriftObjectId id,
     3: bool localStoreOnly,
   ) throws (1: EdenError ex);
 
