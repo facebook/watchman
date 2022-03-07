@@ -31,7 +31,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Build watchman
       run: python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
@@ -55,7 +55,7 @@ jobs:
     needs: prepare
     runs-on: macOS-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Build watchman
       run: SDKROOT=$(xcrun --show-sdk-path --sdk macosx11.1) python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local
     - name: Copy artifacts
@@ -79,7 +79,7 @@ jobs:
     needs: prepare
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Export boost environment
       run: "echo BOOST_ROOT=%BOOST_ROOT_1_69_0% >> %GITHUB_ENV%"
       shell: cmd
