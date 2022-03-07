@@ -1077,6 +1077,12 @@ struct ResetParentCommitsParams {
   1: optional BinaryHash hgRootManifest;
 }
 
+struct RemoveRecursivelyParams {
+  1: PathString mountPoint;
+  2: PathString path;
+  3: SyncBehavior sync;
+}
+
 struct SynchronizeWorkingCopyParams {
   1: SyncBehavior sync;
 }
@@ -1702,4 +1708,12 @@ service EdenService extends fb303_core.BaseService {
   SetPathObjectIdResult setPathObjectId(
     1: SetPathObjectIdParams params,
   ) throws (1: EdenError ex);
+
+  /**
+   * Functionally same as rm -r command but more efficient since rm command would
+   * load every subtree before unlinking it.
+   */
+  void removeRecursively(1: RemoveRecursivelyParams params) throws (
+    1: EdenError ex,
+  );
 }
