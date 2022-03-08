@@ -53,7 +53,9 @@ jobs:
   mac-build:
     continue-on-error: true
     needs: prepare
-    runs-on: macOS-latest
+    # This release targets macOS 11.1 (Big Sur), which is available in
+    # Xcode 12.4 on the macOS-10.15 image.
+    runs-on: macOS-10.15
     steps:
     - uses: actions/checkout@v2
     - name: Build watchman
