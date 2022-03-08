@@ -21,11 +21,6 @@ http://stackoverflow.com/questions/tagged/watchman?sort=newest) and if you
 can't find what you're looking for, [ask your question on Stack Overflow](
 http://stackoverflow.com/questions/ask?tags=watchman)
 
-## IRC
-
-Developers and users idle on Freenode.net's IRC network in
-[#watchman on freenode](irc://chat.freenode.net/watchman)
-
 ## Bugs?
 
 If you've found a bug, or haven't had any success in reaching out through the
