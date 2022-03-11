@@ -205,7 +205,7 @@ class _Instance(object):
 
         if self.pid is None:
             # self.proc didn't come up: wait for it to die
-            self.stop()
+            self.proc.wait(timeout=self.start_timeout)
             raise val
 
     def _waitForSuspend(self, suspended, timeout):

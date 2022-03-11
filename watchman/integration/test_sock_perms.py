@@ -78,7 +78,7 @@ class TestSockPerms(unittest.TestCase):
         if message is None:
             message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
         if get_debug_output is not None:
-            message += "\ndebug output:\n%s" % get_debug_output()
+            message += "\ndebug output:\n%s\nend debug output\n" % get_debug_output()
         self.fail(message)
 
     def test_too_open_user_dir(self):
