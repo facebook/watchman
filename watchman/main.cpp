@@ -512,9 +512,12 @@ static SpawnResult spawn_via_launchd() {
       "    <key>EnvironmentVariables</key>\n"
       "    <dict>\n"
       "        <key>PATH</key>\n"
-      "        <string><![CDATA[",
-      getenv("PATH"),
-      "]]></string>\n"
+      "        <string>",
+      // TODO: add this control behind a config instead of hardcoding it.
+      // The choice here is taking the default system path and adding
+      // common locations for Mercurial (and dependency) installations.
+      "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
+      "</string>\n"
       "    </dict>\n"
       "    <key>ProcessType</key>\n"
       "    <string>Interactive</string>\n"
