@@ -11,11 +11,11 @@ import os.path
 import sys
 import time
 
-from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase, HELPER_ROOT
 
 
-WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
-THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
+TRIG_CWD = os.path.join(HELPER_ROOT, "trig-cwd.py")
+CAT_PY = os.path.join(HELPER_ROOT, "cat.py")
 
 
 @WatchmanTestCase.expand_matrix
@@ -53,7 +53,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cap",
-                "command": [sys.executable, os.path.join(THIS_DIR, "trig-cwd.py")],
+                "command": [sys.executable, TRIG_CWD],
                 "stdout": ">%s" % os.path.join(root, "trig.log"),
                 "expression": ["suffix", "txt"],
                 "stdin": "/dev/null",
@@ -84,7 +84,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cap",
-                "command": [sys.executable, os.path.join(THIS_DIR, "trig-cwd.py")],
+                "command": [sys.executable, TRIG_CWD],
                 "stdout": ">%s" % os.path.join(root, "trig.log"),
                 "expression": ["suffix", "txt"],
                 "relative_root": "sub1",
@@ -126,7 +126,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cap",
-                "command": [sys.executable, os.path.join(THIS_DIR, "trig-cwd.py")],
+                "command": [sys.executable, TRIG_CWD],
                 "stdout": ">>%s" % os.path.join(root, "trig.log"),
                 "expression": ["suffix", "txt"],
                 "stdin": ["name"],
@@ -178,7 +178,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cat",
-                "command": [sys.executable, os.path.join(THIS_DIR, "cat.py")],
+                "command": [sys.executable, CAT_PY],
                 "stdout": ">%s" % log_file,
                 "expression": ["suffix", "txt"],
                 "stdin": "NAME_PER_LINE",
@@ -208,7 +208,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cat",
-                "command": [sys.executable, os.path.join(THIS_DIR, "cat.py")],
+                "command": [sys.executable, CAT_PY],
                 "relative_root": "subdir",
                 "stdout": ">%s" % log_file,
                 "expression": ["suffix", "txt"],
@@ -230,7 +230,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cat",
-                "command": [sys.executable, os.path.join(THIS_DIR, "cat.py")],
+                "command": [sys.executable, CAT_PY],
                 "stdout": ">>%s" % log_file,
                 "expression": ["suffix", "txt"],
                 "stdin": "NAME_PER_LINE",
@@ -258,7 +258,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cat",
-                "command": [sys.executable, os.path.join(THIS_DIR, "cat.py")],
+                "command": [sys.executable, CAT_PY],
                 "stdout": ">%s" % log_file,
                 "expression": ["suffix", "txt"],
                 "stdin": ["name"],
@@ -282,7 +282,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "name": "cat",
-                "command": [sys.executable, os.path.join(THIS_DIR, "cat.py")],
+                "command": [sys.executable, CAT_PY],
                 "stdout": ">%s" % log_file,
                 "expression": ["suffix", "txt"],
                 "stdin": ["name", "size"],

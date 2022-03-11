@@ -7,27 +7,27 @@
 
 import json
 import os
+import sys
 import unittest
 
 import pywatchman
-from watchman.integration.lib import WatchmanInstance
+from watchman.integration.lib import WatchmanInstance, HELPER_ROOT
 
-
-WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
-THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
+SITE_SPAWN = os.path.join(HELPER_ROOT, "site_spawn.py")
+SITE_SPAWN_FAIL = os.path.join(HELPER_ROOT, "site_spawn_fail.py")
 
 
 @unittest.skipIf(os.name == "nt", "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
     def test_failingSpawner(self):
-        config = {
-            "spawn_watchman_service": os.path.join(THIS_DIR, "site_spawn_fail.py")
-        }
+        config = {"spawn_watchman_service": SITE_SPAWN_FAIL}
 
         inst = WatchmanInstance.Instance(config=config)
         stdout, stderr = inst.commandViaCLI(["version"])
-        print("stdout", stdout)
-        print("stderr", stderr)
+        sys.stdout.buffer.write(b"stdout:\n")
+        sys.stdout.buffer.write(stdout)
+        sys.stdout.buffer.write(b"stderr:\n")
+        sys.stdout.buffer.write(stderr)
         stderr = stderr.decode("ascii")
         self.assertEqual(b"", stdout)
         self.assertRegex(stderr, "failed to start\n")
@@ -36,9 +36,7 @@ class TestSiteSpawn(unittest.TestCase):
     def test_no_site_spawner(self):
         """With a site spawner configured to otherwise fail, pass
         `--no-site-spawner` and ensure that a failure didn't occur."""
-        config = {
-            "spawn_watchman_service": os.path.join(THIS_DIR, "site_spawn_fail.py")
-        }
+        config = {"spawn_watchman_service": SITE_SPAWN_FAIL}
 
         inst = WatchmanInstance.Instance(config=config)
         stdout, stderr = inst.commandViaCLI(["version", "--no-site-spawner"])
@@ -50,7 +48,7 @@ class TestSiteSpawn(unittest.TestCase):
         inst.commandViaCLI(["--no-spawn", "--no-local", "shutdown-server"])
 
     def test_spawner(self):
-        config = {"spawn_watchman_service": os.path.join(THIS_DIR, "site_spawn.py")}
+        config = {"spawn_watchman_service": SITE_SPAWN}
 
         inst = WatchmanInstance.Instance(config=config)
         stdout, stderr = inst.commandViaCLI(["version"])

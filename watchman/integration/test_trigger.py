@@ -11,11 +11,7 @@ import os.path
 import re
 import sys
 
-from watchman.integration.lib import WatchmanTestCase
-
-
-WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
-THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
+from watchman.integration.lib import WatchmanTestCase, HELPER_ROOT
 
 
 @WatchmanTestCase.expand_matrix
@@ -41,7 +37,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("watch", root)
         self.assertFileList(root, ["foo.js"])
 
-        touch = os.path.join(THIS_DIR, "touch.py")
+        touch = os.path.join(HELPER_ROOT, "touch.py")
         logs = self.mkdtemp()
         first_log = os.path.join(logs, "first")
         second_log = os.path.join(logs, "second")
@@ -131,7 +127,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             "*.c",
             "--",
             sys.executable,
-            os.path.join(THIS_DIR, "trig.py"),
+            os.path.join(HELPER_ROOT, "trig.py"),
             os.path.join(root, "trigger.log"),
         )
         self.assertEqual("created", res["disposition"])
@@ -143,7 +139,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             "*.c",
             "--",
             sys.executable,
-            os.path.join(THIS_DIR, "trigjson.py"),
+            os.path.join(HELPER_ROOT, "trigjson.py"),
             os.path.join(root, "trigger.json"),
         )
         self.assertEqual("created", res["disposition"])
@@ -155,7 +151,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
                 "append_files": True,
                 "command": [
                     sys.executable,
-                    os.path.join(THIS_DIR, "trigjson.py"),
+                    os.path.join(HELPER_ROOT, "trigjson.py"),
                     os.path.join(root, "trigger.json"),
                 ],
                 "expression": ["anyof", ["match", "*.c", "wholename"]],
@@ -166,7 +162,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
                 "append_files": True,
                 "command": [
                     sys.executable,
-                    os.path.join(THIS_DIR, "trig.py"),
+                    os.path.join(HELPER_ROOT, "trig.py"),
                     os.path.join(root, "trigger.log"),
                 ],
                 "expression": ["anyof", ["match", "*.c", "wholename"]],

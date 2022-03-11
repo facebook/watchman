@@ -5,6 +5,7 @@
 
 add_fb_python_library(integration_lib
   SOURCES
+    lib/__init__.py
     lib/Interrupt.py
     lib/TempDir.py
     lib/WatchmanEdenTestCase.py
