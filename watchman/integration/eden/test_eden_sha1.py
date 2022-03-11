@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def write_file_and_hash(self, filename, content):
+    def write_file_and_hash(self, filename, content) -> str:
         content = content.encode("utf-8")
         with open(filename, "wb") as f:
             f.write(content)
@@ -21,7 +21,7 @@ class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):
         sha.update(content)
         return sha.hexdigest()
 
-    def test_eden_sha1(self):
+    def test_eden_sha1(self) -> None:
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.write_file("adir/file", "foo!\n")

@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
-    def test_suffix_generator(self):
+    def test_suffix_generator(self) -> None:
         root = self.mkdtemp()
 
         # Suffix queries are defined as being case insensitive.
@@ -55,7 +55,7 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
             str(ctx.exception), "'suffix' must be a string or an array of strings"
         )
 
-    def test_suffix_generator_empty(self):
+    def test_suffix_generator_empty(self) -> None:
         """Specifying no input suffixes should return no results."""
         root = self.mkdtemp()
 

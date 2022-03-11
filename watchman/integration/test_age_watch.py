@@ -23,7 +23,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         return root
 
     @unittest.skip("This test is fundamentally flaky")
-    def test_watchReap(self):
+    def test_watchReap(self) -> None:
         root = self.makeRootAndConfig()
         self.watchmanCommand("watch", root)
 
@@ -41,6 +41,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("subscribe", root, "s", {"fields": ["name"]})
 
         # subscription won't stick in cli mode
+        # pyre-fixme[16]: `TestAgeOutWatch` has no attribute `transport`.
         if self.transport != "cli":
             self.assertWaitFor(lambda: self.rootIsWatched(root))
 

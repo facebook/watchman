@@ -15,11 +15,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFSEventsResync(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if sys.platform != "darwin":
             self.skipTest("N/A unless macOS")
 
-    def test_resync(self):
+    def test_resync(self) -> None:
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
             f.write(json.dumps({"fsevents_try_resync": True}))

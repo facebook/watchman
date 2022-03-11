@@ -13,11 +13,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestBig(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "nt":
             self.skipTest("Windows has problems with this test")
 
-    def test_bigQuery(self):
+    def test_bigQuery(self) -> None:
         root = self.mkdtemp()
 
         self.watchmanCommand("watch", root)
@@ -42,6 +42,7 @@ class TestBig(WatchmanTestCase.WatchmanTestCase):
                 # a summary of the size that we picked
                 e.cmd = "big query with size %d" % size
 
+                # pyre-fixme[16]: `TestBig` has no attribute `transport`.
                 if self.transport == "cli":
                     e.cmd = "%s\n%s" % (e.cmd, self.getLogSample())
                 raise

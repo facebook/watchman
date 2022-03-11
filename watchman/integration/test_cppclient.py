@@ -14,7 +14,7 @@ import unittest
 from watchman.integration.lib import Interrupt
 from watchman.integration.lib import WatchmanInstance
 
-WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
+WATCHMAN_SRC_DIR: str = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 TEST_BINARY = (
     os.environ["WATCHMAN_CPPCLIENT_BINARY"]
     if "WATCHMAN_CPPCLIENT_BINARY" in os.environ.keys()
@@ -23,15 +23,15 @@ TEST_BINARY = (
 
 
 class TestCppClient(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmpDirCtx = tempfile.TemporaryDirectory()  # noqa P201
         self.tmpDir = self.tmpDirCtx.__enter__()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.tmpDirCtx.__exit__(None, None, None)
 
     @unittest.skipIf(not os.path.isfile(TEST_BINARY), "test binary not built")
-    def test_cppclient(self):
+    def test_cppclient(self) -> None:
         env = os.environ.copy()
         env["WATCHMAN_SOCK"] = (
             WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()

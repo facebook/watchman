@@ -10,7 +10,7 @@ from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenUnmount(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def test_eden_unmount(self):
+    def test_eden_unmount(self) -> None:
         def populate(repo):
             repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
             repo.write_file("hello", "hola\n")
@@ -22,6 +22,7 @@ class TestEdenUnmount(WatchmanEdenTestCase.WatchmanEdenTestCase):
         clock = self.watchmanCommand("clock", root)
         self.touchRelative(root, "newfile")
 
+        # pyre-fixme[16]: Optional type has no attribute `unmount`.
         self.eden.unmount(root)
 
         with self.assertRaises(pywatchman.CommandError) as ctx:

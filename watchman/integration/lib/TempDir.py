@@ -30,7 +30,7 @@ class TempDir(object):
     test runner.
     """
 
-    def __init__(self, keepAtShutdown=False):
+    def __init__(self, keepAtShutdown: bool = False) -> None:
         # We'll put all our temporary stuff under one dir so that we
         # can clean it all up at the end.
 
@@ -65,10 +65,10 @@ class TempDir(object):
     def get_dir(self):
         return self.temp_dir
 
-    def set_keep(self, value):
+    def set_keep(self, value) -> None:
         self.keep = value
 
-    def _retry_rmtree(self, top):
+    def _retry_rmtree(self, top) -> None:
         # Keep trying to remove it; on Windows it may take a few moments
         # for any outstanding locks/handles to be released
         for _ in range(1, 10):
@@ -80,7 +80,7 @@ class TempDir(object):
         sys.stdout.write("Failed to completely remove %s\n" % top)
 
 
-def _remove_readonly(func, path, exc_info):
+def _remove_readonly(func, path, exc_info) -> None:
     # If we encounter an EPERM or EACCESS error removing a file try making its parent
     # directory writable and then retry the removal.  This is necessary to clean up
     # eden mount point directories after the checkout is unmounted, as these directories

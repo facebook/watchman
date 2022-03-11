@@ -15,7 +15,7 @@ from watchman.integration.lib import WatchmanInstance
 
 @unittest.skipIf(os.name == "nt", "N/A on windows")
 class TestNice(unittest.TestCase):
-    def test_failing_to_start_when_nice(self):
+    def test_failing_to_start_when_nice(self) -> None:
         if sys.platform == "darwin":
             self.skipTest("launchd renders this test invalid on macOS")
         inst = WatchmanInstance.Instance()
@@ -26,7 +26,7 @@ class TestNice(unittest.TestCase):
         self.assertEqual(b"", stdout)
         self.assertRegex(stderr, "refusing to start")
 
-    def test_failing_to_start_when_nice_foreground(self):
+    def test_failing_to_start_when_nice_foreground(self) -> None:
         inst = WatchmanInstance.Instance()
         stdout, stderr = inst.commandViaCLI(
             ["--foreground", "version"], prefix=["nice"]

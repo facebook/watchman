@@ -7,17 +7,17 @@
 interrupted = False
 
 
-def wasInterrupted():
+def wasInterrupted() -> bool:
     global interrupted
     return interrupted
 
 
-def setInterrupted():
+def setInterrupted() -> None:
     global interrupted
     interrupted = True
 
 
-def checkInterrupt():
+def checkInterrupt() -> None:
     """
     If an interrupt was detected, raise it now.
     We use this to defer interrupt processing until we're

@@ -14,20 +14,20 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestInfo(WatchmanTestCase.WatchmanTestCase):
-    def test_sock_name(self):
+    def test_sock_name(self) -> None:
         resp = self.watchmanCommand("get-sockname")
         self.assertEqual(
             resp["sockname"],
             WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath(),
         )
 
-    def test_get_config_empty(self):
+    def test_get_config_empty(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         resp = self.watchmanCommand("get-config", root)
         self.assertEqual(resp["config"], {})
 
-    def test_get_config(self):
+    def test_get_config(self) -> None:
         config = {"test-key": "test-value"}
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:

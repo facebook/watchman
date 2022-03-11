@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestTypeExpr(WatchmanTestCase.WatchmanTestCase):
-    def test_type_expr(self):
+    def test_type_expr(self) -> None:
         root = self.mkdtemp()
 
         self.touchRelative(root, "foo.c")

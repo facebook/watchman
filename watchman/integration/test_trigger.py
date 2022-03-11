@@ -16,11 +16,11 @@ from watchman.integration.lib import WatchmanTestCase, HELPER_ROOT
 
 @WatchmanTestCase.expand_matrix
 class TestTrigger(WatchmanTestCase.WatchmanTestCase):
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         # cli transport has no log subscriptions
         return True
 
-    def hasTriggerInLogs(self, root, triggerName):
+    def hasTriggerInLogs(self, root, triggerName) -> bool:
         pat = "%s.*posix_spawnp: %s" % (re.escape(root), triggerName)
         r = re.compile(pat, re.I)
         for line in self.getServerLogContents():
@@ -30,7 +30,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         return False
 
     # https://github.com/facebook/watchman/issues/141
-    def test_triggerIssue141(self):
+    def test_triggerIssue141(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "foo.js")
 
@@ -66,7 +66,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             message="both triggers fired on update",
         )
 
-    def validate_trigger_output(self, root, files, context):
+    def validate_trigger_output(self, root, files, context) -> None:
         trigger_log = os.path.join(root, "trigger.log")
         trigger_json = os.path.join(root, "trigger.json")
 
@@ -106,7 +106,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             message="%s should contain %s" % (trigger_json, json.dumps(files)),
         )
 
-    def test_legacyTrigger(self):
+    def test_legacyTrigger(self) -> None:
         root = self.mkdtemp()
 
         self.touchRelative(root, "foo.c")

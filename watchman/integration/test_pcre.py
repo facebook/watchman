@@ -11,12 +11,12 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestPcre(WatchmanTestCase.WatchmanTestCase):
-    def check_pcre(self):
+    def check_pcre(self) -> None:
         res = self.watchmanCommand("version", {"optional": ["term-pcre"]})
         if not res["capabilities"]["term-pcre"]:
             self.skipTest("no PCRE support in the server")
 
-    def test_big_pcre(self):
+    def test_big_pcre(self) -> None:
         self.check_pcre()
 
         root = self.mkdtemp()
@@ -41,7 +41,7 @@ class TestPcre(WatchmanTestCase.WatchmanTestCase):
         except pywatchman.WatchmanError as e:
             self.assertIn("is too", str(e))
 
-    def test_pcre(self):
+    def test_pcre(self) -> None:
         self.check_pcre()
 
         root = self.mkdtemp()

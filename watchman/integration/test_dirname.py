@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestDirName(WatchmanTestCase.WatchmanTestCase):
-    def test_dirname(self):
+    def test_dirname(self) -> None:
         root = self.mkdtemp()
         for i in range(0, 5):
             istr = str(i)

@@ -11,10 +11,10 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAuth(WatchmanTestCase.WatchmanTestCase):
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return True
 
-    def test_dropPriv(self):
+    def test_dropPriv(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "111")
 

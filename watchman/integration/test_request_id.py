@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanInstance
 from watchman.integration.lib import WatchmanTestCase
 
 
-def is_hg_installed():
+def is_hg_installed() -> bool:
     with open(os.devnull, "wb") as devnull:
         try:
             env = os.environ.copy()
@@ -35,7 +35,7 @@ def is_hg_installed():
 
 @WatchmanTestCase.expand_matrix
 class TestRequestId(WatchmanTestCase.WatchmanTestCase):
-    def test_queryRequestId(self):
+    def test_queryRequestId(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.watchmanCommand("log-level", "debug")
@@ -51,7 +51,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
             message="request_id logged",
         )
 
-    def skipIfNoHgRequestIdSupport(self):
+    def skipIfNoHgRequestIdSupport(self) -> None:
         root = self.mkdtemp()
         request_id = "bf8a47014bd1b66103a8ab0aece4be7ada871660"
 
@@ -74,7 +74,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
 
         self.skipTest("HGREQUESTID is not supported")
 
-    def test_scmHgRequestId(self):
+    def test_scmHgRequestId(self) -> None:
         if not is_hg_installed():
             self.skipTest("Hg not installed")
         self.skipIfNoHgRequestIdSupport()

@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestContentHash(WatchmanTestCase.WatchmanTestCase):
-    def write_file_and_hash(self, filename, content):
+    def write_file_and_hash(self, filename, content) -> str:
         content = content.encode("utf-8")
         with open(filename, "wb") as f:
             f.write(content)
@@ -23,7 +23,7 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         sha.update(content)
         return sha.hexdigest()
 
-    def test_contentHash(self):
+    def test_contentHash(self) -> None:
         root = self.mkdtemp()
 
         expect_hex = self.write_file_and_hash(os.path.join(root, "foo"), "hello\n")
@@ -110,7 +110,7 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertEqual(None, res["files"][0]["content.sha1hex"])
 
-    def test_contentHashWarming(self):
+    def test_contentHashWarming(self) -> None:
         root = self.mkdtemp()
 
         expect_hex = self.write_file_and_hash(os.path.join(root, "foo"), "hello\n")
@@ -139,7 +139,7 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertEqual(expect_hex, res["files"][0]["content.sha1hex"])
 
-    def test_cacheLimit(self):
+    def test_cacheLimit(self) -> None:
         root = self.mkdtemp()
 
         expect_hex = self.write_file_and_hash(os.path.join(root, "foo"), "hello\n")

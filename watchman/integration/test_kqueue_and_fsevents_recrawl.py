@@ -14,11 +14,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestKQueueAndFSEventsRecrawl(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if sys.platform != "darwin":
             self.skipTest("N/A unless macOS")
 
-    def test_recrawl(self):
+    def test_recrawl(self) -> None:
         root = self.mkdtemp()
         watch = self.watchmanCommand("watch", root)
 

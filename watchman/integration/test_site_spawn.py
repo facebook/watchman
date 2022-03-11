@@ -19,7 +19,7 @@ SITE_SPAWN_FAIL = os.path.join(HELPER_ROOT, "site_spawn_fail.py")
 
 @unittest.skipIf(os.name == "nt", "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
-    def test_failingSpawner(self):
+    def test_failingSpawner(self) -> None:
         config = {"spawn_watchman_service": SITE_SPAWN_FAIL}
 
         inst = WatchmanInstance.Instance(config=config)
@@ -33,7 +33,7 @@ class TestSiteSpawn(unittest.TestCase):
         self.assertRegex(stderr, "failed to start\n")
         self.assertRegex(stderr, "site_spawn_fail.py: exited with status 1")
 
-    def test_no_site_spawner(self):
+    def test_no_site_spawner(self) -> None:
         """With a site spawner configured to otherwise fail, pass
         `--no-site-spawner` and ensure that a failure didn't occur."""
         config = {"spawn_watchman_service": SITE_SPAWN_FAIL}
@@ -47,7 +47,7 @@ class TestSiteSpawn(unittest.TestCase):
 
         inst.commandViaCLI(["--no-spawn", "--no-local", "shutdown-server"])
 
-    def test_spawner(self):
+    def test_spawner(self) -> None:
         config = {"spawn_watchman_service": SITE_SPAWN}
 
         inst = WatchmanInstance.Instance(config=config)

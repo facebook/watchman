@@ -11,12 +11,12 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestTriggerError(WatchmanTestCase.WatchmanTestCase):
-    def assertTriggerRegError(self, err, *args):
+    def assertTriggerRegError(self, err, *args) -> None:
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand(*args)
         self.assertRegex(str(ctx.exception), err)
 
-    def test_bad_args(self):
+    def test_bad_args(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 

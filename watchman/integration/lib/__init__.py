@@ -8,5 +8,5 @@ import os.path
 if "WATCHMAN_INTEGRATION_HELPERS" in os.environ:
     HELPER_ROOT = os.path.join(os.environ["WATCHMAN_INTEGRATION_HELPERS"])
 else:
-    WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
+    WATCHMAN_SRC_DIR: str = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
     HELPER_ROOT = os.path.join(WATCHMAN_SRC_DIR, "integration")

@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanSCMTestCase
 from watchman.integration.lib import WatchmanTestCase
 
 
-def is_ubuntu():
+def is_ubuntu() -> bool:
     try:
         with open("/etc/lsb-release") as f:
             if "Ubuntu" in f.read():
@@ -24,7 +24,7 @@ def is_ubuntu():
 
 @WatchmanTestCase.expand_matrix
 class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if is_ubuntu():
             self.skipTest("Test is flaky. See Facebook task T36574087.")
         if "CIRCLECI" in os.environ or "TRAVIS" in os.environ:
@@ -32,7 +32,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
         if os.name == "nt":
             self.skipTest("The order of events on Windows is funky")
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.skipIfNoFSMonitor()
         self.root = self.mkdtemp()
         """ Set up a repo with a DAG like this:
@@ -132,27 +132,27 @@ o  changeset:
     def getConfig(self, result):
         return result["clock"]["scm"]["saved-state"]["config"]
 
-    def assertStorageTypeLocal(self, result):
+    def assertStorageTypeLocal(self, result) -> None:
         self.assertEqual(result["clock"]["scm"]["saved-state"]["storage"], "local")
 
-    def assertCommitIDEquals(self, result, commit_id):
+    def assertCommitIDEquals(self, result, commit_id) -> None:
         self.assertEqual(result["clock"]["scm"]["saved-state"]["commit-id"], commit_id)
 
-    def assertCommitIDNotPresent(self, result):
+    def assertCommitIDNotPresent(self, result) -> None:
         self.assertTrue("commit-id" not in result["clock"]["scm"]["saved-state"])
 
-    def assertSavedStateErrorEquals(self, result, error_string):
+    def assertSavedStateErrorEquals(self, result, error_string) -> None:
         self.assertEqual(result["saved-state-info"]["error"], error_string)
 
-    def assertSavedStateInfo(self, result, path, commit_id):
+    def assertSavedStateInfo(self, result, path, commit_id) -> None:
         self.assertEqual(
             result["saved-state-info"], {"local-path": path, "commit-id": commit_id}
         )
 
-    def assertMergebaseEquals(self, result, mergebase):
+    def assertMergebaseEquals(self, result, mergebase) -> None:
         self.assertEqual(result["clock"]["scm"]["mergebase"], mergebase)
 
-    def test_localSavedStateErrorHandling(self):
+    def test_localSavedStateErrorHandling(self) -> None:
         # Local storage should throw if config does not include
         # local-storage-path. Unit tests more extensively test all possible
         # error cases, this just confirms that an example error propagates end
@@ -166,7 +166,7 @@ o  changeset:
             str(ctx.exception),
         )
 
-    def test_localSavedStateNoStateFound(self):
+    def test_localSavedStateNoStateFound(self) -> None:
         # Local saved state should return no commit id and error message if no
         # valid state found (project does not match states saved above)
         local_storage = self.mkdtemp()
@@ -183,7 +183,7 @@ o  changeset:
         self.assertSavedStateErrorEquals(res, "No suitable saved state found")
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
-    def test_localSavedStateNotWithinLimit(self):
+    def test_localSavedStateNotWithinLimit(self) -> None:
         # Local saved state should return an empty commit id, error message,
         # and changed files since prior clock if the first available saved
         # state is not within the limit
@@ -204,7 +204,7 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
-    def test_localSavedStateNotWithinLimitOmitChangedFiles(self):
+    def test_localSavedStateNotWithinLimitOmitChangedFiles(self) -> None:
         # Local saved state should return an empty commit id, error message,
         # and changed files since prior clock if the first available saved
         # state is not within the limit
@@ -226,7 +226,7 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], [])
 
-    def test_localSavedStateNotWithinLimitError(self):
+    def test_localSavedStateNotWithinLimitError(self) -> None:
         # Local saved state should return an empty commit id, error message,
         # and changed files since prior clock if the first available saved
         # state is not within the limit
@@ -250,7 +250,7 @@ o  changeset:
             str(ctx.exception),
         )
 
-    def test_localSavedStateLookupSuccess(self):
+    def test_localSavedStateLookupSuccess(self) -> None:
         # Local saved state should return the saved state commit id, info, and
         # changed files since the saved state if valid state found within limit
         local_storage = self.mkdtemp()
@@ -275,7 +275,7 @@ o  changeset:
         self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
         self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
 
-    def test_localSavedStateLookupSuccessOmitChangedFiles(self):
+    def test_localSavedStateLookupSuccessOmitChangedFiles(self) -> None:
         # Local saved state should return the saved state commit id, info, and
         # changed files since the saved state if valid state found within limit.
         # Since this sets omit_changed_files, we only return the files from the
@@ -303,7 +303,7 @@ o  changeset:
         self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
         self.assertFileListsEqual(res["files"], [])
 
-    def test_localSavedStateLookupSuccessWithMetadata(self):
+    def test_localSavedStateLookupSuccessWithMetadata(self) -> None:
         local_storage = self.mkdtemp()
         metadata = "metadata"
         saved_state_rev_feature3 = self.saveState(
@@ -329,7 +329,7 @@ o  changeset:
         self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
         self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
 
-    def test_localSavedStateFailureIfMetadataDoesNotMatch(self):
+    def test_localSavedStateFailureIfMetadataDoesNotMatch(self) -> None:
         local_storage = self.mkdtemp()
         self.saveState("example_project", "feature3", local_storage)
         self.saveState("example_project", "feature0", local_storage)
@@ -348,7 +348,7 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
-    def test_localSavedStateFailureIfNoMetadataForFileThatHasIt(self):
+    def test_localSavedStateFailureIfNoMetadataForFileThatHasIt(self) -> None:
         local_storage = self.mkdtemp()
         metadata = "metadata"
         self.saveState("example_project", "feature3", local_storage, metadata)
@@ -367,7 +367,7 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
-    def test_localSavedStateSubscription(self):
+    def test_localSavedStateSubscription(self) -> None:
         local_storage = self.mkdtemp()
         saved_state_rev_feature3 = self.saveState(
             "example_project", "feature3", local_storage

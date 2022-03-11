@@ -11,7 +11,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestInvalidExpr(WatchmanTestCase.WatchmanTestCase):
-    def test_invalid_expr_term(self):
+    def test_invalid_expr_term(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 
@@ -36,7 +36,7 @@ class TestInvalidExpr(WatchmanTestCase.WatchmanTestCase):
             str(ctx.exception),
         )
 
-    def test_invalid_sync_timeout(self):
+    def test_invalid_sync_timeout(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 

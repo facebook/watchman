@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanEdenTestCase
 
 
 class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def test_eden_journal(self):
+    def test_eden_journal(self) -> None:
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")
@@ -92,11 +92,12 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # to false negatives.
         time.sleep(1)
 
+        # pyre-fixme[16]: Optional type has no attribute `remove`.
         self.eden.remove(root)
         watches = self.watchmanCommand("watch-list")
         self.assertNotIn(root, watches["roots"])
 
-    def test_two_rapid_checkouts_show_briefly_changed_files(self):
+    def test_two_rapid_checkouts_show_briefly_changed_files(self) -> None:
         initial_commit = None
         add_commit = None
         remove_commit = None
@@ -153,7 +154,7 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
             "Files created and removed across the update operation should show up in the changed list",
         )
 
-    def test_aba_checkouts_show_briefly_changed_files(self):
+    def test_aba_checkouts_show_briefly_changed_files(self) -> None:
         initial_commit = None
         add_commit = None
 
@@ -206,7 +207,7 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
             "Files created and removed across the update operation should show up in the changed list",
         )
 
-    def test_querying_with_truncated_journal_returns_fresh_instance(self):
+    def test_querying_with_truncated_journal_returns_fresh_instance(self) -> None:
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")
@@ -218,6 +219,7 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         clock = self.watchmanCommand("clock", root)
 
+        # pyre-fixme[16]: Optional type has no attribute `get_thrift_client`.
         with self.eden.get_thrift_client() as thrift_client:
             thrift_client.setJournalMemoryLimit(root, 0)
             self.assertEqual(0, thrift_client.getJournalMemoryLimit(root))
@@ -263,7 +265,7 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertTrue(res["is_fresh_instance"])
         self.assertFileListsEqual(res["files"], ["hello", ".hg", ".eden"])
 
-    def test_changing_root_tree(self):
+    def test_changing_root_tree(self) -> None:
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")

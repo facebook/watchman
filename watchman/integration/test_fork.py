@@ -13,11 +13,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSince(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if not getattr(os, "fork", None):
             self.skipTest("no fork on this system")
 
-    def test_forkclient(self):
+    def test_forkclient(self) -> None:
         client = self.getClient()
 
         client.query("version")

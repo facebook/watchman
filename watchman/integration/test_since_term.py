@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
-    def test_since_term(self):
+    def test_since_term(self) -> None:
         root = self.mkdtemp()
 
         self.touchRelative(root, "foo.c")

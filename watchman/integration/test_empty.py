@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestEmpty(WatchmanTestCase.WatchmanTestCase):
-    def test_empty(self):
+    def test_empty(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "empty")
         with open(os.path.join(root, "notempty"), "w") as f:

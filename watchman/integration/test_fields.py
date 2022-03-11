@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFields(WatchmanTestCase.WatchmanTestCase):
-    def test_fields(self):
+    def test_fields(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.touchRelative(root, "a")

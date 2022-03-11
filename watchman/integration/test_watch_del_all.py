@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchDelAll(WatchmanTestCase.WatchmanTestCase):
-    def test_watch_del_all(self):
+    def test_watch_del_all(self) -> None:
         root = self.mkdtemp()
 
         dirs = [os.path.join(root, f) for f in ["a", "b", "c", "d"]]

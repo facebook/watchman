@@ -13,14 +13,16 @@ from watchman.integration.lib import WatchmanTestCase
 from watchman.integration.lib.path_utils import norm_absolute_path, norm_relative_path
 
 
-def make_empty_watchmanconfig(dir):
+def make_empty_watchmanconfig(dir) -> None:
     with open(os.path.join(dir, ".watchmanconfig"), "w") as f:
         f.write("{}")
 
 
 @WatchmanTestCase.expand_matrix
 class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
-    def runProjectTests(self, config, expect, touch_watchmanconfig=False):
+    def runProjectTests(
+        self, config, expect, touch_watchmanconfig: bool = False
+    ) -> None:
         with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
@@ -73,7 +75,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                         str(ctx.exception),
                     )
 
-    def test_watchProject(self):
+    def test_watchProject(self) -> None:
         expect = [
             ("a/b/c/.git", "a/b/c", None, True),
             ("a/b/.hg", "a/b", "c", True),
@@ -85,7 +87,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
         ]
         self.runProjectTests({"root_files": [".git", ".hg", ".foo", ".bar"]}, expect)
 
-    def test_watchProjectWatchmanConfig(self):
+    def test_watchProjectWatchmanConfig(self) -> None:
         expect = [
             ("a/b/c/.git", None, "a/b/c", True),
             ("a/b/.hg", None, "a/b/c", True),
@@ -101,7 +103,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
             touch_watchmanconfig=True,
         )
 
-    def test_watchProjectEnforcing(self):
+    def test_watchProjectEnforcing(self) -> None:
         config = {
             "root_files": [".git", ".hg", ".foo", ".bar"],
             "enforce_root_files": True,
@@ -117,7 +119,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
         ]
         self.runProjectTests(config=config, expect=expect)
 
-    def test_reUseNestedWatch(self):
+    def test_reUseNestedWatch(self) -> None:
         d = self.mkdtemp()
         abc = os.path.join(d, "a", "b", "c")
         os.makedirs(abc, 0o777)

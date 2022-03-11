@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
-    def test_path_generator_dot(self):
+    def test_path_generator_dot(self) -> None:
         root = self.mkdtemp()
 
         self.watchmanCommand("watch", root)
@@ -27,7 +27,7 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
             [],
         )
 
-    def test_path_generator_case(self):
+    def test_path_generator_case(self) -> None:
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "foo"))
@@ -53,7 +53,7 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
                         for path generator",
             )
 
-    def test_path_generator_relative_root(self):
+    def test_path_generator_relative_root(self) -> None:
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "foo"))
@@ -94,7 +94,7 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
                         for path relative_root",
             )
 
-    def test_path_generator_empty(self):
+    def test_path_generator_empty(self) -> None:
         """Specifying no input paths should return no results."""
         root = self.mkdtemp()
 

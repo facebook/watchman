@@ -30,8 +30,9 @@ except ImportError:
 tls = threading.local()
 
 
-def setSharedInstance(inst):
+def setSharedInstance(inst) -> None:
     global tls
+    # pyre-fixme[16]: `local` has no attribute `instance`.
     tls.instance = inst
     atexit.register(lambda: inst.stop())
 
@@ -48,25 +49,34 @@ def getSharedInstance():
     return tls.instance
 
 
-def hasSharedInstance():
+def hasSharedInstance() -> bool:
     global tls
     return hasattr(tls, "instance")
 
 
 class InitWithFilesMixin(object):
-    def _init_state(self):
+    def _init_state(self) -> None:
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `base_dir`.
         self.base_dir = tempfile.mkdtemp(prefix="inst")
         # no separate user directory here -- that's only in InitWithDirMixin
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `user_dir`.
         self.user_dir = None
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `cfg_file`.
         self.cfg_file = os.path.join(self.base_dir, "config.json")
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `log_file_name`.
         self.log_file_name = os.path.join(self.base_dir, "log")
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `cli_log_file_name`.
         self.cli_log_file_name = os.path.join(self.base_dir, "cli-log")
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `pid_file`.
         self.pid_file = os.path.join(self.base_dir, "pid")
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `pipe_name`.
         self.pipe_name = (
             "\\\\.\\pipe\\watchman-test-%s"
             % uuid.uuid5(uuid.NAMESPACE_URL, self.base_dir).hex
         )
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `sock_file`.
         self.sock_file = os.path.join(self.base_dir, "sock")
+        # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `state_file`.
         self.state_file = os.path.join(self.base_dir, "state")
 
     def get_state_args(self):
@@ -85,20 +95,28 @@ class InitWithDirMixin(object):
     unlikely to work.
     """
 
-    def _init_state(self):
+    def _init_state(self) -> None:
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `base_dir`.
         self.base_dir = tempfile.mkdtemp(prefix="inst")
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `cfg_file`.
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         # This needs to be separate from the log_file_name because the
         # log_file_name won't exist in the beginning, but the cli_log_file_name
         # will.
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `cli_log_file_name`.
         self.cli_log_file_name = os.path.join(self.base_dir, "cli-log")
         # This doesn't work on Windows, but we don't expect to be hitting this
         # codepath on Windows anyway
         username = pwd.getpwuid(os.getuid())[0]
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `user_dir`.
         self.user_dir = os.path.join(self.base_dir, "%s-state" % username)
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `log_file_name`.
         self.log_file_name = os.path.join(self.user_dir, "log")
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `sock_file`.
         self.sock_file = os.path.join(self.user_dir, "sock")
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `state_file`.
         self.state_file = os.path.join(self.user_dir, "state")
+        # pyre-fixme[16]: `InitWithDirMixin` has no attribute `pipe_name`.
         self.pipe_name = "INVALID"
 
     def get_state_args(self):
@@ -110,22 +128,26 @@ class _Instance(object):
     # overridden global configuration file; you may pass that
     # in to the constructor
 
-    def __init__(self, config=None, start_timeout=60.0, debug_watchman=False):
+    def __init__(
+        self, config=None, start_timeout: float = 60.0, debug_watchman: bool = False
+    ) -> None:
         self.start_timeout = start_timeout
+        # pyre-fixme[16]: `_Instance` has no attribute `_init_state`.
         self._init_state()
         self.proc = None
         self.pid = None
         self.debug_watchman = debug_watchman
+        # pyre-fixme[16]: `_Instance` has no attribute `cfg_file`.
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config or {}))
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.stop()
 
-    def __enter__(self):
+    def __enter__(self) -> "_Instance":
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info) -> None:
         self.stop()
 
     def getSockPath(self):
@@ -139,21 +161,23 @@ class _Instance(object):
     def getNamedPipePath(self):
         return self.pipe_name
 
-    def getCLILogContents(self):
+    def getCLILogContents(self) -> str:
+        # pyre-fixme[16]: `_Instance` has no attribute `cli_log_file_name`.
         with open(self.cli_log_file_name, "r") as f:
             return f.read()
 
-    def getServerLogContents(self):
+    def getServerLogContents(self) -> str:
+        # pyre-fixme[16]: `_Instance` has no attribute `log_file_name`.
         with open(self.log_file_name, "r") as f:
             return f.read()
 
-    def stop(self):
+    def stop(self) -> None:
         if self.proc:
             self.proc.kill()
             self.proc.wait()
             self.proc = None
 
-    def watchmanBinary(self):
+    def watchmanBinary(self) -> str:
         return os.environ.get("WATCHMAN_BINARY", "watchman")
 
     def commandViaCLI(self, cmd, prefix=None):
@@ -171,22 +195,27 @@ class _Instance(object):
         )
         return proc.communicate()
 
-    def start(self, extra_env=None):
+    def start(self, extra_env=None) -> None:
         args = [self.watchmanBinary(), "--foreground", "--log-level=2"]
+        # pyre-fixme[16]: `_Instance` has no attribute `get_state_args`.
         args.extend(self.get_state_args())
         env = os.environ.copy()
+        # pyre-fixme[16]: `_Instance` has no attribute `cfg_file`.
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
         if extra_env:
             env.update(extra_env)
+        # pyre-fixme[16]: `_Instance` has no attribute `cli_log_file_name`.
         with open(self.cli_log_file_name, "w+") as cli_log_file:
             self.proc = subprocess.Popen(
                 args, env=env, stdin=None, stdout=cli_log_file, stderr=cli_log_file
             )
         if self.debug_watchman:
             print("Watchman instance PID: " + str(self.proc.pid))
+            # pyre-fixme[16]: Module `pywatchman` has no attribute `compat`.
             if pywatchman.compat.PYTHON3:
                 user_input = input
             else:
+                # pyre-fixme[10]: Name `raw_input` is used but not defined.
                 user_input = raw_input  # noqa:F821
             user_input("Press Enter to continue...")
 
@@ -206,9 +235,10 @@ class _Instance(object):
         if self.pid is None:
             # self.proc didn't come up: wait for it to die
             self.proc.wait(timeout=self.start_timeout)
+            # pyre-fixme[61]: `val` is undefined, or not always defined.
             raise val
 
-    def _waitForSuspend(self, suspended, timeout):
+    def _waitForSuspend(self, suspended, timeout: float) -> bool:
         if os.name == "nt":
             # There's no 'ps' equivalent we can use
             return True
@@ -230,7 +260,7 @@ class _Instance(object):
             time.sleep(0.03)
         return False
 
-    def suspend(self):
+    def suspend(self) -> None:
         if self.proc.poll() or self.pid <= 1:
             raise Exception("watchman process isn't running")
         if os.name == "nt":
@@ -241,7 +271,7 @@ class _Instance(object):
         if not self._waitForSuspend(True, 5):
             raise Exception("watchman process didn't stop in 5 seconds")
 
-    def resume(self):
+    def resume(self) -> None:
         if self.proc.poll() or self.pid <= 1:
             raise Exception("watchman process isn't running")
         if os.name == "nt":

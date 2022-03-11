@@ -14,7 +14,7 @@ Watchman."""
 default_local_errors = "surrogateescape"
 
 
-def get_local_encoding():
+def get_local_encoding() -> str:
     if sys.platform == "win32":
         # Watchman always returns UTF-8 encoded strings on Windows.
         return "utf-8"

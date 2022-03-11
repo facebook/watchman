@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.skipIfNoFSMonitor()
         self.root = self.mkdtemp()
         # This test does not require much so just create a super simple repo
@@ -38,7 +38,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
             "since": {"scm": {"mergebase-with": "main"}},
         }
 
-    def test_unsupportedStorageType(self):
+    def test_unsupportedStorageType(self) -> None:
         # If the storage type is not supported, watchman should throw
         test_query = self.get_skeleton_query()
         test_query["since"]["scm"]["saved-state"] = {"storage": "foo", "config": {}}

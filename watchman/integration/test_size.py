@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSizeExpr(WatchmanTestCase.WatchmanTestCase):
-    def test_size_expr(self):
+    def test_size_expr(self) -> None:
         root = self.mkdtemp()
 
         self.touchRelative(root, "empty")

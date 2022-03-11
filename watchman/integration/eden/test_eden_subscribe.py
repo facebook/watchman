@@ -15,10 +15,10 @@ def possible_cookie(name):
 
 
 class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return True
 
-    def test_eden_subscribe(self):
+    def test_eden_subscribe(self) -> None:
         commits = []
 
         def populate(repo):
@@ -92,7 +92,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
             + [".eden", ".watchmanconfig", "hello", "w0000t", "welcome", "readme.txt"],
         )
 
-    def assertWaitForAssertedStates(self, root, states):
+    def assertWaitForAssertedStates(self, root, states) -> None:
         def sortStates(states):
             """Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the
@@ -108,7 +108,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         self.assertWaitForEqual(states, getStates)
 
-    def test_state_enter_leave(self):
+    def test_state_enter_leave(self) -> None:
         """Check that state-enter and state-leave are basically working.
         This is a subset of the tests that are performed in test_subscribe.py;
         we only strictly need to check the basic plumbing here and need not

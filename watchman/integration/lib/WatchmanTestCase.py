@@ -55,11 +55,11 @@ if os.name == "nt":
 
 
 class TempDirPerTestMixin(unittest.TestCase):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(TempDirPerTestMixin, self).__init__(*args, **kwargs)
         self.tempdir = None
 
-    def setUp(self):
+    def setUp(self) -> None:
         super(TempDirPerTestMixin, self).setUp()
 
         id = self._getTempDirName()
@@ -69,21 +69,22 @@ class TempDirPerTestMixin(unittest.TestCase):
         self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
         os.mkdir(self.tempdir)
 
-    def _getTempDirName(self):
+    def _getTempDirName(self) -> str:
         return self.id()
 
     def mkdtemp(self, **kwargs):
         return norm_absolute_path(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
 
-    def mktemp(self, prefix=""):
+    def mktemp(self, prefix: str = ""):
         f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
         os.close(f)
         return name
 
 
 class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
-    def __init__(self, methodName="run"):
+    def __init__(self, methodName: str = "run") -> None:
         super(WatchmanTestCase, self).__init__(methodName)
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `setDefaultConfiguration`.
         self.setDefaultConfiguration()
         self.maxDiff = None
         self.attempt = 0
@@ -91,29 +92,30 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         # with the default of 1 second
         self.socketTimeout = 40.0
 
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return False
 
-    def checkPersistentSession(self):
+    def checkPersistentSession(self) -> None:
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
         if self.requiresPersistentSession() and self.transport == "cli":
             self.skipTest("need persistent session")
 
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         # override this to call self.skipTest if this test class should skip
         # on the current OS
         pass
 
-    def skipIfCapabilityMissing(self, cap, reason):
+    def skipIfCapabilityMissing(self, cap, reason) -> None:
         res = self.getClient().capabilityCheck([cap])
         if not res["capabilities"][cap]:
             self.skipTest(reason)
 
-    def setUp(self):
+    def setUp(self) -> None:
         super(WatchmanTestCase, self).setUp()
         self.checkPersistentSession()
         self.checkOSApplicability()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Print the watchman logs when a test complete
 
         When debugging watchman test issues, having access to the logs makes
@@ -123,17 +125,22 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         print("Watchman logs:")
         self.dumpLogs()
 
-    def getClient(self, inst=None, replace_cached=False, no_cache=False):
+    def getClient(
+        self, inst=None, replace_cached: bool = False, no_cache: bool = False
+    ):
         if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
                 timeout=self.socketTimeout,
+                # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
                 transport=self.transport,
+                # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
                 sockpath=(inst or WatchmanInstance.getSharedInstance()).getSockPath(),
             )
             if (not inst or replace_cached) and not no_cache:
                 # only cache the client if it points to the shared instance
+                # pyre-fixme[16]: `WatchmanTestCase` has no attribute `client`.
                 self.client = client
                 self.addCleanup(lambda: self.__clearClient())
             return client
@@ -146,7 +153,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             except Exception:
                 pass
 
-    def setAttemptNumber(self, attempt):
+    def setAttemptNumber(self, attempt: int) -> None:
         self.attempt = attempt
 
     def __clearClient(self):
@@ -160,7 +167,9 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             name += "-%d" % self.attempt
         return name
 
-    def _getLongTestID(self):
+    def _getLongTestID(self) -> str:
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
         return "%s.%s.%s" % (self.id(), self.transport, self.encoding)
 
     def run(self, result):
@@ -183,12 +192,12 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
 
         return result
 
-    def dumpLogs(self):
+    def dumpLogs(self) -> None:
         """used in travis CI to show the hopefully relevant log snippets"""
 
         print(self.getLogSample())
 
-    def getLogSample(self):
+    def getLogSample(self) -> str:
         """used in CI to show the hopefully relevant log snippets"""
         inst = WatchmanInstance.getSharedInstance()
 
@@ -212,15 +221,17 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         """
         return WatchmanInstance.getSharedInstance().getServerLogContents().split("\n")
 
-    def setConfiguration(self, transport, encoding):
+    def setConfiguration(self, transport, encoding) -> None:
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
         self.transport = transport
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
         self.encoding = encoding
 
-    def removeRelative(self, base, *fname):
+    def removeRelative(self, base, *fname) -> None:
         fname = os.path.join(base, *fname)
         os.remove(fname)
 
-    def touch(self, fname, times=None):
+    def touch(self, fname, times=None) -> None:
         try:
             os.utime(fname, times)
         except OSError as e:
@@ -230,7 +241,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             else:
                 raise
 
-    def touchRelative(self, base, *fname):
+    def touchRelative(self, base, *fname) -> None:
         fname = os.path.join(base, *fname)
         self.touch(fname, None)
 
@@ -243,13 +254,13 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             except Exception:
                 pass
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.__clearWatches()
 
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
 
-    def _waitForCheck(self, cond, res_check, timeout):
+    def _waitForCheck(self, cond, res_check, timeout: float):
         deadline = time.time() + timeout
         res = None
         while time.time() < deadline:
@@ -272,7 +283,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         timeout = self.getTimeout(timeout)
         return self._waitForCheck(actual_cond, lambda res: res == expected, timeout)
 
-    def getTimeout(self, timeout=None):
+    def getTimeout(self, timeout=None) -> float:
         return timeout or self.socketTimeout
 
     def assertWaitFor(self, cond, timeout=None, message=None):
@@ -309,7 +320,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.last_file_list = files
         return files
 
-    def waitForSync(self, root):
+    def waitForSync(self, root) -> None:
         """ensure that watchman has observed any pending file changes
         This is most useful after mutating the filesystem and before
         attempting to perform a since query
@@ -323,23 +334,23 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.last_root_list = watch_list
         return watch_list
 
-    def assertFileListsEqual(self, list1, list2, message=None):
+    def assertFileListsEqual(self, list1, list2, message=None) -> None:
         list1 = [norm_relative_path(f) for f in list1]
         list2 = [norm_relative_path(f) for f in list2]
         self.assertCountEqual(list1, list2, message)
 
-    def fileListsEqual(self, list1, list2):
+    def fileListsEqual(self, list1, list2) -> bool:
         list1 = [norm_relative_path(f) for f in list1]
         list2 = [norm_relative_path(f) for f in list2]
         return sorted(list1) == sorted(list2)
 
-    def fileListContains(self, list1, list2):
+    def fileListContains(self, list1, list2) -> bool:
         """return true if list1 contains each unique element in list2"""
         set1 = {norm_relative_path(f) for f in list1}
         list2 = [norm_relative_path(f) for f in list2]
         return set1.issuperset(list2)
 
-    def assertFileListContains(self, list1, list2, message=None):
+    def assertFileListContains(self, list1, list2, message=None) -> None:
         if not self.fileListContains(list1, list2):
             message = "list1 %r should contain %r: %s" % (list1, list2, message)
             self.fail(message)
@@ -347,7 +358,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     # Wait for the file list to match the input set
     def assertFileList(
         self, root, files=None, cursor=None, relativeRoot=None, message=None
-    ):
+    ) -> None:
         expected_files = files or []
         if (cursor is not None) and cursor[0:2] == "n:":
             # it doesn't make sense to repeat named cursor queries, as
@@ -360,6 +371,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
                     expected_files,
                 )
             )
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `last_file_list`.
         self.assertFileListsEqual(self.last_file_list, expected_files, message)
 
     def assertQueryRepsonseEqual(self, expected_resp, actual_resp) -> None:
@@ -373,13 +385,14 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.assertCountEqual(sorted_expected, sorted_actual)
 
     # Wait for the list of watched roots to match the input set
-    def assertWatchListContains(self, roots, message=None):
+    def assertWatchListContains(self, roots, message=None) -> None:
         st, res = self.waitFor(
             lambda: self.fileListContains(self.getWatchList(), roots)
         )
+        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `last_root_list`.
         self.assertFileListContains(self.last_root_list, roots, message)
 
-    def waitForSub(self, name, root, accept=None, timeout=None, remove=True):
+    def waitForSub(self, name, root, accept=None, timeout=None, remove: bool = True):
         timeout = self.getTimeout(timeout)
         client = self.getClient()
 
@@ -403,7 +416,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
 
         return None
 
-    def getSubscription(self, name, root, remove=True, normalize=True):
+    def getSubscription(self, name, root, remove: bool = True, normalize: bool = True):
         data = self.getClient().getSubscription(name, root=root, remove=remove)
 
         if data is None or not normalize:
@@ -434,13 +447,13 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self._case_insensitive = os.path.exists(os.path.join(d, "A"))
         return self._case_insensitive
 
-    def suspendWatchman(self):
+    def suspendWatchman(self) -> None:
         WatchmanInstance.getSharedInstance().suspend()
 
-    def resumeWatchman(self):
+    def resumeWatchman(self) -> None:
         WatchmanInstance.getSharedInstance().resume()
 
-    def rootIsWatched(self, r):
+    def rootIsWatched(self, r) -> bool:
         r = norm_absolute_path(r)
         watches = [
             norm_absolute_path(root)
@@ -470,7 +483,7 @@ def skip_for(transports=None, codecs=None):
     return skip
 
 
-def expand_matrix(test_class):
+def expand_matrix(test_class) -> None:
     """
     A decorator function used to create different permutations from
     a given input test class.
@@ -493,6 +506,7 @@ def expand_matrix(test_class):
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader
     # will find the subclasses we define.
+    # pyre-fixme[16]: Optional type has no attribute `f_back`.
     caller_scope = inspect.currentframe().f_back.f_locals
 
     for (transport, encoding, suffix) in matrix:

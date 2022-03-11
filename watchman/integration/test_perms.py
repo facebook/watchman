@@ -12,18 +12,18 @@ import pywatchman
 from watchman.integration.lib import WatchmanTestCase
 
 
-def is_root():
+def is_root() -> bool:
     return hasattr(os, "geteuid") and os.geteuid() == 0
 
 
 @WatchmanTestCase.expand_matrix
 class TestPerms(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "nt":
             self.skipTest("N/A on Windows")
 
     @unittest.skipIf(is_root(), "N/A if root")
-    def test_permDeniedSubDir(self):
+    def test_permDeniedSubDir(self) -> None:
         root = self.mkdtemp()
         subdir = os.path.join(root, "subdir")
         os.mkdir(subdir)
@@ -35,7 +35,7 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         self.assertRegex(res["warning"], "Marking this portion of the tree deleted")
 
     @unittest.skipIf(is_root(), "N/A if root")
-    def test_permDeniedRoot(self):
+    def test_permDeniedRoot(self) -> None:
         root = self.mkdtemp()
         os.chmod(root, 0)
         with self.assertRaisesRegex(pywatchman.CommandError, "(open|opendir|realpath)"):

@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAgeOutFile(WatchmanTestCase.WatchmanTestCase):
-    def test_age_file(self):
+    def test_age_file(self) -> None:
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "a"))

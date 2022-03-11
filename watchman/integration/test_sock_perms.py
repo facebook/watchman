@@ -29,7 +29,7 @@ except ImportError:
     "win or root or bad ldap",
 )
 class TestSockPerms(unittest.TestCase):
-    def _new_instance(self, config, expect_success=True):
+    def _new_instance(self, config, expect_success: bool = True):
         if expect_success:
             start_timeout = 20
         else:
@@ -58,7 +58,7 @@ class TestSockPerms(unittest.TestCase):
                 return group
         self.skipTest("no usable groups found")
 
-    def waitFor(self, cond, timeout=20):
+    def waitFor(self, cond, timeout: float = 20):
         deadline = time.time() + timeout
         res = None
         while time.time() < deadline:
@@ -71,7 +71,9 @@ class TestSockPerms(unittest.TestCase):
             time.sleep(0.03)
         return [False, res]
 
-    def assertWaitFor(self, cond, timeout=60, message=None, get_debug_output=None):
+    def assertWaitFor(
+        self, cond, timeout: int = 60, message=None, get_debug_output=None
+    ):
         status, res = self.waitFor(cond, timeout)
         if status:
             return res
@@ -81,7 +83,7 @@ class TestSockPerms(unittest.TestCase):
             message += "\ndebug output:\n%s\nend debug output\n" % get_debug_output()
         self.fail(message)
 
-    def test_too_open_user_dir(self):
+    def test_too_open_user_dir(self) -> None:
         instance = self._new_instance({}, expect_success=False)
         os.makedirs(instance.user_dir)
         os.chmod(instance.user_dir, 0o777)
@@ -97,7 +99,7 @@ class TestSockPerms(unittest.TestCase):
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
-    def test_invalid_sock_group(self):
+    def test_invalid_sock_group(self) -> None:
         # create a random group name
         while True:
             group_name = "".join(
@@ -127,7 +129,7 @@ class TestSockPerms(unittest.TestCase):
             + instance.getCLILogContents(),
         )
 
-    def test_user_not_in_sock_group(self):
+    def test_user_not_in_sock_group(self) -> None:
         group = self._get_non_member_group()
         instance = self._new_instance(
             {"sock_group": group.gr_name}, expect_success=False
@@ -141,7 +143,7 @@ class TestSockPerms(unittest.TestCase):
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
-    def test_default_sock_group(self):
+    def test_default_sock_group(self) -> None:
         # By default the socket group should be the effective gid of the process
         gid = os.getegid()
         instance = self._new_instance({})
@@ -151,7 +153,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileGID(instance.user_dir, gid)
         self.assertFileGID(instance.sock_file, gid)
 
-    def test_custom_sock_group(self):
+    def test_custom_sock_group(self) -> None:
         gid = self._get_custom_gid()
         group = grp.getgrgid(gid)
         instance = self._new_instance({"sock_group": group.gr_name})
@@ -161,7 +163,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileGID(instance.user_dir, gid)
         self.assertFileGID(instance.sock_file, gid)
 
-    def test_user_previously_in_sock_group(self):
+    def test_user_previously_in_sock_group(self) -> None:
         """This tests the case where a user was previously in sock_group
         (so Watchman created the directory with that group), but no longer is
         (so the socket is created with a different group)."""
@@ -191,7 +193,7 @@ class TestSockPerms(unittest.TestCase):
         )
         self.assertWaitFor(lambda: wanted in instance.getServerLogContents())
 
-    def test_invalid_sock_access(self):
+    def test_invalid_sock_access(self) -> None:
         instance = self._new_instance({"sock_access": "bogus"}, expect_success=False)
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
@@ -214,7 +216,7 @@ class TestSockPerms(unittest.TestCase):
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
-    def test_default_sock_access(self):
+    def test_default_sock_access(self) -> None:
         instance = self._new_instance({})
         instance.start()
         instance.stop()
@@ -222,7 +224,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileMode(instance.user_dir, 0o700 | stat.S_ISGID)
         self.assertFileMode(instance.sock_file, 0o600)
 
-    def test_custom_sock_access_group(self):
+    def test_custom_sock_access_group(self) -> None:
         instance = self._new_instance({"sock_access": {"group": True}})
         instance.start()
         instance.stop()
@@ -230,7 +232,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileMode(instance.user_dir, 0o750 | stat.S_ISGID)
         self.assertFileMode(instance.sock_file, 0o660)
 
-    def test_custom_sock_access_others(self):
+    def test_custom_sock_access_others(self) -> None:
         instance = self._new_instance({"sock_access": {"group": True, "others": True}})
         instance.start()
         instance.stop()
@@ -238,7 +240,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileMode(instance.user_dir, 0o755 | stat.S_ISGID)
         self.assertFileMode(instance.sock_file, 0o666)
 
-    def test_sock_access_upgrade(self):
+    def test_sock_access_upgrade(self) -> None:
         instance = self._new_instance({"sock_access": {"group": True, "others": True}})
         os.makedirs(instance.user_dir)
         os.chmod(instance.user_dir, 0o700)
@@ -248,7 +250,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileMode(instance.user_dir, 0o755 | stat.S_ISGID)
         self.assertFileMode(instance.sock_file, 0o666)
 
-    def test_sock_access_downgrade(self):
+    def test_sock_access_downgrade(self) -> None:
         instance = self._new_instance({"sock_access": {"group": True}})
         os.makedirs(instance.user_dir)
         os.chmod(instance.user_dir, 0o755 | stat.S_ISGID)
@@ -258,7 +260,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileMode(instance.user_dir, 0o750 | stat.S_ISGID)
         self.assertFileMode(instance.sock_file, 0o660)
 
-    def test_sock_access_group_change(self):
+    def test_sock_access_group_change(self) -> None:
         gid = self._get_custom_gid()
         group = grp.getgrgid(gid)
         instance = self._new_instance({"sock_group": group.gr_name})
@@ -271,10 +273,10 @@ class TestSockPerms(unittest.TestCase):
         self.assertFileGID(instance.user_dir, gid)
         self.assertFileGID(instance.sock_file, gid)
 
-    def assertFileMode(self, f, mode):
+    def assertFileMode(self, f, mode) -> None:
         st = os.lstat(f)
         self.assertEqual(stat.S_IMODE(st.st_mode), mode)
 
-    def assertFileGID(self, f, gid):
+    def assertFileGID(self, f, gid) -> None:
         st = os.lstat(f)
         self.assertEqual(st.st_gid, gid)

@@ -18,7 +18,7 @@ def _find_yarn():
 
 # To avoid CI environments that put broken yarn and node executables in PATH,
 # verify they at least run.
-def _ensure_can_run(binary_path):
+def _ensure_can_run(binary_path) -> None:
     if binary_path is None:
         return None
     try:

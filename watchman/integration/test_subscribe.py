@@ -17,10 +17,10 @@ from watchman.integration.lib.path_utils import norm_relative_path
 
 @WatchmanTestCase.expand_matrix
 class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return True
 
-    def wlockExists(self, subdata, exists):
+    def wlockExists(self, subdata, exists) -> bool:
         norm_wlock = norm_relative_path(".hg/wlock")
         for sub in subdata:
             if "files" not in sub:
@@ -41,7 +41,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 return sub
         return None
 
-    def assertWaitForAssertedStates(self, root, states):
+    def assertWaitForAssertedStates(self, root, states) -> None:
         def sortStates(states):
             """Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the
@@ -57,7 +57,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         self.assertWaitForEqual(states, getStates)
 
-    def test_state_enter_leave(self):
+    def test_state_enter_leave(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         result = self.watchmanCommand("debug-get-asserted-states", root)
@@ -91,7 +91,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("state-leave", root, "bar")
         self.assertWaitForAssertedStates(root, [])
 
-    def test_defer_state(self):
+    def test_defer_state(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 
@@ -169,7 +169,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # and now we should observe the file change
         self.assertNotEqual(None, self.waitForSub("defer", root))
 
-    def test_drop_state(self):
+    def test_drop_state(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 
@@ -221,7 +221,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, files=["a", "in-foo", "in-foo-2", "out-foo"])
         self.assertNotEqual(None, self.waitForSub("drop", root))
 
-    def test_defer_vcs(self):
+    def test_defer_vcs(self) -> None:
         root = self.mkdtemp()
         # fake an hg control dir
         os.mkdir(os.path.join(root, ".hg"))
@@ -277,7 +277,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertNotEqual(None, dat)
 
-    def test_immediate_subscribe(self):
+    def test_immediate_subscribe(self) -> None:
         root = self.mkdtemp()
         # fake an hg control dir
         os.mkdir(os.path.join(root, ".hg"))
@@ -311,7 +311,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertNotEqual(None, dat)
 
-    def test_multi_cancel(self):
+    def test_multi_cancel(self) -> None:
         """Test that for multiple subscriptions on the same socket, we receive
         cancellation notices for all of them."""
         root = self.mkdtemp()
@@ -338,7 +338,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             self.assertTrue(dat["canceled"])
             self.assertTrue(dat["unilateral"])
 
-    def test_subscribe(self):
+    def test_subscribe(self) -> None:
         root = self.mkdtemp()
         a_dir = os.path.join(root, "a")
         os.mkdir(a_dir)
@@ -406,7 +406,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
     # TODO: this test is very flaky on Windows
     @unittest.skipIf(os.name == "nt", "win")
-    def test_flush_subscriptions(self):
+    def test_flush_subscriptions(self) -> None:
         root = self.mkdtemp()
 
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
@@ -593,7 +593,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(["newfile.txt"], new_sub1["files"])
         self.assertFileListsEqual(["newfile.txt"], new_sub2["files"])
 
-    def test_unsub_deadlock(self):
+    def test_unsub_deadlock(self) -> None:
         """I saw a stack trace of a lock assertion that seemed to originate
         in the unsubByName() method.  It looks possible for this to call
         itself recursively and this test exercises that code path.  It
@@ -614,7 +614,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             for client in clients:
                 client.close()
 
-    def test_subscription_cleanup(self):
+    def test_subscription_cleanup(self) -> None:
         """Verify that subscriptions get cleaned up from internal state on
         unsubscribes and socket disconnects. This test failing usually
         indicates a reference cycle keeping the subscriber alive."""
@@ -654,6 +654,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         # disconnect from the socket -- the next command will reconnect the
         # socket, but sub2 should have disappeared
+        # pyre-fixme[16]: `TestSubscribe` has no attribute `client`.
         self.client.close()
 
         # It might take a while for watchman to realize its connection has been
@@ -669,7 +670,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
     # TODO: Correctly test subscribe with unicode on Windows.
     @unittest.skipIf(os.name == "nt", "win")
     @WatchmanTestCase.skip_for(codecs=["json"])
-    def test_subscribe_unicode(self):
+    def test_subscribe_unicode(self) -> None:
         unicode_filename = u"\u263a"
 
         root = self.mkdtemp()

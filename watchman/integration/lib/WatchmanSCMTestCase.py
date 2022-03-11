@@ -18,13 +18,13 @@ STRING_TYPES = (str, bytes)
 
 
 class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
-    def __init__(self, methodName="run"):
+    def __init__(self, methodName: str = "run") -> None:
         super(WatchmanSCMTestCase, self).__init__(methodName)
 
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return True
 
-    def skipIfNoFSMonitor(self):
+    def skipIfNoFSMonitor(self) -> None:
         """cause the test to skip if fsmonitor is not available.
         We don't call this via unittest.skip because we want
         to have the skip message show the context"""
@@ -39,7 +39,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
             if (fail_str in out) or (fail_str in err):
                 self.skipTest("hg configuration is broken: %s %s" % (out, err))
 
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "nt":
             self.skipTest("The order of events on Windows is funky")
 
@@ -82,7 +82,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
             "utf-8"
         )
 
-    def waitForStatesToVacate(self, root):
+    def waitForStatesToVacate(self, root) -> None:
         # Wait for all states to vacate (check repeatedly)
         def checkAssertedStates():
             result = self.getClient().query("debug-get-asserted-states", root)

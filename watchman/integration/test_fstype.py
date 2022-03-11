@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
-    def test_Illegal(self):
+    def test_Illegal(self) -> None:
         config = {
             "illegal_fstypes": [
                 # This should include any/all fs types. If this test fails on

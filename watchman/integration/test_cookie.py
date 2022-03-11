@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCookie(WatchmanTestCase.WatchmanTestCase):
-    def test_delete_cookie_dir(self):
+    def test_delete_cookie_dir(self) -> None:
         root = self.mkdtemp()
         cookie_dir = os.path.join(root, ".hg")
         os.mkdir(cookie_dir)
@@ -41,7 +41,7 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
             msg=reason,
         )
 
-    def test_other_cookies(self):
+    def test_other_cookies(self) -> None:
         root = self.mkdtemp()
         cookie_dir = os.path.join(root, ".git")
         os.mkdir(cookie_dir)

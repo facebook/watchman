@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestMatch(WatchmanTestCase.WatchmanTestCase):
-    def test_match_suffix(self):
+    def test_match_suffix(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "foo.c")
         self.touchRelative(root, "README.pdf")
@@ -136,7 +136,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertFileListsEqual(res1["files"], res2["files"])
 
-    def test_suffix_expr(self):
+    def test_suffix_expr(self) -> None:
         root = self.mkdtemp()
 
         self.touchRelative(root, "foo.c")

@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanSCMTestCase
 from watchman.integration.lib import WatchmanTestCase
 
 
-def is_ubuntu():
+def is_ubuntu() -> bool:
     try:
         with open("/etc/lsb-release") as f:
             if "Ubuntu" in f.read():
@@ -25,7 +25,7 @@ def is_ubuntu():
 
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
-    def test_not_supported(self):
+    def test_not_supported(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
 
@@ -45,7 +45,7 @@ class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
         self.assertIn("root does not support SCM-aware queries", str(ctx.exception))
 
     @unittest.skipIf(is_ubuntu(), "Test is flaky. See Facebook task T36574087.")
-    def test_scmHg(self):
+    def test_scmHg(self) -> None:
         self.skipIfNoFSMonitor()
 
         root = self.mkdtemp()

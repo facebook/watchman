@@ -11,7 +11,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCaseSensitive(WatchmanTestCase.WatchmanTestCase):
-    def test_changeCase(self):
+    def test_changeCase(self) -> None:
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, "foo"))
         self.watchmanCommand("watch", root)

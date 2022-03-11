@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
-    def test_capabilities(self):
+    def test_capabilities(self) -> None:
         client = self.getClient()
         res = client.query("version")
         self.assertFalse("error" in res, "version with no args still works")
@@ -39,7 +39,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
         ):
             client.query("version", {"required": ["term-match", "will-never-exist"]})
 
-    def test_capabilityCheck(self):
+    def test_capabilityCheck(self) -> None:
         client = self.getClient()
 
         res = client.capabilityCheck(optional=["term-match", "will-never-exist"])
@@ -61,7 +61,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
         ):
             client.capabilityCheck(required=["term-match", "will-never-exist"])
 
-    def test_capabilitySynth(self):
+    def test_capabilitySynth(self) -> None:
         res = pywatchman.capabilities.synthesize(
             {"version": "1.0"}, {"optional": ["will-never-exist"], "required": []}
         )
@@ -95,7 +95,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
             res, {"version": "3.3", "capabilities": {"relative_root": True}}
         )
 
-    def test_full_capability_set(self):
+    def test_full_capability_set(self) -> None:
         client = self.getClient()
         res = client.listCapabilities()
 

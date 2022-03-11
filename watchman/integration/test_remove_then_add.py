@@ -13,11 +13,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestRemoveThenAdd(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "linux" and os.getenv("TRAVIS"):
             self.skipTest("openvz and inotify unlinks == bad time")
 
-    def test_remove_then_add(self):
+    def test_remove_then_add(self) -> None:
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, "foo"))
 

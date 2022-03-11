@@ -7,7 +7,7 @@
 import re
 
 
-def parse_version(vstr):
+def parse_version(vstr) -> int:
     res = 0
     for n in vstr.split("."):
         res = res * 1000
@@ -25,7 +25,7 @@ cap_versions = {
 }
 
 
-def check(version, name):
+def check(version, name: str):
     if name in cap_versions:
         return version >= parse_version(cap_versions[name])
     return False

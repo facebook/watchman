@@ -21,11 +21,11 @@ from watchman.integration.lib import WatchmanTestCase
 from watchman.integration.lib.node import node_bin, yarn_bin
 
 
-WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
+WATCHMAN_SRC_DIR: str = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "integration")
 
 
-def find_js_tests(test_class):
+def find_js_tests(test_class) -> None:
     """
     A decorator function used to create a class per JavaScript test script
     """
@@ -33,6 +33,7 @@ def find_js_tests(test_class):
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader
     # will find the subclasses we define.
+    # pyre-fixme[16]: Optional type has no attribute `f_back`.
     caller_scope = inspect.currentframe().f_back.f_locals
 
     for js in glob.glob(os.path.join(THIS_DIR, "*.js")):
@@ -67,14 +68,14 @@ def find_js_tests(test_class):
 class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
     attempt = 0
 
-    def setAttemptNumber(self, attempt):
+    def setAttemptNumber(self, attempt: int) -> None:
         """enable flaky test retry"""
         self.attempt = attempt
 
     @unittest.skipIf(
         yarn_bin is None or node_bin is None, "yarn/node not correctly installed"
     )
-    def runTest(self):
+    def runTest(self) -> None:
         env = os.environ.copy()
         env["WATCHMAN_SOCK"] = (
             WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
@@ -97,6 +98,7 @@ class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
         env["IN_PYTHON_HARNESS"] = "1"
         env["NODE_PATH"] = "%s:%s" % (node_dir, env["TMPDIR"])
         proc = subprocess.Popen(
+            # pyre-fixme[16]: `NodeTestCase` has no attribute `getCommandArgs`.
             self.getCommandArgs(),
             env=env,
             stdout=subprocess.PIPE,

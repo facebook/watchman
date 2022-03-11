@@ -43,7 +43,7 @@ EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
 EMPTY_HEADER_V2 = b"\x00\x02\x00\x00\x00\x00\x05\x00\x00\x00\x00"
 
 
-def _int_size(x):
+def _int_size(x) -> int:
     """Return the smallest size int that can store the value"""
     if -0x80 <= x <= 0x7F:
         return 1
@@ -57,7 +57,7 @@ def _int_size(x):
         raise RuntimeError("Cannot represent value: " + str(x))
 
 
-def _buf_pos(buf, pos):
+def _buf_pos(buf, pos) -> bytes:
     ret = buf[pos]
     # Normalize the return type to bytes
     if not isinstance(ret, bytes):
@@ -238,7 +238,7 @@ class _bser_buffer(object):
             raise RuntimeError("Cannot represent unknown value type")
 
 
-def dumps(obj, version=1, capabilities=0):
+def dumps(obj, version: int = 1, capabilities: int = 0):
     bser_buf = _bser_buffer(version=version)
     bser_buf.append_recursive(obj)
     # Now fill in the overall length
@@ -463,7 +463,7 @@ def pdu_len(buf):
     return info[2] + info[3]
 
 
-def loads(buf, mutable=True, value_encoding=None, value_errors=None):
+def loads(buf, mutable: bool = True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
 
     @param buf: The buffer to deserialize.
@@ -498,7 +498,7 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     return bunser.loads_recursive(buf, pos)[0]
 
 
-def load(fp, mutable=True, value_encoding=None, value_errors=None):
+def load(fp, mutable: bool = True, value_encoding=None, value_errors=None):
     from . import load
 
     return load.load(fp, mutable, value_encoding, value_errors)

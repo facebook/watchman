@@ -15,7 +15,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestGlob(WatchmanTestCase.WatchmanTestCase):
-    def test_glob(self):
+    def test_glob(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "a.c")
         self.touchRelative(root, "b.c")
@@ -157,7 +157,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand("query", root, {"glob": [12345]})
         self.assertIn("expected json string object", str(ctx.exception))
 
-    def test_glob_generator_empty(self):
+    def test_glob_generator_empty(self) -> None:
         """Specifying no input patterns should return no results."""
         root = self.mkdtemp()
 
@@ -168,7 +168,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand("query", root, {"fields": ["name"], "glob": []})
         self.assertFileListsEqual(res["files"], [])
 
-    def test_glob_generator_absolute(self):
+    def test_glob_generator_absolute(self) -> None:
         """Make it easier to understand buck errors resulting from bad globs"""
         root = self.mkdtemp()
 
@@ -184,7 +184,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             str(ctx.exception),
         )
 
-    def test_case_sensitive(self):
+    def test_case_sensitive(self) -> None:
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "Hello"))

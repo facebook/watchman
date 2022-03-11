@@ -18,17 +18,17 @@ class TestDirMove(WatchmanTestCase.WatchmanTestCase):
 
     # testing this is flaky at best on windows due to latency
     # and exclusivity of file handles, so skip it.
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "nt":
             self.skipTest("windows is too flaky for this test")
 
-    def build_under(self, root, name, latency=0):
+    def build_under(self, root, name, latency: float = 0) -> None:
         os.mkdir(os.path.join(root, name))
         if latency > 0:
             time.sleep(latency)
         self.touch(os.path.join(root, name, "a"))
 
-    def test_atomicMove(self):
+    def test_atomicMove(self) -> None:
         root = self.mkdtemp()
 
         dir_of_interest = os.path.join(root, "dir")
@@ -47,7 +47,7 @@ class TestDirMove(WatchmanTestCase.WatchmanTestCase):
 
         self.assertFileList(root, ["dir", "dir/a", "bye", "bye/a"])
 
-    def test_NonAtomicMove(self):
+    def test_NonAtomicMove(self) -> None:
         root = self.mkdtemp()
 
         dir_of_interest = os.path.join(root, "dir")

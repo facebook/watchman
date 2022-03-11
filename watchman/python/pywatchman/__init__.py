@@ -585,7 +585,7 @@ class WindowsNamedPipeTransport(Transport):
         )
 
 
-def _default_binpath(binpath=None):
+def _default_binpath(binpath=None) -> str:
     if binpath:
         return binpath
     # The test harness sets WATCHMAN_BINARY to the binary under test,

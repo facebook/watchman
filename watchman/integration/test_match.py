@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestMatch(WatchmanTestCase.WatchmanTestCase):
-    def test_match(self):
+    def test_match(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "foo.c")
         self.touchRelative(root, "bar.txt")

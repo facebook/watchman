@@ -14,11 +14,11 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFishy(WatchmanTestCase.WatchmanTestCase):
-    def checkOSApplicability(self):
+    def checkOSApplicability(self) -> None:
         if os.name == "nt":
             self.skipTest("non admin symlinks and unix userland not available")
 
-    def test_fishy(self):
+    def test_fishy(self) -> None:
         root = self.mkdtemp()
 
         os.mkdir(os.path.join(root, "foo"))
@@ -42,7 +42,7 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         self.resumeWatchman()
         self.assertFileList(root, files=["bar", "bar/a", "foo"], cursor=clock)
 
-    def test_more_moves(self):
+    def test_more_moves(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         base = self.watchmanCommand("find", root, ".")
@@ -61,7 +61,7 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d1/a", "d2"], cursor=clock)
 
-    def test_even_more_moves(self):
+    def test_even_more_moves(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         base = self.watchmanCommand("find", root, ".")
@@ -89,7 +89,7 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d2", "d2/a", "d3"], cursor=clock)
 
-    def test_notify_dir(self):
+    def test_notify_dir(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         os.mkdir(os.path.join(root, "wtest"))

@@ -15,7 +15,7 @@ from watchman.integration.lib.path_utils import norm_absolute_path
 
 @WatchmanTestCase.expand_matrix
 class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
-    def test_dot(self):
+    def test_dot(self) -> None:
         root = self.mkdtemp()
 
         save_dir = os.getcwd()
@@ -24,6 +24,7 @@ class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
 
             dot = "" if os.name == "nt" else "."
 
+            # pyre-fixme[16]: `TestAbsoluteRoot` has no attribute `transport`.
             if self.transport == "cli":
                 res = self.watchmanCommand("watch", dot)
                 self.assertEqual(root, norm_absolute_path(res["watch"]))
@@ -36,7 +37,7 @@ class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
         finally:
             os.chdir(save_dir)
 
-    def test_root(self):
+    def test_root(self) -> None:
         if os.name != "nt":
             with self.assertRaises(pywatchman.WatchmanError) as ctx:
                 self.watchmanCommand("watch", "/")

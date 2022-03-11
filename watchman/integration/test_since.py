@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSince(WatchmanTestCase.WatchmanTestCase):
-    def test_sinceIssue1(self):
+    def test_sinceIssue1(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "111")
         self.touchRelative(root, "222")
@@ -33,7 +33,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         # We should not observe 111 or 222
         self.assertFileList(root, cursor="n:foo", files=["bar", "bar/333"])
 
-    def test_sinceIssue2(self):
+    def test_sinceIssue2(self) -> None:
         root = self.mkdtemp()
         watch = self.watchmanCommand("watch", root)
         self.assertFileList(root, files=[])
@@ -72,7 +72,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             files = [f for f in files if f != "foo"]
         self.assertFileListsEqual(files, expected)
 
-    def test_sinceRelativeRoot(self):
+    def test_sinceRelativeRoot(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         clock = self.watchmanCommand("clock", root)["clock"]
@@ -124,7 +124,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertFileListsEqual(res["files"], ["dir2", "dir2/bar"])
 
-    def assertFreshInstanceForSince(self, root, cursor, empty=False):
+    def assertFreshInstanceForSince(self, root, cursor, empty: bool = False) -> None:
         res = self.watchmanCommand(
             "query",
             root,
@@ -136,7 +136,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         else:
             self.assertFileListsEqual(res["files"], ["111"])
 
-    def test_sinceFreshInstance(self):
+    def test_sinceFreshInstance(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.assertFileList(root, [])
@@ -193,7 +193,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertTrue(res["is_fresh_instance"])
         self.assertFileListsEqual(res["files"], ["222"])
 
-    def test_reAddWatchFreshInstance(self):
+    def test_reAddWatchFreshInstance(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.assertFileList(root, [])
@@ -218,7 +218,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertTrue(res["is_fresh_instance"])
         self.assertFileListsEqual(res["files"], ["222"])
 
-    def test_recrawlFreshInstance(self):
+    def test_recrawlFreshInstance(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.touchRelative(root, "111")
@@ -239,7 +239,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(res["files"], ["111", "222"])
         self.assertRegex(res["warning"], "Recrawled this watch")
 
-    def test_recrawlFreshInstanceWarningSuppressed(self):
+    def test_recrawlFreshInstanceWarningSuppressed(self) -> None:
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
             f.write(json.dumps({"suppress_recrawl_warnings": True}))

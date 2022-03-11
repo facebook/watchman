@@ -13,7 +13,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestRemove(WatchmanTestCase.WatchmanTestCase):
-    def test_remove(self):
+    def test_remove(self) -> None:
         root = self.mkdtemp()
         os.makedirs(os.path.join(root, "one", "two"))
         self.touchRelative(root, "one", "onefile")

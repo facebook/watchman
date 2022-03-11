@@ -11,7 +11,7 @@ import pywatchman
 from watchman.integration.lib import WatchmanEdenTestCase
 
 
-def populate(repo):
+def populate(repo) -> None:
     # We ignore ".hg" here just so some of the tests that list files don't have to
     # explicitly filter out the contents of this directory.  However, in most situations
     # the .hg directory normally should not be ignored.
@@ -28,7 +28,7 @@ def populate(repo):
 
 
 class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def test_defer_mtime(self):
+    def test_defer_mtime(self) -> None:
         root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
@@ -42,7 +42,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(res["files"][0]["name"], "bdir/noexec.sh")
         self.assertGreater(res["files"][0]["mtime"], 0)
 
-    def test_eden_readlink(self):
+    def test_eden_readlink(self) -> None:
         root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
@@ -57,7 +57,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         print(res)
         self.assertEqual(res["files"][0], {"name": "slink", "symlink_target": "hello"})
 
-    def test_non_existent_file(self):
+    def test_non_existent_file(self) -> None:
         root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
@@ -88,7 +88,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(f["name"], "111")
         self.assertGreater(f["mode"], 0)
 
-    def test_eden_watch(self):
+    def test_eden_watch(self) -> None:
         root = self.makeEdenMount(populate)
 
         # make sure this exists; we should not observe it in any of the results

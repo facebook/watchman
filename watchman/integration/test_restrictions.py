@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
-    def test_rootRestrict(self):
+    def test_rootRestrict(self) -> None:
         config = {"root_restrict_files": [".git", ".foo"]}
         expect = [
             ("directory", ".git", True),
@@ -26,7 +26,7 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
         ]
         self.runWatchTests(config=config, expect=expect)
 
-    def runWatchTests(self, config, expect):
+    def runWatchTests(self, config, expect) -> None:
         with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
@@ -53,13 +53,13 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                     assert_function = assert_functions[(expect_pass, watch_type)]
                     assert_function(inst, client, d)
 
-    def assertWatchSucceeds(self, inst, client, path):
+    def assertWatchSucceeds(self, inst, client, path) -> None:
         client.query("watch", path)
 
-    def assertWatchProjectSucceeds(self, inst, client, path):
+    def assertWatchProjectSucceeds(self, inst, client, path) -> None:
         client.query("watch-project", path)
 
-    def assertWatchIsRestricted(self, inst, client, path):
+    def assertWatchIsRestricted(self, inst, client, path) -> None:
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             client.query("watch", path)
         message = str(ctx.exception)
@@ -90,7 +90,7 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
             message,
         )
 
-    def assertWatchProjectIsRestricted(self, inst, client, path):
+    def assertWatchProjectIsRestricted(self, inst, client, path) -> None:
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             client.query("watch-project", path)
         message = str(ctx.exception)
@@ -115,7 +115,7 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
             message,
         )
 
-    def test_invalidRoot(self):
+    def test_invalidRoot(self) -> None:
         d = self.mkdtemp()
         invalid = os.path.join(d, "invalid")
         with self.assertRaises(pywatchman.WatchmanError) as ctx:

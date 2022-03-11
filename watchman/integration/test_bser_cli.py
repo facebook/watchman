@@ -20,7 +20,7 @@ class TestDashJCliOption(unittest.TestCase):
     def getSockPath(self):
         return WatchmanInstance.getSharedInstance().getSockPath()
 
-    def doJson(self, addNewLine, pretty=False):
+    def doJson(self, addNewLine, pretty: bool = False) -> None:
         sockpath = self.getSockPath()
         if pretty:
             watchman_cmd = b'[\n"get-sockname"\n]'
@@ -53,17 +53,18 @@ class TestDashJCliOption(unittest.TestCase):
         result = json.loads(stdout.decode("utf-8"))
         self.assertEqual(result["unix_domain"], sockpath.unix_domain)
 
-    def test_jsonInputNoNewLine(self):
+    def test_jsonInputNoNewLine(self) -> None:
         self.doJson(False)
 
-    def test_jsonInputNewLine(self):
+    def test_jsonInputNewLine(self) -> None:
         self.doJson(True)
 
-    def test_jsonInputPretty(self):
+    def test_jsonInputPretty(self) -> None:
         self.doJson(True, True)
 
-    def test_bserInput(self):
+    def test_bserInput(self) -> None:
         sockpath = self.getSockPath()
+        # pyre-fixme[16]: Module `pywatchman` has no attribute `bser`.
         watchman_cmd = bser.dumps(["get-sockname"])
         cli_cmd = [
             os.environ.get("WATCHMAN_BINARY", "watchman"),
@@ -85,6 +86,7 @@ class TestDashJCliOption(unittest.TestCase):
         stdout, stderr = proc.communicate(input=watchman_cmd)
         self.assertEqual(proc.poll(), 0, stderr)
         # the response should be bser to match our input
+        # pyre-fixme[16]: Module `pywatchman` has no attribute `bser`.
         result = bser.loads(stdout)
         result_sockname = result["unix_domain"]
         result_sockname = encoding.decode_local(result_sockname)

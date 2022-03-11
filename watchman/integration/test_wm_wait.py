@@ -14,7 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
-    def requiresPersistentSession(self):
+    def requiresPersistentSession(self) -> bool:
         return True
 
     def spawnWatchmanWait(self, cmdArgs):
@@ -38,12 +38,12 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
             args, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
-    def assertWaitedFileList(self, stdout, expected):
+    def assertWaitedFileList(self, stdout, expected) -> None:
         stdout = stdout.decode("utf-8").rstrip()
         files = [f.rstrip() for f in stdout.split("\n")]
         self.assertFileListContains(files, expected)
 
-    def assertWaitForWmWaitWatch(self, root):
+    def assertWaitForWmWaitWatch(self, root) -> None:
         """Wait for the specified root to appear in the watch list;
         watchman-wait will initiate that asynchronously and we have
         to wait for that before proceeding.
@@ -61,7 +61,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         # will block us until it is ready
         self.watchmanCommand("watch", root)
 
-    def test_wait(self):
+    def test_wait(self) -> None:
         root = self.mkdtemp()
         self.touchRelative(root, "foo")
         a_dir = os.path.join(root, "a")
@@ -85,7 +85,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         (stdout, stderr) = wmwait.communicate()
         self.assertWaitedFileList(stdout, ["a/bar", "a/foo", "b/foo", "bar", "foo"])
 
-    def test_rel_root(self):
+    def test_rel_root(self) -> None:
         root = self.mkdtemp()
 
         a_dir = os.path.join(root, "a")

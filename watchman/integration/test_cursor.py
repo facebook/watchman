@@ -12,7 +12,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCursor(WatchmanTestCase.WatchmanTestCase):
-    def test_cursor(self):
+    def test_cursor(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
         self.assertFileList(root, files=[], cursor="n:testCursor")
