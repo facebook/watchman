@@ -5,8 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#ifndef WATCHMAN_STREAM_H
-#define WATCHMAN_STREAM_H
+#pragma once
 
 #include <memory>
 #include "watchman/fs/FileDescriptor.h"
@@ -23,14 +22,12 @@ class watchman_event {
   virtual bool isSocket() = 0;
 };
 
-using w_evt_t = watchman_event*;
-
 class watchman_stream {
  public:
   virtual ~watchman_stream() = default;
   virtual int read(void* buf, int size) = 0;
   virtual int write(const void* buf, int size) = 0;
-  virtual w_evt_t getEvents() = 0;
+  virtual watchman_event* getEvents() = 0;
   virtual void setNonBlock(bool nonBlock) = 0;
   virtual bool rewind() = 0;
   virtual bool shutdown() = 0;
@@ -38,7 +35,6 @@ class watchman_stream {
   virtual pid_t getPeerProcessID() const = 0;
   virtual const watchman::FileDescriptor& getFileDescriptor() const = 0;
 };
-using w_stm_t = watchman_stream*;
 
 struct watchman_event_poll {
   watchman_event* evt;
@@ -62,8 +58,8 @@ int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms);
 // Create a connected unix socket or a named pipe client stream
 std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms);
 
-w_stm_t w_stm_stdout();
-w_stm_t w_stm_stdin();
+watchman_stream* w_stm_stdout();
+watchman_stream* w_stm_stdin();
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms);
@@ -81,5 +77,3 @@ std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 // Make a temporary file name and open it.
 // Marks the file as CLOEXEC
 std::unique_ptr<watchman_stream> w_mkstemp(char* templ);
-
-#endif

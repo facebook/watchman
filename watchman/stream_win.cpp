@@ -89,7 +89,7 @@ class win_handle : public watchman_stream {
   ~win_handle();
   int read(void* buf, int size) override;
   int write(const void* buf, int size) override;
-  w_evt_t getEvents() override;
+  watchman_event* getEvents() override;
   void setNonBlock(bool nonb) override;
   bool rewind() override;
   bool shutdown() override;
@@ -579,7 +579,7 @@ int win_handle::write(const void* buf, int size) {
   return size;
 }
 
-w_evt_t win_handle::getEvents() {
+watchman_event* win_handle::getEvents() {
   return &waitable;
 }
 

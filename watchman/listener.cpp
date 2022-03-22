@@ -639,11 +639,12 @@ class AcceptLoop {
     std::shared_ptr<watchman_event> listener_event = w_event_make_sockets();
     w_push_listener_thread_event(listener_event);
 
-    thread_ = std::thread(
-        [listener_fd = std::move(fd), name, listener_event]() mutable {
-          w_set_thread_name(name);
-          accept_thread(std::move(listener_fd), listener_event);
-        });
+    thread_ = std::thread([listener_fd = std::move(fd),
+                           name = std::move(name),
+                           listener_event]() mutable {
+      w_set_thread_name(name);
+      accept_thread(std::move(listener_fd), listener_event);
+    });
   }
 
   AcceptLoop(const AcceptLoop&) = delete;
@@ -683,7 +684,7 @@ class AcceptLoop {
     auto listener = w_stm_fdopen(std::move(listenerDescriptor));
     while (!w_is_stopping()) {
       FileDescriptor client_fd;
-      struct watchman_event_poll pfd[2];
+      watchman_event_poll pfd[2];
 
       pfd[0].evt = listener->getEvents();
       pfd[1].evt = listener_event.get();

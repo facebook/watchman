@@ -24,8 +24,6 @@
 #include <sys/socket.h> // @manual
 #endif
 
-using watchman::FileDescriptor;
-using watchman::Pipe;
 using namespace watchman;
 
 static const int kWriteTimeout = 60000;
@@ -225,7 +223,7 @@ class UnixStream : public watchman_stream {
     return x.value();
   }
 
-  w_evt_t getEvents() override {
+  watchman_event* getEvents() override {
     return &evt;
   }
 

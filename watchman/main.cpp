@@ -47,14 +47,15 @@
 #endif
 
 using namespace watchman;
-using Options = ChildProcess::Options;
 
-static enum w_pdu_type server_pdu = is_bser;
-static enum w_pdu_type output_pdu = is_json_pretty;
-static uint32_t server_capabilities = 0;
-static uint32_t output_capabilities = 0;
-static char** daemon_argv = NULL;
-static struct sockaddr_un un;
+namespace {
+w_pdu_type server_pdu = is_bser;
+w_pdu_type output_pdu = is_json_pretty;
+uint32_t server_capabilities = 0;
+uint32_t output_capabilities = 0;
+char** daemon_argv = NULL;
+struct sockaddr_un un;
+} // namespace
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h> // @manual
@@ -315,7 +316,7 @@ static SpawnResult spawn_win32() {
   char module_name[WATCHMAN_NAME_MAX];
   GetModuleFileName(NULL, module_name, sizeof(module_name));
 
-  Options opts;
+  ChildProcess::Options opts;
   opts.setFlags(POSIX_SPAWN_SETPGROUP);
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
   opts.open(
@@ -371,7 +372,7 @@ static SpawnResult spawn_site_specific(const char* spawner) {
   // run_service() function above.
   // However, we do need to make sure that any output from both stdout
   // and stderr goes to stderr of the end user.
-  Options opts;
+  ChildProcess::Options opts;
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
   opts.dup2(STDERR_FILENO, STDOUT_FILENO);
   opts.dup2(STDERR_FILENO, STDERR_FILENO);
@@ -446,7 +447,8 @@ static SpawnResult spawn_via_launchd() {
     // Unload any that may already exist, as it is likely wrong
 
     ChildProcess unload_proc(
-        {"/bin/launchctl", "unload", "-F", plist_path}, Options());
+        {"/bin/launchctl", "unload", "-F", plist_path},
+        ChildProcess::Options());
     unload_proc.wait();
 
     // Forcibly remove the plist.  In some cases it may have some attributes
@@ -531,7 +533,7 @@ static SpawnResult spawn_via_launchd() {
   chmod(plist_path, 0644);
 
   ChildProcess load_proc(
-      {"/bin/launchctl", "load", "-F", plist_path}, Options());
+      {"/bin/launchctl", "load", "-F", plist_path}, ChildProcess::Options());
   auto res = load_proc.wait();
 
   if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {

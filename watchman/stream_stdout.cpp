@@ -44,7 +44,7 @@ class StdioStream : public watchman_stream {
     return result.value();
   }
 
-  w_evt_t getEvents() override {
+  watchman_event* getEvents() override {
     log(FATAL, "calling get_events on a stdio stm\n");
     return nullptr;
   }
@@ -73,12 +73,12 @@ class StdioStream : public watchman_stream {
 };
 } // namespace
 
-w_stm_t w_stm_stdout() {
+watchman_stream* w_stm_stdout() {
   static StdioStream stdoutStream(FileDescriptor::stdOut());
   return &stdoutStream;
 }
 
-w_stm_t w_stm_stdin() {
+watchman_stream* w_stm_stdin() {
   static StdioStream stdinStream(FileDescriptor::stdIn());
   return &stdinStream;
 }

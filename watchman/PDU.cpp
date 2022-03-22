@@ -52,7 +52,7 @@ uint32_t watchman_json_buffer::shuntDown() {
   return allocd - wpos;
 }
 
-bool watchman_json_buffer::fillBuffer(w_stm_t stm) {
+bool watchman_json_buffer::fillBuffer(watchman_stream* stm) {
   uint32_t avail;
   int r;
 
@@ -97,7 +97,7 @@ inline enum w_pdu_type watchman_json_buffer::detectPdu() {
 }
 
 json_ref watchman_json_buffer::readJsonPrettyPdu(
-    w_stm_t stm,
+    watchman_stream* stm,
     json_error_t* jerr) {
   char* nl;
   int r;
@@ -126,7 +126,9 @@ json_ref watchman_json_buffer::readJsonPrettyPdu(
   return res;
 }
 
-json_ref watchman_json_buffer::readJsonPdu(w_stm_t stm, json_error_t* jerr) {
+json_ref watchman_json_buffer::readJsonPdu(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   int r;
 
   /* look for a newline; that indicates the end of
@@ -160,7 +162,7 @@ json_ref watchman_json_buffer::readJsonPdu(w_stm_t stm, json_error_t* jerr) {
 }
 
 bool watchman_json_buffer::decodePduInfo(
-    w_stm_t stm,
+    watchman_stream* stm,
     uint32_t bser_version,
     json_int_t* len,
     json_int_t* bser_capabilities,
@@ -197,7 +199,7 @@ bool watchman_json_buffer::decodePduInfo(
 }
 
 json_ref watchman_json_buffer::readBserPdu(
-    w_stm_t stm,
+    watchman_stream* stm,
     uint32_t bser_version,
     json_error_t* jerr) {
   json_int_t needed;
@@ -277,7 +279,9 @@ json_ref watchman_json_buffer::readBserPdu(
   return obj;
 }
 
-bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
+bool watchman_json_buffer::readAndDetectPdu(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   enum w_pdu_type pdu;
   // The client might send us different kinds of PDUs over the same connection,
   // so reset the capabilities.
@@ -351,7 +355,7 @@ static bool output_bytes(const char* buf, int x) {
   return true;
 }
 
-bool watchman_json_buffer::streamUntilNewLine(w_stm_t stm) {
+bool watchman_json_buffer::streamUntilNewLine(watchman_stream* stm) {
   int x;
   char* localBuf;
   bool is_done = false;
@@ -384,7 +388,7 @@ bool watchman_json_buffer::streamUntilNewLine(w_stm_t stm) {
 }
 
 bool watchman_json_buffer::streamN(
-    w_stm_t stm,
+    watchman_stream* stm,
     json_int_t len,
     json_error_t* jerr) {
   uint32_t total = 0;
@@ -440,7 +444,7 @@ bool watchman_json_buffer::streamN(
   return true;
 }
 
-bool watchman_json_buffer::streamPdu(w_stm_t stm, json_error_t* jerr) {
+bool watchman_json_buffer::streamPdu(watchman_stream* stm, json_error_t* jerr) {
   uint32_t bser_version = 1;
   json_int_t bser_capabilities;
   json_int_t len;
@@ -468,7 +472,9 @@ bool watchman_json_buffer::streamPdu(w_stm_t stm, json_error_t* jerr) {
   }
 }
 
-json_ref watchman_json_buffer::decodePdu(w_stm_t stm, json_error_t* jerr) {
+json_ref watchman_json_buffer::decodePdu(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   switch (pdu_type) {
     case is_json_compact:
       return readJsonPdu(stm, jerr);
@@ -485,7 +491,7 @@ bool watchman_json_buffer::passThru(
     enum w_pdu_type output_pdu,
     uint32_t output_capabilities,
     w_jbuffer_t* output_pdu_buf,
-    w_stm_t stm) {
+    watchman_stream* stm) {
   json_error_t jerr;
   bool res;
 
@@ -519,7 +525,9 @@ bool watchman_json_buffer::passThru(
   return res;
 }
 
-json_ref watchman_json_buffer::decodeNext(w_stm_t stm, json_error_t* jerr) {
+json_ref watchman_json_buffer::decodeNext(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   *jerr = json_error_t();
   if (!readAndDetectPdu(stm, jerr)) {
     return nullptr;
@@ -528,7 +536,7 @@ json_ref watchman_json_buffer::decodeNext(w_stm_t stm, json_error_t* jerr) {
 }
 
 struct jbuffer_write_data {
-  w_stm_t stm;
+  watchman_stream* stm;
   w_jbuffer_t* jr;
 
   bool flush() {
@@ -586,7 +594,7 @@ bool watchman_json_buffer::bserEncodeToStream(
     uint32_t bser_version,
     uint32_t bser_capabilities,
     const json_ref& json,
-    w_stm_t stm) {
+    watchman_stream* stm) {
   struct jbuffer_write_data data = {stm, this};
   int res;
 
@@ -602,7 +610,7 @@ bool watchman_json_buffer::bserEncodeToStream(
 
 bool watchman_json_buffer::jsonEncodeToStream(
     const json_ref& json,
-    w_stm_t stm,
+    watchman_stream* stm,
     int flags) {
   struct jbuffer_write_data data = {stm, this};
   int res;
@@ -624,7 +632,7 @@ bool watchman_json_buffer::pduEncodeToStream(
     enum w_pdu_type pdu_type,
     uint32_t capabilities,
     const json_ref& json,
-    w_stm_t stm) {
+    watchman_stream* stm) {
   switch (pdu_type) {
     case is_json_compact:
       return jsonEncodeToStream(json, stm, JSON_COMPACT);
