@@ -26,7 +26,6 @@
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
-struct watchman_client;
 struct watchman_file;
 
 namespace watchman {

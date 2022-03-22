@@ -14,10 +14,9 @@
 
 #if HAVE_FSEVENTS
 
-struct watchman_client;
-
 namespace watchman {
 
+class Client;
 class Configuration;
 struct FSEventsStream;
 struct FSEventsLogEntry;
@@ -64,7 +63,7 @@ class FSEventsWatcher : public Watcher {
   void clearDebugInfo() override;
 
   static void cmd_debug_fsevents_inject_drop(
-      watchman_client* client,
+      Client* client,
       const json_ref& args);
 
  private:

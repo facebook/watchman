@@ -316,7 +316,7 @@ std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
 }
 
 static void cmd_debug_kqueue_and_fsevents_recrawl(
-    struct watchman_client* client,
+    Client* client,
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {

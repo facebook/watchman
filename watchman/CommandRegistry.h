@@ -15,10 +15,12 @@
 #include "watchman/watchman_preprocessor.h"
 
 class json_ref;
-struct watchman_client;
 
 namespace watchman {
-using command_func = void (*)(watchman_client* client, const json_ref& args);
+
+class Client;
+
+using command_func = void (*)(Client* client, const json_ref& args);
 
 // Should throw an exception (ideally CommandValidationError) if validation
 // fails

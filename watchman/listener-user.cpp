@@ -6,19 +6,19 @@
  */
 
 #include <folly/ScopeGuard.h>
+#include "watchman/Client.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/Shutdown.h"
 #include "watchman/root/Root.h"
 #include "watchman/root/resolve.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 // Functions relating to the per-user service
 
 using namespace watchman;
 
-static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
+static void cmd_shutdown(Client* client, const json_ref&) {
   logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
@@ -50,10 +50,8 @@ void add_root_warnings_to_response(
           "'`\n")));
 }
 
-std::shared_ptr<Root> doResolveOrCreateRoot(
-    struct watchman_client* client,
-    const json_ref& args,
-    bool create) {
+std::shared_ptr<Root>
+doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
   const char* root_name;
 
   // Assume root is first element
@@ -100,14 +98,12 @@ std::shared_ptr<Root> doResolveOrCreateRoot(
   }
 }
 
-std::shared_ptr<Root> resolveRoot(
-    struct watchman_client* client,
-    const json_ref& args) {
+std::shared_ptr<Root> resolveRoot(Client* client, const json_ref& args) {
   return doResolveOrCreateRoot(client, args, false);
 }
 
 std::shared_ptr<Root> resolveOrCreateRoot(
-    struct watchman_client* client,
+    Client* client,
     const json_ref& args) {
   return doResolveOrCreateRoot(client, args, true);
 }

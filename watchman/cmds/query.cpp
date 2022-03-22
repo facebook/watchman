@@ -6,16 +6,16 @@
  */
 
 #include "watchman/query/Query.h"
+#include "watchman/Client.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
 #include "watchman/saved_state/SavedStateFactory.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
 /* query /root {query} */
-static void cmd_query(struct watchman_client* client, const json_ref& args) {
+static void cmd_query(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments for 'query'");
     return;

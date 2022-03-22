@@ -53,7 +53,7 @@ static bool query_caps(
 }
 
 /* version */
-static void cmd_version(struct watchman_client* client, const json_ref& args) {
+static void cmd_version(Client* client, const json_ref& args) {
   auto resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
@@ -96,9 +96,7 @@ W_CMD_REG(
     NULL)
 
 /* list-capabilities */
-static void cmd_list_capabilities(
-    struct watchman_client* client,
-    const json_ref&) {
+static void cmd_list_capabilities(Client* client, const json_ref&) {
   auto resp = make_response();
 
   resp.set("capabilities", capability_get_list());
@@ -111,7 +109,7 @@ W_CMD_REG(
     NULL)
 
 /* get-sockname */
-static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
+static void cmd_get_sockname(Client* client, const json_ref&) {
   auto resp = make_response();
 
   // For legacy reasons we report the unix domain socket as sockname on
@@ -140,9 +138,7 @@ W_CMD_REG(
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
     NULL)
 
-static void cmd_get_config(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
 
   if (json_array_size(args) != 2) {

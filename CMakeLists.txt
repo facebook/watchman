@@ -579,6 +579,7 @@ endif()
 
 list(APPEND watchman_sources
 watchman/ChildProcess.cpp
+watchman/Client.cpp
 watchman/Clock.cpp
 watchman/CommandRegistry.cpp
 watchman/ContentHash.cpp

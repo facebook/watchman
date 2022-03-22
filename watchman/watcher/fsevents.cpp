@@ -840,7 +840,7 @@ static RegisterWatcher<FSEventsWatcher> reg("fsevents");
 // A helper command to facilitate testing that we can successfully
 // resync the stream.
 void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
-    watchman_client* client,
+    Client* client,
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {

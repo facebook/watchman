@@ -23,9 +23,7 @@ using namespace watchman;
 /* trigger-del /root triggername
  * Delete a trigger from a root
  */
-static void cmd_trigger_delete(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_trigger_delete(Client* client, const json_ref& args) {
   w_string tname;
   bool res;
 
@@ -74,9 +72,7 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
  */
-static void cmd_trigger_list(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_trigger_list(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   auto resp = make_response();
@@ -89,7 +85,7 @@ W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_ref build_legacy_trigger(
     const std::shared_ptr<Root>& root,
-    struct watchman_client* client,
+    Client* client,
     const json_ref& args) {
   uint32_t next_arg = 0;
   uint32_t i;
@@ -135,7 +131,7 @@ static json_ref build_legacy_trigger(
 /* trigger /root triggername [watch patterns] -- cmd to run
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
-static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
+static void cmd_trigger(Client* client, const json_ref& args) {
   bool need_save = true;
   std::unique_ptr<TriggerCommand> cmd;
   json_ref trig;

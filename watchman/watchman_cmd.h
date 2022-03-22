@@ -14,8 +14,9 @@
 #include "watchman/watchman_system.h"
 
 namespace watchman {
+class Client;
 class Root;
-}
+} // namespace watchman
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
@@ -39,32 +40,27 @@ void preprocess_command(
     w_pdu_type output_pdu,
     uint32_t output_capabilities);
 bool dispatch_command(
-    struct watchman_client* client,
+    watchman::Client* client,
     const json_ref& args,
     watchman::CommandFlags mode);
 bool try_client_mode_command(const json_ref& cmd, bool pretty);
 
 void send_error_response(
-    struct watchman_client* client,
+    watchman::Client* client,
     WATCHMAN_FMT_STRING(const char* fmt),
     ...) WATCHMAN_FMT_ATTR(2, 3);
-void send_and_dispose_response(
-    struct watchman_client* client,
-    json_ref&& response);
-bool enqueue_response(
-    struct watchman_client* client,
-    json_ref&& json,
-    bool ping);
+void send_and_dispose_response(watchman::Client* client, json_ref&& response);
+bool enqueue_response(watchman::Client* client, json_ref&& json, bool ping);
 
 // Resolve the root. Failure will throw a RootResolveError exception
 std::shared_ptr<watchman::Root> resolveRoot(
-    struct watchman_client* client,
+    watchman::Client* client,
     const json_ref& args);
 
 // Resolve the root, or if not found and the configuration permits,
 // attempt to create it. throws RootResolveError on failure.
 std::shared_ptr<watchman::Root> resolveOrCreateRoot(
-    struct watchman_client* client,
+    watchman::Client* client,
     const json_ref& args);
 
 json_ref make_response();

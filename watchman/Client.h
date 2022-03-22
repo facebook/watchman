@@ -25,9 +25,14 @@ class Root;
 struct Query;
 struct QueryResult;
 
-} // namespace watchman
+class Client : public std::enable_shared_from_this<Client> {
+ public:
+  Client();
+  explicit Client(std::unique_ptr<watchman_stream>&& stm);
+  virtual ~Client();
 
-struct watchman_client : public std::enable_shared_from_this<watchman_client> {
+  void enqueueResponse(json_ref&& resp, bool ping = true);
+
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
@@ -47,13 +52,11 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   // Logging Subscriptions
   std::shared_ptr<watchman::Publisher::Subscriber> debugSub;
   std::shared_ptr<watchman::Publisher::Subscriber> errorSub;
-
-  watchman_client();
-  explicit watchman_client(std::unique_ptr<watchman_stream>&& stm);
-  virtual ~watchman_client();
-
-  void enqueueResponse(json_ref&& resp, bool ping = true);
 };
+
+} // namespace watchman
+
+using watchman_client = watchman::Client;
 
 struct watchman_user_client;
 

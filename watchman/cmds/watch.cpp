@@ -54,7 +54,7 @@ static void annotate_with_clock(
  * is synced up-to-date and the returned clock represents the
  * latest state.
  */
-static void cmd_clock(struct watchman_client* client, const json_ref& args) {
+static void cmd_clock(Client* client, const json_ref& args) {
   int sync_timeout = 0;
 
   // TODO: merge this parse and sync logic with the logic in query evaluation
@@ -101,9 +101,7 @@ W_CMD_REG(
 
 /* watch-del /root
  * Stops watching the specified root */
-static void cmd_watch_delete(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_watch_delete(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch-del'");
@@ -122,7 +120,7 @@ W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
 /* watch-del-all
  * Stops watching all roots */
-static void cmd_watch_del_all(struct watchman_client* client, const json_ref&) {
+static void cmd_watch_del_all(Client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = w_root_stop_watch_all();
   resp.set("roots", std::move(roots));
@@ -136,7 +134,7 @@ W_CMD_REG(
 
 /* watch-list
  * Returns a list of watched roots */
-static void cmd_watch_list(struct watchman_client* client, const json_ref&) {
+static void cmd_watch_list(Client* client, const json_ref&) {
   auto resp = make_response();
   auto root_paths = w_root_watch_list_to_json();
   resp.set("roots", std::move(root_paths));
@@ -266,7 +264,7 @@ static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
 }
 
 /* watch /root */
-static void cmd_watch(struct watchman_client* client, const json_ref& args) {
+static void cmd_watch(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch'");
@@ -297,9 +295,7 @@ W_CMD_REG(
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
     w_cmd_realpath_root)
 
-static void cmd_watch_project(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_watch_project(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch-project'");

@@ -5,12 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/MapUtil.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/query/parse.h"
 #include "watchman/root/Root.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_system.h"
 
@@ -25,7 +25,7 @@ struct state_arg {
 
 // Parses the args for state-enter and state-leave
 static bool parse_state_arg(
-    struct watchman_client* client,
+    Client* client,
     const json_ref& args,
     struct state_arg* parsed) {
   parsed->sync_timeout = kDefaultQuerySyncTimeout;
@@ -67,9 +67,7 @@ static bool parse_state_arg(
 
 namespace watchman {
 
-static void cmd_state_enter(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_state_enter(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
 
@@ -212,9 +210,7 @@ void w_client_vacate_states(struct watchman_user_client* client) {
   }
 }
 
-static void cmd_state_leave(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by

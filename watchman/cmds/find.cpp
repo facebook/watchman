@@ -5,17 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/eval.h"
 #include "watchman/query/parse.h"
 #include "watchman/saved_state/SavedStateFactory.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
 /* find /root [patterns] */
-static void cmd_find(struct watchman_client* client, const json_ref& args) {
+static void cmd_find(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) < 2) {
     send_error_response(client, "not enough arguments for 'find'");

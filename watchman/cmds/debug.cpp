@@ -7,20 +7,18 @@
 
 #include <folly/chrono/Conv.h>
 #include <iomanip>
+#include "watchman/Client.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/LRUCache.h"
 #include "watchman/Logging.h"
 #include "watchman/Poison.h"
 #include "watchman/QueryableView.h"
 #include "watchman/root/Root.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
-static void cmd_debug_recrawl(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_debug_recrawl(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(
@@ -39,9 +37,7 @@ static void cmd_debug_recrawl(
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_show_cursors(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_debug_show_cursors(Client* client, const json_ref& args) {
   json_ref cursors;
 
   /* resolve the root */
@@ -75,9 +71,7 @@ W_CMD_REG(
     w_cmd_realpath_root)
 
 /* debug-ageout */
-static void cmd_debug_ageout(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_debug_ageout(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments for 'debug-ageout'");
@@ -97,9 +91,7 @@ static void cmd_debug_ageout(
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_poison(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_debug_poison(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   auto now = std::chrono::system_clock::now();
@@ -118,9 +110,7 @@ static void cmd_debug_poison(
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_drop_privs(
-    struct watchman_client* client,
-    const json_ref&) {
+static void cmd_debug_drop_privs(Client* client, const json_ref&) {
   client->client_is_owner = false;
 
   auto resp = make_response();
@@ -130,7 +120,7 @@ static void cmd_debug_drop_privs(
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL)
 
 static void cmd_debug_set_subscriptions_paused(
-    struct watchman_client* clientbase,
+    Client* clientbase,
     const json_ref& args) {
   auto client = (struct watchman_user_client*)clientbase;
 
@@ -210,7 +200,7 @@ static json_ref getDebugSubscriptionInfo(Root* root) {
 }
 
 static void cmd_debug_get_subscriptions(
-    struct watchman_client* clientbase,
+    Client* clientbase,
     const json_ref& args) {
   auto client = (watchman_user_client*)clientbase;
 
@@ -233,7 +223,7 @@ W_CMD_REG(
     w_cmd_realpath_root)
 
 static void cmd_debug_get_asserted_states(
-    struct watchman_client* clientbase,
+    Client* clientbase,
     const json_ref& args) {
   auto client = (watchman_user_client*)clientbase;
 
@@ -253,7 +243,7 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root)
 
-static void cmd_debug_status(struct watchman_client* client, const json_ref&) {
+static void cmd_debug_status(Client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = Root::getStatusForAllRoots();
   resp.set("roots", std::move(roots));
@@ -265,9 +255,7 @@ W_CMD_REG(
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
     NULL)
 
-static void cmd_debug_watcher_info(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_debug_watcher_info(Client* clientbase, const json_ref& args) {
   auto* client = static_cast<watchman_user_client*>(clientbase);
 
   auto root = resolveRoot(client, args);
@@ -278,7 +266,7 @@ static void cmd_debug_watcher_info(
 W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
 
 static void cmd_debug_watcher_info_clear(
-    struct watchman_client* clientbase,
+    Client* clientbase,
     const json_ref& args) {
   auto* client = static_cast<watchman_user_client*>(clientbase);
 
@@ -308,9 +296,7 @@ void addCacheStats(json_ref& resp, const CacheStats& stats) {
        {"size", json_integer(stats.size)}});
 }
 
-void debugContentHashCache(
-    struct watchman_client* client,
-    const json_ref& args) {
+void debugContentHashCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(
@@ -337,9 +323,7 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root)
 
-void debugSymlinkTargetCache(
-    struct watchman_client* client,
-    const json_ref& args) {
+void debugSymlinkTargetCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(

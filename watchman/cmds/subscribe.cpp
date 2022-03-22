@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
@@ -15,7 +16,6 @@
 #include "watchman/root/Root.h"
 #include "watchman/root/watchlist.h"
 #include "watchman/saved_state/SavedStateFactory.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
@@ -317,9 +317,7 @@ ClockSpec watchman_client_subscription::runSubscriptionRules(
   return position;
 }
 
-static void cmd_flush_subscriptions(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
   auto client = (watchman_user_client*)clientbase;
 
   int sync_timeout;
@@ -454,9 +452,7 @@ W_CMD_REG(
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-static void cmd_unsubscribe(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   const char* name;
   bool deleted{false};
   struct watchman_user_client* client =
@@ -490,9 +486,7 @@ W_CMD_REG(
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-static void cmd_subscribe(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
+static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   std::shared_ptr<watchman_client_subscription> sub;
   json_ref resp, initial_subscription_results;
   json_ref jfield_list;

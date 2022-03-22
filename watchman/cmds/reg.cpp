@@ -8,6 +8,7 @@
 #include <folly/ExceptionString.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
+#include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
@@ -15,7 +16,6 @@
 #include "watchman/Poison.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 #include "watchman/watchman_stream.h"
 
@@ -72,10 +72,7 @@ void preprocess_command(
   }
 }
 
-bool dispatch_command(
-    struct watchman_client* client,
-    const json_ref& args,
-    CommandFlags mode) {
+bool dispatch_command(Client* client, const json_ref& args, CommandFlags mode) {
   command_handler_def* def;
   char sample_name[128];
 

@@ -16,6 +16,7 @@
 #include <chrono>
 #include <optional>
 #include <thread>
+#include "watchman/Client.h"
 #include "watchman/Constants.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/SanityCheck.h"
@@ -24,7 +25,6 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/sockname.h"
 #include "watchman/state.h"
-#include "watchman/watchman_client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
@@ -42,13 +42,11 @@ json_ref make_response() {
   return resp;
 }
 
-void send_and_dispose_response(
-    struct watchman_client* client,
-    json_ref&& response) {
+void send_and_dispose_response(Client* client, json_ref&& response) {
   client->enqueueResponse(std::move(response), false);
 }
 
-void send_error_response(struct watchman_client* client, const char* fmt, ...) {
+void send_error_response(Client* client, const char* fmt, ...) {
   va_list ap;
 
   va_start(ap, fmt);
@@ -76,51 +74,6 @@ void send_error_response(struct watchman_client* client, const char* fmt, ...) {
   }
 
   send_and_dispose_response(client, std::move(resp));
-}
-
-namespace {
-// TODO: If used in a hot loop, EdenFS has a faster implementation.
-// https://github.com/facebookexperimental/eden/blob/c745d644d969dae1e4c0d184c19320fac7c27ae5/eden/fs/utils/IDGen.h
-std::atomic<uint64_t> id_generator{1};
-} // namespace
-
-watchman_client::watchman_client() : watchman_client(nullptr) {}
-
-watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
-    : unique_id{id_generator++},
-      stm(std::move(stm)),
-      ping(
-#ifdef _WIN32
-          (this->stm &&
-           this->stm->getFileDescriptor().fdType() ==
-               FileDescriptor::FDType::Socket)
-              ? w_event_make_sockets()
-              : w_event_make_named_pipe()
-#else
-          w_event_make_sockets()
-#endif
-
-      ) {
-  logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
-}
-
-watchman_client::~watchman_client() {
-  debugSub.reset();
-  errorSub.reset();
-
-  logf(DBG, "client_delete {}\n", unique_id);
-
-  if (stm) {
-    stm->shutdown();
-  }
-}
-
-void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
-  responses.emplace_back(std::move(resp));
-
-  if (ping) {
-    this->ping->notify();
-  }
 }
 
 // The client thread reads and decodes json packets,
@@ -921,7 +874,7 @@ bool w_start_listener() {
 }
 
 /* get-pid */
-static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
+static void cmd_get_pid(Client* client, const json_ref&) {
   auto resp = make_response();
 
   resp.set("pid", json_integer(::getpid()));
