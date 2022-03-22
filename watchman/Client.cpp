@@ -117,7 +117,7 @@ UserClient::~UserClient() {
   /* cancel subscriptions */
   subscriptions.clear();
 
-  w_client_vacate_states(this);
+  vacateStates();
 }
 
 std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
@@ -129,6 +129,30 @@ std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
     v.push_back(std::static_pointer_cast<UserClient>(c->shared_from_this()));
   }
   return v;
+}
+
+void UserClient::vacateStates() {
+  while (!states.empty()) {
+    auto it = states.begin();
+    auto assertion = it->second.lock();
+
+    if (!assertion) {
+      states.erase(it->first);
+      continue;
+    }
+
+    auto root = assertion->root;
+
+    logf(
+        watchman::ERR,
+        "implicitly vacating state {} on {} due to client disconnect\n",
+        assertion->name,
+        root->root_path);
+
+    // This will delete the state from client->states and invalidate
+    // the iterator.
+    w_leave_state(this, assertion, true, nullptr);
+  }
 }
 
 void UserClient::clientThread() noexcept {
@@ -350,30 +374,5 @@ void w_leave_state(
 
   if (client) {
     mapRemove(client->states, assertion->name);
-  }
-}
-
-// Abandon any states that haven't been explicitly vacated
-void w_client_vacate_states(watchman::UserClient* client) {
-  while (!client->states.empty()) {
-    auto it = client->states.begin();
-    auto assertion = it->second.lock();
-
-    if (!assertion) {
-      client->states.erase(it->first);
-      continue;
-    }
-
-    auto root = assertion->root;
-
-    logf(
-        watchman::ERR,
-        "implicitly vacating state {} on {} due to client disconnect\n",
-        assertion->name,
-        root->root_path);
-
-    // This will delete the state from client->states and invalidate
-    // the iterator.
-    w_leave_state(client, assertion, true, nullptr);
   }
 }

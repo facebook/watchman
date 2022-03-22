@@ -178,14 +178,15 @@ class UserClient final : public Client {
   explicit UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm);
 
  private:
+  // Abandon any states that haven't been explicit vacated.
+  void vacateStates();
+
   void clientThread() noexcept;
 
   ClientStatus status_;
 };
 
 } // namespace watchman
-
-void w_client_vacate_states(watchman::UserClient* client);
 
 void w_leave_state(
     watchman::UserClient* client,
