@@ -168,11 +168,7 @@ W_CMD_REG(
 
 static json_ref getDebugSubscriptionInfo(Root* root) {
   auto subscriptions = json_array();
-  for (const auto& c : *::clients.rlock()) {
-    auto* user_client = dynamic_cast<UserClient*>(c.get());
-    if (!user_client) {
-      continue;
-    }
+  for (const auto& user_client : UserClient::getAllClients()) {
     for (const auto& sub : user_client->subscriptions) {
       if (root == sub.second->root.get()) {
         auto last_responses = json_array();

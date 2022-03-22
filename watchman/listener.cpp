@@ -267,10 +267,8 @@ disconnected:
       uintptr_t(client->stm.get()),
       ":pid=",
       client->stm->getPeerProcessID());
-  // Remove the client from the map before we tear it down, as this makes
-  // it easier to flush out pending writes on windows without worrying
-  // about w_log_to_clients contending for the write buffers
-  clients.wlock()->erase(client);
+
+  // TODO: Mark client state as THREAD_SHUTTING_DOWN
 }
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
@@ -449,21 +447,12 @@ static std::shared_ptr<Client> make_new_client(
     std::unique_ptr<watchman_stream>&& stm) {
   auto client = std::make_shared<UserClient>(std::move(stm));
 
-  clients.wlock()->insert(client);
-
   // Start a thread for the client.
   // We used to use libevent for this, but we have
   // a low volume of concurrent clients and the json
   // parse/encode APIs are not easily used in a non-blocking
   // server architecture.
-  try {
-    std::thread thr([client] { client_thread(client); });
-
-    thr.detach();
-  } catch (const std::exception&) {
-    clients.wlock()->erase(client);
-    throw;
-  }
+  std::thread{[client] { client_thread(client); }}.detach();
 
   return client;
 }
@@ -830,17 +819,20 @@ bool w_start_listener() {
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-    size_t last_count = 0, n_clients = 0;
+    size_t last_count = 0;
+    size_t n_clients = 0;
 
     while (true) {
       {
-        auto clientsLock = clients.rlock();
-        n_clients = clientsLock->size();
-
-        for (auto client : *clientsLock) {
+        auto clients = UserClient::getAllClients();
+        n_clients = clients.size();
+        for (auto& client : clients) {
           client->ping->notify();
         }
       }
+
+      // The clients lock and shared_ptr refcounts are released here, so entries
+      // may be removed from the active clients table.
 
       if (n_clients == 0) {
         break;

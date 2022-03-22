@@ -6,10 +6,8 @@
  */
 
 #pragma once
-#include <folly/Synchronized.h>
 #include <deque>
 #include <unordered_map>
-#include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
@@ -26,18 +24,19 @@ struct QueryResult;
 class Client : public std::enable_shared_from_this<Client> {
  public:
   Client();
-  explicit Client(std::unique_ptr<watchman_stream>&& stm);
+  explicit Client(std::unique_ptr<watchman_stream> stm);
   virtual ~Client();
 
-  void enqueueResponse(json_ref&& resp, bool ping = true);
+  void enqueueResponse(json_ref resp, bool ping = true);
 
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
-  w_jbuffer_t reader, writer;
-  bool client_mode{false};
-  bool client_is_owner{false};
-  enum w_pdu_type pdu_type;
+  w_jbuffer_t reader;
+  w_jbuffer_t writer;
+  bool client_mode = false;
+  bool client_is_owner = false;
+  w_pdu_type pdu_type;
   uint32_t capabilities;
 
   // The command currently being processed by dispatch_command
@@ -50,6 +49,9 @@ class Client : public std::enable_shared_from_this<Client> {
   // Logging Subscriptions
   std::shared_ptr<Publisher::Subscriber> debugSub;
   std::shared_ptr<Publisher::Subscriber> errorSub;
+
+ private:
+  void clientThread();
 };
 
 enum class OnStateTransition { QueryAnyway, DontAdvance };
@@ -103,10 +105,12 @@ class ClientSubscription
 
 // Represents the server side session maintained for a client of
 // the watchman per-user process
-class UserClient : public Client {
+class UserClient final : public Client {
  public:
-  explicit UserClient(std::unique_ptr<watchman_stream>&& stm);
+  explicit UserClient(std::unique_ptr<watchman_stream> stm);
   ~UserClient() override;
+
+  static std::vector<std::shared_ptr<UserClient>> getAllClients();
 
   /* map of subscription name => struct watchman_client_subscription */
   std::unordered_map<w_string, std::shared_ptr<ClientSubscription>>
@@ -126,10 +130,6 @@ class UserClient : public Client {
 };
 
 } // namespace watchman
-
-extern folly::Synchronized<
-    std::unordered_set<std::shared_ptr<watchman::Client>>>
-    clients;
 
 void w_client_vacate_states(watchman::UserClient* client);
 

@@ -11,12 +11,12 @@
 #include "watchman/QueryableView.h"
 #include "watchman/root/Root.h"
 
-folly::Synchronized<std::unordered_set<std::shared_ptr<watchman::Client>>>
-    clients;
-
 namespace watchman {
 
 namespace {
+
+folly::Synchronized<std::unordered_set<UserClient*>> clients;
+
 // TODO: If used in a hot loop, EdenFS has a faster implementation.
 // https://github.com/facebookexperimental/eden/blob/c745d644d969dae1e4c0d184c19320fac7c27ae5/eden/fs/utils/IDGen.h
 std::atomic<uint64_t> id_generator{1};
@@ -24,7 +24,7 @@ std::atomic<uint64_t> id_generator{1};
 
 Client::Client() : Client(nullptr) {}
 
-Client::Client(std::unique_ptr<watchman_stream>&& stm)
+Client::Client(std::unique_ptr<watchman_stream> stm)
     : unique_id{id_generator++},
       stm(std::move(stm)),
       ping(
@@ -37,7 +37,6 @@ Client::Client(std::unique_ptr<watchman_stream>&& stm)
 #else
           w_event_make_sockets()
 #endif
-
       ) {
   logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
 }
@@ -53,7 +52,7 @@ Client::~Client() {
   }
 }
 
-void Client::enqueueResponse(json_ref&& resp, bool ping) {
+void Client::enqueueResponse(json_ref resp, bool ping) {
   responses.emplace_back(std::move(resp));
 
   if (ping) {
@@ -61,14 +60,29 @@ void Client::enqueueResponse(json_ref&& resp, bool ping) {
   }
 }
 
-UserClient::UserClient(std::unique_ptr<watchman_stream>&& stm)
-    : Client(std::move(stm)) {}
+UserClient::UserClient(std::unique_ptr<watchman_stream> stm)
+    : Client(std::move(stm)) {
+  clients.wlock()->insert(this);
+}
 
 UserClient::~UserClient() {
+  clients.wlock()->erase(this);
+
   /* cancel subscriptions */
   subscriptions.clear();
 
   w_client_vacate_states(this);
+}
+
+std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
+  std::vector<std::shared_ptr<UserClient>> v;
+
+  auto lock = clients.rlock();
+  v.reserve(lock->size());
+  for (auto& c : *lock) {
+    v.push_back(std::static_pointer_cast<UserClient>(c->shared_from_this()));
+  }
+  return v;
 }
 
 } // namespace watchman

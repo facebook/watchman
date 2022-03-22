@@ -83,7 +83,7 @@ bool watchman_json_buffer::fillBuffer(watchman_stream* stm) {
   return true;
 }
 
-inline enum w_pdu_type watchman_json_buffer::detectPdu() {
+inline w_pdu_type watchman_json_buffer::detectPdu() {
   if (wpos - rpos < 2) {
     return need_data;
   }
@@ -282,7 +282,7 @@ json_ref watchman_json_buffer::readBserPdu(
 bool watchman_json_buffer::readAndDetectPdu(
     watchman_stream* stm,
     json_error_t* jerr) {
-  enum w_pdu_type pdu;
+  w_pdu_type pdu;
   // The client might send us different kinds of PDUs over the same connection,
   // so reset the capabilities.
   capabilities = 0;
@@ -488,7 +488,7 @@ json_ref watchman_json_buffer::decodePdu(
 }
 
 bool watchman_json_buffer::passThru(
-    enum w_pdu_type output_pdu,
+    w_pdu_type output_pdu,
     uint32_t output_capabilities,
     w_jbuffer_t* output_pdu_buf,
     watchman_stream* stm) {
@@ -629,7 +629,7 @@ bool watchman_json_buffer::jsonEncodeToStream(
 }
 
 bool watchman_json_buffer::pduEncodeToStream(
-    enum w_pdu_type pdu_type,
+    w_pdu_type pdu_type,
     uint32_t capabilities,
     const json_ref& json,
     watchman_stream* stm) {
