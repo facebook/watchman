@@ -107,6 +107,9 @@ class ClientSubscription
 /**
  * Represents the server side session maintained for a client of
  * the watchman per-user process.
+ *
+ * Each UserClient has a corresponding thread that reads and decodes json
+ * packets and dispatches the commands that it finds.
  */
 class UserClient final : public Client {
  public:
@@ -139,11 +142,11 @@ class UserClient final : public Client {
   // To allow make_shared to construct UserClient.
   struct PrivateBadge {};
 
- public:
+ public: // Public for std::make_shared
   explicit UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm);
 
  private:
-  static void clientThread(std::shared_ptr<UserClient> client) noexcept;
+  void clientThread() noexcept;
 };
 
 } // namespace watchman

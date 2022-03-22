@@ -103,7 +103,7 @@ void UserClient::create(std::unique_ptr<watchman_stream> stm) {
   //
   // The thread holds a reference count for its life, so the shared_ptr must be
   // created before the thread is started.
-  std::thread{[uc] { clientThread(uc); }}.detach();
+  std::thread{[uc] { uc->clientThread(); }}.detach();
 }
 
 UserClient::UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm)
@@ -131,27 +131,25 @@ std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
   return v;
 }
 
-// The client thread reads and decodes json packets,
-// then dispatches the commands that it finds
-void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
+void UserClient::clientThread() noexcept {
   // Keep a persistent vector around so that we can avoid allocating
   // and releasing heap memory when we collect items from the publisher
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
 
-  client->stm->setNonBlock(true);
+  stm->setNonBlock(true);
   w_set_thread_name(
       "client=",
-      client->unique_id,
+      unique_id,
       ":stm=",
-      uintptr_t(client->stm.get()),
+      uintptr_t(stm.get()),
       ":pid=",
-      client->stm->getPeerProcessID());
+      stm->getPeerProcessID());
 
-  client->client_is_owner = client->stm->peerIsOwner();
+  client_is_owner = stm->peerIsOwner();
 
   struct watchman_event_poll pfd[2];
-  pfd[0].evt = client->stm->getEvents();
-  pfd[1].evt = client->ping.get();
+  pfd[0].evt = stm->getEvents();
+  pfd[1].evt = ping.get();
 
   bool client_alive = true;
   while (!w_is_stopping() && client_alive) {
@@ -166,41 +164,41 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
 
     if (pfd[0].ready) {
       json_error_t jerr;
-      auto request = client->reader.decodeNext(client->stm.get(), &jerr);
+      auto request = reader.decodeNext(stm.get(), &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
       } else if (!request) {
         // Not so cool
-        if (client->reader.wpos == client->reader.rpos) {
+        if (reader.wpos == reader.rpos) {
           // If they disconnected in between PDUs, no need to log
           // any error
           goto disconnected;
         }
-        client->sendErrorResponse(
+        sendErrorResponse(
             "invalid json at position %d: %s", jerr.position, jerr.text);
         logf(ERR, "invalid data from client: {}\n", jerr.text);
 
         goto disconnected;
       } else if (request) {
-        client->pdu_type = client->reader.pdu_type;
-        client->capabilities = client->reader.capabilities;
-        dispatch_command(client.get(), request, CMD_DAEMON);
+        pdu_type = reader.pdu_type;
+        capabilities = reader.capabilities;
+        dispatch_command(this, request, CMD_DAEMON);
       }
     }
 
     if (pfd[1].ready) {
-      while (client->ping->testAndClear()) {
+      while (ping->testAndClear()) {
         // Enqueue refs to pending log payloads
         pending.clear();
-        getPending(pending, client->debugSub, client->errorSub);
+        getPending(pending, debugSub, errorSub);
         for (auto& item : pending) {
-          client->enqueueResponse(json_ref(item->payload));
+          enqueueResponse(json_ref(item->payload));
         }
 
         // Maybe we have subscriptions to dispatch?
         std::vector<w_string> subsToDelete;
-        for (auto& subiter : client->unilateralSub) {
+        for (auto& subiter : unilateralSub) {
           auto sub = subiter.first;
           auto subStream = subiter.second;
 
@@ -233,7 +231,7 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
                    {"unilateral", json_true()},
                    {"canceled", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp));
+              enqueueResponse(std::move(resp));
               // Remember to cancel this subscription.
               // We can't do it in this loop because that would
               // invalidate the iterators and cause a headache.
@@ -252,7 +250,7 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
               resp.set(
                   {{"unilateral", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp));
+              enqueueResponse(std::move(resp));
 
               watchman::log(
                   watchman::DBG,
@@ -274,33 +272,29 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
         }
 
         for (auto& name : subsToDelete) {
-          client->unsubByName(name);
+          unsubByName(name);
         }
       }
     }
 
     /* now send our response(s) */
-    while (!client->responses.empty() && client_alive) {
-      auto& response_to_send = client->responses.front();
+    while (!responses.empty() && client_alive) {
+      auto& response_to_send = responses.front();
 
-      client->stm->setNonBlock(false);
+      stm->setNonBlock(false);
       /* Return the data in the same format that was used to ask for it.
        * Update client liveness based on send success.
        */
-      client_alive = client->writer.pduEncodeToStream(
-          client->pdu_type,
-          client->capabilities,
-          response_to_send,
-          client->stm.get());
-      client->stm->setNonBlock(true);
+      client_alive = writer.pduEncodeToStream(
+          pdu_type, capabilities, response_to_send, stm.get());
+      stm->setNonBlock(true);
 
       json_ref subscriptionValue = response_to_send.get_default("subscription");
       if (kResponseLogLimit && subscriptionValue &&
           subscriptionValue.isString() &&
           json_string_value(subscriptionValue)) {
         auto subscriptionName = json_to_w_string(subscriptionValue);
-        if (auto* sub =
-                folly::get_ptr(client->subscriptions, subscriptionName)) {
+        if (auto* sub = folly::get_ptr(subscriptions, subscriptionName)) {
           if ((*sub)->lastResponses.size() >= kResponseLogLimit) {
             (*sub)->lastResponses.pop_front();
           }
@@ -309,18 +303,18 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
         }
       }
 
-      client->responses.pop_front();
+      responses.pop_front();
     }
   }
 
 disconnected:
   w_set_thread_name(
       "NOT_CONN:client=",
-      client->unique_id,
+      unique_id,
       ":stm=",
-      uintptr_t(client->stm.get()),
+      uintptr_t(stm.get()),
       ":pid=",
-      client->stm->getPeerProcessID());
+      stm->getPeerProcessID());
 
   // TODO: Mark client state as THREAD_SHUTTING_DOWN
 }
