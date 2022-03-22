@@ -69,7 +69,7 @@ namespace watchman {
 
 static void cmd_state_enter(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
-  auto client = dynamic_cast<watchman_user_client*>(clientbase);
+  auto client = dynamic_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
 
@@ -156,67 +156,13 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
 
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
-static void leave_state(
-    struct watchman_user_client* client,
-    std::shared_ptr<ClientStateAssertion> assertion,
-    bool abandoned,
-    json_t* metadata) {
-  // Broadcast about the state leave
-  auto payload = json_object(
-      {{"root", w_string_to_json(assertion->root->root_path)},
-       {"clock",
-        w_string_to_json(assertion->root->view()->getCurrentClockString())},
-       {"state-leave", w_string_to_json(assertion->name)}});
-  if (metadata) {
-    payload.set("metadata", json_ref(metadata));
-  }
-  if (abandoned) {
-    payload.set("abandoned", json_true());
-  }
-  assertion->root->unilateralResponses->enqueue(std::move(payload));
-
-  // Now remove the state assertion
-  assertion->root->assertedStates.wlock()->removeAssertion(assertion);
-  // Increment state transition counter for this root
-  assertion->root->stateTransCount++;
-
-  if (client) {
-    mapRemove(client->states, assertion->name);
-  }
-}
-
-// Abandon any states that haven't been explicitly vacated
-void w_client_vacate_states(struct watchman_user_client* client) {
-  while (!client->states.empty()) {
-    auto it = client->states.begin();
-    auto assertion = it->second.lock();
-
-    if (!assertion) {
-      client->states.erase(it->first);
-      continue;
-    }
-
-    auto root = assertion->root;
-
-    logf(
-        ERR,
-        "implicitly vacating state {} on {} due to client disconnect\n",
-        assertion->name,
-        root->root_path);
-
-    // This will delete the state from client->states and invalidate
-    // the iterator.
-    leave_state(client, assertion, true, nullptr);
-  }
-}
-
 static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
   std::shared_ptr<ClientStateAssertion> assertion;
-  auto client = dynamic_cast<watchman_user_client*>(clientbase);
+  auto client = dynamic_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
 
@@ -290,7 +236,7 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
           return;
         }
         // Notify and exit the state
-        leave_state(nullptr, assertion, false, parsed.metadata);
+        w_leave_state(nullptr, assertion, false, parsed.metadata);
       });
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)

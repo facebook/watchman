@@ -16,8 +16,6 @@
 #include "watchman/PerfSample.h"
 #include "watchman/watchman_stream.h"
 
-struct watchman_client_subscription;
-
 namespace watchman {
 
 class ClientStateAssertion;
@@ -44,36 +42,44 @@ class Client : public std::enable_shared_from_this<Client> {
 
   // The command currently being processed by dispatch_command
   json_ref current_command;
-  watchman::PerfSample* perf_sample{nullptr};
+  PerfSample* perf_sample{nullptr};
 
   // Queue of things to send to the client.
   std::deque<json_ref> responses;
 
   // Logging Subscriptions
-  std::shared_ptr<watchman::Publisher::Subscriber> debugSub;
-  std::shared_ptr<watchman::Publisher::Subscriber> errorSub;
+  std::shared_ptr<Publisher::Subscriber> debugSub;
+  std::shared_ptr<Publisher::Subscriber> errorSub;
 };
-
-} // namespace watchman
-
-using watchman_client = watchman::Client;
-
-struct watchman_user_client;
 
 enum class OnStateTransition { QueryAnyway, DontAdvance };
 
-struct watchman_client_subscription
-    : public std::enable_shared_from_this<watchman_client_subscription> {
-  using ClockSpec = watchman::ClockSpec;
-  using Query = watchman::Query;
+class UserClient;
 
+class ClientSubscription
+    : public std::enable_shared_from_this<ClientSubscription> {
+ public:
+  explicit ClientSubscription(
+      const std::shared_ptr<Root>& root,
+      std::weak_ptr<Client> client);
+  ~ClientSubscription();
+
+  void processSubscription();
+
+  std::shared_ptr<UserClient> lockClient();
+  json_ref buildSubscriptionResults(
+      const std::shared_ptr<Root>& root,
+      ClockSpec& position,
+      OnStateTransition onStateTransition);
+
+ public:
   struct LoggedResponse {
     // TODO: also track the time when the response was enqueued
     std::chrono::system_clock::time_point written;
     json_ref response;
   };
 
-  std::shared_ptr<watchman::Root> root;
+  std::shared_ptr<Root> root;
   w_string name;
   /* whether this subscription is paused */
   bool debug_paused = false;
@@ -83,57 +89,52 @@ struct watchman_client_subscription
   uint32_t last_sub_tick{0};
   // map of statename => bool.  If true, policy is drop, else defer
   std::unordered_map<w_string, bool> drop_or_defer;
-  std::weak_ptr<watchman_client> weakClient;
+  std::weak_ptr<Client> weakClient;
 
   std::deque<LoggedResponse> lastResponses;
 
-  explicit watchman_client_subscription(
-      const std::shared_ptr<watchman::Root>& root,
-      std::weak_ptr<watchman_client> client);
-  ~watchman_client_subscription();
-  void processSubscription();
-
-  std::shared_ptr<watchman_user_client> lockClient();
-  json_ref buildSubscriptionResults(
-      const std::shared_ptr<watchman::Root>& root,
-      ClockSpec& position,
-      OnStateTransition onStateTransition);
-
  private:
-  using QueryResult = watchman::QueryResult;
-
   ClockSpec runSubscriptionRules(
-      watchman_user_client* client,
-      const std::shared_ptr<watchman::Root>& root);
+      UserClient* client,
+      const std::shared_ptr<Root>& root);
   void updateSubscriptionTicks(QueryResult* res);
   void processSubscriptionImpl();
 };
 
 // Represents the server side session maintained for a client of
 // the watchman per-user process
-struct watchman_user_client : public watchman_client {
+class UserClient : public Client {
+ public:
+  explicit UserClient(std::unique_ptr<watchman_stream>&& stm);
+  ~UserClient() override;
+
   /* map of subscription name => struct watchman_client_subscription */
-  std::unordered_map<w_string, std::shared_ptr<watchman_client_subscription>>
+  std::unordered_map<w_string, std::shared_ptr<ClientSubscription>>
       subscriptions;
 
   /* map of state-name => ClientStateAssertion
    * The values are owned by root::assertedStates */
-  std::unordered_map<w_string, std::weak_ptr<watchman::ClientStateAssertion>>
-      states;
+  std::unordered_map<w_string, std::weak_ptr<ClientStateAssertion>> states;
 
   // Subscriber to root::unilateralResponses
   std::unordered_map<
-      std::shared_ptr<watchman_client_subscription>,
-      std::shared_ptr<watchman::Publisher::Subscriber>>
+      std::shared_ptr<ClientSubscription>,
+      std::shared_ptr<Publisher::Subscriber>>
       unilateralSub;
-
-  explicit watchman_user_client(std::unique_ptr<watchman_stream>&& stm);
-  ~watchman_user_client() override;
 
   bool unsubByName(const w_string& name);
 };
 
-extern folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
+} // namespace watchman
+
+extern folly::Synchronized<
+    std::unordered_set<std::shared_ptr<watchman::Client>>>
     clients;
 
-void w_client_vacate_states(struct watchman_user_client* client);
+void w_client_vacate_states(watchman::UserClient* client);
+
+void w_leave_state(
+    watchman::UserClient* client,
+    std::shared_ptr<watchman::ClientStateAssertion> assertion,
+    bool abandoned,
+    json_t* metadata);

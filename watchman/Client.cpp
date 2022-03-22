@@ -6,6 +6,13 @@
  */
 
 #include "watchman/Client.h"
+#include "watchman/Logging.h"
+#include "watchman/MapUtil.h"
+#include "watchman/QueryableView.h"
+#include "watchman/root/Root.h"
+
+folly::Synchronized<std::unordered_set<std::shared_ptr<watchman::Client>>>
+    clients;
 
 namespace watchman {
 
@@ -54,4 +61,68 @@ void Client::enqueueResponse(json_ref&& resp, bool ping) {
   }
 }
 
+UserClient::UserClient(std::unique_ptr<watchman_stream>&& stm)
+    : Client(std::move(stm)) {}
+
+UserClient::~UserClient() {
+  /* cancel subscriptions */
+  subscriptions.clear();
+
+  w_client_vacate_states(this);
+}
+
 } // namespace watchman
+
+void w_leave_state(
+    watchman::UserClient* client,
+    std::shared_ptr<watchman::ClientStateAssertion> assertion,
+    bool abandoned,
+    json_t* metadata) {
+  // Broadcast about the state leave
+  auto payload = json_object(
+      {{"root", w_string_to_json(assertion->root->root_path)},
+       {"clock",
+        w_string_to_json(assertion->root->view()->getCurrentClockString())},
+       {"state-leave", w_string_to_json(assertion->name)}});
+  if (metadata) {
+    payload.set("metadata", json_ref(metadata));
+  }
+  if (abandoned) {
+    payload.set("abandoned", json_true());
+  }
+  assertion->root->unilateralResponses->enqueue(std::move(payload));
+
+  // Now remove the state assertion
+  assertion->root->assertedStates.wlock()->removeAssertion(assertion);
+  // Increment state transition counter for this root
+  assertion->root->stateTransCount++;
+
+  if (client) {
+    mapRemove(client->states, assertion->name);
+  }
+}
+
+// Abandon any states that haven't been explicitly vacated
+void w_client_vacate_states(watchman::UserClient* client) {
+  while (!client->states.empty()) {
+    auto it = client->states.begin();
+    auto assertion = it->second.lock();
+
+    if (!assertion) {
+      client->states.erase(it->first);
+      continue;
+    }
+
+    auto root = assertion->root;
+
+    logf(
+        watchman::ERR,
+        "implicitly vacating state {} on {} due to client disconnect\n",
+        assertion->name,
+        root->root_path);
+
+    // This will delete the state from client->states and invalidate
+    // the iterator.
+    w_leave_state(client, assertion, true, nullptr);
+  }
+}

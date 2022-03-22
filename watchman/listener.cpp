@@ -29,8 +29,6 @@
 
 using namespace watchman;
 
-folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
-    clients;
 static FileDescriptor listener_fd;
 static constexpr size_t kResponseLogLimit = 0;
 
@@ -78,8 +76,7 @@ void send_error_response(Client* client, const char* fmt, ...) {
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
-static void client_thread(
-    std::shared_ptr<watchman_user_client> client) noexcept {
+static void client_thread(std::shared_ptr<UserClient> client) noexcept {
   // Keep a persistent vector around so that we can avoid allocating
   // and releasing heap memory when we collect items from the publisher
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
@@ -253,9 +250,8 @@ static void client_thread(
           if ((*sub)->lastResponses.size() >= kResponseLogLimit) {
             (*sub)->lastResponses.pop_front();
           }
-          (*sub)->lastResponses.push_back(
-              watchman_client_subscription::LoggedResponse{
-                  std::chrono::system_clock::now(), response_to_send});
+          (*sub)->lastResponses.push_back(ClientSubscription::LoggedResponse{
+              std::chrono::system_clock::now(), response_to_send});
         }
       }
 
@@ -449,9 +445,9 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   return listener_fd;
 }
 
-static std::shared_ptr<watchman_client> make_new_client(
+static std::shared_ptr<Client> make_new_client(
     std::unique_ptr<watchman_stream>&& stm) {
-  auto client = std::make_shared<watchman_user_client>(std::move(stm));
+  auto client = std::make_shared<UserClient>(std::move(stm));
 
   clients.wlock()->insert(client);
 

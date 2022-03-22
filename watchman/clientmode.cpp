@@ -11,7 +11,7 @@
 using namespace watchman;
 
 bool try_client_mode_command(const json_ref& cmd, bool pretty) {
-  auto client = std::make_shared<watchman_client>();
+  auto client = std::make_shared<watchman::Client>();
   bool res;
 
   client->client_mode = true;

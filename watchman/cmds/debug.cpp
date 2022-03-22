@@ -122,7 +122,7 @@ W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL)
 static void cmd_debug_set_subscriptions_paused(
     Client* clientbase,
     const json_ref& args) {
-  auto client = (struct watchman_user_client*)clientbase;
+  auto client = (UserClient*)clientbase;
 
   const auto& paused = args.at(1);
   auto& paused_map = paused.object();
@@ -169,7 +169,7 @@ W_CMD_REG(
 static json_ref getDebugSubscriptionInfo(Root* root) {
   auto subscriptions = json_array();
   for (const auto& c : *::clients.rlock()) {
-    auto* user_client = dynamic_cast<watchman_user_client*>(c.get());
+    auto* user_client = dynamic_cast<UserClient*>(c.get());
     if (!user_client) {
       continue;
     }
@@ -202,7 +202,7 @@ static json_ref getDebugSubscriptionInfo(Root* root) {
 static void cmd_debug_get_subscriptions(
     Client* clientbase,
     const json_ref& args) {
-  auto client = (watchman_user_client*)clientbase;
+  auto client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
 
@@ -225,7 +225,7 @@ W_CMD_REG(
 static void cmd_debug_get_asserted_states(
     Client* clientbase,
     const json_ref& args) {
-  auto client = (watchman_user_client*)clientbase;
+  auto client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
   auto response = make_response();
@@ -256,7 +256,7 @@ W_CMD_REG(
     NULL)
 
 static void cmd_debug_watcher_info(Client* clientbase, const json_ref& args) {
-  auto* client = static_cast<watchman_user_client*>(clientbase);
+  auto* client = static_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
   auto response = make_response();
@@ -268,7 +268,7 @@ W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
 static void cmd_debug_watcher_info_clear(
     Client* clientbase,
     const json_ref& args) {
-  auto* client = static_cast<watchman_user_client*>(clientbase);
+  auto* client = static_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
   auto response = make_response();

@@ -20,34 +20,33 @@
 
 using namespace watchman;
 
-watchman_client_subscription::watchman_client_subscription(
+ClientSubscription::ClientSubscription(
     const std::shared_ptr<Root>& root,
-    std::weak_ptr<watchman_client> client)
+    std::weak_ptr<Client> client)
     : root(root), weakClient(client) {}
 
-std::shared_ptr<watchman_user_client>
-watchman_client_subscription::lockClient() {
+std::shared_ptr<UserClient> ClientSubscription::lockClient() {
   auto client = weakClient.lock();
   if (client) {
-    return std::dynamic_pointer_cast<watchman_user_client>(client);
+    return std::dynamic_pointer_cast<UserClient>(client);
   }
   return nullptr;
 }
 
-watchman_client_subscription::~watchman_client_subscription() {
+ClientSubscription::~ClientSubscription() {
   auto client = lockClient();
   if (client) {
     client->unsubByName(name);
   }
 }
 
-bool watchman_user_client::unsubByName(const w_string& name) {
+bool UserClient::unsubByName(const w_string& name) {
   auto subIter = subscriptions.find(name);
   if (subIter == subscriptions.end()) {
     return false;
   }
 
-  // Break the weakClient pointer so that ~watchman_client_subscription()
+  // Break the weakClient pointer so that ~ClientSubscription()
   // cannot successfully lockClient and recursively call us.
   subIter->second->weakClient.reset();
   unilateralSub.erase(subIter->second);
@@ -59,7 +58,7 @@ bool watchman_user_client::unsubByName(const w_string& name) {
 enum class sub_action { no_sync_needed, execute, defer, drop };
 
 static std::tuple<sub_action, w_string> get_subscription_action(
-    struct watchman_client_subscription* sub,
+    ClientSubscription* sub,
     const std::shared_ptr<Root>& root,
     ClockPosition position) {
   auto action = sub_action::execute;
@@ -114,7 +113,7 @@ static std::tuple<sub_action, w_string> get_subscription_action(
   return std::make_tuple(action, policy_name);
 }
 
-void watchman_client_subscription::processSubscription() {
+void ClientSubscription::processSubscription() {
   try {
     processSubscriptionImpl();
   } catch (const std::system_error& exc) {
@@ -136,7 +135,7 @@ void watchman_client_subscription::processSubscription() {
   }
 }
 
-void watchman_client_subscription::processSubscriptionImpl() {
+void ClientSubscription::processSubscriptionImpl() {
   auto client = lockClient();
   if (!client) {
     log(ERR, "encountered a vacated client while running subscription rules\n");
@@ -205,12 +204,12 @@ void watchman_client_subscription::processSubscriptionImpl() {
   }
 }
 
-void watchman_client_subscription::updateSubscriptionTicks(QueryResult* res) {
+void ClientSubscription::updateSubscriptionTicks(QueryResult* res) {
   // create a new spec that will be used the next time
   query->since_spec = std::make_unique<ClockSpec>(res->clockAtStartOfQuery);
 }
 
-json_ref watchman_client_subscription::buildSubscriptionResults(
+json_ref ClientSubscription::buildSubscriptionResults(
     const std::shared_ptr<Root>& root,
     ClockSpec& position,
     OnStateTransition onStateTransition) {
@@ -302,8 +301,8 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   }
 }
 
-ClockSpec watchman_client_subscription::runSubscriptionRules(
-    watchman_user_client* client,
+ClockSpec ClientSubscription::runSubscriptionRules(
+    UserClient* client,
     const std::shared_ptr<Root>& root) {
   ClockSpec position;
 
@@ -318,7 +317,7 @@ ClockSpec watchman_client_subscription::runSubscriptionRules(
 }
 
 static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
-  auto client = (watchman_user_client*)clientbase;
+  auto client = (UserClient*)clientbase;
 
   int sync_timeout;
   json_ref subs(nullptr);
@@ -455,8 +454,7 @@ W_CMD_REG(
 static void cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   const char* name;
   bool deleted{false};
-  struct watchman_user_client* client =
-      (struct watchman_user_client*)clientbase;
+  UserClient* client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
 
@@ -487,7 +485,7 @@ W_CMD_REG(
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
 static void cmd_subscribe(Client* clientbase, const json_ref& args) {
-  std::shared_ptr<watchman_client_subscription> sub;
+  std::shared_ptr<ClientSubscription> sub;
   json_ref resp, initial_subscription_results;
   json_ref jfield_list;
   json_ref jname;
@@ -495,8 +493,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   json_ref query_spec;
   json_ref defer_list;
   json_ref drop_list;
-  struct watchman_user_client* client =
-      (struct watchman_user_client*)clientbase;
+  UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
     send_error_response(client, "wrong number of arguments for subscribe");
@@ -530,8 +527,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
     return;
   }
 
-  sub = std::make_shared<watchman_client_subscription>(
-      root, client->shared_from_this());
+  sub = std::make_shared<ClientSubscription>(root, client->shared_from_this());
 
   sub->name = json_to_w_string(jname);
   sub->query = query;
@@ -585,7 +581,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
          {"is_owner", json_boolean(client->stm->peerIsOwner())},
          {"pid", json_integer(client->stm->getPeerProcessID())}});
 
-    std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
+    std::weak_ptr<Client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
         sub,
         root->unilateralResponses->subscribe(

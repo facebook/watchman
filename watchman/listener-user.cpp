@@ -108,16 +108,5 @@ std::shared_ptr<Root> resolveOrCreateRoot(
   return doResolveOrCreateRoot(client, args, true);
 }
 
-watchman_user_client::watchman_user_client(
-    std::unique_ptr<watchman_stream>&& stm)
-    : watchman_client(std::move(stm)) {}
-
-watchman_user_client::~watchman_user_client() {
-  /* cancel subscriptions */
-  subscriptions.clear();
-
-  w_client_vacate_states(this);
-}
-
 /* vim:ts=2:sw=2:et:
  */
