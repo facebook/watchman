@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
 #include "watchman/TriggerCommand.h"
@@ -65,7 +66,7 @@ static void cmd_trigger_delete(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set({{"deleted", json_boolean(res)}, {"trigger", json_ref(jname)}});
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -79,7 +80,7 @@ static void cmd_trigger_list(Client* client, const json_ref& args) {
   auto arr = root->triggerListToJson();
 
   resp.set("triggers", std::move(arr));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -191,7 +192,7 @@ static void cmd_trigger(Client* client, const json_ref& args) {
     w_state_save();
   }
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 

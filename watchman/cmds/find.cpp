@@ -36,7 +36,7 @@ static void cmd_find(Client* client, const json_ref& args) {
       {{"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray)}});
 
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 }
 W_CMD_REG(
     "find",

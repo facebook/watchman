@@ -311,7 +311,7 @@ ClockSpec ClientSubscription::runSubscriptionRules(
 
   if (response) {
     add_root_warnings_to_response(response, root);
-    client->enqueueResponse(std::move(response), false);
+    client->enqueueResponse(std::move(response));
   }
   return position;
 }
@@ -428,7 +428,7 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
       auto sub_result = sub->buildSubscriptionResults(
           root, out_position, OnStateTransition::QueryAnyway);
       if (sub_result) {
-        send_and_dispose_response(client, std::move(sub_result));
+        client->enqueueResponse(std::move(sub_result));
         json_array_append(synced, w_string_to_json(sub_name_str));
       } else {
         json_array_append(no_sync_needed, w_string_to_json(sub_name_str));
@@ -441,7 +441,7 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
        {"no_sync_needed", std::move(no_sync_needed)},
        {"dropped", std::move(dropped)}});
   add_root_warnings_to_response(resp, root);
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "flush-subscriptions",
@@ -474,7 +474,7 @@ static void cmd_unsubscribe(Client* clientbase, const json_ref& args) {
       {{"unsubscribe", typed_string_to_json(name)},
        {"deleted", json_boolean(deleted)}});
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "unsubscribe",
@@ -622,9 +622,9 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   }
   resp.set("asserted-states", json_ref(asserted_states));
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
   if (initial_subscription_results) {
-    send_and_dispose_response(client, std::move(initial_subscription_results));
+    client->enqueueResponse(std::move(initial_subscription_results));
   }
 }
 W_CMD_REG(

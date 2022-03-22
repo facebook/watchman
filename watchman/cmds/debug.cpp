@@ -33,7 +33,7 @@ static void cmd_debug_recrawl(Client* client, const json_ref& args) {
   root->scheduleRecrawl("debug-recrawl");
 
   resp.set("recrawl", json_true());
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -62,7 +62,7 @@ static void cmd_debug_show_cursors(Client* client, const json_ref& args) {
   }
 
   resp.set("cursors", std::move(cursors));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-show-cursors",
@@ -87,7 +87,7 @@ static void cmd_debug_ageout(Client* client, const json_ref& args) {
   root->performAgeOut(min_age);
 
   resp.set("ageout", json_true());
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -106,7 +106,7 @@ static void cmd_debug_poison(Client* client, const json_ref& args) {
   resp.set(
       "poison",
       typed_string_to_json(poisoned_reason.rlock()->c_str(), W_STRING_UNICODE));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -115,7 +115,7 @@ static void cmd_debug_drop_privs(Client* client, const json_ref&) {
 
   auto resp = make_response();
   resp.set("owner", json_boolean(client->client_is_owner));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL)
 
@@ -158,7 +158,7 @@ static void cmd_debug_set_subscriptions_paused(
 
   auto resp = make_response();
   resp.set("paused", std::move(states));
-  send_and_dispose_response(clientbase, std::move(resp));
+  clientbase->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-set-subscriptions-paused",
@@ -210,7 +210,7 @@ static void cmd_debug_get_subscriptions(
   auto subscriptions = getDebugSubscriptionInfo(root.get());
   resp.object().emplace("subscriptions", subscriptions);
 
-  send_and_dispose_response(clientbase, std::move(resp));
+  clientbase->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-get-subscriptions",
@@ -231,7 +231,7 @@ static void cmd_debug_get_asserted_states(
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"states", std::move(states)}});
-  send_and_dispose_response(clientbase, std::move(response));
+  clientbase->enqueueResponse(std::move(response));
 }
 W_CMD_REG(
     "debug-get-asserted-states",
@@ -243,7 +243,7 @@ static void cmd_debug_status(Client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = Root::getStatusForAllRoots();
   resp.set("roots", std::move(roots));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-status",
@@ -257,7 +257,7 @@ static void cmd_debug_watcher_info(Client* clientbase, const json_ref& args) {
   auto root = resolveRoot(client, args);
   auto response = make_response();
   response.set("watcher-debug-info", root->view()->getWatcherDebugInfo());
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 }
 W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
 
@@ -269,7 +269,7 @@ static void cmd_debug_watcher_info_clear(
   auto root = resolveRoot(client, args);
   auto response = make_response();
   root->view()->clearWatcherDebugInfo();
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 }
 W_CMD_REG(
     "debug-watcher-info-clear",
@@ -311,7 +311,7 @@ void debugContentHashCache(Client* client, const json_ref& args) {
   auto stats = view->debugAccessCaches().contentHashCache.stats();
   auto resp = make_response();
   addCacheStats(resp, stats);
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-contenthash",
@@ -338,7 +338,7 @@ void debugSymlinkTargetCache(Client* client, const json_ref& args) {
   auto stats = view->debugAccessCaches().symlinkTargetCache.stats();
   auto resp = make_response();
   addCacheStats(resp, stats);
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-symlink-target-cache",

@@ -59,12 +59,8 @@ Client::~Client() {
   }
 }
 
-void Client::enqueueResponse(json_ref resp, bool ping) {
+void Client::enqueueResponse(json_ref resp) {
   responses.emplace_back(std::move(resp));
-
-  if (ping) {
-    this->ping->notify();
-  }
 }
 
 void UserClient::create(std::unique_ptr<watchman_stream> stm) {
@@ -173,7 +169,7 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
         pending.clear();
         getPending(pending, client->debugSub, client->errorSub);
         for (auto& item : pending) {
-          client->enqueueResponse(json_ref(item->payload), false);
+          client->enqueueResponse(json_ref(item->payload));
         }
 
         // Maybe we have subscriptions to dispatch?
@@ -211,7 +207,7 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
                    {"unilateral", json_true()},
                    {"canceled", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp), false);
+              client->enqueueResponse(std::move(resp));
               // Remember to cancel this subscription.
               // We can't do it in this loop because that would
               // invalidate the iterators and cause a headache.
@@ -230,7 +226,7 @@ void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
               resp.set(
                   {{"unilateral", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp), false);
+              client->enqueueResponse(std::move(resp));
 
               watchman::log(
                   watchman::DBG,

@@ -8,6 +8,7 @@
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <mutex>
+#include "watchman/Client.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/root/Root.h"
 #include "watchman/watcher/WatcherRegistry.h"
@@ -347,7 +348,7 @@ static void cmd_debug_kqueue_and_fsevents_recrawl(
   watcher->injectRecrawl(path);
 
   auto resp = make_response();
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 
 } // namespace

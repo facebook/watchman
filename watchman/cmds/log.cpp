@@ -49,7 +49,7 @@ static void cmd_loglevel(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set("log_level", json_ref(args.at(1)));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
@@ -74,7 +74,7 @@ static void cmd_log(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set("logged", json_true());
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
@@ -98,7 +98,7 @@ static void cmd_global_log_level(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set("log_level", json_ref(args.at(1)));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "global-log-level",

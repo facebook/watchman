@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/LogConfig.h"
@@ -91,7 +92,7 @@ static void cmd_clock(Client* client, const json_ref& args) {
   auto resp = make_response();
   annotate_with_clock(root, resp);
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "clock",
@@ -114,7 +115,7 @@ static void cmd_watch_delete(Client* client, const json_ref& args) {
   resp.set(
       {{"watch-del", json_boolean(root->stopWatch())},
        {"root", w_string_to_json(root->root_path)}});
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -124,7 +125,7 @@ static void cmd_watch_del_all(Client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = w_root_stop_watch_all();
   resp.set("roots", std::move(roots));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "watch-del-all",
@@ -138,7 +139,7 @@ static void cmd_watch_list(Client* client, const json_ref&) {
   auto resp = make_response();
   auto root_paths = w_root_watch_list_to_json();
   resp.set("roots", std::move(root_paths));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
@@ -287,7 +288,7 @@ static void cmd_watch(Client* client, const json_ref& args) {
          {"watcher", w_string_to_json(root->view()->getName())}});
   }
   add_root_warnings_to_response(resp, root);
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "watch",
@@ -325,7 +326,7 @@ static void cmd_watch_project(Client* client, const json_ref& args) {
   if (!rel_path_from_watch.empty()) {
     resp.set("relative_path", w_string_to_json(rel_path_from_watch));
   }
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "watch-project",

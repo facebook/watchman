@@ -7,6 +7,7 @@
 
 #include <folly/String.h>
 #include <folly/memory/Malloc.h>
+#include "watchman/Client.h"
 #include "watchman/watchman_cmd.h"
 
 using namespace watchman;
@@ -28,7 +29,7 @@ static void cmd_debug_prof_dump(Client* client, const json_ref&) {
           folly::to<std::string>(
               "mallctl prof.dump returned: ", folly::errnoStr(result))
               .c_str()));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, NULL)
 

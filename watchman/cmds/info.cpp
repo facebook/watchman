@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
 #include "watchman/root/Root.h"
@@ -87,7 +88,7 @@ static void cmd_version(Client* client, const json_ref& args) {
     resp.set("capabilities", std::move(cap_res));
   }
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "version",
@@ -100,7 +101,7 @@ static void cmd_list_capabilities(Client* client, const json_ref&) {
   auto resp = make_response();
 
   resp.set("capabilities", capability_get_list());
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "list-capabilities",
@@ -130,7 +131,7 @@ static void cmd_get_sockname(Client* client, const json_ref&) {
   }
 #endif
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "get-sockname",
@@ -157,7 +158,7 @@ static void cmd_get_config(Client* client, const json_ref& args) {
   }
 
   resp.set("config", std::move(config));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
 

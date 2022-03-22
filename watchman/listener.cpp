@@ -39,10 +39,6 @@ json_ref make_response() {
   return resp;
 }
 
-void send_and_dispose_response(Client* client, json_ref&& response) {
-  client->enqueueResponse(std::move(response), false);
-}
-
 void send_error_response(Client* client, const char* fmt, ...) {
   va_list ap;
 
@@ -70,7 +66,7 @@ void send_error_response(Client* client, const char* fmt, ...) {
     watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
   }
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
@@ -655,7 +651,7 @@ static void cmd_get_pid(Client* client, const json_ref&) {
 
   resp.set("pid", json_integer(::getpid()));
 
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
 

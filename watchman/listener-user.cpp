@@ -24,7 +24,7 @@ static void cmd_shutdown(Client* client, const json_ref&) {
 
   auto resp = make_response();
   resp.set("shutdown-server", json_true());
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON | CMD_POISON_IMMUNE, NULL)
 

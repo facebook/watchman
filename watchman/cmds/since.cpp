@@ -48,7 +48,7 @@ static void cmd_since(Client* client, const json_ref& args) {
   }
 
   add_root_warnings_to_response(response, root);
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 }
 W_CMD_REG(
     "since",

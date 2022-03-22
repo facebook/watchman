@@ -103,7 +103,7 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-enter", w_string_to_json(parsed.name)}});
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 
   root->cookies
       .sync()
@@ -223,7 +223,7 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)}});
-  send_and_dispose_response(client, std::move(response));
+  client->enqueueResponse(std::move(response));
 
   root->cookies.sync().thenTry(
       [assertion, parsed, root](folly::Try<CookieSync::SyncResult>&& result) {

@@ -27,7 +27,7 @@ class Client : public std::enable_shared_from_this<Client> {
   explicit Client(std::unique_ptr<watchman_stream> stm);
   virtual ~Client();
 
-  void enqueueResponse(json_ref resp, bool ping = true);
+  void enqueueResponse(json_ref resp);
 
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;

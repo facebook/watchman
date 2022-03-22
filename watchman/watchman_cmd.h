@@ -49,7 +49,6 @@ void send_error_response(
     watchman::Client* client,
     WATCHMAN_FMT_STRING(const char* fmt),
     ...) WATCHMAN_FMT_ATTR(2, 3);
-void send_and_dispose_response(watchman::Client* client, json_ref&& response);
 bool enqueue_response(watchman::Client* client, json_ref&& json, bool ping);
 
 // Resolve the root. Failure will throw a RootResolveError exception

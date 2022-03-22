@@ -12,6 +12,7 @@
 #include <iterator>
 #include <mutex>
 #include <vector>
+#include "watchman/Client.h"
 #include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/LogConfig.h"
@@ -872,7 +873,7 @@ void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
 
   auto resp = make_response();
   resp.set("last_good", json_integer(last_good));
-  send_and_dispose_response(client, std::move(resp));
+  client->enqueueResponse(std::move(resp));
 }
 W_CMD_REG(
     "debug-fsevents-inject-drop",
