@@ -801,26 +801,25 @@ static bool should_start(int err) {
 }
 
 static bool try_command(json_t* cmd, int timeout) {
-  auto client = w_stm_connect(timeout * 1000);
-  if (!client) {
+  auto stream = w_stm_connect(timeout * 1000);
+  if (!stream) {
     return false;
   }
 
   // Start in a well-defined non-blocking state as we can't tell
   // what mode we're in on windows until we've set it to something
   // explicitly at least once before!
-  client->setNonBlock(false);
+  stream->setNonBlock(false);
 
   if (!cmd) {
     return true;
   }
 
   w_jbuffer_t buffer;
-  w_jbuffer_t output_pdu_buffer;
 
   // Send command
   if (!buffer.pduEncodeToStream(
-          server_pdu, server_capabilities, cmd, client.get())) {
+          server_pdu, server_capabilities, cmd, stream.get())) {
     int err = errno;
     logf(ERR, "error sending PDU to server\n");
     errno = err;
@@ -829,12 +828,13 @@ static bool try_command(json_t* cmd, int timeout) {
 
   buffer.clear();
 
+  w_jbuffer_t output_pdu_buffer;
   do {
     if (!buffer.passThru(
             output_pdu,
             output_capabilities,
             &output_pdu_buffer,
-            client.get())) {
+            stream.get())) {
       return false;
     }
   } while (flags.persistent);
