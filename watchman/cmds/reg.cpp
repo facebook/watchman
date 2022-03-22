@@ -86,19 +86,19 @@ bool dispatch_command(Client* client, const json_ref& args, CommandFlags mode) {
   try {
     def = lookup(args, mode);
     if (!def) {
-      send_error_response(client, "Unknown command");
+      client->sendErrorResponse("Unknown command");
       return false;
     }
 
     if (!poisoned_reason.rlock()->empty() &&
         !def->flags.contains(CMD_POISON_IMMUNE)) {
-      send_error_response(client, "%s", poisoned_reason.rlock()->c_str());
+      client->sendErrorResponse("%s", poisoned_reason.rlock()->c_str());
       return false;
     }
 
     if (!client->client_is_owner && !def->flags.contains(CMD_ALLOW_ANY_USER)) {
-      send_error_response(
-          client, "you must be the process owner to execute '%s'", def->name);
+      client->sendErrorResponse(
+          "you must be the process owner to execute '%s'", def->name);
       return false;
     }
 
@@ -132,7 +132,7 @@ bool dispatch_command(Client* client, const json_ref& args, CommandFlags mode) {
     return true;
   } catch (const std::exception& e) {
     auto what = folly::exceptionStr(e);
-    send_error_response(client, "%s", what.c_str());
+    client->sendErrorResponse("%s", what.c_str());
     return false;
   }
 }

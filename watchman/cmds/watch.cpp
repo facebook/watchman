@@ -62,23 +62,22 @@ static void cmd_clock(Client* client, const json_ref& args) {
   if (json_array_size(args) == 3) {
     auto& opts = args.at(2);
     if (!opts.isObject()) {
-      send_error_response(
-          client, "the third argument to 'clock' must be an optional object");
+      client->sendErrorResponse(
+          "the third argument to 'clock' must be an optional object");
       return;
     }
 
     auto sync = opts.get_default("sync_timeout");
     if (sync) {
       if (!sync.isInt()) {
-        send_error_response(
-            client,
+        client->sendErrorResponse(
             "the sync_timeout option passed to 'clock' must be an integer");
         return;
       }
       sync_timeout = sync.asInt();
     }
   } else if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'clock'");
+    client->sendErrorResponse("wrong number of arguments to 'clock'");
     return;
   }
 
@@ -105,7 +104,7 @@ W_CMD_REG(
 static void cmd_watch_delete(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'watch-del'");
+    client->sendErrorResponse("wrong number of arguments to 'watch-del'");
     return;
   }
 
@@ -268,7 +267,7 @@ static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
 static void cmd_watch(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'watch'");
+    client->sendErrorResponse("wrong number of arguments to 'watch'");
     return;
   }
 
@@ -299,7 +298,7 @@ W_CMD_REG(
 static void cmd_watch_project(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'watch-project'");
+    client->sendErrorResponse("wrong number of arguments to 'watch-project'");
     return;
   }
 

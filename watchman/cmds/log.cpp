@@ -16,7 +16,7 @@ using namespace watchman;
 // log-level "off"
 static void cmd_loglevel(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'log-level'");
+    client->sendErrorResponse("wrong number of arguments to 'log-level'");
     return;
   }
 
@@ -24,7 +24,7 @@ static void cmd_loglevel(Client* client, const json_ref& args) {
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    send_error_response(client, "invalid log level for 'log-level'");
+    client->sendErrorResponse("invalid log level for 'log-level'");
     return;
   }
 
@@ -56,7 +56,7 @@ W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 // log "debug" "text to log"
 static void cmd_log(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
-    send_error_response(client, "wrong number of arguments to 'log'");
+    client->sendErrorResponse("wrong number of arguments to 'log'");
     return;
   }
 
@@ -64,7 +64,7 @@ static void cmd_log(Client* client, const json_ref& args) {
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    send_error_response(client, "invalid log level for 'log'");
+    client->sendErrorResponse("invalid log level for 'log'");
     return;
   }
 
@@ -81,8 +81,8 @@ W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 // change the server log level for the logs
 static void cmd_global_log_level(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
-    send_error_response(
-        client, "wrong number of arguments to 'global-log-level'");
+    client->sendErrorResponse(
+        "wrong number of arguments to 'global-log-level'");
     return;
   }
 
@@ -90,7 +90,7 @@ static void cmd_global_log_level(Client* client, const json_ref& args) {
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    send_error_response(client, "invalid log level for 'global-log-level'");
+    client->sendErrorResponse("invalid log level for 'global-log-level'");
     return;
   }
 

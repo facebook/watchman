@@ -143,7 +143,7 @@ static void cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
 
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments for 'get-config'");
+    client->sendErrorResponse("wrong number of arguments for 'get-config'");
     return;
   }
 

@@ -20,7 +20,7 @@ static void cmd_since(Client* client, const json_ref& args) {
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
-    send_error_response(client, "not enough arguments for 'since'");
+    client->sendErrorResponse("not enough arguments for 'since'");
     return;
   }
 
@@ -29,7 +29,7 @@ static void cmd_since(Client* client, const json_ref& args) {
   auto clock_ele = json_array_get(args, 2);
   clockspec = json_string_value(clock_ele);
   if (!clockspec) {
-    send_error_response(client, "expected argument 2 to be a valid clockspec");
+    client->sendErrorResponse("expected argument 2 to be a valid clockspec");
     return;
   }
 

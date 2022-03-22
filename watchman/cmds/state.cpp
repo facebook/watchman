@@ -33,8 +33,7 @@ static bool parse_state_arg(
   parsed->name = nullptr;
 
   if (json_array_size(args) != 3) {
-    send_error_response(
-        client,
+    client->sendErrorResponse(
         "invalid number of arguments, expected 3, got %" PRIsize_t,
         json_array_size(args));
     return false;
@@ -58,7 +57,7 @@ static bool parse_state_arg(
              .asInt());
 
   if (parsed->sync_timeout < ms::zero()) {
-    send_error_response(client, "sync_timeout must be >= 0");
+    client->sendErrorResponse("sync_timeout must be >= 0");
     return false;
   }
 
@@ -78,8 +77,8 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
   }
 
   if (client->states.find(parsed.name) != client->states.end()) {
-    send_error_response(
-        client, "state %s is already asserted", parsed.name.c_str());
+    client->sendErrorResponse(
+        "state %s is already asserted", parsed.name.c_str());
     return;
   }
 
@@ -172,24 +171,21 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
 
   auto it = client->states.find(parsed.name);
   if (it == client->states.end()) {
-    send_error_response(
-        client, "state %s is not asserted", parsed.name.c_str());
+    client->sendErrorResponse("state %s is not asserted", parsed.name.c_str());
     return;
   }
 
   assertion = it->second.lock();
   if (!assertion) {
-    send_error_response(
-        client, "state %s was implicitly vacated", parsed.name.c_str());
+    client->sendErrorResponse(
+        "state %s was implicitly vacated", parsed.name.c_str());
     return;
   }
 
   // Sanity check ownership
   if (mapGetDefault(client->states, parsed.name).lock() != assertion) {
-    send_error_response(
-        client,
-        "state %s was not asserted by this session",
-        parsed.name.c_str());
+    client->sendErrorResponse(
+        "state %s was not asserted by this session", parsed.name.c_str());
     return;
   }
 
@@ -198,8 +194,8 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   {
     auto assertedStates = root->assertedStates.wlock();
     if (assertion->disposition == ClientStateDisposition::Done) {
-      send_error_response(
-          client, "state %s was implicitly vacated", parsed.name.c_str());
+      client->sendErrorResponse(
+          "state %s was implicitly vacated", parsed.name.c_str());
       return;
     }
     // Note that there is a potential race here wrt. this state being

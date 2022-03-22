@@ -18,7 +18,7 @@ using namespace watchman;
 static void cmd_find(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) < 2) {
-    send_error_response(client, "not enough arguments for 'find'");
+    client->sendErrorResponse("not enough arguments for 'find'");
     return;
   }
 

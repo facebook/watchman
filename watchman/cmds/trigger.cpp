@@ -31,12 +31,12 @@ static void cmd_trigger_delete(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (json_array_size(args) != 3) {
-    send_error_response(client, "wrong number of arguments");
+    client->sendErrorResponse("wrong number of arguments");
     return;
   }
   auto jname = args.at(2);
   if (!jname.isString()) {
-    send_error_response(client, "expected 2nd parameter to be trigger name");
+    client->sendErrorResponse("expected 2nd parameter to be trigger name");
     return;
   }
   tname = json_to_w_string(jname);
@@ -110,7 +110,7 @@ static json_ref build_legacy_trigger(
   json_object_set(trig, "expression", expr.get_default("expression"));
 
   if (next_arg >= args.array().size()) {
-    send_error_response(client, "no command was specified");
+    client->sendErrorResponse("no command was specified");
     return nullptr;
   }
 
@@ -119,7 +119,7 @@ static json_ref build_legacy_trigger(
   for (i = 0; i < n; i++) {
     auto ele = args.at(i + next_arg);
     if (!ele.isString()) {
-      send_error_response(client, "expected argument %d to be a string", i);
+      client->sendErrorResponse("expected argument %d to be a string", i);
       return nullptr;
     }
     json_array_append(command, ele);
@@ -141,7 +141,7 @@ static void cmd_trigger(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (json_array_size(args) < 3) {
-    send_error_response(client, "not enough arguments");
+    client->sendErrorResponse("not enough arguments");
     return;
   }
 

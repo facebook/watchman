@@ -327,13 +327,13 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
     subs = args.at(2).get_default("subscriptions", nullptr);
     if (!sync_timeout_obj.isInt()) {
-      send_error_response(client, "'sync_timeout' must be an integer");
+      client->sendErrorResponse("'sync_timeout' must be an integer");
       return;
     }
     sync_timeout = sync_timeout_obj.asInt();
   } else {
-    send_error_response(
-        client, "wrong number of arguments to 'flush-subscriptions'");
+    client->sendErrorResponse(
+        "wrong number of arguments to 'flush-subscriptions'");
     return;
   }
 
@@ -342,16 +342,14 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
   std::vector<w_string> subs_to_sync;
   if (subs) {
     if (!subs.isArray()) {
-      send_error_response(
-          client,
+      client->sendErrorResponse(
           "expected 'subscriptions' to be an array of subscription names");
       return;
     }
 
     for (auto& sub_name : subs.array()) {
       if (!sub_name.isString()) {
-        send_error_response(
-            client,
+        client->sendErrorResponse(
             "expected 'subscriptions' to be an array of subscription names");
         return;
       }
@@ -359,16 +357,14 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
       auto& sub_name_str = json_to_w_string(sub_name);
       auto sub_iter = client->subscriptions.find(sub_name_str);
       if (sub_iter == client->subscriptions.end()) {
-        send_error_response(
-            client,
+        client->sendErrorResponse(
             "this client does not have a subscription named '%s'",
             sub_name_str.c_str());
         return;
       }
       auto& sub = sub_iter->second;
       if (sub->root != root) {
-        send_error_response(
-            client,
+        client->sendErrorResponse(
             "subscription '%s' is on root '%s' different from command root "
             "'%s'",
             sub_name_str.c_str(),
@@ -461,8 +457,7 @@ static void cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   auto jstr = json_array_get(args, 2);
   name = json_string_value(jstr);
   if (!name) {
-    send_error_response(
-        client, "expected 2nd parameter to be subscription name");
+    client->sendErrorResponse("expected 2nd parameter to be subscription name");
     return;
   }
 
@@ -496,7 +491,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
-    send_error_response(client, "wrong number of arguments for subscribe");
+    client->sendErrorResponse("wrong number of arguments for subscribe");
     return;
   }
 
@@ -504,8 +499,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   jname = args.at(2);
   if (!jname.isString()) {
-    send_error_response(
-        client, "expected 2nd parameter to be subscription name");
+    client->sendErrorResponse("expected 2nd parameter to be subscription name");
     return;
   }
 
@@ -517,13 +511,13 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   defer_list = query_spec.get_default("defer");
   if (defer_list && !defer_list.isArray()) {
-    send_error_response(client, "defer field must be an array of strings");
+    client->sendErrorResponse("defer field must be an array of strings");
     return;
   }
 
   drop_list = query_spec.get_default("drop");
   if (drop_list && !drop_list.isArray()) {
-    send_error_response(client, "drop field must be an array of strings");
+    client->sendErrorResponse("drop field must be an array of strings");
     return;
   }
 
@@ -534,7 +528,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   auto defer = query_spec.get_default("defer_vcs", json_true());
   if (!defer.isBool()) {
-    send_error_response(client, "defer_vcs must be boolean");
+    client->sendErrorResponse("defer_vcs must be boolean");
     return;
   }
   sub->vcs_defer = defer.asBool();

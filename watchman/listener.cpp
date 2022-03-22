@@ -39,36 +39,6 @@ json_ref make_response() {
   return resp;
 }
 
-void send_error_response(Client* client, const char* fmt, ...) {
-  va_list ap;
-
-  va_start(ap, fmt);
-  auto errorText = w_string::vprintf(fmt, ap);
-  va_end(ap);
-
-  auto resp = make_response();
-  resp.set("error", w_string_to_json(errorText));
-
-  if (client->perf_sample) {
-    client->perf_sample->add_meta("error", w_string_to_json(errorText));
-  }
-
-  if (client->current_command) {
-    auto command = json_dumps(client->current_command, 0);
-    watchman::log(
-        watchman::ERR,
-        "send_error_response: ",
-        command,
-        ", failed: ",
-        errorText,
-        "\n");
-  } else {
-    watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
-  }
-
-  client->enqueueResponse(std::move(resp));
-}
-
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
 #include <sys/siginfo.h> // @manual

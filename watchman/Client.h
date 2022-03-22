@@ -12,6 +12,7 @@
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
+#include "watchman/watchman_preprocessor.h"
 #include "watchman/watchman_stream.h"
 
 namespace watchman {
@@ -28,6 +29,9 @@ class Client : public std::enable_shared_from_this<Client> {
   virtual ~Client();
 
   void enqueueResponse(json_ref resp);
+
+  void sendErrorResponse(WATCHMAN_FMT_STRING(const char* fmt), ...)
+      WATCHMAN_FMT_ATTR(2, 3);
 
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
