@@ -104,6 +104,38 @@ class ClientSubscription
   void processSubscriptionImpl();
 };
 
+class ClientStatus {
+ public:
+  enum State {
+    /// UserClient is allocated, but its thread is not started.
+    THREAD_STARTING,
+    /// The client thread has begun.
+    THREAD_STARTED,
+    /// The client thread is waiting for a request.
+    WAITING_FOR_REQUEST,
+    /// The client thread is decoding request data.
+    DECODING_REQUEST,
+    /// The client thread is executing a request.
+    DISPATCHING_COMMAND,
+    /// The client thread is reading subscription events and processing them.
+    PROCESSING_SUBSCRIPTION,
+    /// The client thread is sending responses.
+    SENDING_SUBSCRIPTION_RESPONSES,
+    /// The client thread is shutting down.
+    THREAD_STOPPING,
+  };
+
+  void transitionTo(State state) {
+    state_.store(state, std::memory_order_release);
+  }
+
+ private:
+  // No locking or CAS required, as the tag is only written by UserClient's
+  // constructor and the client thread. There will never be simultaneous state
+  // transitions.
+  std::atomic<State> state_{THREAD_STARTING};
+};
+
 /**
  * Represents the server side session maintained for a client of
  * the watchman per-user process.
@@ -147,6 +179,8 @@ class UserClient final : public Client {
 
  private:
   void clientThread() noexcept;
+
+  ClientStatus status_;
 };
 
 } // namespace watchman

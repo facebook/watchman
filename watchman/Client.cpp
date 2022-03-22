@@ -132,6 +132,8 @@ std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
 }
 
 void UserClient::clientThread() noexcept {
+  status_.transitionTo(ClientStatus::THREAD_STARTED);
+
   // Keep a persistent vector around so that we can avoid allocating
   // and releasing heap memory when we collect items from the publisher
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
@@ -157,12 +159,14 @@ void UserClient::clientThread() noexcept {
     // via the ping pipe, which signals that some other
     // thread wants to unilaterally send data to the client
 
+    status_.transitionTo(ClientStatus::WAITING_FOR_REQUEST);
     ignore_result(w_poll_events(pfd, 2, 2000));
     if (w_is_stopping()) {
       break;
     }
 
     if (pfd[0].ready) {
+      status_.transitionTo(ClientStatus::DECODING_REQUEST);
       json_error_t jerr;
       auto request = reader.decodeNext(stm.get(), &jerr);
 
@@ -183,12 +187,14 @@ void UserClient::clientThread() noexcept {
       } else if (request) {
         pdu_type = reader.pdu_type;
         capabilities = reader.capabilities;
+        status_.transitionTo(ClientStatus::DISPATCHING_COMMAND);
         dispatch_command(this, request, CMD_DAEMON);
       }
     }
 
     if (pfd[1].ready) {
       while (ping->testAndClear()) {
+        status_.transitionTo(ClientStatus::PROCESSING_SUBSCRIPTION);
         // Enqueue refs to pending log payloads
         pending.clear();
         getPending(pending, debugSub, errorSub);
@@ -198,10 +204,7 @@ void UserClient::clientThread() noexcept {
 
         // Maybe we have subscriptions to dispatch?
         std::vector<w_string> subsToDelete;
-        for (auto& subiter : unilateralSub) {
-          auto sub = subiter.first;
-          auto subStream = subiter.second;
-
+        for (auto& [sub, subStream] : unilateralSub) {
           watchman::log(
               watchman::DBG, "consider fan out sub ", sub->name, "\n");
 
@@ -279,6 +282,7 @@ void UserClient::clientThread() noexcept {
 
     /* now send our response(s) */
     while (!responses.empty() && client_alive) {
+      status_.transitionTo(ClientStatus::SENDING_SUBSCRIPTION_RESPONSES);
       auto& response_to_send = responses.front();
 
       stm->setNonBlock(false);
@@ -308,6 +312,7 @@ void UserClient::clientThread() noexcept {
   }
 
 disconnected:
+  status_.transitionTo(ClientStatus::THREAD_STOPPING);
   w_set_thread_name(
       "NOT_CONN:client=",
       unique_id,
@@ -315,8 +320,6 @@ disconnected:
       uintptr_t(stm.get()),
       ":pid=",
       stm->getPeerProcessID());
-
-  // TODO: Mark client state as THREAD_SHUTTING_DOWN
 }
 
 } // namespace watchman
