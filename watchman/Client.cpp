@@ -6,14 +6,21 @@
  */
 
 #include "watchman/Client.h"
+
+#include <folly/MapUtil.h>
+
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
 #include "watchman/QueryableView.h"
+#include "watchman/Shutdown.h"
 #include "watchman/root/Root.h"
+#include "watchman/watchman_cmd.h"
 
 namespace watchman {
 
 namespace {
+
+constexpr size_t kResponseLogLimit = 0;
 
 folly::Synchronized<std::unordered_set<UserClient*>> clients;
 
@@ -60,7 +67,21 @@ void Client::enqueueResponse(json_ref resp, bool ping) {
   }
 }
 
-UserClient::UserClient(std::unique_ptr<watchman_stream> stm)
+void UserClient::create(std::unique_ptr<watchman_stream> stm) {
+  auto uc = std::make_shared<UserClient>(PrivateBadge{}, std::move(stm));
+
+  // Start a thread for the client.
+  //
+  // We used to use libevent for this, but we have a low volume of concurrent
+  // clients and the json parse/encode APIs are not easily used in a
+  // non-blocking server architecture.
+  //
+  // The thread holds a reference count for its life, so the shared_ptr must be
+  // created before the thread is started.
+  std::thread{[uc] { clientThread(uc); }}.detach();
+}
+
+UserClient::UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm)
     : Client(std::move(stm)) {
   clients.wlock()->insert(this);
 }
@@ -83,6 +104,203 @@ std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
     v.push_back(std::static_pointer_cast<UserClient>(c->shared_from_this()));
   }
   return v;
+}
+
+// The client thread reads and decodes json packets,
+// then dispatches the commands that it finds
+void UserClient::clientThread(std::shared_ptr<UserClient> client) noexcept {
+  // Keep a persistent vector around so that we can avoid allocating
+  // and releasing heap memory when we collect items from the publisher
+  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
+
+  client->stm->setNonBlock(true);
+  w_set_thread_name(
+      "client=",
+      client->unique_id,
+      ":stm=",
+      uintptr_t(client->stm.get()),
+      ":pid=",
+      client->stm->getPeerProcessID());
+
+  client->client_is_owner = client->stm->peerIsOwner();
+
+  struct watchman_event_poll pfd[2];
+  pfd[0].evt = client->stm->getEvents();
+  pfd[1].evt = client->ping.get();
+
+  bool client_alive = true;
+  while (!w_is_stopping() && client_alive) {
+    // Wait for input from either the client socket or
+    // via the ping pipe, which signals that some other
+    // thread wants to unilaterally send data to the client
+
+    ignore_result(w_poll_events(pfd, 2, 2000));
+    if (w_is_stopping()) {
+      break;
+    }
+
+    if (pfd[0].ready) {
+      json_error_t jerr;
+      auto request = client->reader.decodeNext(client->stm.get(), &jerr);
+
+      if (!request && errno == EAGAIN) {
+        // That's fine
+      } else if (!request) {
+        // Not so cool
+        if (client->reader.wpos == client->reader.rpos) {
+          // If they disconnected in between PDUs, no need to log
+          // any error
+          goto disconnected;
+        }
+        send_error_response(
+            client.get(),
+            "invalid json at position %d: %s",
+            jerr.position,
+            jerr.text);
+        logf(ERR, "invalid data from client: {}\n", jerr.text);
+
+        goto disconnected;
+      } else if (request) {
+        client->pdu_type = client->reader.pdu_type;
+        client->capabilities = client->reader.capabilities;
+        dispatch_command(client.get(), request, CMD_DAEMON);
+      }
+    }
+
+    if (pfd[1].ready) {
+      while (client->ping->testAndClear()) {
+        // Enqueue refs to pending log payloads
+        pending.clear();
+        getPending(pending, client->debugSub, client->errorSub);
+        for (auto& item : pending) {
+          client->enqueueResponse(json_ref(item->payload), false);
+        }
+
+        // Maybe we have subscriptions to dispatch?
+        std::vector<w_string> subsToDelete;
+        for (auto& subiter : client->unilateralSub) {
+          auto sub = subiter.first;
+          auto subStream = subiter.second;
+
+          watchman::log(
+              watchman::DBG, "consider fan out sub ", sub->name, "\n");
+
+          pending.clear();
+          subStream->getPending(pending);
+          bool seenSettle = false;
+          for (auto& item : pending) {
+            auto dumped = json_dumps(item->payload, 0);
+            watchman::log(
+                watchman::DBG,
+                "Unilateral payload for sub ",
+                sub->name,
+                " ",
+                dumped,
+                "\n");
+
+            if (item->payload.get_default("canceled")) {
+              watchman::log(
+                  watchman::ERR,
+                  "Cancel subscription ",
+                  sub->name,
+                  " due to root cancellation\n");
+
+              auto resp = make_response();
+              resp.set(
+                  {{"root", item->payload.get_default("root")},
+                   {"unilateral", json_true()},
+                   {"canceled", json_true()},
+                   {"subscription", w_string_to_json(sub->name)}});
+              client->enqueueResponse(std::move(resp), false);
+              // Remember to cancel this subscription.
+              // We can't do it in this loop because that would
+              // invalidate the iterators and cause a headache.
+              subsToDelete.push_back(sub->name);
+              continue;
+            }
+
+            if (item->payload.get_default("state-enter") ||
+                item->payload.get_default("state-leave")) {
+              auto resp = make_response();
+              json_object_update(item->payload, resp);
+              // We have the opportunity to populate additional response
+              // fields here (since we don't want to block the command).
+              // We don't populate the fat clock for SCM aware queries
+              // because determination of mergeBase could add latency.
+              resp.set(
+                  {{"unilateral", json_true()},
+                   {"subscription", w_string_to_json(sub->name)}});
+              client->enqueueResponse(std::move(resp), false);
+
+              watchman::log(
+                  watchman::DBG,
+                  "Fan out subscription state change for ",
+                  sub->name,
+                  "\n");
+              continue;
+            }
+
+            if (!sub->debug_paused && item->payload.get_default("settled")) {
+              seenSettle = true;
+              continue;
+            }
+          }
+
+          if (seenSettle) {
+            sub->processSubscription();
+          }
+        }
+
+        for (auto& name : subsToDelete) {
+          client->unsubByName(name);
+        }
+      }
+    }
+
+    /* now send our response(s) */
+    while (!client->responses.empty() && client_alive) {
+      auto& response_to_send = client->responses.front();
+
+      client->stm->setNonBlock(false);
+      /* Return the data in the same format that was used to ask for it.
+       * Update client liveness based on send success.
+       */
+      client_alive = client->writer.pduEncodeToStream(
+          client->pdu_type,
+          client->capabilities,
+          response_to_send,
+          client->stm.get());
+      client->stm->setNonBlock(true);
+
+      json_ref subscriptionValue = response_to_send.get_default("subscription");
+      if (kResponseLogLimit && subscriptionValue &&
+          subscriptionValue.isString() &&
+          json_string_value(subscriptionValue)) {
+        auto subscriptionName = json_to_w_string(subscriptionValue);
+        if (auto* sub =
+                folly::get_ptr(client->subscriptions, subscriptionName)) {
+          if ((*sub)->lastResponses.size() >= kResponseLogLimit) {
+            (*sub)->lastResponses.pop_front();
+          }
+          (*sub)->lastResponses.push_back(ClientSubscription::LoggedResponse{
+              std::chrono::system_clock::now(), response_to_send});
+        }
+      }
+
+      client->responses.pop_front();
+    }
+  }
+
+disconnected:
+  w_set_thread_name(
+      "NOT_CONN:client=",
+      client->unique_id,
+      ":stm=",
+      uintptr_t(client->stm.get()),
+      ":pid=",
+      client->stm->getPeerProcessID());
+
+  // TODO: Mark client state as THREAD_SHUTTING_DOWN
 }
 
 } // namespace watchman

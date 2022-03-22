@@ -49,9 +49,6 @@ class Client : public std::enable_shared_from_this<Client> {
   // Logging Subscriptions
   std::shared_ptr<Publisher::Subscriber> debugSub;
   std::shared_ptr<Publisher::Subscriber> errorSub;
-
- private:
-  void clientThread();
 };
 
 enum class OnStateTransition { QueryAnyway, DontAdvance };
@@ -103,11 +100,13 @@ class ClientSubscription
   void processSubscriptionImpl();
 };
 
-// Represents the server side session maintained for a client of
-// the watchman per-user process
+/**
+ * Represents the server side session maintained for a client of
+ * the watchman per-user process.
+ */
 class UserClient final : public Client {
  public:
-  explicit UserClient(std::unique_ptr<watchman_stream> stm);
+  static void create(std::unique_ptr<watchman_stream> stm);
   ~UserClient() override;
 
   static std::vector<std::shared_ptr<UserClient>> getAllClients();
@@ -127,6 +126,20 @@ class UserClient final : public Client {
       unilateralSub;
 
   bool unsubByName(const w_string& name);
+
+ private:
+  UserClient() = delete;
+  UserClient(UserClient&&) = delete;
+  UserClient& operator=(UserClient&&) = delete;
+
+  // To allow make_shared to construct UserClient.
+  struct PrivateBadge {};
+
+ public:
+  explicit UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm);
+
+ private:
+  static void clientThread(std::shared_ptr<UserClient> client) noexcept;
 };
 
 } // namespace watchman
