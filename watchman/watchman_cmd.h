@@ -37,7 +37,7 @@ bool find_project_root(
 
 void preprocess_command(
     json_ref& args,
-    w_pdu_type output_pdu,
+    watchman::PduType output_pdu,
     uint32_t output_capabilities);
 bool dispatch_command(
     watchman::Client* client,

@@ -43,7 +43,7 @@ command_handler_def* lookup(const json_ref& args, CommandFlags mode) {
 
 void preprocess_command(
     json_ref& args,
-    enum w_pdu_type output_pdu,
+    PduType output_pdu,
     uint32_t output_capabilities) {
   command_handler_def* def;
 
@@ -60,7 +60,7 @@ void preprocess_command(
       def->cli_validate(args);
     }
   } catch (const std::exception& exc) {
-    w_jbuffer_t jr;
+    PduBuffer jr;
 
     auto err = json_object(
         {{"error", typed_string_to_json(exc.what(), W_STRING_MIXED)},

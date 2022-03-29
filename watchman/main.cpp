@@ -49,8 +49,8 @@
 using namespace watchman;
 
 namespace {
-w_pdu_type server_pdu = is_bser;
-w_pdu_type output_pdu = is_json_pretty;
+PduType server_pdu = is_bser;
+PduType output_pdu = is_json_pretty;
 uint32_t server_capabilities = 0;
 uint32_t output_capabilities = 0;
 char** daemon_argv = NULL;
@@ -548,7 +548,7 @@ static SpawnResult spawn_via_launchd() {
 }
 #endif
 
-static void parse_encoding(const std::string& enc, enum w_pdu_type* pdu) {
+static void parse_encoding(std::string_view enc, PduType* pdu) {
   if (enc.empty()) {
     return;
   }
@@ -815,7 +815,7 @@ static bool try_command(json_t* cmd, int timeout) {
     return true;
   }
 
-  w_jbuffer_t buffer;
+  PduBuffer buffer;
 
   // Send command
   if (!buffer.pduEncodeToStream(
@@ -828,7 +828,7 @@ static bool try_command(json_t* cmd, int timeout) {
 
   buffer.clear();
 
-  w_jbuffer_t output_pdu_buffer;
+  PduBuffer output_pdu_buffer;
   do {
     if (!buffer.passThru(
             output_pdu,
@@ -876,7 +876,7 @@ static json_ref build_command(int argc, char** argv) {
   // Read blob from stdin
   if (flags.json_input_arg) {
     auto err = json_error_t();
-    w_jbuffer_t buf;
+    PduBuffer buf;
 
     auto cmd = buf.decodeNext(w_stm_stdin(), &err);
 

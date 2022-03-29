@@ -112,7 +112,7 @@ bool w_state_load() {
 }
 
 static bool do_state_save() {
-  w_jbuffer_t buffer;
+  PduBuffer buffer;
 
   auto state = json_object();
 

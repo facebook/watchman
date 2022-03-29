@@ -99,7 +99,7 @@ std::unique_ptr<watchman_stream> prepare_stdin(
 
   switch (cmd->stdin_style) {
     case input_json: {
-      w_jbuffer_t buffer;
+      PduBuffer buffer;
 
       logf(DBG, "input_json: sending json object to stm\n");
       if (!buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0)) {

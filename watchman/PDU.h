@@ -11,12 +11,10 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace watchman {
+
 class Stream;
-}
 
-using watchman_stream = watchman::Stream;
-
-enum w_pdu_type {
+enum PduType {
   need_data,
   is_json_compact,
   is_json_pretty,
@@ -24,60 +22,60 @@ enum w_pdu_type {
   is_bser_v2
 };
 
-struct watchman_json_buffer {
+class PduBuffer {
+ public:
   char* buf;
   uint32_t allocd;
-  uint32_t rpos, wpos;
-  w_pdu_type pdu_type;
+  uint32_t rpos;
+  uint32_t wpos;
+  PduType pdu_type;
   uint32_t capabilities;
 
-  ~watchman_json_buffer();
-  watchman_json_buffer();
-  watchman_json_buffer(const watchman_json_buffer&) = delete;
-  watchman_json_buffer& operator=(const watchman_json_buffer&) = delete;
+  ~PduBuffer();
+  PduBuffer();
+  PduBuffer(const PduBuffer&) = delete;
+  PduBuffer& operator=(const PduBuffer&) = delete;
 
   void clear();
-  bool
-  jsonEncodeToStream(const json_ref& json, watchman_stream* stm, int flags);
+  bool jsonEncodeToStream(const json_ref& json, Stream* stm, int flags);
   bool bserEncodeToStream(
       uint32_t bser_version,
       uint32_t bser_capabilities,
       const json_ref& json,
-      watchman_stream* stm);
+      Stream* stm);
 
   bool pduEncodeToStream(
-      w_pdu_type pdu_type,
+      PduType pdu_type,
       uint32_t capabilities,
       const json_ref& json,
-      watchman_stream* stm);
+      Stream* stm);
 
-  json_ref decodeNext(watchman_stream* stm, json_error_t* jerr);
+  json_ref decodeNext(Stream* stm, json_error_t* jerr);
 
   bool passThru(
-      w_pdu_type output_pdu,
+      PduType output_pdu,
       uint32_t output_capabilities,
-      watchman_json_buffer* output_pdu_buf,
-      watchman_stream* stm);
+      PduBuffer* output_pdu_buf,
+      Stream* stm);
 
  private:
-  bool readAndDetectPdu(watchman_stream* stm, json_error_t* jerr);
-  inline uint32_t shuntDown();
-  bool fillBuffer(watchman_stream* stm);
-  inline w_pdu_type detectPdu();
-  json_ref readJsonPrettyPdu(watchman_stream* stm, json_error_t* jerr);
-  json_ref readJsonPdu(watchman_stream* stm, json_error_t* jerr);
-  json_ref
-  readBserPdu(watchman_stream* stm, uint32_t bser_version, json_error_t* jerr);
-  json_ref decodePdu(watchman_stream* stm, json_error_t* jerr);
+  bool readAndDetectPdu(Stream* stm, json_error_t* jerr);
+  uint32_t shuntDown();
+  bool fillBuffer(Stream* stm);
+  PduType detectPdu();
+  json_ref readJsonPrettyPdu(Stream* stm, json_error_t* jerr);
+  json_ref readJsonPdu(Stream* stm, json_error_t* jerr);
+  json_ref readBserPdu(Stream* stm, uint32_t bser_version, json_error_t* jerr);
+  json_ref decodePdu(Stream* stm, json_error_t* jerr);
   bool decodePduInfo(
-      watchman_stream* stm,
+      Stream* stm,
       uint32_t bser_version,
       json_int_t* len,
       json_int_t* bser_capabilities,
       json_error_t* jerr);
-  bool streamPdu(watchman_stream* stm, json_error_t* jerr);
-  bool streamUntilNewLine(watchman_stream* stm);
-  bool streamN(watchman_stream* stm, json_int_t len, json_error_t* jerr);
+  bool streamPdu(Stream* stm, json_error_t* jerr);
+  bool streamUntilNewLine(Stream* stm);
+  bool streamN(Stream* stm, json_int_t len, json_error_t* jerr);
 };
 
-typedef struct watchman_json_buffer w_jbuffer_t;
+} // namespace watchman

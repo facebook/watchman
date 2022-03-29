@@ -17,7 +17,7 @@ namespace {
 
 // Work-around decodeNext which implictly resets to non-blocking
 json_ref
-decodeNext(watchman_stream* client, w_jbuffer_t& buf, json_error_t& jerr) {
+decodeNext(watchman_stream* client, PduBuffer& buf, json_error_t& jerr) {
   client->setNonBlock(false);
   return buf.decodeNext(client, &jerr);
 }
@@ -30,7 +30,7 @@ decodeNext(watchman_stream* client, w_jbuffer_t& buf, json_error_t& jerr) {
  */
 void check_my_sock(watchman_stream* client) {
   auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
-  w_jbuffer_t buf;
+  PduBuffer buf;
   json_error_t jerr;
   pid_t my_pid = ::getpid();
 
@@ -80,7 +80,7 @@ void check_my_sock(watchman_stream* client) {
  * information.
  */
 void check_clock_command(watchman_stream* client, json_ref& root) {
-  w_jbuffer_t buf;
+  PduBuffer buf;
   json_error_t jerr;
 
   auto cmd = json_array(
@@ -121,7 +121,7 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
  */
 json_ref get_watch_list(watchman_stream* client) {
   auto cmd = json_array({typed_string_to_json("watch-list", W_STRING_UNICODE)});
-  w_jbuffer_t buf;
+  PduBuffer buf;
   json_error_t jerr;
 
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {

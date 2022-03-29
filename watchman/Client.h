@@ -36,11 +36,11 @@ class Client : public std::enable_shared_from_this<Client> {
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
-  w_jbuffer_t reader;
-  w_jbuffer_t writer;
+  PduBuffer reader;
+  PduBuffer writer;
   bool client_mode = false;
   bool client_is_owner = false;
-  w_pdu_type pdu_type;
+  PduType pdu_type;
   uint32_t capabilities;
 
   // The command currently being processed by dispatch_command
