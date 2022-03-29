@@ -13,10 +13,9 @@
 #include "watchman/PubSub.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 
-class watchman_event;
-
 namespace watchman {
 
+class Event;
 class Root;
 struct Query;
 
@@ -27,7 +26,7 @@ struct TriggerCommand {
   std::shared_ptr<Query> query;
   json_ref definition;
   json_ref command;
-  watchman::ChildProcess::Environment env;
+  ChildProcess::Environment env;
 
   bool append_files;
   enum trigger_input_style stdin_style;
@@ -40,7 +39,7 @@ struct TriggerCommand {
 
   /* While we are running, this holds the pid
    * of the running process */
-  std::unique_ptr<watchman::ChildProcess> current_proc;
+  std::unique_ptr<ChildProcess> current_proc;
 
   TriggerCommand(
       SavedStateFactory savedStateFactory,
@@ -64,8 +63,8 @@ struct TriggerCommand {
 
   const SavedStateFactory savedStateFactory_;
   std::thread triggerThread_;
-  std::shared_ptr<watchman::Publisher::Subscriber> subscriber_;
-  std::unique_ptr<watchman_event> ping_;
+  std::shared_ptr<Publisher::Subscriber> subscriber_;
+  std::unique_ptr<Event> ping_;
   bool stopTrigger_{false};
 };
 

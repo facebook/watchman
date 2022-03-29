@@ -376,7 +376,7 @@ class AcceptLoop {
     auto listener = w_stm_fdopen(std::move(listenerDescriptor));
     while (!w_is_stopping()) {
       FileDescriptor client_fd;
-      watchman_event_poll pfd[2];
+      EventPoll pfd[2];
 
       pfd[0].evt = listener->getEvents();
       pfd[1].evt = listener_event.get();

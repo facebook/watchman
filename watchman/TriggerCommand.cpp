@@ -389,7 +389,7 @@ void TriggerCommand::run(const std::shared_ptr<Root>& root) {
       "trigger ", triggername.view(), " ", root->root_path.view());
 
   try {
-    watchman_event_poll pfd[1];
+    EventPoll pfd[1];
     pfd[0].evt = ping_.get();
 
     log(DBG, "waiting for settle\n");

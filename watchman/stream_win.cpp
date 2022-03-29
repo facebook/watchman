@@ -691,10 +691,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 }
 
-int w_poll_events_named_pipe(
-    struct watchman_event_poll* p,
-    int n,
-    int timeoutms) {
+int w_poll_events_named_pipe(EventPoll* p, int n, int timeoutms) {
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   int i;
   DWORD res;

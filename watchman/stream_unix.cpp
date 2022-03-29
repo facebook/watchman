@@ -310,7 +310,7 @@ std::unique_ptr<watchman_event> w_event_make_sockets() {
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win
-int w_poll_events_sockets(struct watchman_event_poll* p, int n, int timeoutms) {
+int w_poll_events_sockets(EventPoll* p, int n, int timeoutms) {
   struct pollfd pfds[MAX_POLL_EVENTS];
   int i;
   int res;

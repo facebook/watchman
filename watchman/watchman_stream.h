@@ -13,33 +13,40 @@
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.
 
-class watchman_event {
+namespace watchman {
+
+class Event {
  public:
-  virtual ~watchman_event() = default;
+  virtual ~Event() = default;
   virtual void notify() = 0;
   virtual bool testAndClear() = 0;
-  virtual watchman::FileDescriptor::system_handle_type system_handle() = 0;
+  virtual FileDescriptor::system_handle_type system_handle() = 0;
   virtual bool isSocket() = 0;
 };
 
-class watchman_stream {
+class Stream {
  public:
-  virtual ~watchman_stream() = default;
+  virtual ~Stream() = default;
   virtual int read(void* buf, int size) = 0;
   virtual int write(const void* buf, int size) = 0;
-  virtual watchman_event* getEvents() = 0;
+  virtual Event* getEvents() = 0;
   virtual void setNonBlock(bool nonBlock) = 0;
   virtual bool rewind() = 0;
   virtual bool shutdown() = 0;
   virtual bool peerIsOwner() = 0;
   virtual pid_t getPeerProcessID() const = 0;
-  virtual const watchman::FileDescriptor& getFileDescriptor() const = 0;
+  virtual const FileDescriptor& getFileDescriptor() const = 0;
 };
 
-struct watchman_event_poll {
-  watchman_event* evt;
+struct EventPoll {
+  Event* evt;
   bool ready;
 };
+
+} // namespace watchman
+
+using watchman_event = watchman::Event;
+using watchman_stream = watchman::Stream;
 
 // Make a event that can be manually signalled
 std::unique_ptr<watchman_event> w_event_make_sockets();
@@ -48,12 +55,9 @@ std::unique_ptr<watchman_event> w_event_make_named_pipe();
 // Go to sleep for up to timeoutms.
 // Returns sooner if any of the watchman_event objects referenced
 // in the array P are signalled
-int w_poll_events_named_pipe(
-    struct watchman_event_poll* p,
-    int n,
-    int timeoutms);
-int w_poll_events_sockets(struct watchman_event_poll* p, int n, int timeoutms);
-int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms);
+int w_poll_events_named_pipe(watchman::EventPoll* p, int n, int timeoutms);
+int w_poll_events_sockets(watchman::EventPoll* p, int n, int timeoutms);
+int w_poll_events(watchman::EventPoll* p, int n, int timeoutms);
 
 // Create a connected unix socket or a named pipe client stream
 std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms);

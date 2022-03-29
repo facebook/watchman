@@ -9,7 +9,11 @@
 
 #include <memory>
 
-class watchman_event;
+namespace watchman {
+class Event;
+}
+
+using watchman_event = watchman::Event;
 
 bool w_is_stopping();
 void w_request_shutdown();

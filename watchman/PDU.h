@@ -10,7 +10,11 @@
 #include <stdint.h>
 #include "watchman/thirdparty/jansson/jansson.h"
 
-class watchman_stream;
+namespace watchman {
+class Stream;
+}
+
+using watchman_stream = watchman::Stream;
 
 enum w_pdu_type {
   need_data,

@@ -173,7 +173,7 @@ void UserClient::clientThread() noexcept {
 
   client_is_owner = stm->peerIsOwner();
 
-  struct watchman_event_poll pfd[2];
+  EventPoll pfd[2];
   pfd[0].evt = stm->getEvents();
   pfd[1].evt = ping.get();
 
