@@ -7,9 +7,8 @@
 
 #pragma once
 
-#include <folly/Conv.h>
-#include <folly/Range.h>
 #include <stdexcept>
+#include <vector>
 
 #include "watchman/OptionSet.h"
 #include "watchman/watchman_preprocessor.h"
@@ -21,11 +20,11 @@ namespace watchman {
 class Client;
 class Command;
 
-using command_func = void (*)(Client* client, const json_ref& args);
+using CommandHandler = void (*)(Client* client, const json_ref& args);
 
 // Should throw an exception (ideally CommandValidationError) if validation
 // fails
-using cli_cmd_validate_func = void (*)(Command& command);
+using CommandValidator = void (*)(Command& command);
 
 struct CommandFlags : OptionSet<CommandFlags, uint8_t> {};
 
@@ -34,32 +33,29 @@ inline constexpr auto CMD_CLIENT = CommandFlags::raw(2);
 inline constexpr auto CMD_POISON_IMMUNE = CommandFlags::raw(4);
 inline constexpr auto CMD_ALLOW_ANY_USER = CommandFlags::raw(8);
 
-struct command_handler_def {
-  const char* name;
-  command_func func;
+struct CommandDefinition {
+  std::string_view name;
+  CommandHandler handler;
   CommandFlags flags;
-  cli_cmd_validate_func cli_validate;
+  CommandValidator validator;
 };
 
-void register_command(command_handler_def& defs);
+void register_command(CommandDefinition& defs);
 
 /**
  * Provide a way to query (and eventually modify) command line arguments
  *
  * This is not thread-safe and should only be invoked from main()
  */
-command_handler_def* lookup_command(
-    std::string_view cmd_name,
-    CommandFlags mode);
+CommandDefinition* lookup_command(std::string_view cmd_name, CommandFlags mode);
 
-std::vector<command_handler_def*> get_all_commands();
+std::vector<CommandDefinition*> get_all_commands();
 
-#define W_CMD_REG_1(symbol, name, func, flags, clivalidate) \
-  static w_ctor_fn_type(symbol) {                           \
-    static ::watchman::command_handler_def d = {            \
-        name, func, flags, clivalidate};                    \
-    ::watchman::register_command(d);                        \
-  }                                                         \
+#define W_CMD_REG_1(symbol, name, func, flags, clivalidate)                    \
+  static w_ctor_fn_type(symbol) {                                              \
+    static ::watchman::CommandDefinition d = {name, func, flags, clivalidate}; \
+    ::watchman::register_command(d);                                           \
+  }                                                                            \
   w_ctor_fn_reg(symbol)
 
 #define W_CMD_REG(name, func, flags, clivalidate) \

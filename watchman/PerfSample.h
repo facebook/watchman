@@ -48,7 +48,11 @@ class PerfSample {
   struct rusage usage;
 #endif
 
-  // Initialize and mark the start of a sample
+  /**
+   * Initialize and mark the start of a sample.
+   * The given description is an unowned pointer - it must live as long as the
+   * PerfSample.
+   */
   explicit PerfSample(const char* description);
 
   PerfSample(const PerfSample&) = delete;

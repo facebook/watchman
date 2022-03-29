@@ -15,7 +15,7 @@ namespace {
 using namespace watchman;
 
 struct reg {
-  std::unordered_map<std::string, command_handler_def*> commands;
+  std::unordered_map<std::string, CommandDefinition*> commands;
   std::unordered_set<std::string> capabilities;
 
   reg() {
@@ -33,15 +33,12 @@ reg& get_reg() {
 
 namespace watchman {
 
-void register_command(command_handler_def& def) {
+void register_command(CommandDefinition& def) {
   get_reg().commands.emplace(def.name, &def);
-
-  char capname[128];
-  snprintf(capname, sizeof(capname), "cmd-%s", def.name);
-  capability_register(capname);
+  capability_register(("cmd-" + std::string{def.name}).c_str());
 }
 
-command_handler_def* lookup_command(
+CommandDefinition* lookup_command(
     std::string_view cmd_name,
     CommandFlags mode) {
   // TODO: Eliminate this copy in the lookup.
@@ -63,8 +60,8 @@ command_handler_def* lookup_command(
   return nullptr;
 }
 
-std::vector<command_handler_def*> get_all_commands() {
-  std::vector<command_handler_def*> defs;
+std::vector<CommandDefinition*> get_all_commands() {
+  std::vector<CommandDefinition*> defs;
   for (auto& it : get_reg().commands) {
     defs.emplace_back(it.second);
   }

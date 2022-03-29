@@ -27,7 +27,7 @@ void preprocess_command(
     PduType output_pdu,
     uint32_t output_capabilities) {
   try {
-    command_handler_def* def = lookup_command(command.name(), CommandFlags{});
+    CommandDefinition* def = lookup_command(command.name(), CommandFlags{});
 
     if (!def) {
       // Nothing known about it, pass the command on anyway for forwards
@@ -35,8 +35,8 @@ void preprocess_command(
       return;
     }
 
-    if (def->cli_validate) {
-      def->cli_validate(command);
+    if (def->validator) {
+      def->validator(command);
     }
   } catch (const std::exception& exc) {
     PduBuffer jr;
@@ -55,9 +55,6 @@ bool dispatch_command(
     Client* client,
     const Command& command,
     CommandFlags mode) {
-  command_handler_def* def;
-  char sample_name[128];
-
   // Stash a reference to the current command to make it easier to log
   // the command context in some of the error paths
   client->current_command = &command;
@@ -66,7 +63,7 @@ bool dispatch_command(
   };
 
   try {
-    def = lookup_command(command.name(), mode);
+    CommandDefinition* def = lookup_command(command.name(), mode);
     if (!def) {
       client->sendErrorResponse("Unknown command");
       return false;
@@ -87,9 +84,8 @@ bool dispatch_command(
     // Scope for the perf sample
     {
       logf(DBG, "dispatch_command: {}\n", def->name);
-      snprintf(
-          sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
-      PerfSample sample(sample_name);
+      auto sample_name = "dispatch_command:" + std::string{def->name};
+      PerfSample sample(sample_name.c_str());
       client->perf_sample = &sample;
       SCOPE_EXIT {
         client->perf_sample = nullptr;
@@ -103,7 +99,7 @@ bool dispatch_command(
       // path is.
       auto rendered = command.render();
 
-      def->func(client, rendered);
+      def->handler(client, rendered);
 
       if (sample.finish()) {
         sample.add_meta("args", std::move(rendered));
