@@ -129,13 +129,12 @@ static void cmd_debug_set_subscriptions_paused(
     auto sub_iter = client->subscriptions.find(it.first);
     if (sub_iter == client->subscriptions.end()) {
       client->sendErrorResponse(
-          "this client does not have a subscription named '%s'",
-          it.first.c_str());
+          "this client does not have a subscription named '{}'", it.first);
       return;
     }
     if (!it.second.isBool()) {
       client->sendErrorResponse(
-          "new value for subscription '%s' not a boolean", it.first.c_str());
+          "new value for subscription '{}' not a boolean", it.first);
       return;
     }
   }

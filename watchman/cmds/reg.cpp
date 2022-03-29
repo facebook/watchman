@@ -74,13 +74,13 @@ bool dispatch_command(
 
     if (!poisoned_reason.rlock()->empty() &&
         !def->flags.contains(CMD_POISON_IMMUNE)) {
-      client->sendErrorResponse("%s", poisoned_reason.rlock()->c_str());
+      client->sendErrorResponse(*poisoned_reason.rlock());
       return false;
     }
 
     if (!client->client_is_owner && !def->flags.contains(CMD_ALLOW_ANY_USER)) {
       client->sendErrorResponse(
-          "you must be the process owner to execute '%s'", def->name);
+          "you must be the process owner to execute '{}'", def->name);
       return false;
     }
 
@@ -118,8 +118,7 @@ bool dispatch_command(
 
     return true;
   } catch (const std::exception& e) {
-    auto what = folly::exceptionStr(e);
-    client->sendErrorResponse("%s", what.c_str());
+    client->sendErrorResponse(folly::exceptionStr(e));
     return false;
   }
 }

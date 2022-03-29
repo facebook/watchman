@@ -358,18 +358,18 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
       auto sub_iter = client->subscriptions.find(sub_name_str);
       if (sub_iter == client->subscriptions.end()) {
         client->sendErrorResponse(
-            "this client does not have a subscription named '%s'",
-            sub_name_str.c_str());
+            "this client does not have a subscription named '{}'",
+            sub_name_str);
         return;
       }
       auto& sub = sub_iter->second;
       if (sub->root != root) {
         client->sendErrorResponse(
-            "subscription '%s' is on root '%s' different from command root "
-            "'%s'",
-            sub_name_str.c_str(),
-            sub->root->root_path.c_str(),
-            root->root_path.c_str());
+            "subscription '{}' is on root '{}' different from command root "
+            "'{}'",
+            sub_name_str,
+            sub->root->root_path,
+            root->root_path);
         return;
       }
 

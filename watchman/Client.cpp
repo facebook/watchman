@@ -64,17 +64,12 @@ void Client::enqueueResponse(json_ref resp) {
   responses.emplace_back(std::move(resp));
 }
 
-void Client::sendErrorResponse(const char* fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  auto errorText = w_string::vprintf(fmt, ap);
-  va_end(ap);
-
+void Client::sendErrorResponse(std::string_view formatted) {
   auto resp = make_response();
-  resp.set("error", w_string_to_json(errorText));
+  resp.set("error", typed_string_to_json(formatted));
 
   if (perf_sample) {
-    perf_sample->add_meta("error", w_string_to_json(errorText));
+    perf_sample->add_meta("error", typed_string_to_json(formatted));
   }
 
   if (current_command) {
@@ -84,10 +79,10 @@ void Client::sendErrorResponse(const char* fmt, ...) {
         "send_error_response: ",
         command,
         ", failed: ",
-        errorText,
+        formatted,
         "\n");
   } else {
-    watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
+    watchman::log(watchman::ERR, "send_error_response: ", formatted, "\n");
   }
 
   enqueueResponse(std::move(resp));
@@ -205,7 +200,7 @@ void UserClient::clientThread() noexcept {
           goto disconnected;
         }
         sendErrorResponse(
-            "invalid json at position %d: %s", jerr.position, jerr.text);
+            "invalid json at position {}: {}", jerr.position, jerr.text);
         logf(ERR, "invalid data from client: {}\n", jerr.text);
 
         goto disconnected;

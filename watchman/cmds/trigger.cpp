@@ -119,7 +119,7 @@ static json_ref build_legacy_trigger(
   for (i = 0; i < n; i++) {
     auto ele = args.at(i + next_arg);
     if (!ele.isString()) {
-      client->sendErrorResponse("expected argument %d to be a string", i);
+      client->sendErrorResponse("expected argument {} to be a string", i);
       return nullptr;
     }
     json_array_append(command, ele);
