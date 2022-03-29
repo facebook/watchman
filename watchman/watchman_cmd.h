@@ -15,6 +15,7 @@
 
 namespace watchman {
 class Client;
+struct Command;
 class Root;
 } // namespace watchman
 
@@ -36,14 +37,14 @@ bool find_project_root(
     w_string_piece& relpath);
 
 void preprocess_command(
-    json_ref& args,
+    watchman::Command& command,
     watchman::PduType output_pdu,
     uint32_t output_capabilities);
 bool dispatch_command(
     watchman::Client* client,
-    const json_ref& args,
+    const watchman::Command& command,
     watchman::CommandFlags mode);
-bool try_client_mode_command(const json_ref& cmd, bool pretty);
+bool try_client_mode_command(const watchman::Command& command, bool pretty);
 
 // Resolve the root. Failure will throw a RootResolveError exception
 std::shared_ptr<watchman::Root> resolveRoot(

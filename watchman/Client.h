@@ -18,6 +18,7 @@
 namespace watchman {
 
 class ClientStateAssertion;
+struct Command;
 class Root;
 struct Query;
 struct QueryResult;
@@ -43,9 +44,12 @@ class Client : public std::enable_shared_from_this<Client> {
   PduType pdu_type;
   uint32_t capabilities;
 
-  // The command currently being processed by dispatch_command
-  json_ref current_command;
-  PerfSample* perf_sample{nullptr};
+  // The command currently being processed by dispatch_command. Only set by the
+  // client thread.
+  const Command* current_command = nullptr;
+  // The PerfSample wrapping the current command's execution. Only set by the
+  // client thread.
+  PerfSample* perf_sample = nullptr;
 
   // Queue of things to send to the client.
   std::deque<json_ref> responses;

@@ -52,8 +52,6 @@ void add_root_warnings_to_response(
 
 std::shared_ptr<Root>
 doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
-  const char* root_name;
-
   // Assume root is first element
   size_t root_index = 1;
   if (args.array().size() <= root_index) {
@@ -61,7 +59,7 @@ doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
   }
   const auto& ele = args.at(root_index);
 
-  root_name = json_string_value(ele);
+  const char* root_name = json_string_value(ele);
   if (!root_name) {
     throw RootResolveError(
         "invalid value for argument ",

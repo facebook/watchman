@@ -10,12 +10,11 @@
 
 using namespace watchman;
 
-bool try_client_mode_command(const json_ref& cmd, bool pretty) {
+bool try_client_mode_command(const Command& command, bool pretty) {
   auto client = std::make_shared<watchman::Client>();
-  bool res;
-
   client->client_mode = true;
-  res = dispatch_command(client.get(), cmd, CMD_CLIENT);
+
+  bool res = dispatch_command(client.get(), command, CMD_CLIENT);
 
   if (!client->responses.empty()) {
     json_dumpf(

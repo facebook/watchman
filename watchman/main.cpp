@@ -17,6 +17,7 @@
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
+#include "watchman/Command.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
@@ -800,7 +801,7 @@ static bool should_start(int err) {
   return false;
 }
 
-static bool try_command(json_t* cmd, int timeout) {
+static bool try_command(const Command& command, int timeout) {
   auto stream = w_stm_connect(timeout * 1000);
   if (!stream) {
     return false;
@@ -811,7 +812,7 @@ static bool try_command(json_t* cmd, int timeout) {
   // explicitly at least once before!
   stream->setNonBlock(false);
 
-  if (!cmd) {
+  if (!command.args) {
     return true;
   }
 
@@ -819,7 +820,7 @@ static bool try_command(json_t* cmd, int timeout) {
 
   // Send command
   if (!buffer.pduEncodeToStream(
-          server_pdu, server_capabilities, cmd, stream.get())) {
+          server_pdu, server_capabilities, command.args, stream.get())) {
     int err = errno;
     logf(ERR, "error sending PDU to server\n");
     errno = err;
@@ -872,53 +873,56 @@ static void parse_cmdline(int* argcp, char*** argvp) {
   }
 }
 
-static json_ref build_command(int argc, char** argv) {
-  // Read blob from stdin
+static Command build_command_from_stdin() {
+  auto err = json_error_t();
+  PduBuffer buf;
+
+  auto cmd = buf.decodeNext(w_stm_stdin(), &err);
+
+  if (buf.pdu_type == is_bser) {
+    // If they used bser for the input, select bser for output
+    // unless they explicitly requested something else
+    if (flags.server_encoding.empty()) {
+      server_pdu = is_bser;
+    }
+    if (flags.output_encoding.empty()) {
+      output_pdu = is_bser;
+    }
+  } else if (buf.pdu_type == is_bser_v2) {
+    // If they used bser v2 for the input, select bser v2 for output
+    // unless they explicitly requested something else
+    if (flags.server_encoding.empty()) {
+      server_pdu = is_bser_v2;
+    }
+    if (flags.output_encoding.empty()) {
+      output_pdu = is_bser_v2;
+    }
+  }
+
+  if (!cmd) {
+    fprintf(
+        stderr,
+        "failed to parse command from stdin: "
+        "line %d, column %d, position %d: %s\n",
+        err.line,
+        err.column,
+        err.position,
+        err.text);
+    exit(1);
+  }
+  return Command{std::move(cmd)};
+}
+
+static Command build_command(int argc, char** argv) {
   if (flags.json_input_arg) {
-    auto err = json_error_t();
-    PduBuffer buf;
-
-    auto cmd = buf.decodeNext(w_stm_stdin(), &err);
-
-    if (buf.pdu_type == is_bser) {
-      // If they used bser for the input, select bser for output
-      // unless they explicitly requested something else
-      if (flags.server_encoding.empty()) {
-        server_pdu = is_bser;
-      }
-      if (flags.output_encoding.empty()) {
-        output_pdu = is_bser;
-      }
-    } else if (buf.pdu_type == is_bser_v2) {
-      // If they used bser v2 for the input, select bser v2 for output
-      // unless they explicitly requested something else
-      if (flags.server_encoding.empty()) {
-        server_pdu = is_bser_v2;
-      }
-      if (flags.output_encoding.empty()) {
-        output_pdu = is_bser_v2;
-      }
-    }
-
-    if (!cmd) {
-      fprintf(
-          stderr,
-          "failed to parse command from stdin: "
-          "line %d, column %d, position %d: %s\n",
-          err.line,
-          err.column,
-          err.position,
-          err.text);
-      exit(1);
-    }
-    return cmd;
+    return build_command_from_stdin();
   }
 
   // Special case: no arguments means that we just want
   // to verify that the service is up, starting it if
   // needed
   if (argc == 0) {
-    return nullptr;
+    return Command{nullptr};
   }
 
   auto cmd = json_array();
@@ -926,7 +930,7 @@ static json_ref build_command(int argc, char** argv) {
     json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
-  return cmd;
+  return Command{std::move(cmd)};
 }
 
 static SpawnResult try_spawn_watchman() {

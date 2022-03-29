@@ -9,6 +9,7 @@
 
 #include <folly/MapUtil.h>
 
+#include "watchman/Command.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
 #include "watchman/QueryableView.h"
@@ -77,7 +78,7 @@ void Client::sendErrorResponse(const char* fmt, ...) {
   }
 
   if (current_command) {
-    auto command = json_dumps(current_command, 0);
+    auto command = json_dumps(current_command->args, 0);
     watchman::log(
         watchman::ERR,
         "send_error_response: ",
@@ -212,7 +213,7 @@ void UserClient::clientThread() noexcept {
         pdu_type = reader.pdu_type;
         capabilities = reader.capabilities;
         status_.transitionTo(ClientStatus::DISPATCHING_COMMAND);
-        dispatch_command(this, request, CMD_DAEMON);
+        dispatch_command(this, Command{request}, CMD_DAEMON);
       }
     }
 

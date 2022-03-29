@@ -9,6 +9,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
 #include "watchman/Client.h"
+#include "watchman/Command.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
@@ -22,16 +23,14 @@
 using namespace watchman;
 
 namespace {
-command_handler_def* lookup(const json_ref& args, CommandFlags mode) {
-  const char* cmd_name;
-
-  if (!json_array_size(args)) {
+command_handler_def* lookup(const Command& command, CommandFlags mode) {
+  if (!json_array_size(command.args)) {
     throw CommandValidationError(
         "invalid command (expected an array with some elements!)");
   }
 
-  const auto jstr = json_array_get(args, 0);
-  cmd_name = json_string_value(jstr);
+  const auto jstr = json_array_get(command.args, 0);
+  const char* cmd_name = json_string_value(jstr);
   if (!cmd_name) {
     throw CommandValidationError(
         "invalid command: expected element 0 to be the command name");
@@ -42,13 +41,11 @@ command_handler_def* lookup(const json_ref& args, CommandFlags mode) {
 } // namespace
 
 void preprocess_command(
-    json_ref& args,
+    Command& command,
     PduType output_pdu,
     uint32_t output_capabilities) {
-  command_handler_def* def;
-
   try {
-    def = lookup(args, CommandFlags{});
+    command_handler_def* def = lookup(command, CommandFlags{});
 
     if (!def) {
       // Nothing known about it, pass the command on anyway for forwards
@@ -57,7 +54,7 @@ void preprocess_command(
     }
 
     if (def->cli_validate) {
-      def->cli_validate(args);
+      def->cli_validate(command.args);
     }
   } catch (const std::exception& exc) {
     PduBuffer jr;
@@ -72,19 +69,22 @@ void preprocess_command(
   }
 }
 
-bool dispatch_command(Client* client, const json_ref& args, CommandFlags mode) {
+bool dispatch_command(
+    Client* client,
+    const Command& command,
+    CommandFlags mode) {
   command_handler_def* def;
   char sample_name[128];
 
   // Stash a reference to the current command to make it easier to log
   // the command context in some of the error paths
-  client->current_command = args;
+  client->current_command = &command;
   SCOPE_EXIT {
     client->current_command = nullptr;
   };
 
   try {
-    def = lookup(args, mode);
+    def = lookup(command, mode);
     if (!def) {
       client->sendErrorResponse("Unknown command");
       return false;
@@ -116,10 +116,10 @@ bool dispatch_command(Client* client, const json_ref& args, CommandFlags mode) {
       sample.set_wall_time_thresh(
           cfg_get_double("slow_command_log_threshold_seconds", 1.0));
 
-      def->func(client, args);
+      def->func(client, command.args);
 
       if (sample.finish()) {
-        sample.add_meta("args", json_ref(args));
+        sample.add_meta("args", json_ref(command.args));
         sample.add_meta(
             "client",
             json_object(
