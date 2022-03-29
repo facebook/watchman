@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Client.h"
+#include "watchman/Command.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/LogConfig.h"
@@ -16,14 +17,14 @@
 
 using namespace watchman;
 
-void w_cmd_realpath_root(json_ref& args) {
-  const char* path;
+void w_cmd_realpath_root(Command& command) {
+  auto& args = command.args();
 
-  if (json_array_size(args) < 2) {
+  if (json_array_size(args) < 1) {
     throw CommandValidationError("wrong number of arguments");
   }
 
-  path = json_string_value(json_array_get(args, 1));
+  const char* path = json_string_value(json_array_get(args, 0));
   if (!path) {
     throw CommandValidationError(
         "second argument must be a string expressing the path to the watch");
@@ -31,7 +32,7 @@ void w_cmd_realpath_root(json_ref& args) {
 
   try {
     auto resolved = realPath(path);
-    args.array()[1] = w_string_to_json(resolved);
+    args.array()[0] = w_string_to_json(resolved);
   } catch (const std::exception& exc) {
     throw CommandValidationError(
         "Could not resolve ",

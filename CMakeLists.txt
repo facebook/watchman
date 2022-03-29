@@ -581,6 +581,7 @@ list(APPEND watchman_sources
 watchman/ChildProcess.cpp
 watchman/Client.cpp
 watchman/Clock.cpp
+watchman/Command.cpp
 watchman/CommandRegistry.cpp
 watchman/ContentHash.cpp
 watchman/CookieSync.cpp

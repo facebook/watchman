@@ -812,7 +812,7 @@ static bool try_command(const Command& command, int timeout) {
   // explicitly at least once before!
   stream->setNonBlock(false);
 
-  if (!command.args) {
+  if (command.isNullCommand()) {
     return true;
   }
 
@@ -820,7 +820,7 @@ static bool try_command(const Command& command, int timeout) {
 
   // Send command
   if (!buffer.pduEncodeToStream(
-          server_pdu, server_capabilities, command.args, stream.get())) {
+          server_pdu, server_capabilities, command.render(), stream.get())) {
     int err = errno;
     logf(ERR, "error sending PDU to server\n");
     errno = err;
@@ -910,7 +910,7 @@ static Command build_command_from_stdin() {
         err.text);
     exit(1);
   }
-  return Command{std::move(cmd)};
+  return Command::parse(std::move(cmd));
 }
 
 static Command build_command(int argc, char** argv) {
@@ -920,17 +920,20 @@ static Command build_command(int argc, char** argv) {
 
   // Special case: no arguments means that we just want
   // to verify that the service is up, starting it if
-  // needed
+  // needed.
+  // TODO: Add telemetry. Does anyone actually do this?
   if (argc == 0) {
     return Command{nullptr};
   }
 
-  auto cmd = json_array();
-  for (int i = 0; i < argc; i++) {
-    json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
+  w_string name = argv[0];
+  auto args = json_array();
+  for (int i = 1; i < argc; i++) {
+    json_array_append_new(
+        args, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
-  return Command{std::move(cmd)};
+  return Command{std::move(name), std::move(args)};
 }
 
 static SpawnResult try_spawn_watchman() {

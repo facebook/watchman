@@ -18,7 +18,7 @@
 namespace watchman {
 
 class ClientStateAssertion;
-struct Command;
+class Command;
 class Root;
 struct Query;
 struct QueryResult;

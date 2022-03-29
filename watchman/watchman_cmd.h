@@ -15,14 +15,14 @@
 
 namespace watchman {
 class Client;
-struct Command;
+class Command;
 class Root;
 } // namespace watchman
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
 // argument list
-void w_cmd_realpath_root(json_ref& args);
+void w_cmd_realpath_root(watchman::Command& command);
 
 // Try to find a project root that contains the path `resolved`. If found,
 // modify `resolved` to hold the path to the root project and return true.

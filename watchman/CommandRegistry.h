@@ -19,12 +19,13 @@ class json_ref;
 namespace watchman {
 
 class Client;
+class Command;
 
 using command_func = void (*)(Client* client, const json_ref& args);
 
 // Should throw an exception (ideally CommandValidationError) if validation
 // fails
-using cli_cmd_validate_func = void (*)(json_ref& args);
+using cli_cmd_validate_func = void (*)(Command& command);
 
 struct CommandFlags : OptionSet<CommandFlags, uint8_t> {};
 

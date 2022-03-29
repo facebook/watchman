@@ -22,30 +22,12 @@
 
 using namespace watchman;
 
-namespace {
-command_handler_def* lookup(const Command& command, CommandFlags mode) {
-  if (!json_array_size(command.args)) {
-    throw CommandValidationError(
-        "invalid command (expected an array with some elements!)");
-  }
-
-  const auto jstr = json_array_get(command.args, 0);
-  const char* cmd_name = json_string_value(jstr);
-  if (!cmd_name) {
-    throw CommandValidationError(
-        "invalid command: expected element 0 to be the command name");
-  }
-
-  return lookup_command(json_to_w_string(jstr).view(), mode);
-}
-} // namespace
-
 void preprocess_command(
     Command& command,
     PduType output_pdu,
     uint32_t output_capabilities) {
   try {
-    command_handler_def* def = lookup(command, CommandFlags{});
+    command_handler_def* def = lookup_command(command.name(), CommandFlags{});
 
     if (!def) {
       // Nothing known about it, pass the command on anyway for forwards
@@ -54,7 +36,7 @@ void preprocess_command(
     }
 
     if (def->cli_validate) {
-      def->cli_validate(command.args);
+      def->cli_validate(command);
     }
   } catch (const std::exception& exc) {
     PduBuffer jr;
@@ -84,7 +66,7 @@ bool dispatch_command(
   };
 
   try {
-    def = lookup(command, mode);
+    def = lookup_command(command.name(), mode);
     if (!def) {
       client->sendErrorResponse("Unknown command");
       return false;
@@ -116,10 +98,15 @@ bool dispatch_command(
       sample.set_wall_time_thresh(
           cfg_get_double("slow_command_log_threshold_seconds", 1.0));
 
-      def->func(client, command.args);
+      // TODO: It's silly to convert a Command back into JSON after parsing it.
+      // Let's change `func` to take a Command after Command knows what a root
+      // path is.
+      auto rendered = command.render();
+
+      def->func(client, rendered);
 
       if (sample.finish()) {
-        sample.add_meta("args", json_ref(command.args));
+        sample.add_meta("args", std::move(rendered));
         sample.add_meta(
             "client",
             json_object(
