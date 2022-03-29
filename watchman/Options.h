@@ -21,8 +21,6 @@ struct Flags {
   int show_version = 0;
   std::string named_pipe_path;
   std::string unix_sock_name;
-  int enable_tcp = 0;
-  std::string tcp_host;
   std::string pid_file;
   int persistent = 0;
   int dont_save_state = 0;

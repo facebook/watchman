@@ -70,54 +70,6 @@ void w_listener_prep_inetd() {
 
 #endif
 
-static FileDescriptor get_listener_tcp_socket() {
-  FileDescriptor listener_fd;
-
-  folly::SocketAddress addr;
-  addr.setFromHostPort(
-      Configuration().getString("tcp-listener-address", nullptr));
-
-  listener_fd = FileDescriptor(
-      ::socket(addr.getFamily(), SOCK_STREAM, 0),
-      "socket() for TCP socket",
-      FileDescriptor::FDType::Socket);
-
-  int one = 1;
-  ::setsockopt(
-      listener_fd.system_handle(),
-      SOL_SOCKET,
-      SO_REUSEADDR,
-      (char*)&one,
-      sizeof(one));
-  // Most of our TCP transactions are quite small, so this seems appropriate
-  ::setsockopt(
-      listener_fd.system_handle(),
-      IPPROTO_TCP,
-      TCP_NODELAY,
-      (char*)&one,
-      sizeof(one));
-
-  sockaddr_storage storage;
-  auto addrLen = addr.getAddress(&storage);
-
-  folly::checkUnixError(
-      ::bind(listener_fd.system_handle(), (struct sockaddr*)&storage, addrLen),
-      "bind to ",
-      addr.getAddressStr(),
-      "failed");
-
-  folly::checkUnixError(
-      ::listen(listener_fd.system_handle(), 200),
-      "listen on ",
-      addr.getAddressStr(),
-      "failed");
-
-  addr.setFromLocalAddress(folly::NetworkSocket(listener_fd.system_handle()));
-  log(ERR, "Started TCP listener on ", addr.describe(), "\n");
-
-  return listener_fd;
-}
-
 static FileDescriptor get_listener_unix_domain_socket(const char* path) {
 #ifndef _WIN32
   mode_t perms = cfg_get_perms(
@@ -541,10 +493,6 @@ bool w_start_listener() {
 
   if (listener_fd && !disable_unix_socket) {
     unix_loop = AcceptLoop("unix-listener", std::move(listener_fd));
-  }
-
-  if (Configuration().getBool("tcp-listener-enable", false)) {
-    tcp_loop = AcceptLoop("tcp-listener", get_listener_tcp_socket());
   }
 
   if (Configuration().getBool("enable-sanity-check", true)) {
