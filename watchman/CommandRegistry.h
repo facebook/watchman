@@ -44,9 +44,11 @@ struct CommandDefinition {
    *
    * This is not thread-safe and should only be invoked from main()
    */
-  static CommandDefinition* lookup(std::string_view name, CommandFlags mode);
+  static const CommandDefinition* lookup(
+      std::string_view name,
+      CommandFlags mode);
 
-  static std::vector<CommandDefinition*> getAll();
+  static std::vector<const CommandDefinition*> getAll();
 
   void register_();
 };

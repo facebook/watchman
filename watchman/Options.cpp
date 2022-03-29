@@ -445,7 +445,9 @@ void parseOptions(int* argcp, char*** argvp, char*** daemon_argv) {
 void print_command_list_for_help(FILE* where) {
   auto defs = CommandDefinition::getAll();
   std::sort(
-      defs.begin(), defs.end(), [](CommandDefinition* A, CommandDefinition* B) {
+      defs.begin(),
+      defs.end(),
+      [](const CommandDefinition* A, const CommandDefinition* B) {
         return A->name < B->name;
       });
 

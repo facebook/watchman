@@ -16,7 +16,7 @@ namespace watchman {
 namespace {
 
 struct CommandRegistry {
-  std::unordered_map<std::string, CommandDefinition*> commands;
+  std::unordered_map<std::string, const CommandDefinition*> commands;
   std::unordered_set<std::string> capabilities;
 
   CommandRegistry() {
@@ -33,7 +33,7 @@ struct CommandRegistry {
 
 } // namespace
 
-CommandDefinition* CommandDefinition::lookup(
+const CommandDefinition* CommandDefinition::lookup(
     std::string_view name,
     CommandFlags mode) {
   auto& reg = CommandRegistry::get();
@@ -57,8 +57,8 @@ CommandDefinition* CommandDefinition::lookup(
   return nullptr;
 }
 
-std::vector<CommandDefinition*> CommandDefinition::getAll() {
-  std::vector<CommandDefinition*> defs;
+std::vector<const CommandDefinition*> CommandDefinition::getAll() {
+  std::vector<const CommandDefinition*> defs;
   for (auto& it : CommandRegistry::get().commands) {
     defs.emplace_back(it.second);
   }
