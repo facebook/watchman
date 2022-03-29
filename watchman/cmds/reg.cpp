@@ -27,8 +27,7 @@ void preprocess_command(
     PduType output_pdu,
     uint32_t output_capabilities) {
   try {
-    CommandDefinition* def = lookup_command(command.name(), CommandFlags{});
-
+    auto* def = CommandDefinition::lookup(command.name(), CommandFlags{});
     if (!def) {
       // Nothing known about it, pass the command on anyway for forwards
       // compatibility
@@ -63,7 +62,7 @@ bool dispatch_command(
   };
 
   try {
-    CommandDefinition* def = lookup_command(command.name(), mode);
+    auto* def = CommandDefinition::lookup(command.name(), mode);
     if (!def) {
       client->sendErrorResponse("Unknown command");
       return false;

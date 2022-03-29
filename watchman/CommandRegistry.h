@@ -38,24 +38,28 @@ struct CommandDefinition {
   CommandHandler handler;
   CommandFlags flags;
   CommandValidator validator;
+
+  /**
+   * Provide a way to query (and eventually modify) command line arguments
+   *
+   * This is not thread-safe and should only be invoked from main()
+   */
+  static CommandDefinition* lookup(std::string_view name, CommandFlags mode);
+
+  static std::vector<CommandDefinition*> getAll();
+
+  void register_();
 };
 
-void register_command(CommandDefinition& defs);
+void capability_register(const char* name);
+bool capability_supported(std::string_view name);
+json_ref capability_get_list();
 
-/**
- * Provide a way to query (and eventually modify) command line arguments
- *
- * This is not thread-safe and should only be invoked from main()
- */
-CommandDefinition* lookup_command(std::string_view cmd_name, CommandFlags mode);
-
-std::vector<CommandDefinition*> get_all_commands();
-
-#define W_CMD_REG_1(symbol, name, func, flags, clivalidate)                    \
-  static w_ctor_fn_type(symbol) {                                              \
-    static ::watchman::CommandDefinition d = {name, func, flags, clivalidate}; \
-    ::watchman::register_command(d);                                           \
-  }                                                                            \
+#define W_CMD_REG_1(symbol, name, func, flags, clivalidate)                 \
+  static w_ctor_fn_type(symbol) {                                           \
+    static ::watchman::CommandDefinition d{name, func, flags, clivalidate}; \
+    d.register_();                                                          \
+  }                                                                         \
   w_ctor_fn_reg(symbol)
 
 #define W_CMD_REG(name, func, flags, clivalidate) \
@@ -68,10 +72,6 @@ std::vector<CommandDefinition*> get_all_commands();
   w_ctor_fn_reg(symbol)
 
 #define W_CAP_REG(name) W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
-
-void capability_register(const char* name);
-bool capability_supported(std::string_view name);
-json_ref capability_get_list();
 
 } // namespace watchman
 
