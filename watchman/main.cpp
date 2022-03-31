@@ -470,6 +470,14 @@ static SpawnResult spawn_via_launchd() {
 
   compute_file_name(flags.pid_file, computeUserName(), "pid", "pidfile");
 
+  const char* path_env =
+      Configuration().getString("subprocess_path_env", getenv("PATH"));
+  // If subprocess_path_env is not set and PATH is not in the environment,
+  // set the path to the empty string.
+  if (path_env == nullptr) {
+    path_env = "";
+  }
+
   auto plist_content = folly::to<std::string>(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
@@ -515,9 +523,9 @@ static SpawnResult spawn_via_launchd() {
       "    <key>EnvironmentVariables</key>\n"
       "    <dict>\n"
       "        <key>PATH</key>\n"
-      "        <string><![CDATA[",
-      getenv("PATH"),
-      "]]></string>\n"
+      "        <string>",
+      path_env,
+      "</string>\n"
       "    </dict>\n"
       "    <key>ProcessType</key>\n"
       "    <string>Interactive</string>\n"
