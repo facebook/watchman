@@ -169,7 +169,12 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
 
-        self.watchmanCommand("subscribe", root, "myname", {"fields": ["name"]})
+        self.watchmanCommand(
+            "subscribe",
+            root,
+            "myname",
+            {"fields": ["name"], "always_include_directories": True},
+        )
 
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])

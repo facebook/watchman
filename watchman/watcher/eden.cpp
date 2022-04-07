@@ -47,6 +47,8 @@ using facebook::eden::FileInformationOrError;
 using facebook::eden::Glob;
 using facebook::eden::GlobParams;
 using facebook::eden::JournalPosition;
+using facebook::eden::ScmFileStatus;
+using facebook::eden::ScmStatus;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
 using facebook::eden::SyncBehavior;
@@ -699,15 +701,6 @@ std::shared_ptr<apache::thrift::RequestChannel> makeThriftChannel(
 } // namespace
 
 class EdenView final : public QueryableView {
-  w_string rootPath_;
-  std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
-  folly::EventBase subscriberEventBase_;
-  JournalPosition lastCookiePosition_;
-  std::string mountPoint_;
-  folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
-  bool splitGlobPattern_;
-  unsigned int thresholdForFreshInstance_;
-
  public:
   explicit EdenView(const w_string& root_path, const Configuration& config)
       : QueryableView{root_path, /*requiresCrawl=*/false},
@@ -811,8 +804,7 @@ class EdenView final : public QueryableView {
             (delta.fromPosition()->snapshotHash() !=
              delta.toPosition()->snapshotHash());
 
-        auto scm = getSCM();
-        if (scm && didChangeCommits) {
+        if (didChangeCommits && getSCM()) {
           // Check whether they checked out a new commit or reset the commit to
           // a different hash.  We interrogate source control to discover
           // the set of changed files between those hashes, and then
@@ -844,10 +836,8 @@ class EdenView final : public QueryableView {
 
             std::vector<std::string> commits{
                 std::move(fromHash), std::move(toHash)};
-            changedBetweenCommits = scm->getFilesChangedBetweenCommits(
-                std::move(commits),
-                /*requestId*/ nullptr,
-                ctx->query->alwaysIncludeDirectories);
+            changedBetweenCommits = getFilesChangedBetweenCommits(
+                std::move(commits), ctx->query->alwaysIncludeDirectories);
           } else {
             std::vector<std::string> commits;
             commits.reserve(delta.snapshotTransitions()->size());
@@ -860,10 +850,8 @@ class EdenView final : public QueryableView {
                 " we changed commit hashes ",
                 folly::join(" -> ", commits),
                 "\n");
-            changedBetweenCommits = scm->getFilesChangedBetweenCommits(
-                std::move(commits),
-                /*requestId*/ nullptr,
-                ctx->query->alwaysIncludeDirectories);
+            changedBetweenCommits = getFilesChangedBetweenCommits(
+                std::move(commits), ctx->query->alwaysIncludeDirectories);
           }
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {
@@ -1307,6 +1295,113 @@ class EdenView final : public QueryableView {
   folly::SemiFuture<folly::Unit> waitUntilReadyToQuery() override {
     return subscribeReadyPromise_.getSemiFuture();
   }
+
+ private:
+  // Compute the set of paths that have changed across all of the transitions
+  // between the list of given commits.
+  //
+  // For example, if commits is [A, B, C], then this accumulates the changes
+  // between [A, B] and [B, C] into one StatusResult.
+  //
+  // This is purely a history operation and does not consider the working copy
+  // status.
+  //
+  // This will  also report all directories changed.
+  SCM::StatusResult getFilesChangedBetweenCommits(
+      std::vector<std::string> commits,
+      bool alwaysIncludeDirectories) const {
+    if (alwaysIncludeDirectories) {
+      // Very few clients are passing this, let's pessimize them by falling
+      // back to the SCM path.
+      //
+      // TODO(xavierd): once EdenFS starts providing the set of files changed
+      // between journal clocks these clients will be fixed for good.
+      return getSCM()->getFilesChangedBetweenCommits(
+          std::move(commits), nullptr, alwaysIncludeDirectories);
+    }
+
+    auto client = getEdenClient(thriftChannel_);
+
+    std::vector<std::tuple<std::string, std::string>> commitsDiffed;
+    std::vector<folly::SemiFuture<ScmStatus>> futs;
+    for (auto i = 0ul; i + 1 < commits.size(); i++) {
+      auto& commitFrom = commits[i];
+      auto& commitTo = commits[i + 1];
+
+      if (commitFrom == commitTo) {
+        // Older versions of EdenFS could report "commit transitions" from A to
+        // A, in which case we shouldn't ask for the difference.
+        continue;
+      }
+
+      auto fut = client->semifuture_getScmStatusBetweenRevisions(
+          std::string{rootPath_.view()}, commitFrom, commitTo);
+      futs.push_back(std::move(fut));
+
+      commitsDiffed.emplace_back(commitFrom, commitTo);
+    }
+
+    return folly::collect(futs)
+        .deferValue([&commitsDiffed](std::vector<ScmStatus> collectedRes) {
+          // -1 = removed
+          // 0 = changed
+          // 1 = added
+          std::unordered_map<std::string, int> byFile;
+
+          for (auto i = 0ul; i < collectedRes.size(); i++) {
+            const auto& status = collectedRes[i];
+            if (!status.errors()->empty()) {
+              const auto& [commitFrom, commitTo] = commitsDiffed[i];
+              throw SCMError(
+                  "Failed to get status betwen ",
+                  commitFrom,
+                  " and ",
+                  commitTo);
+            }
+
+            for (const auto& [name, file_status] : *status.entries()) {
+              switch (file_status) {
+                case ScmFileStatus::ADDED:
+                  byFile[name] += 1;
+                  break;
+                case ScmFileStatus::MODIFIED:
+                  byFile[name];
+                  break;
+                case ScmFileStatus::REMOVED:
+                  byFile[name] -= 1;
+                  break;
+                default:
+                  break;
+              }
+            }
+          }
+
+          SCM::StatusResult res;
+
+          for (auto& [name, count] : byFile) {
+            if (count > 0) {
+              res.addedFiles.emplace_back(name);
+            } else if (count == 0) {
+              res.changedFiles.emplace_back(name);
+              continue;
+            } else {
+              res.removedFiles.emplace_back(name);
+            }
+          }
+
+          return res;
+        })
+        .get();
+  }
+
+  w_string rootPath_;
+  std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
+  folly::EventBase subscriberEventBase_;
+  JournalPosition lastCookiePosition_;
+  std::string mountPoint_;
+  folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
+  bool splitGlobPattern_;
+  unsigned int thresholdForFreshInstance_;
 };
 
 #ifdef _WIN32

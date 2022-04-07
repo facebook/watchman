@@ -1379,10 +1379,11 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
-   * DEPRECATED
-   *
    * Computes the status between two specified revisions.
    * This does not care about the state of the working copy.
+   *
+   * This is used by Watchman and which will be deprecated once EdenFS provides
+   * an API to get the set of files changed between 2 journal clocks.
    */
   ScmStatus getScmStatusBetweenRevisions(
     1: PathString mountPoint,
