@@ -18,7 +18,6 @@
 #include "watchman/query/QueryContext.h"
 #include "watchman/query/eval.h"
 #include "watchman/root/Root.h"
-#include "watchman/scm/SCM.h"
 #include "watchman/thirdparty/wildmatch/wildmatch.h"
 #include "watchman/watcher/Watcher.h"
 #include "watchman/watchman_file.h"
@@ -469,7 +468,7 @@ InMemoryView::InMemoryView(
     const w_string& root_path,
     Configuration config,
     std::shared_ptr<Watcher> watcher)
-    : QueryableView{/*requiresRecrawl=*/true},
+    : QueryableView{root_path, /*requiresCrawl=*/true},
       fileSystem_{fileSystem},
       config_(std::move(config)),
       view_(folly::in_place, root_path),
@@ -487,8 +486,7 @@ InMemoryView::InMemoryView(
       maxFilesToWarmInContentCache_(
           size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
       syncContentCacheWarming_(
-          config_.getBool("content_hash_warm_wait_before_settle", false)),
-      scm_(SCM::scmForPath(root_path)) {
+          config_.getBool("content_hash_warm_wait_before_settle", false)) {
   json_int_t in_memory_view_ring_log_size =
       config_.getInt("in_memory_view_ring_log_size", 0);
   if (in_memory_view_ring_log_size) {
@@ -1179,10 +1177,6 @@ void InMemoryView::clearViewDebugInfo() {
   if (processedPaths_) {
     processedPaths_->clear();
   }
-}
-
-SCM* InMemoryView::getSCM() const {
-  return scm_.get();
 }
 
 void InMemoryView::warmContentCache() {

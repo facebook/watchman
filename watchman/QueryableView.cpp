@@ -7,8 +7,12 @@
 
 #include "watchman/QueryableView.h"
 #include "watchman/Errors.h"
+#include "watchman/scm/SCM.h"
 
 namespace watchman {
+
+QueryableView::QueryableView(const w_string& root_path, bool requiresCrawl)
+    : requiresCrawl{requiresCrawl}, scm_(SCM::scmForPath(root_path)) {}
 
 QueryableView::~QueryableView() = default;
 

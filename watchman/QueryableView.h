@@ -28,7 +28,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
    */
   const bool requiresCrawl;
 
-  explicit QueryableView(bool requiresCrawl) : requiresCrawl{requiresCrawl} {}
+  QueryableView(const w_string& root_path, bool requiresCrawl);
   virtual ~QueryableView();
 
   /**
@@ -87,6 +87,12 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   waitUntilReadyToQuery() = 0;
 
   // Return the SCM detected for this watched root
-  virtual SCM* getSCM() const = 0;
+  SCM* getSCM() const {
+    return scm_.get();
+  }
+
+ private:
+  // The source control system that we detected during initialization
+  std::unique_ptr<SCM> scm_;
 };
 } // namespace watchman

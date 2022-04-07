@@ -701,8 +701,6 @@ std::shared_ptr<apache::thrift::RequestChannel> makeThriftChannel(
 class EdenView final : public QueryableView {
   w_string rootPath_;
   std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
-  // The source control system that we detected during initialization
-  mutable std::unique_ptr<SCM> scm_;
   folly::EventBase subscriberEventBase_;
   JournalPosition lastCookiePosition_;
   std::string mountPoint_;
@@ -712,12 +710,11 @@ class EdenView final : public QueryableView {
 
  public:
   explicit EdenView(const w_string& root_path, const Configuration& config)
-      : QueryableView{/*requiresCrawl=*/false},
+      : QueryableView{root_path, /*requiresCrawl=*/false},
         rootPath_(root_path),
         thriftChannel_(makeThriftChannel(
             rootPath_,
             config.getInt("eden_retry_connection_count", 3))),
-        scm_(SCM::scmForPath(root_path)),
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
         thresholdForFreshInstance_(
@@ -814,7 +811,8 @@ class EdenView final : public QueryableView {
             (delta.fromPosition()->snapshotHash() !=
              delta.toPosition()->snapshotHash());
 
-        if (scm_ && didChangeCommits) {
+        auto scm = getSCM();
+        if (scm && didChangeCommits) {
           // Check whether they checked out a new commit or reset the commit to
           // a different hash.  We interrogate source control to discover
           // the set of changed files between those hashes, and then
@@ -846,7 +844,7 @@ class EdenView final : public QueryableView {
 
             std::vector<std::string> commits{
                 std::move(fromHash), std::move(toHash)};
-            changedBetweenCommits = getSCM()->getFilesChangedBetweenCommits(
+            changedBetweenCommits = scm->getFilesChangedBetweenCommits(
                 std::move(commits),
                 /*requestId*/ nullptr,
                 ctx->query->alwaysIncludeDirectories);
@@ -862,7 +860,7 @@ class EdenView final : public QueryableView {
                 " we changed commit hashes ",
                 folly::join(" -> ", commits),
                 "\n");
-            changedBetweenCommits = getSCM()->getFilesChangedBetweenCommits(
+            changedBetweenCommits = scm->getFilesChangedBetweenCommits(
                 std::move(commits),
                 /*requestId*/ nullptr,
                 ctx->query->alwaysIncludeDirectories);
@@ -1160,10 +1158,6 @@ class EdenView final : public QueryableView {
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& /*fileNames*/) const override {
     return false;
-  }
-
-  SCM* getSCM() const override {
-    return scm_.get();
   }
 
   void startThreads(const std::shared_ptr<Root>& root) override {

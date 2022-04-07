@@ -213,8 +213,6 @@ class InMemoryView final : public QueryableView {
   // If content cache warming is configured, do the warm up now
   void warmContentCache();
 
-  SCM* getSCM() const override;
-
   InMemoryViewCaches& debugAccessCaches() const {
     return caches_;
   }
@@ -405,9 +403,6 @@ class InMemoryView final : public QueryableView {
   bool syncContentCacheWarming_{false};
   // Remember what we've already warmed up
   uint32_t lastWarmedTick_{0};
-
-  // The source control system that we detected during initialization
-  std::unique_ptr<SCM> scm_;
 
   struct PendingChangeLogEntry {
     PendingChangeLogEntry() noexcept {
