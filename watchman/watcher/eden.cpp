@@ -760,6 +760,7 @@ class EdenView final : public QueryableView {
   std::string mountPoint_;
   folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
   bool splitGlobPattern_;
+  unsigned int thresholdForFreshInstance_;
 
  public:
   explicit EdenView(const w_string& root_path, const Configuration& config)
@@ -770,7 +771,9 @@ class EdenView final : public QueryableView {
             config.getInt("eden_retry_connection_count", 3))),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root_path))),
         mountPoint_(root_path.string()),
-        splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)) {
+        splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
+        thresholdForFreshInstance_(
+            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
     auto client = getEdenClient(thriftChannel_);
@@ -928,17 +931,36 @@ class EdenView final : public QueryableView {
             createdFileNames.insert(std::string{fileName.view()});
           }
 
-          // We don't know whether the unclean paths are added, removed
-          // or just changed.  We're going to treat them as changed.
-          mergedFileList.insert(
-              std::make_move_iterator(delta.uncleanPaths()->begin()),
-              std::make_move_iterator(delta.uncleanPaths()->end()));
+          // Engineers usually don't work on a thousands of files, but on an
+          // giant monorepo, the set of files changed in between 2 revisions
+          // can be very large, and continuing down this route would force
+          // Watchman to fetch metadata about a ton of files, causing delay in
+          // answering the query and large amount of network traffic.
+          //
+          // Let's fallback to the `getAllFiles` answer which for any well
+          // behaved tool will simply return an empty list and a fresh instance.
+          if (thresholdForFreshInstance_ != 0 &&
+              mergedFileList.size() > thresholdForFreshInstance_ &&
+              ctx->query->empty_on_fresh_instance) {
+            log(DBG,
+                "Pretending to be a fresh instance due to too many files changed: ",
+                mergedFileList.size(),
+                "\n");
+            since_clock.is_fresh_instance = true;
+            fileInfo.clear();
+          } else {
+            // We don't know whether the unclean paths are added, removed
+            // or just changed.  We're going to treat them as changed.
+            mergedFileList.insert(
+                std::make_move_iterator(delta.uncleanPaths()->begin()),
+                std::make_move_iterator(delta.uncleanPaths()->end()));
 
-          // Replace the list of fileNames with the de-duped set
-          // of names we've extracted from source control
-          fileInfo.clear();
-          for (auto name : mergedFileList) {
-            fileInfo.emplace_back(std::move(name));
+            // Replace the list of fileNames with the de-duped set
+            // of names we've extracted from source control
+            fileInfo.clear();
+            for (auto name : mergedFileList) {
+              fileInfo.emplace_back(std::move(name));
+            }
           }
         }
 

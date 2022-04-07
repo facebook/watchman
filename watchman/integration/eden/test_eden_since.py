@@ -5,17 +5,22 @@
 # LICENSE file in the root directory of this source tree.
 
 
+import json
 import os
 import shutil
+from typing import Optional, Dict, Any
 
 from watchman.integration.lib import WatchmanEdenTestCase
 
 
-def populate(repo) -> None:
+def populate(repo, threshold: Optional[int] = None) -> None:
     # We ignore ".hg" here just so some of the tests that list files don't have to
     # explicitly filter out the contents of this directory.  However, in most situations
     # the .hg directory normally should not be ignored.
-    repo.write_file(".watchmanconfig", '{"ignore_dirs":[".hg"]}')
+    config: Dict[str, Any] = {"ignore_dirs": [".hg"]}
+    if threshold:
+        config["eden_file_count_threshold_for_fresh_instance"] = threshold
+    repo.write_file(".watchmanconfig", json.dumps(config))
     repo.write_file("hello", "hola\n")
     repo.write_file("adir/file", "foo!\n")
     repo.write_file("bdir/test.sh", "#!/bin/bash\necho test\n", mode=0o755)
@@ -281,3 +286,56 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
             [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
             second_res["files"],
         )
+
+    def test_eden_since_over_threshold(self) -> None:
+        root = self.makeEdenMount(lambda repo: populate(repo, 1))
+        repo = self.repoForPath(root)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        clock = self.watchmanCommand(
+            "clock",
+            root,
+        )["clock"]
+
+        def do_query(clock):
+            return self.watchmanCommand(
+                "query",
+                root,
+                {
+                    "expression": ["type", "f"],
+                    "empty_on_fresh_instance": True,
+                    "fields": ["name"],
+                    "since": clock,
+                },
+            )
+
+        shutil.rmtree(os.path.join(root, "bdir"))
+        repo.hg("addremove")
+        repo.commit("removal commit.")
+
+        clock = self.watchmanCommand(
+            "clock",
+            root,
+        )["clock"]
+
+        res = do_query(clock)
+        self.assertFalse(res["is_fresh_instance"])
+        clock = res["clock"]
+
+        repo.hg("prev")
+
+        # A couple of files changed, more than the threshold one 1 set in the
+        # configuration. This is expected to return a fresh instance.
+        res = do_query(clock)
+        self.assertTrue(res["is_fresh_instance"])
+        clock = res["clock"]
+
+        # Make sure that we detect newly edited files afterwards.
+        with open(os.path.join(root, "hello"), "w") as f:
+            f.write("hello\n")
+
+        res = do_query(clock)
+        self.assertFalse(res["is_fresh_instance"])
+        self.assertQueryRepsonseEqual(["hello"], res["files"])

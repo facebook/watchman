@@ -350,3 +350,17 @@ manage the configuration and workload.  Some sites employ an alternative
 mechanism for sampling and reporting this to the right set of people and wish
 to disable the warning so that it doesn't appear in front of users that are
 unable to make the appropriate configuration changes for themselves.
+
+### eden_file_count_threshold_for_fresh_instance
+
+This is specific to the EdenFS watcher
+
+When set to a non-zero value, Watchman will return a *fresh instance* to since
+queries/subscriptions if the number of changed files exceeds the configured
+value. In particular, during large updates of the working copies, a lot of
+files may have changed forcing both Watchman and EdenFS to fetch a significant
+amount of metadata to answer these queries.
+
+This behavior is only enabled if the query specifies the
+`empty_on_fresh_instance` option. The default value of 0 disables this
+behavior.
