@@ -604,58 +604,6 @@ void filterOutPaths(std::vector<NameAndDType>& files, QueryContext* ctx) {
       files.end());
 }
 
-/** Wraps around the raw SCM to acclerate certain things for Eden
- */
-class EdenWrappedSCM : public SCM {
-  std::unique_ptr<SCM> inner_;
-  std::string mountPoint_;
-
- public:
-  explicit EdenWrappedSCM(std::unique_ptr<SCM> inner)
-      : SCM(inner->getRootPath(), inner->getSCMRoot()),
-        inner_(std::move(inner)),
-        mountPoint_(std::string{getRootPath().view()}) {}
-
-  w_string mergeBaseWith(w_string_piece commitId, w_string requestId = nullptr)
-      const override {
-    return inner_->mergeBaseWith(commitId, requestId);
-  }
-  std::vector<w_string> getFilesChangedSinceMergeBaseWith(
-      w_string_piece commitId,
-      w_string requestId = nullptr) const override {
-    return inner_->getFilesChangedSinceMergeBaseWith(commitId, requestId);
-  }
-
-  SCM::StatusResult getFilesChangedBetweenCommits(
-      std::vector<std::string> commits,
-      w_string requestId,
-      bool includeDirectories) const override {
-    return inner_->getFilesChangedBetweenCommits(
-        std::move(commits), requestId, includeDirectories);
-  }
-
-  std::chrono::time_point<std::chrono::system_clock> getCommitDate(
-      w_string_piece commitId,
-      w_string requestId = nullptr) const override {
-    return inner_->getCommitDate(commitId, requestId);
-  }
-
-  std::vector<w_string> getCommitsPriorToAndIncluding(
-      w_string_piece commitId,
-      int numCommits,
-      w_string requestId = nullptr) const override {
-    return inner_->getCommitsPriorToAndIncluding(
-        commitId, numCommits, requestId);
-  }
-
-  static std::unique_ptr<EdenWrappedSCM> wrap(std::unique_ptr<SCM> inner) {
-    if (!inner) {
-      return nullptr;
-    }
-    return make_unique<EdenWrappedSCM>(std::move(inner));
-  }
-};
-
 void appendGlobResultToNameAndDTypeVec(
     std::vector<NameAndDType>& results,
     Glob&& glob) {
@@ -754,7 +702,7 @@ class EdenView final : public QueryableView {
   w_string rootPath_;
   std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
   // The source control system that we detected during initialization
-  mutable std::unique_ptr<EdenWrappedSCM> scm_;
+  mutable std::unique_ptr<SCM> scm_;
   folly::EventBase subscriberEventBase_;
   JournalPosition lastCookiePosition_;
   std::string mountPoint_;
@@ -769,7 +717,7 @@ class EdenView final : public QueryableView {
         thriftChannel_(makeThriftChannel(
             rootPath_,
             config.getInt("eden_retry_connection_count", 3))),
-        scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root_path))),
+        scm_(SCM::scmForPath(root_path)),
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
         thresholdForFreshInstance_(
@@ -902,7 +850,7 @@ class EdenView final : public QueryableView {
                 std::move(commits),
                 /*requestId*/ nullptr,
                 ctx->query->alwaysIncludeDirectories);
-          } else if (delta.snapshotTransitions()->size() >= 2) {
+          } else {
             std::vector<std::string> commits;
             commits.reserve(delta.snapshotTransitions()->size());
             for (auto& hash : *delta.snapshotTransitions()) {
