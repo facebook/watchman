@@ -94,6 +94,19 @@ enum HgResourceType {
   TREE = 2,
 }
 
+enum HgImportPriority {
+  LOW = 0,
+  NORMAL = 1,
+  HIGH = 2,
+}
+
+enum HgImportCause {
+  UNKNOWN = 0,
+  FS = 1,
+  THRIFT = 2,
+  PREFETCH = 3,
+}
+
 struct HgEvent {
   1: TraceEventTimes times;
 
@@ -107,6 +120,8 @@ struct HgEvent {
   6: binary path;
 
   7: optional RequestInfo requestInfo;
+  8: HgImportPriority importPriority;
+  9: HgImportCause importCause;
 }
 
 /**
