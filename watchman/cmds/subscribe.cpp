@@ -443,7 +443,7 @@ W_CMD_REG(
     "flush-subscriptions",
     cmd_flush_subscriptions,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* unsubscribe /root subname
  * Cancels a subscription */
@@ -475,7 +475,7 @@ W_CMD_REG(
     "unsubscribe",
     cmd_unsubscribe,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
@@ -625,7 +625,7 @@ W_CMD_REG(
     "subscribe",
     cmd_subscribe,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

@@ -354,7 +354,7 @@ W_CMD_REG(
     "debug-kqueue-and-fsevents-recrawl",
     cmd_debug_kqueue_and_fsevents_recrawl,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 } // namespace watchman
 

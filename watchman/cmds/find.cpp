@@ -42,7 +42,7 @@ W_CMD_REG(
     "find",
     cmd_find,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

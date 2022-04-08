@@ -34,7 +34,7 @@ static void cmd_debug_recrawl(Client* client, const json_ref& args) {
   resp.set("recrawl", json_true());
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root);
 
 static void cmd_debug_show_cursors(Client* client, const json_ref& args) {
   json_ref cursors;
@@ -67,7 +67,7 @@ W_CMD_REG(
     "debug-show-cursors",
     cmd_debug_show_cursors,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* debug-ageout */
 static void cmd_debug_ageout(Client* client, const json_ref& args) {
@@ -88,7 +88,7 @@ static void cmd_debug_ageout(Client* client, const json_ref& args) {
   resp.set("ageout", json_true());
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root);
 
 static void cmd_debug_poison(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
@@ -107,7 +107,7 @@ static void cmd_debug_poison(Client* client, const json_ref& args) {
       typed_string_to_json(poisoned_reason.rlock()->c_str(), W_STRING_UNICODE));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root);
 
 static void cmd_debug_drop_privs(Client* client, const json_ref&) {
   client->client_is_owner = false;
@@ -116,7 +116,7 @@ static void cmd_debug_drop_privs(Client* client, const json_ref&) {
   resp.set("owner", json_boolean(client->client_is_owner));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL)
+W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
 
 static void cmd_debug_set_subscriptions_paused(
     Client* clientbase,
@@ -159,7 +159,7 @@ W_CMD_REG(
     "debug-set-subscriptions-paused",
     cmd_debug_set_subscriptions_paused,
     CMD_DAEMON,
-    nullptr)
+    nullptr);
 
 static json_ref getDebugSubscriptionInfo(Root* root) {
   auto subscriptions = json_array();
@@ -211,7 +211,7 @@ W_CMD_REG(
     "debug-get-subscriptions",
     cmd_debug_get_subscriptions,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 static void cmd_debug_get_asserted_states(
     Client* clientbase,
@@ -232,7 +232,7 @@ W_CMD_REG(
     "debug-get-asserted-states",
     cmd_debug_get_asserted_states,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 static void cmd_debug_status(Client* client, const json_ref&) {
   auto resp = make_response();
@@ -244,7 +244,7 @@ W_CMD_REG(
     "debug-status",
     cmd_debug_status,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    NULL)
+    NULL);
 
 static void cmd_debug_watcher_info(Client* clientbase, const json_ref& args) {
   auto* client = static_cast<UserClient*>(clientbase);
@@ -254,7 +254,7 @@ static void cmd_debug_watcher_info(Client* clientbase, const json_ref& args) {
   response.set("watcher-debug-info", root->view()->getWatcherDebugInfo());
   client->enqueueResponse(std::move(response));
 }
-W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL)
+W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL);
 
 static void cmd_debug_watcher_info_clear(
     Client* clientbase,
@@ -270,7 +270,7 @@ W_CMD_REG(
     "debug-watcher-info-clear",
     cmd_debug_watcher_info_clear,
     CMD_DAEMON,
-    NULL)
+    NULL);
 
 namespace {
 
@@ -312,7 +312,7 @@ W_CMD_REG(
     "debug-contenthash",
     debugContentHashCache,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 void debugSymlinkTargetCache(Client* client, const json_ref& args) {
   /* resolve the root */
@@ -339,7 +339,7 @@ W_CMD_REG(
     "debug-symlink-target-cache",
     debugSymlinkTargetCache,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 } // namespace
 

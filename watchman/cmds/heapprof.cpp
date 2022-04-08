@@ -31,6 +31,6 @@ static void cmd_debug_prof_dump(Client* client, const json_ref&) {
               .c_str()));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, NULL)
+W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, NULL);
 
 #endif

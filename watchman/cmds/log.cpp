@@ -51,7 +51,7 @@ static void cmd_loglevel(Client* client, const json_ref& args) {
   resp.set("log_level", json_ref(args.at(1)));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
+W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL);
 
 // log "debug" "text to log"
 static void cmd_log(Client* client, const json_ref& args) {
@@ -76,7 +76,7 @@ static void cmd_log(Client* client, const json_ref& args) {
   resp.set("logged", json_true());
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
+W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL);
 
 // change the server log level for the logs
 static void cmd_global_log_level(Client* client, const json_ref& args) {
@@ -104,7 +104,7 @@ W_CMD_REG(
     "global-log-level",
     cmd_global_log_level,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    nullptr)
+    nullptr);
 
 /* vim:ts=2:sw=2:et:
  */

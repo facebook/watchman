@@ -33,12 +33,25 @@ struct CommandRegistry {
 
 } // namespace
 
+CommandDefinition::CommandDefinition(
+    std::string_view name,
+    std::string_view capname,
+    CommandHandler handler,
+    CommandFlags flags,
+    CommandValidator validator)
+    : name{name}, handler{handler}, flags{flags}, validator{validator} {
+  next_ = commandsList;
+  commandsList = this;
+
+  capability_register(capname);
+}
+
 const CommandDefinition* CommandDefinition::lookup(
     std::string_view name,
     CommandFlags mode) {
   // You can imagine optimizing this into a sublinear lookup but the command
   // list is small and constant.
-  for (const auto* def = commandsList; def; def = def->next) {
+  for (const auto* def = commandsList; def; def = def->next_) {
     if (name == def->name) {
       if (mode && def->flags.containsNoneOf(mode)) {
         throw CommandValidationError(
@@ -57,27 +70,20 @@ const CommandDefinition* CommandDefinition::lookup(
 
 std::vector<const CommandDefinition*> CommandDefinition::getAll() {
   size_t n = 0;
-  for (const auto* p = commandsList; p; p = p->next) {
+  for (const auto* p = commandsList; p; p = p->next_) {
     ++n;
   }
 
   std::vector<const CommandDefinition*> defs;
   defs.reserve(n);
-  for (auto* p = commandsList; p; p = p->next) {
+  for (auto* p = commandsList; p; p = p->next_) {
     defs.push_back(p);
   }
   return defs;
 }
 
-void CommandDefinition::register_() {
-  next = commandsList;
-  commandsList = this;
-
-  capability_register(("cmd-" + std::string{name}).c_str());
-}
-
-void capability_register(const char* name) {
-  CommandRegistry::get().capabilities.emplace(name);
+void capability_register(std::string_view name) {
+  CommandRegistry::get().capabilities.emplace(std::string{name});
 }
 
 bool capability_supported(std::string_view name) {

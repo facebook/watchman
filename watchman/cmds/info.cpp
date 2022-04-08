@@ -94,7 +94,7 @@ W_CMD_REG(
     "version",
     cmd_version,
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-    NULL)
+    NULL);
 
 /* list-capabilities */
 static void cmd_list_capabilities(Client* client, const json_ref&) {
@@ -107,7 +107,7 @@ W_CMD_REG(
     "list-capabilities",
     cmd_list_capabilities,
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-    NULL)
+    NULL);
 
 /* get-sockname */
 static void cmd_get_sockname(Client* client, const json_ref&) {
@@ -137,7 +137,7 @@ W_CMD_REG(
     "get-sockname",
     cmd_get_sockname,
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-    NULL)
+    NULL);
 
 static void cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
@@ -160,7 +160,7 @@ static void cmd_get_config(Client* client, const json_ref& args) {
   resp.set("config", std::move(config));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

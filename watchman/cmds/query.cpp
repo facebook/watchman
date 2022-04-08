@@ -50,7 +50,7 @@ W_CMD_REG(
     "query",
     cmd_query,
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

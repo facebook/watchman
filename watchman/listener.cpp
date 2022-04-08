@@ -571,7 +571,7 @@ static void cmd_get_pid(Client* client, const json_ref&) {
 
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
+W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL);
 
 /* vim:ts=2:sw=2:et:
  */

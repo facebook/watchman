@@ -152,7 +152,7 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
 
 } // namespace watchman
 
-W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root);
 
 static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
@@ -232,7 +232,7 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
         w_leave_state(nullptr, assertion, false, parsed.metadata);
       });
 }
-W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

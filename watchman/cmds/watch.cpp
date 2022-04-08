@@ -98,7 +98,7 @@ W_CMD_REG(
     "clock",
     cmd_clock,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* watch-del /root
  * Stops watching the specified root */
@@ -117,7 +117,7 @@ static void cmd_watch_delete(Client* client, const json_ref& args) {
        {"root", w_string_to_json(root->root_path)}});
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root);
 
 /* watch-del-all
  * Stops watching all roots */
@@ -131,7 +131,7 @@ W_CMD_REG(
     "watch-del-all",
     cmd_watch_del_all,
     CMD_DAEMON | CMD_POISON_IMMUNE,
-    NULL)
+    NULL);
 
 /* watch-list
  * Returns a list of watched roots */
@@ -141,7 +141,7 @@ static void cmd_watch_list(Client* client, const json_ref&) {
   resp.set("roots", std::move(root_paths));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
+W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL);
 
 // For each directory component in candidate_dir to the root of the filesystem,
 // look for root_file.  If root_file is present, update relpath to reflect the
@@ -294,7 +294,7 @@ W_CMD_REG(
     "watch",
     cmd_watch,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 static void cmd_watch_project(Client* client, const json_ref& args) {
   /* resolve the root */
@@ -332,7 +332,7 @@ W_CMD_REG(
     "watch-project",
     cmd_watch_project,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

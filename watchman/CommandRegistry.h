@@ -34,13 +34,17 @@ inline constexpr auto CMD_POISON_IMMUNE = CommandFlags::raw(4);
 inline constexpr auto CMD_ALLOW_ANY_USER = CommandFlags::raw(8);
 
 struct CommandDefinition {
-  std::string_view name;
-  CommandHandler handler;
-  CommandFlags flags;
-  CommandValidator validator;
+  const std::string_view name;
+  const CommandHandler handler;
+  const CommandFlags flags;
+  const CommandValidator validator;
 
-  // registration linkage; for internal use only.
-  CommandDefinition* next = nullptr;
+  CommandDefinition(
+      std::string_view name,
+      std::string_view capname,
+      CommandHandler handler,
+      CommandFlags flags,
+      CommandValidator validator);
 
   /**
    * Provide a way to query (and eventually modify) command line arguments
@@ -53,22 +57,23 @@ struct CommandDefinition {
 
   static std::vector<const CommandDefinition*> getAll();
 
-  void register_();
+ private:
+  // registration linkage
+  CommandDefinition* next_ = nullptr;
 };
 
-void capability_register(const char* name);
+static_assert(
+    std::is_trivially_destructible_v<CommandDefinition>,
+    "CommandDefinition should remain unchanged until process exit");
+
+void capability_register(std::string_view name);
 bool capability_supported(std::string_view name);
 json_ref capability_get_list();
 
-#define W_CMD_REG_1(symbol, name, func, flags, clivalidate)                 \
-  static w_ctor_fn_type(symbol) {                                           \
-    static ::watchman::CommandDefinition d{name, func, flags, clivalidate}; \
-    d.register_();                                                          \
-  }                                                                         \
-  w_ctor_fn_reg(symbol)
-
-#define W_CMD_REG(name, func, flags, clivalidate) \
-  W_CMD_REG_1(w_gen_symbol(w_cmd_register_), name, func, flags, clivalidate)
+#define W_CMD_REG(name, func, flags, clivalidate)                       \
+  static const ::watchman::CommandDefinition w_gen_symbol(w_cmd_def_) { \
+    (name), "cmd-" name, (func), (flags), (clivalidate)                 \
+  }
 
 #define W_CAP_REG1(symbol, name)           \
   static w_ctor_fn_type(symbol) {          \

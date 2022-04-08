@@ -68,7 +68,7 @@ static void cmd_trigger_delete(Client* client, const json_ref& args) {
   resp.set({{"deleted", json_boolean(res)}, {"trigger", json_ref(jname)}});
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root);
 
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
@@ -82,7 +82,7 @@ static void cmd_trigger_list(Client* client, const json_ref& args) {
   resp.set("triggers", std::move(arr));
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root);
 
 static json_ref build_legacy_trigger(
     const std::shared_ptr<Root>& root,
@@ -194,7 +194,7 @@ static void cmd_trigger(Client* client, const json_ref& args) {
 
   client->enqueueResponse(std::move(resp));
 }
-W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */
