@@ -6,6 +6,7 @@
  */
 
 #include <folly/String.h>
+#include "watchman/Connect.h"
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"

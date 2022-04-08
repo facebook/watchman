@@ -583,6 +583,7 @@ watchman/Client.cpp
 watchman/Clock.cpp
 watchman/Command.cpp
 watchman/CommandRegistry.cpp
+watchman/Connect.cpp
 watchman/ContentHash.cpp
 watchman/CookieSync.cpp
 watchman/Errors.cpp

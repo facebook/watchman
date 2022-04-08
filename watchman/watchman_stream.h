@@ -59,9 +59,6 @@ int w_poll_events_named_pipe(watchman::EventPoll* p, int n, int timeoutms);
 int w_poll_events_sockets(watchman::EventPoll* p, int n, int timeoutms);
 int w_poll_events(watchman::EventPoll* p, int n, int timeoutms);
 
-// Create a connected unix socket or a named pipe client stream
-std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms);
-
 watchman_stream* w_stm_stdout();
 watchman_stream* w_stm_stdin();
 std::unique_ptr<watchman_stream> w_stm_connect_unix(

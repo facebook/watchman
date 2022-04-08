@@ -18,6 +18,7 @@
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
 #include "watchman/Command.h"
+#include "watchman/Connect.h"
 #include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
