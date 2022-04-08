@@ -14,12 +14,14 @@
 
 namespace watchman {
 
-// Represents the Result of an operation, and thus can hold either
-// a value or an error, or neither.  This is similar to the folly::Try
-// type and also to the rust Result type.  The contained Error type
-// can be replaced by an arbitrary error container as a stronger nod
-// toward the rust Result type and is useful in situations where
-// throwing and catching exceptions is undesirable.
+/**
+ * Represents the Result of an operation, and thus can hold either
+ * a value or an error, or neither.  This is similar to the folly::Try
+ * type and also to the rust Result type.  The contained Error type
+ * can be replaced by an arbitrary error container as a stronger nod
+ * toward the rust Result type and is useful in situations where
+ * throwing and catching exceptions is undesirable.
+ */
 template <typename Value, typename Error = std::exception_ptr>
 class Result {
   static_assert(
@@ -43,21 +45,23 @@ class Result {
   }
 
   // Copy a value into the result
-  explicit Result(const Value& other) : state_(State::kVALUE), value_(other) {}
+  /* implicit */ Result(const value_type& other)
+      : state_(State::kVALUE), value_(other) {}
 
   // Move in value
-  explicit Result(Value&& other)
+  /* implicit */ Result(value_type&& other)
       : state_(State::kVALUE), value_(std::move(other)) {}
 
   // Copy in error
-  explicit Result(const Error& error) : state_(State::kERROR), error_(error) {}
+  /* implicit */ Result(const error_type& error)
+      : state_(State::kERROR), error_(error) {}
 
   // Move in error
-  explicit Result(Error&& error)
+  /* implicit */ Result(error_type&& error)
       : state_(State::kERROR), error_(std::move(error)) {}
 
   // Move construct
-  explicit Result(Result&& other) noexcept {
+  Result(Result&& other) noexcept {
     *this = std::move(other);
   }
 
@@ -70,10 +74,10 @@ class Result {
         case State::kEMPTY:
           break;
         case State::kVALUE:
-          new (&value_) Value(std::move(other.value_));
+          new (&value_) value_type{std::move(other.value_)};
           break;
         case State::kERROR:
-          new (&error_) Error(std::move(other.error_));
+          new (&error_) error_type{std::move(other.error_)};
           break;
       }
       state_ = other.state_;
@@ -90,8 +94,8 @@ class Result {
   // Copy assign
   Result& operator=(const Result& other) {
     static_assert(
-        std::is_copy_constructible<Value>::value &&
-            std::is_copy_constructible<Error>::value,
+        std::is_copy_constructible<value_type>::value &&
+            std::is_copy_constructible<error_type>::value,
         "Value and Error must be copyable for "
         "Result<Value,Error> to be copyable");
 
@@ -101,10 +105,10 @@ class Result {
         case State::kEMPTY:
           break;
         case State::kVALUE:
-          new (&value_) Value(other.value_);
+          new (&value_) value_type{other.value_};
           break;
         case State::kERROR:
-          new (&error_) Error(other.error_);
+          new (&error_) error_type{other.error_};
           break;
       }
       state_ = other.state_;
@@ -128,7 +132,7 @@ class Result {
   // the Error value.  If there is no error value,
   // throw a logic error.
   // This variant is used when Error is std::exception_ptr.
-  template <typename E = Error>
+  template <typename E = error_type>
   typename std::enable_if<std::is_same<E, std::exception_ptr>::value>::type
   throwIfError() const {
     switch (state_) {
@@ -143,7 +147,7 @@ class Result {
 
   // If Result does not contain a valid Value, throw a logic error.
   // This variant is used when Error is std::error_code.
-  template <typename E = Error>
+  template <typename E = error_type>
   typename std::enable_if<std::is_same<E, std::error_code>::value>::type
   throwIfError() const {
     switch (state_) {
@@ -159,7 +163,7 @@ class Result {
   // If Result does not contain a valid Value, throw a logic error.
   // This variant is used when Error is not std::exception_ptr or
   // std::error_code.
-  template <typename E = Error>
+  template <typename E = error_type>
   typename std::enable_if<
       !std::is_same<E, std::exception_ptr>::value &&
       !std::is_same<E, std::error_code>::value>::type
@@ -176,21 +180,21 @@ class Result {
 
   // Get a mutable reference to the value.  If the value is
   // not assigned, an exception will be thrown by throwIfError().
-  Value& value() & {
+  value_type& value() & {
     throwIfError();
     return value_;
   }
 
   // Get an rvalue reference to the value.  If the value is
   // not assigned, an exception will be thrown by throwIfError().
-  Value&& value() && {
+  value_type&& value() && {
     throwIfError();
-    return value_;
+    return std::move(value_);
   }
 
   // Get a const reference to the value.  If the value is
   // not assigned, an exception will be thrown by throwIfError().
-  const Value& value() const& {
+  const value_type& value() const& {
     throwIfError();
     return value_;
   }
@@ -209,21 +213,21 @@ class Result {
 
   // Get a mutable reference to the error.  If the error is
   // not assigned, an exception will be thrown by throwIfNotError().
-  Error& error() & {
+  error_type& error() & {
     throwIfNotError();
     return error_;
   }
 
   // Get an rvalue reference to the error.  If the error is
   // not assigned, an exception will be thrown by throwIfNotError().
-  Error&& error() && {
+  error_type&& error() && {
     throwIfNotError();
-    return error_;
+    return std::move(error_);
   }
 
   // Get a const reference to the error.  If the error is
   // not assigned, an exception will be thrown by throwIfNotError().
-  const Error& error() const& {
+  const error_type& error() const& {
     throwIfNotError();
     return error_;
   }
@@ -231,8 +235,8 @@ class Result {
  private:
   State state_{State::kEMPTY};
   union {
-    Value value_;
-    Error error_;
+    value_type value_;
+    error_type error_;
   };
 
   void reset() noexcept {
@@ -241,11 +245,11 @@ class Result {
       case State::kEMPTY:
         break;
       case State::kVALUE:
-        value_.~Value();
+        value_.~value_type();
         state_ = State::kEMPTY;
         break;
       case State::kERROR:
-        error_.~Error();
+        error_.~error_type();
         state_ = State::kEMPTY;
         break;
     }
@@ -292,4 +296,8 @@ makeResultWith(Func&& func) {
     return Result<folly::Unit>(std::current_exception());
   }
 }
+
+template <typename T>
+using ResultErrno = Result<std::enable_if_t<!std::is_integral_v<T>, T>, int>;
+
 } // namespace watchman
