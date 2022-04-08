@@ -80,6 +80,8 @@ const std::string& get_pid_file() {
 }
 } // namespace
 
+W_CAP_REG("bser-v2")
+
 /**
  * Log and fatal if Watchman was started with a low priority, which can cause a
  * poor experience, as Watchman is unable to keep up with the filesystem's
@@ -1004,7 +1006,7 @@ static int inner_main(int argc, char** argv) {
 
   w_set_thread_name("cli");
   auto cmd = build_command(argc, argv);
-  preprocess_command(cmd, output_pdu, output_capabilities);
+  cmd.validateOrExit(output_pdu, output_capabilities);
 
   bool ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {

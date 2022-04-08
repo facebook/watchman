@@ -653,7 +653,6 @@ watchman/cmds/find.cpp
 watchman/cmds/info.cpp
 watchman/cmds/log.cpp
 watchman/cmds/query.cpp
-watchman/cmds/reg.cpp
 watchman/cmds/since.cpp
 watchman/cmds/state.cpp
 watchman/cmds/subscribe.cpp

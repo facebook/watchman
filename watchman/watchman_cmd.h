@@ -36,10 +36,6 @@ bool find_project_root(
     w_string_piece& resolved,
     w_string_piece& relpath);
 
-void preprocess_command(
-    watchman::Command& command,
-    watchman::PduType output_pdu,
-    uint32_t output_capabilities);
 bool try_client_mode_command(const watchman::Command& command, bool pretty);
 
 // Resolve the root. Failure will throw a RootResolveError exception

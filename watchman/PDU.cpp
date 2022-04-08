@@ -8,7 +8,6 @@
 #include "watchman/PDU.h"
 #include <folly/Range.h>
 #include <folly/String.h>
-#include "watchman/CommandRegistry.h"
 #include "watchman/Constants.h"
 #include "watchman/Logging.h"
 #include "watchman/bser.h"
@@ -16,7 +15,6 @@
 
 namespace watchman {
 
-W_CAP_REG("bser-v2")
 PduBuffer::PduBuffer()
     : buf((char*)malloc(WATCHMAN_IO_BUF_SIZE)),
       allocd(WATCHMAN_IO_BUF_SIZE),

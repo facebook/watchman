@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "watchman/PDU.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace watchman {
@@ -52,6 +53,13 @@ class Command {
   const json_ref& args() const {
     return args_;
   }
+
+  /**
+   * Perform some client-side validation of this Command and its arguments. If
+   * validation fails, print an error PDU to stdout in the format specified by
+   * `output_pdu` and `output_capabilities` and exit(1).
+   */
+  void validateOrExit(PduType output_pdu, uint32_t output_capabilities);
 
  private:
   w_string name_;

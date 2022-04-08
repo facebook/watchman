@@ -6,7 +6,9 @@
  */
 
 #include "watchman/Command.h"
+#include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/watchman_stream.h"
 
 namespace watchman {
 
@@ -40,6 +42,32 @@ json_ref Command::render() const {
   arr.push_back(w_string_to_json(name_));
   arr.insert(arr.end(), args_.array().begin(), args_.array().end());
   return result;
+}
+
+void Command::validateOrExit(PduType output_pdu, uint32_t output_capabilities) {
+  auto* def = CommandDefinition::lookup(name_.view(), CommandFlags{});
+  if (!def) {
+    // Nothing known about it, pass the command on anyway for forwards
+    // compatibility
+    return;
+  }
+
+  if (!def->validator) {
+    return;
+  }
+
+  try {
+    def->validator(*this);
+  } catch (const std::exception& exc) {
+    auto err = json_object(
+        {{"error", typed_string_to_json(exc.what(), W_STRING_MIXED)},
+         {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)},
+         {"cli_validated", json_true()}});
+
+    PduBuffer jr;
+    jr.pduEncodeToStream(output_pdu, output_capabilities, err, w_stm_stdout());
+    exit(1);
+  }
 }
 
 } // namespace watchman

@@ -82,6 +82,5 @@ void parseOptions(int* argcp, char*** argvp, char*** daemon_argv);
 
 bool w_getopt(OptDesc* opts, int* argcp, char*** argvp, char*** daemon_argv);
 [[noreturn]] void usage(struct watchman_getopt* opts, FILE* where);
-void print_command_list_for_help(FILE* where);
 
 } // namespace watchman
