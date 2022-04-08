@@ -39,6 +39,9 @@ struct CommandDefinition {
   CommandFlags flags;
   CommandValidator validator;
 
+  // registration linkage; for internal use only.
+  CommandDefinition* next = nullptr;
+
   /**
    * Provide a way to query (and eventually modify) command line arguments
    *

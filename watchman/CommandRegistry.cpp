@@ -15,12 +15,12 @@ namespace watchman {
 
 namespace {
 
+CommandDefinition* commandsList = nullptr;
+
 struct CommandRegistry {
-  std::unordered_map<std::string, const CommandDefinition*> commands;
   std::unordered_set<std::string> capabilities;
 
   CommandRegistry() {
-    commands.reserve(16);
     capabilities.reserve(128);
   }
 
@@ -36,37 +36,43 @@ struct CommandRegistry {
 const CommandDefinition* CommandDefinition::lookup(
     std::string_view name,
     CommandFlags mode) {
-  auto& reg = CommandRegistry::get();
-
-  // TODO: Eliminate this copy in the lookup.
-  auto it = reg.commands.find(std::string{name});
-  auto def = it == reg.commands.end() ? nullptr : it->second;
-
-  if (def) {
-    if (mode && def->flags.containsNoneOf(mode)) {
-      throw CommandValidationError(
-          "command ", name, " not available in this mode");
+  // You can imagine optimizing this into a sublinear lookup but the command
+  // list is small and constant.
+  for (const auto* def = commandsList; def; def = def->next) {
+    if (name == def->name) {
+      if (mode && def->flags.containsNoneOf(mode)) {
+        throw CommandValidationError(
+            "command ", name, " not available in this mode");
+      }
+      return def;
     }
-    return def;
   }
 
   if (mode) {
     throw CommandValidationError("unknown command ", name);
+  } else {
+    return nullptr;
   }
-
-  return nullptr;
 }
 
 std::vector<const CommandDefinition*> CommandDefinition::getAll() {
+  size_t n = 0;
+  for (const auto* p = commandsList; p; p = p->next) {
+    ++n;
+  }
+
   std::vector<const CommandDefinition*> defs;
-  for (auto& it : CommandRegistry::get().commands) {
-    defs.emplace_back(it.second);
+  defs.reserve(n);
+  for (auto* p = commandsList; p; p = p->next) {
+    defs.push_back(p);
   }
   return defs;
 }
 
 void CommandDefinition::register_() {
-  CommandRegistry::get().commands.emplace(name, this);
+  next = commandsList;
+  commandsList = this;
+
   capability_register(("cmd-" + std::string{name}).c_str());
 }
 
