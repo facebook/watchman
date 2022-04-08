@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <string>
+#include <vector>
 
 namespace watchman {
 
@@ -75,8 +76,10 @@ struct OptDesc {
 
 /**
  * Populates the globals in `flags`.
+ *
+ * Returns daemon-specific arguments.
  */
-void parseOptions(int* argcp, char*** argvp, char*** daemon_argv);
+std::vector<std::string> parseOptions(int* argcp, char*** argvp);
 
 // The following are largely for internal use.
 

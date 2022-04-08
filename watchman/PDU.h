@@ -25,11 +25,11 @@ enum PduType {
 class PduBuffer {
  public:
   char* buf;
-  uint32_t allocd;
-  uint32_t rpos;
-  uint32_t wpos;
-  PduType pdu_type;
-  uint32_t capabilities;
+  uint32_t allocd = 0;
+  uint32_t rpos = 0;
+  uint32_t wpos = 0;
+  PduType pdu_type = need_data;
+  uint32_t capabilities = 0;
 
   ~PduBuffer();
   PduBuffer();

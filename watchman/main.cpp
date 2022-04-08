@@ -53,10 +53,8 @@ using namespace watchman;
 namespace {
 PduType server_pdu = is_bser;
 PduType output_pdu = is_json_pretty;
-uint32_t server_capabilities = 0;
-uint32_t output_capabilities = 0;
-char** daemon_argv = NULL;
-struct sockaddr_un un;
+const uint32_t server_capabilities = 0;
+const uint32_t output_capabilities = 0;
 } // namespace
 
 #ifdef __APPLE__
@@ -316,7 +314,7 @@ static SpawnResult run_service_as_daemon() {
 #endif
 
 #ifdef _WIN32
-static SpawnResult spawn_win32() {
+static SpawnResult spawn_win32(const std::vector<std::string>& daemon_argv) {
   char module_name[WATCHMAN_NAME_MAX];
   GetModuleFileName(NULL, module_name, sizeof(module_name));
 
@@ -332,8 +330,8 @@ static SpawnResult spawn_win32() {
   opts.chdir("/");
 
   std::vector<std::string_view> args{module_name, "--foreground"};
-  for (size_t i = 0; daemon_argv[i]; i++) {
-    args.push_back(daemon_argv[i]);
+  for (auto& arg : daemon_argv) {
+    args.push_back(arg);
   }
 
   ChildProcess proc(args, std::move(opts));
@@ -356,13 +354,14 @@ static SpawnResult spawn_win32() {
 // Spawn watchman via a site-specific spawn helper program.
 // We'll pass along any daemon-appropriate arguments that
 // we noticed during argument parsing.
-static SpawnResult spawn_site_specific(const char* spawner) {
-  std::vector<std::string_view> args{
-      spawner,
-  };
-
-  for (size_t i = 0; daemon_argv[i]; i++) {
-    args.push_back(daemon_argv[i]);
+static SpawnResult spawn_site_specific(
+    const std::vector<std::string>& daemon_argv,
+    const char* spawner) {
+  std::vector<std::string_view> args;
+  args.reserve(1 + daemon_argv.size());
+  args.push_back(spawner);
+  for (auto& arg : daemon_argv) {
+    args.push_back(arg);
   }
 
   close_random_fds();
@@ -791,15 +790,6 @@ static void setup_sock_name() {
       "log",
       "logfile",
       /*require_absolute=*/logging::log_name != "-");
-
-  if (flags.unix_sock_name.size() >= sizeof(un.sun_path) - 1) {
-    log(FATAL, flags.unix_sock_name, ": path is too long\n");
-  }
-  un.sun_family = PF_LOCAL;
-  memcpy(
-      un.sun_path,
-      flags.unix_sock_name.c_str(),
-      flags.unix_sock_name.size() + 1);
 }
 
 static bool should_start(int err) {
@@ -854,12 +844,12 @@ static bool try_command(const Command& command, int timeout) {
   return true;
 }
 
-static void parse_cmdline(int* argcp, char*** argvp) {
+static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
   cfg_load_global_config_file();
 
-  watchman::parseOptions(argcp, argvp, &daemon_argv);
+  auto daemon_argv = watchman::parseOptions(argcp, argvp);
   watchman::getLog().setStdErrLoggingLevel(
-      static_cast<enum watchman::LogLevel>(logging::log_level));
+      static_cast<watchman::LogLevel>(logging::log_level));
   setup_sock_name();
   parse_encoding(flags.server_encoding, &server_pdu);
   parse_encoding(flags.output_encoding, &output_pdu);
@@ -872,6 +862,8 @@ static void parse_cmdline(int* argcp, char*** argvp) {
   if (getenv("WATCHMAN_NO_SPAWN")) {
     flags.no_spawn = true;
   }
+
+  return daemon_argv;
 }
 
 static Command build_command_from_stdin() {
@@ -937,7 +929,8 @@ static Command build_command(int argc, char** argv) {
   return Command{std::move(name), std::move(args)};
 }
 
-static SpawnResult try_spawn_watchman() {
+static SpawnResult try_spawn_watchman(
+    const std::vector<std::string>& daemon_argv) {
   // Every spawner that doesn't fork() this client process is susceptible to a
   // race condition if `watchman shutdown-server` and `watchman <command>` are
   // run in short order. The latter tries to spawn a daemon while the former is
@@ -962,14 +955,14 @@ static SpawnResult try_spawn_watchman() {
   // spawning functionality.
   const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
   if (site_spawn) {
-    return spawn_site_specific(site_spawn);
+    return spawn_site_specific(daemon_argv, site_spawn);
   }
 #endif
 
 #if defined(__APPLE__)
   return spawn_via_launchd();
 #elif defined(_WIN32)
-  return spawn_win32();
+  return spawn_win32(daemon_argv);
 #else
   return run_service_as_daemon();
 #endif
@@ -986,7 +979,7 @@ static int inner_main(int argc, char** argv) {
     folly::SingletonVault::singleton()->destroyInstances();
   };
 
-  parse_cmdline(&argc, &argv);
+  auto daemon_argv = parse_cmdline(&argc, &argv);
 
 #ifdef _WIN32
   // On Windows its not possible to connect to elevated Watchman daemon from
@@ -1026,7 +1019,7 @@ static int inner_main(int argc, char** argv) {
       bool spawned = false;
       while (true) {
         if (!spawned) {
-          auto spawn_result = try_spawn_watchman();
+          auto spawn_result = try_spawn_watchman(daemon_argv);
           switch (spawn_result.status) {
             case SpawnResult::Spawned:
               spawned = true;

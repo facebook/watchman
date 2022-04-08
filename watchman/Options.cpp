@@ -293,18 +293,14 @@ void print_command_list_for_help(FILE* where) {
   exit(1);
 }
 
-bool w_getopt(
-    const OptDesc* opts,
-    int* argcp,
-    char*** argvp,
-    char*** daemon_argvp) {
+std::vector<std::string>
+w_getopt(const OptDesc* opts, int* argcp, char*** argvp) {
   int num_opts, i;
   char* nextshort;
   int argc = *argcp;
   char** argv = *argvp;
   int long_pos = -1;
   int res;
-  int num_daemon = 0;
 
   /* first build up the getopt_long bits that we need */
   for (num_opts = 0; opts[num_opts].optname; num_opts++) {
@@ -312,11 +308,7 @@ bool w_getopt(
   }
 
   /* to hold the args we pass to the daemon */
-  auto daemon_argv = (char**)calloc(num_opts + 1, sizeof(char*));
-  if (!daemon_argv) {
-    log(FATAL, "calloc daemon opts\n");
-  }
-  *daemon_argvp = daemon_argv;
+  std::vector<std::string> daemon_argv;
 
   /* something to hold the long options */
   auto long_opts = (option*)calloc(num_opts + 1, sizeof(struct option));
@@ -376,7 +368,7 @@ bool w_getopt(
                   "--%s (-%c) requires an argument",
                   opts[long_pos].optname,
                   opts[long_pos].shortopt);
-              return false;
+              return daemon_argv;
             }
           }
         }
@@ -386,7 +378,7 @@ bool w_getopt(
         /* unknown option */
         fprintf(stderr, "Unknown or invalid option! %s\n", argv[optind - 1]);
         usage(opts, stderr);
-        return false;
+        return daemon_argv;
 
       default:
         if (res == 0) {
@@ -404,10 +396,8 @@ bool w_getopt(
         }
 
         if (o->is_daemon) {
-          auto value = folly::to<std::string>(
-              "--", o->optname, "=", optarg ? optarg : "");
-          // we deliberately leak this value to the caller
-          daemon_argv[num_daemon++] = strdup(value.c_str());
+          daemon_argv.push_back(folly::to<std::string>(
+              "--", o->optname, "=", optarg ? optarg : ""));
         }
 
         /* store the argument if we found one */
@@ -443,11 +433,11 @@ bool w_getopt(
 
   *argcp = argc - optind;
   *argvp = argv + optind;
-  return true;
+  return daemon_argv;
 }
 
-void parseOptions(int* argcp, char*** argvp, char*** daemon_argv) {
-  w_getopt(opts, argcp, argvp, daemon_argv);
+std::vector<std::string> parseOptions(int* argcp, char*** argvp) {
+  auto daemon_argv = w_getopt(opts, argcp, argvp);
   if (flags.show_help) {
     usage(opts, stdout);
   }
@@ -455,6 +445,7 @@ void parseOptions(int* argcp, char*** argvp, char*** daemon_argv) {
     printf("%s\n", PACKAGE_VERSION);
     exit(0);
   }
+  return daemon_argv;
 }
 
 } // namespace watchman

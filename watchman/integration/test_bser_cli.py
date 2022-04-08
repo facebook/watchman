@@ -48,7 +48,7 @@ class TestDashJCliOption(unittest.TestCase):
         )
 
         stdout, stderr = proc.communicate(input=watchman_cmd)
-        self.assertEqual(proc.poll(), 0, stderr)
+        self.assertEqual(proc.poll(), 0, stderr.decode(errors="replace"))
         # the response should be json because that is the default
         result = json.loads(stdout.decode("utf-8"))
         self.assertEqual(result["unix_domain"], sockpath.unix_domain)
