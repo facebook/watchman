@@ -16,24 +16,19 @@
 namespace watchman {
 
 PduBuffer::PduBuffer()
-    : buf((char*)malloc(WATCHMAN_IO_BUF_SIZE)),
-      allocd(WATCHMAN_IO_BUF_SIZE),
-      rpos(0),
-      wpos(0),
-      pdu_type(need_data),
-      capabilities(0) {
+    : buf((char*)malloc(WATCHMAN_IO_BUF_SIZE)), allocd(WATCHMAN_IO_BUF_SIZE) {
   if (!buf) {
     throw std::bad_alloc();
   }
 }
 
+PduBuffer::~PduBuffer() {
+  free(buf);
+}
+
 void PduBuffer::clear() {
   wpos = 0;
   rpos = 0;
-}
-
-PduBuffer::~PduBuffer() {
-  free(buf);
 }
 
 // Shunt down, return available size
@@ -367,7 +362,6 @@ bool PduBuffer::streamUntilNewLine(watchman_stream* stm) {
     if (!output_bytes(localBuf, x)) {
       return false;
     }
-    localBuf += x;
     rpos += x;
 
     if (is_done) {
@@ -439,7 +433,7 @@ bool PduBuffer::streamN(
 }
 
 bool PduBuffer::streamPdu(watchman_stream* stm, json_error_t* jerr) {
-  uint32_t bser_version = 1;
+  uint32_t bser_version;
   json_int_t bser_capabilities;
   json_int_t len;
 

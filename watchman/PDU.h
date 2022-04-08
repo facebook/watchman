@@ -31,10 +31,12 @@ class PduBuffer {
   PduType pdu_type = need_data;
   uint32_t capabilities = 0;
 
-  ~PduBuffer();
   PduBuffer();
   PduBuffer(const PduBuffer&) = delete;
+  PduBuffer(PduBuffer&&) = delete;
   PduBuffer& operator=(const PduBuffer&) = delete;
+  PduBuffer& operator=(const PduBuffer&&) = delete;
+  ~PduBuffer();
 
   void clear();
   bool jsonEncodeToStream(const json_ref& json, Stream* stm, int flags);

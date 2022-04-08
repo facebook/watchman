@@ -13,7 +13,6 @@
 #include <folly/net/NetworkSocket.h>
 
 #include <stdio.h>
-#include <variant>
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Clock.h"
@@ -42,10 +41,6 @@
 #include <Lmcons.h> // @manual
 #include <Shlobj.h> // @manual
 #include <deelevate.h> // @manual
-#endif
-
-#ifndef _WIN32
-#include <poll.h> // @manual
 #endif
 
 using namespace watchman;
