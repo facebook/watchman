@@ -12,6 +12,7 @@
 #include "watchman/Command.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
+#include "watchman/Poison.h"
 #include "watchman/QueryableView.h"
 #include "watchman/Shutdown.h"
 #include "watchman/root/Root.h"
@@ -86,6 +87,70 @@ void Client::sendErrorResponse(std::string_view formatted) {
   }
 
   enqueueResponse(std::move(resp));
+}
+
+bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
+  // Stash a reference to the current command to make it easier to log
+  // the command context in some of the error paths
+  current_command = &command;
+  SCOPE_EXIT {
+    current_command = nullptr;
+  };
+
+  try {
+    auto* def = CommandDefinition::lookup(command.name(), mode);
+    if (!def) {
+      sendErrorResponse("Unknown command");
+      return false;
+    }
+
+    if (!poisoned_reason.rlock()->empty() &&
+        !def->flags.contains(CMD_POISON_IMMUNE)) {
+      sendErrorResponse(*poisoned_reason.rlock());
+      return false;
+    }
+
+    if (!client_is_owner && !def->flags.contains(CMD_ALLOW_ANY_USER)) {
+      sendErrorResponse(
+          "you must be the process owner to execute '{}'", def->name);
+      return false;
+    }
+
+    // Scope for the perf sample
+    {
+      logf(DBG, "dispatch_command: {}\n", def->name);
+      auto sample_name = "dispatch_command:" + std::string{def->name};
+      PerfSample sample(sample_name.c_str());
+      perf_sample = &sample;
+      SCOPE_EXIT {
+        perf_sample = nullptr;
+      };
+
+      sample.set_wall_time_thresh(
+          cfg_get_double("slow_command_log_threshold_seconds", 1.0));
+
+      // TODO: It's silly to convert a Command back into JSON after parsing it.
+      // Let's change `func` to take a Command after Command knows what a root
+      // path is.
+      auto rendered = command.render();
+
+      def->handler(this, rendered);
+
+      if (sample.finish()) {
+        sample.add_meta("args", std::move(rendered));
+        sample.add_meta(
+            "client",
+            json_object({{"pid", json_integer(stm->getPeerProcessID())}}));
+        sample.log();
+      }
+      logf(DBG, "dispatch_command: {} (completed)\n", def->name);
+    }
+
+    return true;
+  } catch (const std::exception& e) {
+    sendErrorResponse(folly::exceptionStr(e));
+    return false;
+  }
 }
 
 void UserClient::create(std::unique_ptr<watchman_stream> stm) {
@@ -208,7 +273,7 @@ void UserClient::clientThread() noexcept {
         pdu_type = reader.pdu_type;
         capabilities = reader.capabilities;
         status_.transitionTo(ClientStatus::DISPATCHING_COMMAND);
-        dispatch_command(this, Command::parse(request), CMD_DAEMON);
+        dispatchCommand(Command::parse(request), CMD_DAEMON);
       }
     }
 

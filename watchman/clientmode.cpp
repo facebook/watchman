@@ -14,7 +14,7 @@ bool try_client_mode_command(const Command& command, bool pretty) {
   auto client = std::make_shared<watchman::Client>();
   client->client_mode = true;
 
-  bool res = dispatch_command(client.get(), command, CMD_CLIENT);
+  bool res = client->dispatchCommand(command, CMD_CLIENT);
 
   if (!client->responses.empty()) {
     json_dumpf(

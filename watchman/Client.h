@@ -10,6 +10,7 @@
 #include <deque>
 #include <unordered_map>
 #include "watchman/Clock.h"
+#include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
 #include "watchman/PDU.h"
 #include "watchman/PerfSample.h"
@@ -28,6 +29,8 @@ class Client : public std::enable_shared_from_this<Client> {
   Client();
   explicit Client(std::unique_ptr<watchman_stream> stm);
   virtual ~Client();
+
+  bool dispatchCommand(const Command& command, CommandFlags mode);
 
   void enqueueResponse(json_ref resp);
 
@@ -52,7 +55,7 @@ class Client : public std::enable_shared_from_this<Client> {
   PduType pdu_type;
   uint32_t capabilities;
 
-  // The command currently being processed by dispatch_command. Only set by the
+  // The command currently being processed by dispatchCommand. Only set by the
   // client thread.
   const Command* current_command = nullptr;
   // The PerfSample wrapping the current command's execution. Only set by the
