@@ -75,7 +75,7 @@ class TempDirPerTestMixin(unittest.TestCase):
     def mkdtemp(self, **kwargs):
         return norm_absolute_path(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
 
-    def mktemp(self, prefix: str = ""):
+    def mktemp(self, prefix: str = "") -> str:
         f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
         os.close(f)
         return name
@@ -161,7 +161,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             self.client.close()
             delattr(self, "client")
 
-    def _getTempDirName(self):
+    def _getTempDirName(self) -> str:
         name = self._getLongTestID()
         if self.attempt > 0:
             name += "-%d" % self.attempt
