@@ -14,6 +14,11 @@
 
 namespace watchman {
 
+Command::Command(w_string name, json_ref args)
+    : name_{std::move(name)},
+      args_{std::move(args)},
+      commandDefinition_{CommandDefinition::lookup(name_.view())} {}
+
 Command Command::parse(const json_ref& pdu) {
   if (!json_array_size(pdu)) {
     throw CommandValidationError(

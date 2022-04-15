@@ -99,7 +99,7 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
   };
 
   try {
-    auto* def = CommandDefinition::lookup(command.name());
+    auto* def = command.getCommandDefinition();
     if (!def) {
       throw CommandValidationError("unknown command ", command.name());
     }

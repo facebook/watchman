@@ -14,6 +14,7 @@
 
 namespace watchman {
 
+struct CommandDefinition;
 class Stream;
 
 class Command {
@@ -23,8 +24,7 @@ class Command {
    */
   /* implicit */ Command(std::nullptr_t) {}
 
-  Command(w_string name, json_ref args)
-      : name_{std::move(name)}, args_{std::move(args)} {}
+  Command(w_string name, json_ref args);
 
   /**
    * Parses a command from arbitrary JSON.
@@ -56,6 +56,14 @@ class Command {
 
   const json_ref& args() const {
     return args_;
+  }
+
+  /**
+   * Returns an unowned reference to the command definition for `name_`. May be
+   * null if there is no corresponding command.
+   */
+  const CommandDefinition* getCommandDefinition() const {
+    return commandDefinition_;
   }
 
   /**
@@ -91,6 +99,8 @@ class Command {
 
   w_string name_;
   json_ref args_;
+
+  const CommandDefinition* commandDefinition_ = nullptr;
 };
 
 } // namespace watchman
