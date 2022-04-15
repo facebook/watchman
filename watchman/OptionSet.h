@@ -181,22 +181,22 @@ class OptionSet {
   /**
    * Returns the union of both sets.
    */
-  friend Derived operator|(Derived lhs, Derived rhs) {
+  constexpr friend Derived operator|(Derived lhs, Derived rhs) {
     return raw(lhs.value_ | rhs.value_);
   }
 
   /**
    * Returns the intersection of both sets.
    */
-  friend Derived operator&(Derived lhs, Derived rhs) {
+  constexpr friend Derived operator&(Derived lhs, Derived rhs) {
     return raw(lhs.value_ & rhs.value_);
   }
 
-  friend bool operator==(Derived lhs, Derived rhs) {
+  constexpr friend bool operator==(Derived lhs, Derived rhs) {
     return lhs.value_ == rhs.value_;
   }
 
-  friend bool operator!=(Derived lhs, Derived rhs) {
+  constexpr friend bool operator!=(Derived lhs, Derived rhs) {
     return lhs.value_ != rhs.value_;
   }
 

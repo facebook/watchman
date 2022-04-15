@@ -53,48 +53,53 @@ static bool query_caps(
   return have_all;
 }
 
-/* version */
-static void cmd_version(Client* client, const json_ref& args) {
-  auto resp = make_response();
+class VersionCommand : public TypedCommand<VersionCommand> {
+ public:
+  static constexpr std::string_view name = "version";
+
+  static constexpr CommandFlags flags =
+      CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER;
+
+  static void handle(Client* client, const json_ref& args) {
+    auto resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
-  resp.set(
-      "buildinfo", typed_string_to_json(WATCHMAN_BUILD_INFO, W_STRING_UNICODE));
+    resp.set(
+        "buildinfo",
+        typed_string_to_json(WATCHMAN_BUILD_INFO, W_STRING_UNICODE));
 #endif
 
-  /* ["version"]
-   *    -> just returns the basic version information.
-   * ["version", {"required": ["foo"], "optional": ["bar"]}]
-   *    -> includes capability matching information
-   */
+    /* ["version"]
+     *    -> just returns the basic version information.
+     * ["version", {"required": ["foo"], "optional": ["bar"]}]
+     *    -> includes capability matching information
+     */
 
-  if (json_array_size(args) == 2) {
-    const auto& arg_obj = args.at(1);
+    if (json_array_size(args) == 2) {
+      const auto& arg_obj = args.at(1);
 
-    auto req_cap = arg_obj.get_default("required");
-    auto opt_cap = arg_obj.get_default("optional");
+      auto req_cap = arg_obj.get_default("required");
+      auto opt_cap = arg_obj.get_default("optional");
 
-    auto cap_res = json_object_of_size(
-        (opt_cap ? json_array_size(opt_cap) : 0) +
-        (req_cap ? json_array_size(req_cap) : 0));
+      auto cap_res = json_object_of_size(
+          (opt_cap ? json_array_size(opt_cap) : 0) +
+          (req_cap ? json_array_size(req_cap) : 0));
 
-    if (opt_cap && opt_cap.isArray()) {
-      query_caps(resp, cap_res, opt_cap, false);
+      if (opt_cap && opt_cap.isArray()) {
+        query_caps(resp, cap_res, opt_cap, false);
+      }
+      if (req_cap && req_cap.isArray()) {
+        query_caps(resp, cap_res, req_cap, true);
+      }
+
+      resp.set("capabilities", std::move(cap_res));
     }
-    if (req_cap && req_cap.isArray()) {
-      query_caps(resp, cap_res, req_cap, true);
-    }
 
-    resp.set("capabilities", std::move(cap_res));
+    client->enqueueResponse(std::move(resp));
   }
+};
 
-  client->enqueueResponse(std::move(resp));
-}
-W_CMD_REG(
-    "version",
-    cmd_version,
-    CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-    NULL);
+WATCHMAN_COMMAND(version, VersionCommand);
 
 /* list-capabilities */
 static void cmd_list_capabilities(Client* client, const json_ref&) {

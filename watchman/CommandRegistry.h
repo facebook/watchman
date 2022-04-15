@@ -78,6 +78,30 @@ struct CommandDefinition {
   CommandDefinition* next_ = nullptr;
 };
 
+/**
+ * Provides a typed interface for CommandDefinition that can optionally handle
+ * validation, result-printing, request decoding, and response encoding.
+ */
+template <typename T>
+class TypedCommand : public CommandDefinition {
+ public:
+  /// Override to implement a validator.
+  static constexpr CommandValidator validate = nullptr;
+
+  /// Override to implement a result printer.
+  static constexpr ResultPrinter printResult = nullptr;
+
+  TypedCommand()
+      : CommandDefinition{
+            T::name,
+            // TODO: eliminate this allocation
+            std::string{"cmd-"} + std::string{T::name},
+            T::handle,
+            T::flags,
+            T::validate,
+            T::printResult} {}
+};
+
 static_assert(
     std::is_trivially_destructible_v<CommandDefinition>,
     "CommandDefinition should remain unchanged until process exit");
@@ -90,6 +114,8 @@ json_ref capability_get_list();
   static const ::watchman::CommandDefinition w_gen_symbol(w_cmd_def_) { \
     (name), "cmd-" name, (func), (flags), (clivalidate), nullptr        \
   }
+
+#define WATCHMAN_COMMAND(name, class_) static class_ reg_##name
 
 #define W_CAP_REG1(symbol, name)           \
   static w_ctor_fn_type(symbol) {          \
