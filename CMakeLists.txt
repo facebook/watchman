@@ -614,7 +614,6 @@ watchman/UserDir.cpp
 watchman/WatchmanConfig.cpp
 watchman/fs/WinDirHandle.cpp
 watchman/bser.cpp
-watchman/clientmode.cpp
 # hash.cpp (in libhash)
 watchman/launchd.cpp
 watchman/listener-user.cpp

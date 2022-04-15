@@ -36,8 +36,6 @@ bool find_project_root(
     w_string_piece& resolved,
     w_string_piece& relpath);
 
-bool try_client_mode_command(const watchman::Command& command, bool pretty);
-
 // Resolve the root. Failure will throw a RootResolveError exception
 std::shared_ptr<watchman::Root> resolveRoot(
     watchman::Client* client,

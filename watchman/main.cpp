@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 #include "watchman/ChildProcess.h"
+#include "watchman/Client.h"
 #include "watchman/Clock.h"
 #include "watchman/Command.h"
 #include "watchman/Connect.h"
@@ -805,6 +806,23 @@ static ResultErrno<folly::Unit> try_command(
 
   return command.run(
       *stream, flags.persistent, server_format, output_format, flags.no_pretty);
+}
+
+static bool try_client_mode_command(const Command& command, bool pretty) {
+  auto client = std::make_shared<watchman::Client>();
+  client->client_mode = true;
+
+  bool res = client->dispatchCommand(command, CMD_CLIENT);
+
+  if (!client->responses.empty()) {
+    json_dumpf(
+        client->responses.front(),
+        stdout,
+        pretty ? JSON_INDENT(4) : JSON_COMPACT);
+    printf("\n");
+  }
+
+  return res;
 }
 
 static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
