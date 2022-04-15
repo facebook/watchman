@@ -7,10 +7,14 @@
 
 #pragma once
 
+#include <chrono>
 #include "watchman/PDU.h"
+#include "watchman/Result.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace watchman {
+
+class Stream;
 
 class Command {
  public:
@@ -60,6 +64,21 @@ class Command {
    * `output_pdu` and `output_capabilities` and exit(1).
    */
   void validateOrExit(PduType output_pdu, uint32_t output_capabilities);
+
+  /**
+   * Called by the client. Sends a command to the daemon and prints the output
+   * response to stdout.
+   *
+   * If persistent is true, this function continuously loops until there is an
+   * error reading from the connection stream.
+   */
+  ResultErrno<folly::Unit> run(
+      Stream& stream,
+      bool persistent,
+      PduType server_pdu,
+      uint32_t server_capabilities,
+      PduType output_pdu,
+      uint32_t output_capabilities) const;
 
  private:
   w_string name_;

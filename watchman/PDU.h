@@ -58,7 +58,7 @@ class PduBuffer {
 
   /**
    * Read a PDU from `stm`, blocking if necessary, and encode it into
-   * `output_pdu_buf`.
+   * stdout through `output_pdu_buf`.
    */
   ResultErrno<folly::Unit> passThru(
       PduType output_pdu,

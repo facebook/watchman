@@ -6,8 +6,10 @@
  */
 
 #include "watchman/Command.h"
+#include <folly/String.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/watchman_stream.h"
 
 namespace watchman {
@@ -67,6 +69,46 @@ void Command::validateOrExit(PduType output_pdu, uint32_t output_capabilities) {
     PduBuffer jr;
     jr.pduEncodeToStream(output_pdu, output_capabilities, err, w_stm_stdout());
     exit(1);
+  }
+}
+
+ResultErrno<folly::Unit> Command::run(
+    Stream& stream,
+    bool persistent,
+    PduType server_pdu,
+    uint32_t server_capabilities,
+    PduType output_pdu,
+    uint32_t output_capabilities) const {
+  // Start in a well-defined non-blocking state as we can't tell
+  // what mode we're in on windows until we've set it to something
+  // explicitly at least once before!
+  stream.setNonBlock(false);
+
+  PduBuffer buffer;
+
+  // Send command
+  auto res = buffer.pduEncodeToStream(
+      server_pdu, server_capabilities, render(), &stream);
+  if (res.hasError()) {
+    logf(
+        ERR, "error sending PDU to server: {}\n", folly::errnoStr(res.error()));
+    return res;
+  }
+
+  buffer.clear();
+
+  PduBuffer output_pdu_buffer;
+  if (persistent) {
+    for (;;) {
+      auto res = buffer.passThru(
+          output_pdu, output_capabilities, &output_pdu_buffer, &stream);
+      if (res.hasError()) {
+        return res;
+      }
+    }
+  } else {
+    return buffer.passThru(
+        output_pdu, output_capabilities, &output_pdu_buffer, &stream);
   }
 }
 

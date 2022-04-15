@@ -803,34 +803,13 @@ static ResultErrno<folly::Unit> try_command(
 
   auto stream = std::move(stmResult).value();
 
-  // Start in a well-defined non-blocking state as we can't tell
-  // what mode we're in on windows until we've set it to something
-  // explicitly at least once before!
-  stream->setNonBlock(false);
-
-  PduBuffer buffer;
-
-  // Send command
-  auto res = buffer.pduEncodeToStream(
-      server_pdu, server_capabilities, command.render(), stream.get());
-  if (res.hasError()) {
-    logf(
-        ERR, "error sending PDU to server: {}\n", folly::errnoStr(res.error()));
-    return res;
-  }
-
-  buffer.clear();
-
-  PduBuffer output_pdu_buffer;
-  do {
-    auto res = buffer.passThru(
-        output_pdu, output_capabilities, &output_pdu_buffer, stream.get());
-    if (res.hasError()) {
-      return res;
-    }
-  } while (flags.persistent);
-
-  return folly::unit;
+  return command.run(
+      *stream,
+      flags.persistent,
+      server_pdu,
+      server_capabilities,
+      output_pdu,
+      output_capabilities);
 }
 
 static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
