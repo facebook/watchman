@@ -197,7 +197,7 @@ json_ref json_object_of_size(size_t nelems);
 json_ref json_array();
 json_ref json_array_of_size(size_t nelems);
 json_ref json_array(std::initializer_list<json_ref> values);
-json_ref w_string_to_json(const w_string& str);
+json_ref w_string_to_json(w_string str);
 
 template <typename... Args>
 json_ref typed_string_to_json(Args&&... args) {

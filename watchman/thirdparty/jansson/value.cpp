@@ -563,10 +563,10 @@ static json_ref json_array_deep_copy(const json_t* array) {
 
 /*** string ***/
 
-json_string_t::json_string_t(const w_string& str)
-    : json(JSON_STRING), value(str) {}
+json_string_t::json_string_t(w_string str)
+    : json(JSON_STRING), value(std::move(str)) {}
 
-json_ref w_string_to_json(const w_string& str) {
+json_ref w_string_to_json(w_string str) {
   if (!str) {
     return json_null();
   }

@@ -47,7 +47,7 @@ struct json_string_t {
   json_t json;
   w_string value;
 
-  json_string_t(const w_string& str);
+  json_string_t(w_string str);
 };
 
 struct json_real_t {
