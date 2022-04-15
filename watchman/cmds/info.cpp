@@ -60,7 +60,7 @@ class VersionCommand : public TypedCommand<VersionCommand> {
   static constexpr CommandFlags flags =
       CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER;
 
-  static void handle(Client* client, const json_ref& args) {
+  static json_ref handle(Client*, const json_ref& args) {
     auto resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
@@ -95,18 +95,18 @@ class VersionCommand : public TypedCommand<VersionCommand> {
       resp.set("capabilities", std::move(cap_res));
     }
 
-    client->enqueueResponse(std::move(resp));
+    return resp;
   }
 };
 
 WATCHMAN_COMMAND(version, VersionCommand);
 
 /* list-capabilities */
-static void cmd_list_capabilities(Client* client, const json_ref&) {
+static json_ref cmd_list_capabilities(Client*, const json_ref&) {
   auto resp = make_response();
 
   resp.set("capabilities", capability_get_list());
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "list-capabilities",
@@ -115,7 +115,7 @@ W_CMD_REG(
     NULL);
 
 /* get-sockname */
-static void cmd_get_sockname(Client* client, const json_ref&) {
+static json_ref cmd_get_sockname(Client*, const json_ref&) {
   auto resp = make_response();
 
   // For legacy reasons we report the unix domain socket as sockname on
@@ -136,7 +136,7 @@ static void cmd_get_sockname(Client* client, const json_ref&) {
   }
 #endif
 
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "get-sockname",
@@ -144,12 +144,12 @@ W_CMD_REG(
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
     NULL);
 
-static void cmd_get_config(Client* client, const json_ref& args) {
+static json_ref cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
 
   if (json_array_size(args) != 2) {
     client->sendErrorResponse("wrong number of arguments for 'get-config'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -163,7 +163,7 @@ static void cmd_get_config(Client* client, const json_ref& args) {
   }
 
   resp.set("config", std::move(config));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root);
 

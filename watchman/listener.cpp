@@ -564,12 +564,11 @@ bool w_start_listener() {
 }
 
 /* get-pid */
-static void cmd_get_pid(Client* client, const json_ref&) {
+static json_ref cmd_get_pid(Client*, const json_ref&) {
   auto resp = make_response();
 
   resp.set("pid", json_integer(::getpid()));
-
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL);
 

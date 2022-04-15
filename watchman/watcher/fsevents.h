@@ -62,7 +62,7 @@ class FSEventsWatcher : public Watcher {
   json_ref getDebugInfo() override;
   void clearDebugInfo() override;
 
-  static void cmd_debug_fsevents_inject_drop(
+  static json_ref cmd_debug_fsevents_inject_drop(
       Client* client,
       const json_ref& args);
 

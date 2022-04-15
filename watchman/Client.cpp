@@ -138,7 +138,10 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
       // path is.
       auto rendered = command.render();
 
-      def->handler(this, rendered);
+      json_ref response = def->handler(this, rendered);
+      if (response) {
+        enqueueResponse(std::move(response));
+      }
 
       if (sample.finish()) {
         sample.add_meta("args", std::move(rendered));

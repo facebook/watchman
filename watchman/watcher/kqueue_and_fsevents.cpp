@@ -316,14 +316,14 @@ std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
       view->getWatcher());
 }
 
-static void cmd_debug_kqueue_and_fsevents_recrawl(
+static json_ref cmd_debug_kqueue_and_fsevents_recrawl(
     Client* client,
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
     client->sendErrorResponse(
         "wrong number of arguments for 'debug-kqueue-and-fsevents-recrawl'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -331,7 +331,7 @@ static void cmd_debug_kqueue_and_fsevents_recrawl(
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
     client->sendErrorResponse("root is not using the kqueue+fsevents watcher");
-    return;
+    return nullptr;
   }
 
   /* Get the path that the recrawl should be triggered on */
@@ -344,8 +344,7 @@ static void cmd_debug_kqueue_and_fsevents_recrawl(
 
   watcher->injectRecrawl(path);
 
-  auto resp = make_response();
-  client->enqueueResponse(std::move(resp));
+  return make_response();
 }
 
 } // namespace

@@ -24,7 +24,7 @@ using namespace watchman;
 /* trigger-del /root triggername
  * Delete a trigger from a root
  */
-static void cmd_trigger_delete(Client* client, const json_ref& args) {
+static json_ref cmd_trigger_delete(Client* client, const json_ref& args) {
   w_string tname;
   bool res;
 
@@ -32,12 +32,12 @@ static void cmd_trigger_delete(Client* client, const json_ref& args) {
 
   if (json_array_size(args) != 3) {
     client->sendErrorResponse("wrong number of arguments");
-    return;
+    return nullptr;
   }
   auto jname = args.at(2);
   if (!jname.isString()) {
     client->sendErrorResponse("expected 2nd parameter to be trigger name");
-    return;
+    return nullptr;
   }
   tname = json_to_w_string(jname);
 
@@ -66,21 +66,21 @@ static void cmd_trigger_delete(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set({{"deleted", json_boolean(res)}, {"trigger", json_ref(jname)}});
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root);
 
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
  */
-static void cmd_trigger_list(Client* client, const json_ref& args) {
+static json_ref cmd_trigger_list(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   auto resp = make_response();
   auto arr = root->triggerListToJson();
 
   resp.set("triggers", std::move(arr));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root);
 
@@ -132,7 +132,7 @@ static json_ref build_legacy_trigger(
 /* trigger /root triggername [watch patterns] -- cmd to run
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
-static void cmd_trigger(Client* client, const json_ref& args) {
+static json_ref cmd_trigger(Client* client, const json_ref& args) {
   bool need_save = true;
   std::unique_ptr<TriggerCommand> cmd;
   json_ref trig;
@@ -142,14 +142,14 @@ static void cmd_trigger(Client* client, const json_ref& args) {
 
   if (json_array_size(args) < 3) {
     client->sendErrorResponse("not enough arguments");
-    return;
+    return nullptr;
   }
 
   trig = args.at(2);
   if (trig.isString()) {
     trig = build_legacy_trigger(root, client, args);
     if (!trig) {
-      return;
+      return nullptr;
     }
   }
 
@@ -192,7 +192,7 @@ static void cmd_trigger(Client* client, const json_ref& args) {
     w_state_save();
   }
 
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root);
 

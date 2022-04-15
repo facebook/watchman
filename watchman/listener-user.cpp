@@ -18,13 +18,13 @@
 
 using namespace watchman;
 
-static void cmd_shutdown(Client* client, const json_ref&) {
+static json_ref cmd_shutdown(Client*, const json_ref&) {
   logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
   auto resp = make_response();
   resp.set("shutdown-server", json_true());
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "shutdown-server",

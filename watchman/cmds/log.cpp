@@ -14,10 +14,10 @@ using namespace watchman;
 // log-level "debug"
 // log-level "error"
 // log-level "off"
-static void cmd_loglevel(Client* client, const json_ref& args) {
+static json_ref cmd_loglevel(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
     client->sendErrorResponse("wrong number of arguments to 'log-level'");
-    return;
+    return nullptr;
   }
 
   watchman::LogLevel level;
@@ -25,7 +25,7 @@ static void cmd_loglevel(Client* client, const json_ref& args) {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
     client->sendErrorResponse("invalid log level for 'log-level'");
-    return;
+    return nullptr;
   }
 
   auto clientRef = client->shared_from_this();
@@ -49,15 +49,15 @@ static void cmd_loglevel(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set("log_level", json_ref(args.at(1)));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL);
 
 // log "debug" "text to log"
-static void cmd_log(Client* client, const json_ref& args) {
+static json_ref cmd_log(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
     client->sendErrorResponse("wrong number of arguments to 'log'");
-    return;
+    return nullptr;
   }
 
   watchman::LogLevel level;
@@ -65,7 +65,7 @@ static void cmd_log(Client* client, const json_ref& args) {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
     client->sendErrorResponse("invalid log level for 'log'");
-    return;
+    return nullptr;
   }
 
   auto text = json_to_w_string(args.at(2));
@@ -74,16 +74,16 @@ static void cmd_log(Client* client, const json_ref& args) {
 
   auto resp = make_response();
   resp.set("logged", json_true());
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL);
 
 // change the server log level for the logs
-static void cmd_global_log_level(Client* client, const json_ref& args) {
+static json_ref cmd_global_log_level(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
     client->sendErrorResponse(
         "wrong number of arguments to 'global-log-level'");
-    return;
+    return nullptr;
   }
 
   watchman::LogLevel level;
@@ -91,14 +91,14 @@ static void cmd_global_log_level(Client* client, const json_ref& args) {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
     client->sendErrorResponse("invalid log level for 'global-log-level'");
-    return;
+    return nullptr;
   }
 
   watchman::getLog().setStdErrLoggingLevel(level);
 
   auto resp = make_response();
   resp.set("log_level", json_ref(args.at(1)));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "global-log-level",

@@ -16,7 +16,7 @@ using namespace watchman;
 
 // This command is present to manually trigger a  heap profile dump when
 // jemalloc is in use.
-static void cmd_debug_prof_dump(Client* client, const json_ref&) {
+static json_ref cmd_debug_prof_dump(Client*, const json_ref&) {
   if (!folly::usingJEMalloc()) {
     throw std::runtime_error("jemalloc is not in use");
   }
@@ -29,7 +29,7 @@ static void cmd_debug_prof_dump(Client* client, const json_ref&) {
           folly::to<std::string>(
               "mallctl prof.dump returned: ", folly::errnoStr(result))
               .c_str()));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, NULL);
 

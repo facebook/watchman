@@ -31,7 +31,7 @@ using CommandValidator = void (*)(Command& command);
  * Executes a command's primary action. Usually runs on the server, but there
  * are client-only commands.
  */
-using CommandHandler = void (*)(Client* client, const json_ref& args);
+using CommandHandler = json_ref (*)(Client* client, const json_ref& args);
 
 /**
  * For commands that support pretty, human-readable output, this function is

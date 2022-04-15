@@ -15,11 +15,11 @@
 using namespace watchman;
 
 /* find /root [patterns] */
-static void cmd_find(Client* client, const json_ref& args) {
+static json_ref cmd_find(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) < 2) {
     client->sendErrorResponse("not enough arguments for 'find'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -36,7 +36,7 @@ static void cmd_find(Client* client, const json_ref& args) {
       {{"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray)}});
 
-  client->enqueueResponse(std::move(response));
+  return response;
 }
 W_CMD_REG(
     "find",

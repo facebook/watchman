@@ -15,13 +15,13 @@
 using namespace watchman;
 
 /* since /root <timestamp> [patterns] */
-static void cmd_since(Client* client, const json_ref& args) {
+static json_ref cmd_since(Client* client, const json_ref& args) {
   const char* clockspec;
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
     client->sendErrorResponse("not enough arguments for 'since'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -30,7 +30,7 @@ static void cmd_since(Client* client, const json_ref& args) {
   clockspec = json_string_value(clock_ele);
   if (!clockspec) {
     client->sendErrorResponse("expected argument 2 to be a valid clockspec");
-    return;
+    return nullptr;
   }
 
   auto query = parseQueryLegacy(root, args, 3, nullptr, clockspec, nullptr);
@@ -48,7 +48,7 @@ static void cmd_since(Client* client, const json_ref& args) {
   }
 
   add_root_warnings_to_response(response, root);
-  client->enqueueResponse(std::move(response));
+  return response;
 }
 W_CMD_REG(
     "since",

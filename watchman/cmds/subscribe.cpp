@@ -316,7 +316,9 @@ ClockSpec ClientSubscription::runSubscriptionRules(
   return position;
 }
 
-static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
+static json_ref cmd_flush_subscriptions(
+    Client* clientbase,
+    const json_ref& args) {
   auto client = (UserClient*)clientbase;
 
   int sync_timeout;
@@ -328,13 +330,13 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
     subs = args.at(2).get_default("subscriptions", nullptr);
     if (!sync_timeout_obj.isInt()) {
       client->sendErrorResponse("'sync_timeout' must be an integer");
-      return;
+      return nullptr;
     }
     sync_timeout = sync_timeout_obj.asInt();
   } else {
     client->sendErrorResponse(
         "wrong number of arguments to 'flush-subscriptions'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -344,14 +346,14 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
     if (!subs.isArray()) {
       client->sendErrorResponse(
           "expected 'subscriptions' to be an array of subscription names");
-      return;
+      return nullptr;
     }
 
     for (auto& sub_name : subs.array()) {
       if (!sub_name.isString()) {
         client->sendErrorResponse(
             "expected 'subscriptions' to be an array of subscription names");
-        return;
+        return nullptr;
       }
 
       auto& sub_name_str = json_to_w_string(sub_name);
@@ -360,7 +362,7 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
         client->sendErrorResponse(
             "this client does not have a subscription named '{}'",
             sub_name_str);
-        return;
+        return nullptr;
       }
       auto& sub = sub_iter->second;
       if (sub->root != root) {
@@ -370,7 +372,7 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
             sub_name_str,
             sub->root->root_path,
             root->root_path);
-        return;
+        return nullptr;
       }
 
       subs_to_sync.push_back(sub_name_str);
@@ -437,7 +439,7 @@ static void cmd_flush_subscriptions(Client* clientbase, const json_ref& args) {
        {"no_sync_needed", std::move(no_sync_needed)},
        {"dropped", std::move(dropped)}});
   add_root_warnings_to_response(resp, root);
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "flush-subscriptions",
@@ -447,29 +449,26 @@ W_CMD_REG(
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-static void cmd_unsubscribe(Client* clientbase, const json_ref& args) {
-  const char* name;
-  bool deleted{false};
+static json_ref cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   UserClient* client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
 
   auto jstr = json_array_get(args, 2);
-  name = json_string_value(jstr);
+  const char* name = json_string_value(jstr);
   if (!name) {
     client->sendErrorResponse("expected 2nd parameter to be subscription name");
-    return;
+    return nullptr;
   }
 
   auto sname = json_to_w_string(jstr);
-  deleted = client->unsubByName(sname);
+  bool deleted = client->unsubByName(sname);
 
   auto resp = make_response();
   resp.set(
       {{"unsubscribe", typed_string_to_json(name)},
        {"deleted", json_boolean(deleted)}});
-
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "unsubscribe",
@@ -479,7 +478,7 @@ W_CMD_REG(
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-static void cmd_subscribe(Client* clientbase, const json_ref& args) {
+static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
   std::shared_ptr<ClientSubscription> sub;
   json_ref resp, initial_subscription_results;
   json_ref jfield_list;
@@ -492,7 +491,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   if (json_array_size(args) != 4) {
     client->sendErrorResponse("wrong number of arguments for subscribe");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -500,7 +499,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   jname = args.at(2);
   if (!jname.isString()) {
     client->sendErrorResponse("expected 2nd parameter to be subscription name");
-    return;
+    return nullptr;
   }
 
   query_spec = args.at(3);
@@ -512,13 +511,13 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   defer_list = query_spec.get_default("defer");
   if (defer_list && !defer_list.isArray()) {
     client->sendErrorResponse("defer field must be an array of strings");
-    return;
+    return nullptr;
   }
 
   drop_list = query_spec.get_default("drop");
   if (drop_list && !drop_list.isArray()) {
     client->sendErrorResponse("drop field must be an array of strings");
-    return;
+    return nullptr;
   }
 
   sub = std::make_shared<ClientSubscription>(root, client->shared_from_this());
@@ -529,7 +528,7 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   auto defer = query_spec.get_default("defer_vcs", json_true());
   if (!defer.isBool()) {
     client->sendErrorResponse("defer_vcs must be boolean");
-    return;
+    return nullptr;
   }
   sub->vcs_defer = defer.asBool();
 
@@ -616,10 +615,14 @@ static void cmd_subscribe(Client* clientbase, const json_ref& args) {
   }
   resp.set("asserted-states", json_ref(asserted_states));
 
+  // TODO: It would be nice to return something that indicates the start of a
+  // potential stream of responses, rather than manually enqueuing here and
+  // return null.
   client->enqueueResponse(std::move(resp));
   if (initial_subscription_results) {
     client->enqueueResponse(std::move(initial_subscription_results));
   }
+  return nullptr;
 }
 W_CMD_REG(
     "subscribe",

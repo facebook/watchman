@@ -15,10 +15,10 @@
 using namespace watchman;
 
 /* query /root {query} */
-static void cmd_query(Client* client, const json_ref& args) {
+static json_ref cmd_query(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
     client->sendErrorResponse("wrong number of arguments for 'query'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -44,7 +44,7 @@ static void cmd_query(Client* client, const json_ref& args) {
 
   add_root_warnings_to_response(response, root);
 
-  client->enqueueResponse(std::move(response));
+  return response;
 }
 W_CMD_REG(
     "query",

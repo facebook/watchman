@@ -66,19 +66,19 @@ static bool parse_state_arg(
 
 namespace watchman {
 
-static void cmd_state_enter(Client* clientbase, const json_ref& args) {
+static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
   auto client = dynamic_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
 
   if (!parse_state_arg(client, args, &parsed)) {
-    return;
+    return nullptr;
   }
 
   if (client->states.find(parsed.name) != client->states.end()) {
     client->sendErrorResponse("state {} is already asserted", parsed.name);
-    return;
+    return nullptr;
   }
 
   auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
@@ -101,7 +101,6 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-enter", w_string_to_json(parsed.name)}});
-  client->enqueueResponse(std::move(response));
 
   root->cookies
       .sync()
@@ -148,13 +147,15 @@ static void cmd_state_enter(Client* clientbase, const json_ref& args) {
           }
         }
       });
+
+  return response;
 }
 
 } // namespace watchman
 
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root);
 
-static void cmd_state_leave(Client* clientbase, const json_ref& args) {
+static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
   struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
@@ -165,26 +166,26 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (!parse_state_arg(client, args, &parsed)) {
-    return;
+    return nullptr;
   }
 
   auto it = client->states.find(parsed.name);
   if (it == client->states.end()) {
     client->sendErrorResponse("state {} is not asserted", parsed.name);
-    return;
+    return nullptr;
   }
 
   assertion = it->second.lock();
   if (!assertion) {
     client->sendErrorResponse("state {} was implicitly vacated", parsed.name);
-    return;
+    return nullptr;
   }
 
   // Sanity check ownership
   if (mapGetDefault(client->states, parsed.name).lock() != assertion) {
     client->sendErrorResponse(
         "state {} was not asserted by this session", parsed.name);
-    return;
+    return nullptr;
   }
 
   // Mark as pending leave; we haven't vacated the state until we've
@@ -193,7 +194,7 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
     auto assertedStates = root->assertedStates.wlock();
     if (assertion->disposition == ClientStateDisposition::Done) {
       client->sendErrorResponse("state {} was implicitly vacated", parsed.name);
-      return;
+      return nullptr;
     }
     // Note that there is a potential race here wrt. this state being
     // asserted again by another client and the broadcast
@@ -216,7 +217,6 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)}});
-  client->enqueueResponse(std::move(response));
 
   root->cookies.sync().thenTry(
       [assertion, parsed, root](folly::Try<CookieSync::SyncResult>&& result) {
@@ -231,6 +231,7 @@ static void cmd_state_leave(Client* clientbase, const json_ref& args) {
         // Notify and exit the state
         w_leave_state(nullptr, assertion, false, parsed.metadata);
       });
+  return response;
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root);
 

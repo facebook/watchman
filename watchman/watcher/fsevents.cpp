@@ -840,14 +840,14 @@ static RegisterWatcher<FSEventsWatcher> reg("fsevents");
 
 // A helper command to facilitate testing that we can successfully
 // resync the stream.
-void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
+json_ref FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     Client* client,
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     client->sendErrorResponse(
         "wrong number of arguments for 'debug-fsevents-inject-drop'");
-    return;
+    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
@@ -855,12 +855,12 @@ void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
     client->sendErrorResponse("root is not using the fsevents watcher");
-    return;
+    return nullptr;
   }
 
   if (!watcher->attemptResyncOnDrop_) {
     client->sendErrorResponse("fsevents_try_resync is not enabled");
-    return;
+    return nullptr;
   }
 
   FSEventStreamEventId last_good;
@@ -873,7 +873,7 @@ void FSEventsWatcher::cmd_debug_fsevents_inject_drop(
 
   auto resp = make_response();
   resp.set("last_good", json_integer(last_good));
-  client->enqueueResponse(std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "debug-fsevents-inject-drop",
