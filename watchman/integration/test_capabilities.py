@@ -34,7 +34,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
 
         with self.assertRaisesRegex(
             pywatchman.CommandError,
-            "client required capability `will-never-exist` is not "
+            "client required capabilities \\[will-never-exist\\] not "
             + "supported by this server",
         ):
             client.query("version", {"required": ["term-match", "will-never-exist"]})
@@ -56,7 +56,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
 
         with self.assertRaisesRegex(
             pywatchman.CommandError,
-            "client required capability `will-never-exist` is not "
+            "client required capabilities \\[will-never-exist\\] not "
             + "supported by this server",
         ):
             client.capabilityCheck(required=["term-match", "will-never-exist"])
@@ -76,8 +76,8 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
             res,
             {
                 "version": "1.0",
-                "error": "client required capability `will-never-exist` "
-                + "is not supported by this server",
+                "error": "client required capabilities [will-never-exist] "
+                + "not supported by this server",
                 "capabilities": {"will-never-exist": False},
             },
         )

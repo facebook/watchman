@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <folly/String.h>
+#include <map>
+#include <optional>
+#include <set>
 #include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
@@ -17,42 +21,6 @@
 
 using namespace watchman;
 
-static bool query_caps(
-    json_ref& response,
-    json_ref& result,
-    const json_ref& arr,
-    bool required) {
-  size_t i;
-  bool have_all = true;
-
-  for (i = 0; i < json_array_size(arr); i++) {
-    const auto& ele = arr.at(i);
-    const char* capname = json_string_value(ele);
-    bool have = capability_supported(json_to_w_string(ele).view());
-    if (!have) {
-      have_all = false;
-    }
-    if (!capname) {
-      break;
-    }
-    result.set(capname, json_boolean(have));
-    if (required && !have) {
-      auto buf = w_string::build(
-          "client required capability `",
-          capname,
-          "` is not supported by this server");
-      response.set("error", w_string_to_json(buf));
-      watchman::log(watchman::ERR, "version: ", buf, "\n");
-
-      // Only trigger the error on the first one we hit.  Ideally
-      // we'd tell the user about all of them, but it is a PITA to
-      // join and print them here in C :-/
-      required = false;
-    }
-  }
-  return have_all;
-}
-
 class VersionCommand : public TypedCommand<VersionCommand> {
  public:
   static constexpr std::string_view name = "version";
@@ -60,42 +28,102 @@ class VersionCommand : public TypedCommand<VersionCommand> {
   static constexpr CommandFlags flags =
       CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER;
 
-  static json_ref handle(Client*, const json_ref& args) {
-    auto resp = make_response();
+  struct Request {
+    std::vector<w_string> required;
+    std::vector<w_string> optional;
 
+    static Request fromJson(const json_ref& args) {
+      Request result;
+
+      auto& arr = args.array();
+      if (arr.size() == 0) {
+        return result;
+      }
+
+      auto& params = arr[0];
+      auto req_cap = params.get_default("required");
+      auto opt_cap = params.get_default("optional");
+      if (req_cap && req_cap.isArray()) {
+        auto& req_vec = req_cap.array();
+        result.required.reserve(req_vec.size());
+        for (auto& cap : req_vec) {
+          result.required.push_back(cap.asString());
+        }
+      }
+      if (opt_cap && opt_cap.isArray()) {
+        auto& opt_vec = opt_cap.array();
+        result.required.reserve(opt_vec.size());
+        for (auto& cap : opt_vec) {
+          result.optional.push_back(cap.asString());
+        }
+      }
+
+      return result;
+    }
+  };
+
+  struct Response {
+    // TODO: should this be automatic?
+    w_string version;
+    std::optional<w_string> buildinfo;
+    std::map<w_string, bool> capabilities;
+    std::optional<w_string> error;
+
+    json_ref toJson() const {
+      auto response = json_object();
+      response.set("version", typed_string_to_json(version));
+      if (buildinfo) {
+        response.set("buildinfo", typed_string_to_json(buildinfo.value()));
+      }
+      if (!capabilities.empty()) {
+        auto caps = json_object();
+        for (auto& [name, have] : capabilities) {
+          caps.set(name, json_boolean(have));
+        }
+        response.set("capabilities", std::move(caps));
+      }
+      if (error) {
+        response.set("error", typed_string_to_json(error.value()));
+      }
+      return response;
+    }
+  };
+
+  static Response handle(const Request& request) {
+    Response response;
+
+    response.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
 #ifdef WATCHMAN_BUILD_INFO
-    resp.set(
-        "buildinfo",
-        typed_string_to_json(WATCHMAN_BUILD_INFO, W_STRING_UNICODE));
+    response.buildinfo = w_string{WATCHMAN_BUILD_INFO, W_STRING_UNICODE};
 #endif
 
-    /* ["version"]
-     *    -> just returns the basic version information.
-     * ["version", {"required": ["foo"], "optional": ["bar"]}]
-     *    -> includes capability matching information
-     */
-
-    if (json_array_size(args) == 2) {
-      const auto& arg_obj = args.at(1);
-
-      auto req_cap = arg_obj.get_default("required");
-      auto opt_cap = arg_obj.get_default("optional");
-
+    if (!request.required.empty() || !request.optional.empty()) {
       auto cap_res = json_object_of_size(
-          (opt_cap ? json_array_size(opt_cap) : 0) +
-          (req_cap ? json_array_size(req_cap) : 0));
+          request.required.size() + request.optional.size());
 
-      if (opt_cap && opt_cap.isArray()) {
-        query_caps(resp, cap_res, opt_cap, false);
-      }
-      if (req_cap && req_cap.isArray()) {
-        query_caps(resp, cap_res, req_cap, true);
+      for (const auto& capname : request.optional) {
+        response.capabilities[capname] = capability_supported(capname.view());
       }
 
-      resp.set("capabilities", std::move(cap_res));
+      std::set<w_string> missing;
+
+      for (const auto& capname : request.required) {
+        bool have = capability_supported(capname.view());
+        response.capabilities[capname] = have;
+        if (!have) {
+          missing.insert(capname);
+        }
+      }
+
+      if (!missing.empty()) {
+        response.error = w_string::build(
+            "client required capabilities [",
+            folly::join(", ", missing),
+            "] not supported by this server");
+      }
     }
 
-    return resp;
+    return response;
   }
 };
 

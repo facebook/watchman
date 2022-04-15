@@ -10,10 +10,11 @@
 #include <stdexcept>
 #include <vector>
 
+// TODO: We could avoid the Client dependency fi CommandHandler returned a
+// json_ref response or error rather than taking a Client.
 #include "watchman/OptionSet.h"
+#include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_preprocessor.h"
-
-class json_ref;
 
 namespace watchman {
 
@@ -96,10 +97,24 @@ class TypedCommand : public CommandDefinition {
             T::name,
             // TODO: eliminate this allocation
             std::string{"cmd-"} + std::string{T::name},
-            T::handle,
+            T::handleRaw,
             T::flags,
             T::validate,
             T::printResult} {}
+
+  static json_ref handleRaw(Client*, const json_ref& args) {
+    // In advance of having individual handlers take a Command struct directly,
+    // let's shift off the first entry `args`, since we know it's the command
+    // name.
+    auto& arr = args.array();
+    auto adjusted_args = json_array();
+    for (size_t i = 1; i < arr.size(); ++i) {
+      json_array_append(adjusted_args, arr[i]);
+    }
+
+    using Request = typename T::Request;
+    return T::handle(Request::fromJson(adjusted_args)).toJson();
+  }
 };
 
 static_assert(
