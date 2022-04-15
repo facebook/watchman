@@ -506,12 +506,8 @@ ResultErrno<folly::Unit> PduBuffer::passThru(
 
   output_pdu_buf->clear();
 
-  if (output_pdu_buf->pduEncodeToStream(
-          output_pdu, output_capabilities, j, w_stm_stdout())) {
-    return folly::unit;
-  } else {
-    return errno;
-  }
+  return output_pdu_buf->pduEncodeToStream(
+      output_pdu, output_capabilities, j, w_stm_stdout());
 }
 
 json_ref PduBuffer::decodeNext(watchman_stream* stm, json_error_t* jerr) {
@@ -521,6 +517,8 @@ json_ref PduBuffer::decodeNext(watchman_stream* stm, json_error_t* jerr) {
   }
   return decodePdu(stm, jerr);
 }
+
+namespace {
 
 struct jbuffer_write_data {
   watchman_stream* stm;
@@ -577,45 +575,52 @@ struct jbuffer_write_data {
   }
 };
 
-bool PduBuffer::bserEncodeToStream(
+} // namespace
+
+ResultErrno<folly::Unit> PduBuffer::bserEncodeToStream(
     uint32_t bser_version,
     uint32_t bser_capabilities,
     const json_ref& json,
     watchman_stream* stm) {
-  struct jbuffer_write_data data = {stm, this};
-  int res;
+  jbuffer_write_data data = {stm, this};
 
-  res = w_bser_write_pdu(
+  int res = w_bser_write_pdu(
       bser_version, bser_capabilities, jbuffer_write_data::write, json, &data);
 
   if (res != 0) {
-    return false;
+    return errno;
   }
 
-  return data.flush();
+  if (!data.flush()) {
+    return errno;
+  }
+
+  return folly::unit;
 }
 
-bool PduBuffer::jsonEncodeToStream(
+ResultErrno<folly::Unit> PduBuffer::jsonEncodeToStream(
     const json_ref& json,
     watchman_stream* stm,
     int flags) {
-  struct jbuffer_write_data data = {stm, this};
-  int res;
+  jbuffer_write_data data = {stm, this};
 
-  res = json_dump_callback(json, jbuffer_write_data::write, &data, flags);
-
+  int res = json_dump_callback(json, jbuffer_write_data::write, &data, flags);
   if (res != 0) {
-    return false;
+    return errno;
   }
 
   if (data.write("\n", 1) != 0) {
-    return false;
+    return errno;
   }
 
-  return data.flush();
+  if (!data.flush()) {
+    return errno;
+  }
+
+  return folly::unit;
 }
 
-bool PduBuffer::pduEncodeToStream(
+ResultErrno<folly::Unit> PduBuffer::pduEncodeToStream(
     PduType pdu_type,
     uint32_t capabilities,
     const json_ref& json,
@@ -631,7 +636,7 @@ bool PduBuffer::pduEncodeToStream(
       return bserEncodeToStream(2, capabilities, json, stm);
     case need_data:
     default:
-      return false;
+      return EINVAL;
   }
 }
 

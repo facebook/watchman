@@ -61,7 +61,7 @@ void parse_redirection(
   }
 }
 
-std::unique_ptr<watchman_stream> prepare_stdin(
+ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
     struct TriggerCommand* cmd,
     QueryResult* res) {
   char stdin_file_name[WATCHMAN_NAME_MAX];
@@ -85,12 +85,13 @@ std::unique_ptr<watchman_stream> prepare_stdin(
       getTemporaryDirectory().c_str());
   auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
+    int err = errno;
     logf(
         ERR,
         "unable to create a temporary file: {} {}\n",
         stdin_file_name,
-        folly::errnoStr(errno));
-    return NULL;
+        folly::errnoStr(err));
+    return err;
   }
 
   /* unlink the file, we don't need it in the filesystem;
@@ -102,12 +103,14 @@ std::unique_ptr<watchman_stream> prepare_stdin(
       PduBuffer buffer;
 
       logf(DBG, "input_json: sending json object to stm\n");
-      if (!buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0)) {
+      auto encodeResult =
+          buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0);
+      if (encodeResult.hasError()) {
         logf(
             ERR,
             "input_json: failed to write json data to stream: {}\n",
-            folly::errnoStr(errno));
-        return NULL;
+            folly::errnoStr(encodeResult.error()));
+        return encodeResult.error();
       }
       break;
     }
@@ -117,11 +120,12 @@ std::unique_ptr<watchman_stream> prepare_stdin(
         if (stdin_file->write(nameStr.data(), nameStr.size()) !=
                 (int)nameStr.size() ||
             stdin_file->write("\n", 1) != 1) {
+          int err = errno;
           logf(
               ERR,
               "write failure while producing trigger stdin: {}\n",
-              folly::errnoStr(errno));
-          return nullptr;
+              folly::errnoStr(err));
+          return err;
         }
       }
       break;
@@ -155,16 +159,18 @@ void spawn_command(
     file_overflow = true;
   }
 
-  auto stdin_file = prepare_stdin(cmd, res);
-  if (!stdin_file) {
+  auto stdin_file_res = prepare_stdin(cmd, res);
+  if (stdin_file_res.hasError()) {
     logf(
         ERR,
         "trigger {}:{} {}\n",
         root->root_path,
         cmd->triggername,
-        folly::errnoStr(errno));
+        folly::errnoStr(stdin_file_res.error()));
     return;
   }
+
+  auto stdin_file = std::move(stdin_file_res).value();
 
   // Assumption: that only one thread will be executing on a given
   // cmd instance so that mutation of cmd->env is safe.

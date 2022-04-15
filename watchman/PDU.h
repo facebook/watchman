@@ -40,14 +40,15 @@ class PduBuffer {
   ~PduBuffer();
 
   void clear();
-  bool jsonEncodeToStream(const json_ref& json, Stream* stm, int flags);
-  bool bserEncodeToStream(
+  ResultErrno<folly::Unit>
+  jsonEncodeToStream(const json_ref& json, Stream* stm, int flags);
+  ResultErrno<folly::Unit> bserEncodeToStream(
       uint32_t bser_version,
       uint32_t bser_capabilities,
       const json_ref& json,
       Stream* stm);
 
-  bool pduEncodeToStream(
+  ResultErrno<folly::Unit> pduEncodeToStream(
       PduType pdu_type,
       uint32_t capabilities,
       const json_ref& json,

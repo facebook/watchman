@@ -795,6 +795,12 @@ static ResultErrno<folly::Unit> try_command(
     return stmResult.error();
   }
 
+  if (command.isNullCommand()) {
+    // We've confirmed we can connect -- there's nothing else to do with the
+    // null command.
+    return folly::unit;
+  }
+
   auto stream = std::move(stmResult).value();
 
   // Start in a well-defined non-blocking state as we can't tell
@@ -802,19 +808,15 @@ static ResultErrno<folly::Unit> try_command(
   // explicitly at least once before!
   stream->setNonBlock(false);
 
-  if (command.isNullCommand()) {
-    return folly::unit;
-  }
-
   PduBuffer buffer;
 
   // Send command
-  if (!buffer.pduEncodeToStream(
-          server_pdu, server_capabilities, command.render(), stream.get())) {
-    int err = errno;
-    logf(ERR, "error sending PDU to server\n");
-    // TODO: have pduEncodeToString return ResultErrno
-    return err;
+  auto res = buffer.pduEncodeToStream(
+      server_pdu, server_capabilities, command.render(), stream.get());
+  if (res.hasError()) {
+    logf(
+        ERR, "error sending PDU to server: {}\n", folly::errnoStr(res.error()));
+    return res;
   }
 
   buffer.clear();

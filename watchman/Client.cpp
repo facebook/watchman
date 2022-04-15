@@ -374,8 +374,9 @@ void UserClient::clientThread() noexcept {
       /* Return the data in the same format that was used to ask for it.
        * Update client liveness based on send success.
        */
-      client_alive = writer.pduEncodeToStream(
+      auto encodeResult = writer.pduEncodeToStream(
           pdu_type, capabilities, response_to_send, stm.get());
+      client_alive = encodeResult.hasValue();
       stm->setNonBlock(true);
 
       json_ref subscriptionValue = response_to_send.get_default("subscription");
