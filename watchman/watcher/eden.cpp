@@ -27,6 +27,7 @@
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/fs/FSDetect.h"
+#include "watchman/fs/FileDescriptor.h"
 #include "watchman/query/GlobTree.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
@@ -1434,6 +1435,36 @@ bool isEdenStopped(w_string root) {
   log(DBG, "edenfs is RUNNING\n");
   return false;
 }
+
+constexpr ULONG REPARSE_TAG_GVFS = 0x9000001c;
+
+w_string findEdenFSRoot(w_string_piece root_path) {
+  w_string_piece path = root_path;
+  w_string_piece result = nullptr;
+  while (true) {
+    auto fd =
+        openFileHandle(path.data(), OpenFileHandleOptions::queryFileInfo());
+
+    // projected fs reparse tag
+    if (fd.getReparseTag() == REPARSE_TAG_GVFS) {
+      result = path;
+    } else {
+      // Otherwise we are out of reparse tree, exit.
+      break;
+    }
+
+    auto next = path.dirName();
+    if (next == path) {
+      // We can't go any higher, so we couldn't find the
+      // requested path(s)
+      break;
+    }
+
+    path = next;
+  }
+
+  return result.asWString();
+}
 #endif
 
 std::shared_ptr<QueryableView> detectEden(
@@ -1441,8 +1472,7 @@ std::shared_ptr<QueryableView> detectEden(
     const w_string& fstype,
     const Configuration& config) {
 #ifdef _WIN32
-  static const w_string_piece kDotEden{".eden"};
-  auto edenRoot = findFileInDirTree(root_path, {kDotEden});
+  auto edenRoot = findEdenFSRoot(root_path);
   if (edenRoot) {
     if (isEdenStopped(root_path)) {
       throw TerminalWatcherError(to<std::string>(
@@ -1452,15 +1482,6 @@ std::shared_ptr<QueryableView> detectEden(
           "then retry your watch"));
     }
 
-    auto homeDotEdenRaw = w_string::pathCat({getenv("USERPROFILE"), kDotEden});
-    auto homeDotEden = homeDotEdenRaw.normalizeSeparators();
-
-    if (edenRoot == homeDotEden) {
-      throw std::runtime_error(to<std::string>(
-          "Not considering HOME/.eden as a valid Eden repo (found ",
-          edenRoot.view(),
-          ")"));
-    }
     try {
       return std::make_shared<EdenView>(root_path, config);
     } catch (const std::exception& exc) {
