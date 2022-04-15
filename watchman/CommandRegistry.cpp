@@ -46,26 +46,15 @@ CommandDefinition::CommandDefinition(
   capability_register(capname);
 }
 
-const CommandDefinition* CommandDefinition::lookup(
-    std::string_view name,
-    CommandFlags mode) {
+const CommandDefinition* CommandDefinition::lookup(std::string_view name) {
   // You can imagine optimizing this into a sublinear lookup but the command
   // list is small and constant.
   for (const auto* def = commandsList; def; def = def->next_) {
     if (name == def->name) {
-      if (mode && def->flags.containsNoneOf(mode)) {
-        throw CommandValidationError(
-            "command ", name, " not available in this mode");
-      }
       return def;
     }
   }
-
-  if (mode) {
-    throw CommandValidationError("unknown command ", name);
-  } else {
-    return nullptr;
-  }
+  return nullptr;
 }
 
 std::vector<const CommandDefinition*> CommandDefinition::getAll() {

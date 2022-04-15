@@ -10,6 +10,7 @@
 #include <folly/MapUtil.h>
 
 #include "watchman/Command.h"
+#include "watchman/Errors.h"
 #include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
 #include "watchman/Poison.h"
@@ -98,10 +99,13 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
   };
 
   try {
-    auto* def = CommandDefinition::lookup(command.name(), mode);
+    auto* def = CommandDefinition::lookup(command.name());
     if (!def) {
-      sendErrorResponse("Unknown command");
-      return false;
+      throw CommandValidationError("unknown command ", command.name());
+    }
+    if (def->flags.containsNoneOf(mode)) {
+      throw CommandValidationError(
+          "command ", command.name(), " not available in this mode");
     }
 
     if (!poisoned_reason.rlock()->empty() &&

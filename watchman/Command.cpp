@@ -47,7 +47,7 @@ json_ref Command::render() const {
 }
 
 void Command::validateOrExit(PduFormat error_format) {
-  auto* def = CommandDefinition::lookup(name_.view(), CommandFlags{});
+  auto* def = CommandDefinition::lookup(name_.view());
   if (!def) {
     // Nothing known about it, pass the command on anyway for forwards
     // compatibility
