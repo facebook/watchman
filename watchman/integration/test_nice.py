@@ -15,13 +15,14 @@ from watchman.integration.lib import WatchmanInstance
 
 @unittest.skipIf(os.name == "nt", "N/A on windows")
 class TestNice(unittest.TestCase):
+    @unittest.skipIf(
+        sys.platform == "darwin", "launchd renders this test invalid on macOS"
+    )
     def test_failing_to_start_when_nice(self) -> None:
-        if sys.platform == "darwin":
-            self.skipTest("launchd renders this test invalid on macOS")
         inst = WatchmanInstance.Instance()
         stdout, stderr = inst.commandViaCLI(["version"], prefix=["nice"])
-        print("stdout", stdout)
-        print("stderr", stderr)
+        print("stdout", stdout.decode(errors="replace"))
+        print("stderr", stderr.decode(errors="replace"))
         stderr = stderr.decode("ascii")
         self.assertEqual(b"", stdout)
         self.assertRegex(stderr, "refusing to start")

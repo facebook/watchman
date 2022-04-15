@@ -8,10 +8,16 @@
 #pragma once
 
 #include <memory>
+#include "watchman/Result.h"
 
 namespace watchman {
 class Stream;
 }
 
-// Create a connected unix socket or a named pipe client stream
-std::unique_ptr<watchman::Stream> w_stm_connect(int timeoutms);
+/**
+ * Connect to a running Watchman instance via unix socket or a named pipe.
+ *
+ * Returns a connected stream, or an errno upon error.
+ */
+watchman::ResultErrno<std::unique_ptr<watchman::Stream>> w_stm_connect(
+    int timeoutms);

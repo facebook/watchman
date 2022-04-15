@@ -355,7 +355,7 @@ std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& fd) {
   return std::make_unique<UnixStream>(std::move(fd));
 }
 
-std::unique_ptr<watchman_stream> w_stm_connect_unix(
+ResultErrno<std::unique_ptr<watchman_stream>> w_stm_connect_unix(
     const char* path,
     int timeoutms) {
   struct sockaddr_un un {};
@@ -364,8 +364,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     logf(ERR, "w_stm_connect_unix({}) path is too long\n", path);
-    errno = E2BIG;
-    return NULL;
+    return E2BIG;
   }
 
   FileDescriptor fd(
@@ -378,7 +377,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
           0),
       FileDescriptor::FDType::Socket);
   if (!fd) {
-    return nullptr;
+    return errno;
   }
   fd.setCloExec();
 
@@ -403,8 +402,7 @@ retry_connect:
       }
     }
 
-    errno = err;
-    return nullptr;
+    return err;
   }
 
   int bufsize = WATCHMAN_IO_BUF_SIZE;
@@ -415,7 +413,7 @@ retry_connect:
       reinterpret_cast<const char*>(&bufsize),
       sizeof(bufsize));
 
-  return w_stm_fdopen(std::move(fd));
+  return ResultErrno<std::unique_ptr<Stream>>{w_stm_fdopen(std::move(fd))};
 }
 
 #ifndef _WIN32

@@ -12,15 +12,20 @@
 
 using namespace watchman;
 
-std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms) {
+ResultErrno<std::unique_ptr<Stream>> w_stm_connect(int timeoutms) {
   // Default to using unix domain sockets unless disabled by config
   auto use_unix_domain = Configuration().getBool("use-unix-domain", true);
 
+  // We have to return some kind of error if use_unix_domain is false and
+  // disabled_named_pipe is true. "Destination address required" seems to fit.
+  int err = EDESTADDRREQ;
+
   if (use_unix_domain && !disable_unix_socket) {
     auto stm = w_stm_connect_unix(get_unix_sock_name().c_str(), timeoutms);
-    if (stm) {
+    if (stm.hasValue()) {
       return stm;
     }
+    err = stm.error();
   }
 
 #ifdef _WIN32
@@ -30,5 +35,5 @@ std::unique_ptr<watchman_stream> w_stm_connect(int timeoutms) {
   }
 #endif
 
-  return nullptr;
+  return err;
 }

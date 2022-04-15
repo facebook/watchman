@@ -797,11 +797,15 @@ static bool should_start(int err) {
   return false;
 }
 
-static bool try_command(const Command& command, int timeout) {
-  auto stream = w_stm_connect(timeout * 1000);
-  if (!stream) {
-    return false;
+static ResultErrno<folly::Unit> try_command(
+    const Command& command,
+    int timeout) {
+  auto stmResult = w_stm_connect(timeout * 1000);
+  if (stmResult.hasError()) {
+    return stmResult.error();
   }
+
+  auto stream = std::move(stmResult).value();
 
   // Start in a well-defined non-blocking state as we can't tell
   // what mode we're in on windows until we've set it to something
@@ -809,7 +813,7 @@ static bool try_command(const Command& command, int timeout) {
   stream->setNonBlock(false);
 
   if (command.isNullCommand()) {
-    return true;
+    return folly::unit;
   }
 
   PduBuffer buffer;
@@ -819,8 +823,8 @@ static bool try_command(const Command& command, int timeout) {
           server_pdu, server_capabilities, command.render(), stream.get())) {
     int err = errno;
     logf(ERR, "error sending PDU to server\n");
-    errno = err;
-    return false;
+    // TODO: have pduEncodeToString return ResultErrno
+    return err;
   }
 
   buffer.clear();
@@ -832,11 +836,11 @@ static bool try_command(const Command& command, int timeout) {
             output_capabilities,
             &output_pdu_buffer,
             stream.get())) {
-      return false;
+      return errno;
     }
   } while (flags.persistent);
 
-  return true;
+  return folly::unit;
 }
 
 static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
@@ -996,11 +1000,13 @@ static int inner_main(int argc, char** argv) {
   auto cmd = build_command(argc, argv);
   cmd.validateOrExit(output_pdu, output_capabilities);
 
-  bool ran = try_command(cmd, 0);
-  if (!ran && should_start(errno)) {
+  auto ran = try_command(cmd, 0);
+  if (ran.hasError() && should_start(ran.error())) {
     if (flags.no_spawn) {
       if (!flags.no_local) {
-        ran = try_client_mode_command(cmd, !flags.no_pretty);
+        if (try_client_mode_command(cmd, !flags.no_pretty)) {
+          ran = folly::unit;
+        }
       }
     } else {
       // Failed to run command. Try to spawn a daemon.
@@ -1029,7 +1035,7 @@ static int inner_main(int argc, char** argv) {
         }
 
         ran = try_command(cmd, 10);
-        if (!ran && should_start(errno) && attempts-- > 0) {
+        if (ran.hasError() && should_start(ran.error()) && attempts-- > 0) {
           /* sleep override */ std::this_thread::sleep_for(interval);
           // 10 doublings of 10 ms is about 10 seconds total.
           interval *= 2;
@@ -1041,7 +1047,7 @@ static int inner_main(int argc, char** argv) {
     }
   }
 
-  if (ran) {
+  if (ran.hasValue()) {
     return 0;
   }
 
@@ -1050,7 +1056,7 @@ static int inner_main(int argc, char** argv) {
         "unable to talk to your watchman on ",
         get_sock_name_legacy(),
         "! (",
-        folly::errnoStr(errno),
+        folly::errnoStr(ran.error()),
         ")\n");
 #ifdef __APPLE__
     if (getenv("TMUX")) {

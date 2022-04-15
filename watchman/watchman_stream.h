@@ -61,7 +61,7 @@ int w_poll_events(watchman::EventPoll* p, int n, int timeoutms);
 
 watchman_stream* w_stm_stdout();
 watchman_stream* w_stm_stdin();
-std::unique_ptr<watchman_stream> w_stm_connect_unix(
+watchman::ResultErrno<std::unique_ptr<watchman_stream>> w_stm_connect_unix(
     const char* path,
     int timeoutms);
 #ifdef _WIN32

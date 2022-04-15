@@ -193,15 +193,15 @@ void sanityCheckThread() noexcept {
     log(DBG, "running sanity checks\n");
 
     auto client = w_stm_connect(6000);
-    if (!client) {
+    if (client.hasError()) {
       log(watchman::FATAL,
           "Failed to connect to myself for sanity check: ",
-          folly::errnoStr(errno),
+          folly::errnoStr(client.error()),
           "\n");
       /* NOTREACHED */
     }
-    check_my_sock(client.get());
-    do_clock_check(client.get());
+    check_my_sock(client.value().get());
+    do_clock_check(client.value().get());
   }
   log(ERR, "done with sanityCheckThread\n");
 }
