@@ -97,14 +97,50 @@ ResultErrno<folly::Unit> Command::run(
   PduBuffer output_pdu_buffer;
   if (persistent) {
     for (;;) {
-      auto res = buffer.passThru(output_format, &output_pdu_buffer, &stream);
+      auto res =
+          passPduToStdout(stream, buffer, output_format, output_pdu_buffer);
       if (res.hasError()) {
         return res;
       }
     }
   } else {
-    return buffer.passThru(output_format, &output_pdu_buffer, &stream);
+    return passPduToStdout(stream, buffer, output_format, output_pdu_buffer);
   }
+}
+
+ResultErrno<folly::Unit> Command::passPduToStdout(
+    Stream& stream,
+    PduBuffer& input_buffer,
+    PduFormat output_format,
+    PduBuffer& output_pdu_buf) {
+  json_error_t jerr;
+
+  stream.setNonBlock(false);
+  if (!input_buffer.readAndDetectPdu(&stream, &jerr)) {
+    int err = errno;
+    logf(ERR, "failed to identify PDU: {}\n", jerr.text);
+    return err;
+  }
+
+  if (output_pdu_buf.format.type == output_format.type) {
+    // We can stream it through
+    if (!input_buffer.streamPdu(&stream, &jerr)) {
+      int err = errno;
+      logf(ERR, "stream_pdu: {}\n", jerr.text);
+      return err;
+    }
+    return folly::unit;
+  }
+
+  auto j = input_buffer.decodePdu(&stream, &jerr);
+  if (!j) {
+    int err = errno;
+    logf(ERR, "failed to parse response: {}\n", jerr.text);
+    return err;
+  }
+
+  output_pdu_buf.clear();
+  return output_pdu_buf.pduEncodeToStream(output_format, j, w_stm_stdout());
 }
 
 } // namespace watchman

@@ -41,7 +41,7 @@ class PduBuffer {
   uint32_t rpos = 0;
   uint32_t wpos = 0;
 
-  /// The encoding format detected by decodeNext and passThru
+  /// The encoding format detected by decodeNext
   PduFormat format;
 
   PduBuffer();
@@ -65,29 +65,23 @@ class PduBuffer {
 
   json_ref decodeNext(Stream* stm, json_error_t* jerr);
 
-  /**
-   * Read a PDU from `stm`, blocking if necessary, and encode it into
-   * stdout through `output_pdu_buf`.
-   */
-  ResultErrno<folly::Unit>
-  passThru(PduFormat output_format, PduBuffer* output_pdu_buf, Stream* stm);
+  bool readAndDetectPdu(Stream* stm, json_error_t* jerr);
+  json_ref decodePdu(Stream* stm, json_error_t* jerr);
+  bool streamPdu(Stream* stm, json_error_t* jerr);
 
  private:
-  bool readAndDetectPdu(Stream* stm, json_error_t* jerr);
   uint32_t shuntDown();
   bool fillBuffer(Stream* stm);
   PduType detectPdu();
   json_ref readJsonPrettyPdu(Stream* stm, json_error_t* jerr);
   json_ref readJsonPdu(Stream* stm, json_error_t* jerr);
   json_ref readBserPdu(Stream* stm, uint32_t bser_version, json_error_t* jerr);
-  json_ref decodePdu(Stream* stm, json_error_t* jerr);
   bool decodePduInfo(
       Stream* stm,
       uint32_t bser_version,
       json_int_t* len,
       json_int_t* bser_capabilities,
       json_error_t* jerr);
-  bool streamPdu(Stream* stm, json_error_t* jerr);
   bool streamUntilNewLine(Stream* stm);
   bool streamN(Stream* stm, json_int_t len, json_error_t* jerr);
 };

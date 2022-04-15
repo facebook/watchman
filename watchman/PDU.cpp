@@ -472,41 +472,6 @@ json_ref PduBuffer::decodePdu(watchman_stream* stm, json_error_t* jerr) {
   }
 }
 
-ResultErrno<folly::Unit> PduBuffer::passThru(
-    PduFormat output_format,
-    PduBuffer* output_pdu_buf,
-    watchman_stream* stm) {
-  json_error_t jerr;
-
-  stm->setNonBlock(false);
-  if (!readAndDetectPdu(stm, &jerr)) {
-    int err = errno;
-    logf(ERR, "failed to identify PDU: {}\n", jerr.text);
-    return err;
-  }
-
-  if (format.type == output_format.type) {
-    // We can stream it through
-    if (!streamPdu(stm, &jerr)) {
-      int err = errno;
-      logf(ERR, "stream_pdu: {}\n", jerr.text);
-      return err;
-    }
-    return folly::unit;
-  }
-
-  auto j = decodePdu(stm, &jerr);
-  if (!j) {
-    int err = errno;
-    logf(ERR, "failed to parse response: {}\n", jerr.text);
-    return err;
-  }
-
-  output_pdu_buf->clear();
-
-  return output_pdu_buf->pduEncodeToStream(output_format, j, w_stm_stdout());
-}
-
 json_ref PduBuffer::decodeNext(watchman_stream* stm, json_error_t* jerr) {
   *jerr = json_error_t();
   if (!readAndDetectPdu(stm, jerr)) {

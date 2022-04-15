@@ -79,6 +79,16 @@ class Command {
       PduFormat output_format) const;
 
  private:
+  /**
+   * Read a PDU from `stream`, blocking if necessary, and encode it into
+   * stdout through `output_pdu_buf`.
+   */
+  static ResultErrno<folly::Unit> passPduToStdout(
+      Stream& stream,
+      PduBuffer& input_buffer,
+      PduFormat output_format,
+      PduBuffer& output_pdu_buf);
+
   w_string name_;
   json_ref args_;
 };
