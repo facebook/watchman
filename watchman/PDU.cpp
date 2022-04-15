@@ -46,15 +46,11 @@ uint32_t PduBuffer::shuntDown() {
 }
 
 bool PduBuffer::fillBuffer(watchman_stream* stm) {
-  uint32_t avail;
-  int r;
-
-  avail = shuntDown();
+  uint32_t avail = shuntDown();
 
   // Get some more space if we need it
   if (avail == 0) {
     char* newBuf = (char*)realloc(buf, allocd * 2);
-
     if (!newBuf) {
       return false;
     }
@@ -66,7 +62,7 @@ bool PduBuffer::fillBuffer(watchman_stream* stm) {
   }
 
   errno = 0;
-  r = stm->read(buf + wpos, avail);
+  int r = stm->read(buf + wpos, avail);
   if (r <= 0) {
     return false;
   }
@@ -92,14 +88,10 @@ inline PduType PduBuffer::detectPdu() {
 json_ref PduBuffer::readJsonPrettyPdu(
     watchman_stream* stm,
     json_error_t* jerr) {
-  char* nl;
-  int r;
-  json_ref res;
-
   // Assume newline is at the end of what we have
-  nl = buf + wpos;
-  r = (int)(nl - (buf + rpos));
-  res = json_loadb(buf + rpos, r, 0, jerr);
+  char* nl = buf + wpos;
+  int r = (int)(nl - (buf + rpos));
+  json_ref res = json_loadb(buf + rpos, r, 0, jerr);
   while (!res) {
     // Maybe we can fill more data into the buffer and retry?
     if (!fillBuffer(stm)) {
@@ -120,8 +112,6 @@ json_ref PduBuffer::readJsonPrettyPdu(
 }
 
 json_ref PduBuffer::readJsonPdu(watchman_stream* stm, json_error_t* jerr) {
-  int r;
-
   /* look for a newline; that indicates the end of
    * a json packet */
   auto nl = (char*)memchr(buf + rpos, '\n', wpos - rpos);
@@ -143,7 +133,7 @@ json_ref PduBuffer::readJsonPdu(watchman_stream* stm, json_error_t* jerr) {
   }
 
   // buflen
-  r = (int)(nl - (buf + rpos));
+  int r = (int)(nl - (buf + rpos));
   auto res = json_loadb(buf + rpos, r, 0, jerr);
 
   // update read pos to look beyond this point
@@ -345,13 +335,12 @@ static bool output_bytes(const char* buf, int x) {
 }
 
 bool PduBuffer::streamUntilNewLine(watchman_stream* stm) {
-  int x;
-  char* localBuf;
   bool is_done = false;
 
   while (true) {
-    localBuf = buf + rpos;
+    char* localBuf = buf + rpos;
     auto nl = (char*)memchr(localBuf, '\n', wpos - rpos);
+    int x;
     if (nl) {
       x = 1 + (int)(nl - localBuf);
       is_done = true;
@@ -392,7 +381,6 @@ bool PduBuffer::streamN(
   }
   while (len > 0) {
     uint32_t avail = wpos - rpos;
-    int r;
 
     if (avail) {
       if (!output_bytes(buf + rpos, avail)) {
@@ -413,7 +401,7 @@ bool PduBuffer::streamN(
     }
 
     avail = std::min((uint32_t)len, shuntDown());
-    r = stm->read(buf + wpos, avail);
+    int r = stm->read(buf + wpos, avail);
 
     if (r <= 0) {
       snprintf(
@@ -487,10 +475,8 @@ struct jbuffer_write_data {
   PduBuffer* jr;
 
   bool flush() {
-    int x;
-
     while (jr->wpos - jr->rpos) {
-      x = stm->write(jr->buf + jr->rpos, jr->wpos - jr->rpos);
+      int x = stm->write(jr->buf + jr->rpos, jr->wpos - jr->rpos);
 
       if (x <= 0) {
         return false;
