@@ -831,12 +831,10 @@ static ResultErrno<folly::Unit> try_command(
 
   PduBuffer output_pdu_buffer;
   do {
-    if (!buffer.passThru(
-            output_pdu,
-            output_capabilities,
-            &output_pdu_buffer,
-            stream.get())) {
-      return errno;
+    auto res = buffer.passThru(
+        output_pdu, output_capabilities, &output_pdu_buffer, stream.get());
+    if (res.hasError()) {
+      return res;
     }
   } while (flags.persistent);
 

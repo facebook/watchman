@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "watchman/Result.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace watchman {
@@ -54,7 +55,11 @@ class PduBuffer {
 
   json_ref decodeNext(Stream* stm, json_error_t* jerr);
 
-  bool passThru(
+  /**
+   * Read a PDU from `stm`, blocking if necessary, and encode it into
+   * `output_pdu_buf`.
+   */
+  ResultErrno<folly::Unit> passThru(
       PduType output_pdu,
       uint32_t output_capabilities,
       PduBuffer* output_pdu_buf,
