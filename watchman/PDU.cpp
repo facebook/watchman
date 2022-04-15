@@ -271,14 +271,11 @@ json_ref PduBuffer::readBserPdu(
 }
 
 bool PduBuffer::readAndDetectPdu(watchman_stream* stm, json_error_t* jerr) {
-  PduType pdu;
-  // The client might send us different kinds of PDUs over the same connection,
-  // so reset the capabilities.
-  capabilities = 0;
+  PduFormat detected_format;
 
   shuntDown();
-  pdu = detectPdu();
-  if (pdu == need_data) {
+  detected_format.type = detectPdu();
+  if (detected_format.type == need_data) {
     if (!fillBuffer(stm)) {
       if (errno != EAGAIN) {
         snprintf(
@@ -289,13 +286,16 @@ bool PduBuffer::readAndDetectPdu(watchman_stream* stm, json_error_t* jerr) {
       }
       return false;
     }
-    pdu = detectPdu();
+    detected_format.type = detectPdu();
   }
 
-  if (pdu == is_bser_v2) {
+  constexpr size_t kCapSize = 4;
+  static_assert(kCapSize == sizeof(detected_format.capabilities));
+
+  if (detected_format.type == is_bser_v2) {
     // read capabilities (since we haven't increased rpos, first two bytes are
     // still the header)
-    while (wpos - rpos < 2 + sizeof(capabilities)) {
+    while (wpos - rpos < 2 + kCapSize) {
       if (!fillBuffer(stm)) {
         if (errno != EAGAIN) {
           snprintf(
@@ -309,16 +309,16 @@ bool PduBuffer::readAndDetectPdu(watchman_stream* stm, json_error_t* jerr) {
     }
 
     // Copy the capabilities over. BSER is system-endian so this is safe.
-    memcpy(&capabilities, buf + rpos + 2, sizeof(capabilities));
+    memcpy(&detected_format.capabilities, buf + rpos + 2, kCapSize);
   }
 
-  if (pdu == is_json_compact && stm == w_stm_stdin()) {
+  if (detected_format.type == is_json_compact && stm == w_stm_stdin()) {
     // Minor hack for the `-j` option for reading pretty printed
     // json from stdin
-    pdu = is_json_pretty;
+    detected_format.type = is_json_pretty;
   }
 
-  pdu_type = pdu;
+  format = detected_format;
   return true;
 }
 
@@ -433,35 +433,34 @@ bool PduBuffer::streamN(
 }
 
 bool PduBuffer::streamPdu(watchman_stream* stm, json_error_t* jerr) {
-  uint32_t bser_version;
-  json_int_t bser_capabilities;
-  json_int_t len;
-
-  switch (pdu_type) {
+  switch (format.type) {
     case is_json_compact:
     case is_json_pretty:
       return streamUntilNewLine(stm);
     case is_bser:
     case is_bser_v2: {
-      if (pdu_type == is_bser_v2) {
+      uint32_t bser_version;
+      if (format.type == is_bser_v2) {
         bser_version = 2;
       } else {
         bser_version = 1;
       }
       rpos += 2;
+      json_int_t bser_capabilities;
+      json_int_t len;
       if (!decodePduInfo(stm, bser_version, &len, &bser_capabilities, jerr)) {
         return false;
       }
       return streamN(stm, len, jerr);
     }
     default:
-      logf(FATAL, "not streaming for pdu type {}\n", pdu_type);
+      logf(FATAL, "not streaming for pdu type {}\n", format.type);
       return false;
   }
 }
 
 json_ref PduBuffer::decodePdu(watchman_stream* stm, json_error_t* jerr) {
-  switch (pdu_type) {
+  switch (format.type) {
     case is_json_compact:
       return readJsonPdu(stm, jerr);
     case is_json_pretty:
@@ -474,8 +473,7 @@ json_ref PduBuffer::decodePdu(watchman_stream* stm, json_error_t* jerr) {
 }
 
 ResultErrno<folly::Unit> PduBuffer::passThru(
-    PduType output_pdu,
-    uint32_t output_capabilities,
+    PduFormat output_format,
     PduBuffer* output_pdu_buf,
     watchman_stream* stm) {
   json_error_t jerr;
@@ -487,7 +485,7 @@ ResultErrno<folly::Unit> PduBuffer::passThru(
     return err;
   }
 
-  if (pdu_type == output_pdu) {
+  if (format.type == output_format.type) {
     // We can stream it through
     if (!streamPdu(stm, &jerr)) {
       int err = errno;
@@ -506,8 +504,7 @@ ResultErrno<folly::Unit> PduBuffer::passThru(
 
   output_pdu_buf->clear();
 
-  return output_pdu_buf->pduEncodeToStream(
-      output_pdu, output_capabilities, j, w_stm_stdout());
+  return output_pdu_buf->pduEncodeToStream(output_format, j, w_stm_stdout());
 }
 
 json_ref PduBuffer::decodeNext(watchman_stream* stm, json_error_t* jerr) {
@@ -621,19 +618,18 @@ ResultErrno<folly::Unit> PduBuffer::jsonEncodeToStream(
 }
 
 ResultErrno<folly::Unit> PduBuffer::pduEncodeToStream(
-    PduType pdu_type,
-    uint32_t capabilities,
+    PduFormat format,
     const json_ref& json,
     watchman_stream* stm) {
-  switch (pdu_type) {
+  switch (format.type) {
     case is_json_compact:
       return jsonEncodeToStream(json, stm, JSON_COMPACT);
     case is_json_pretty:
       return jsonEncodeToStream(json, stm, JSON_INDENT(4));
     case is_bser:
-      return bserEncodeToStream(1, capabilities, json, stm);
+      return bserEncodeToStream(1, format.capabilities, json, stm);
     case is_bser_v2:
-      return bserEncodeToStream(2, capabilities, json, stm);
+      return bserEncodeToStream(2, format.capabilities, json, stm);
     case need_data:
     default:
       return EINVAL;

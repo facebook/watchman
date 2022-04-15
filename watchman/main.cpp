@@ -45,16 +45,16 @@
 
 using namespace watchman;
 
-namespace {
-PduType server_pdu = is_bser;
-PduType output_pdu = is_json_pretty;
-const uint32_t server_capabilities = 0;
-const uint32_t output_capabilities = 0;
-} // namespace
-
 #ifdef __APPLE__
 #include <mach-o/dyld.h> // @manual
 #endif
+
+namespace {
+/// How should server requests be encoded?
+PduFormat server_format{is_bser, 0};
+/// How should output to stdout be encoded?
+PduFormat output_format{is_json_pretty, 0};
+} // namespace
 
 static void compute_file_name(
     std::string& str,
@@ -803,13 +803,7 @@ static ResultErrno<folly::Unit> try_command(
 
   auto stream = std::move(stmResult).value();
 
-  return command.run(
-      *stream,
-      flags.persistent,
-      server_pdu,
-      server_capabilities,
-      output_pdu,
-      output_capabilities);
+  return command.run(*stream, flags.persistent, server_format, output_format);
 }
 
 static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
@@ -819,10 +813,10 @@ static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
   watchman::getLog().setStdErrLoggingLevel(
       static_cast<watchman::LogLevel>(logging::log_level));
   setup_sock_name();
-  parse_encoding(flags.server_encoding, &server_pdu);
-  parse_encoding(flags.output_encoding, &output_pdu);
+  parse_encoding(flags.server_encoding, &server_format.type);
+  parse_encoding(flags.output_encoding, &output_format.type);
   if (flags.output_encoding.empty()) {
-    output_pdu = flags.no_pretty ? is_json_compact : is_json_pretty;
+    output_format.type = flags.no_pretty ? is_json_compact : is_json_pretty;
   }
 
   // Prevent integration tests that call the watchman cli from
@@ -840,23 +834,23 @@ static Command build_command_from_stdin() {
 
   auto cmd = buf.decodeNext(w_stm_stdin(), &err);
 
-  if (buf.pdu_type == is_bser) {
+  if (buf.format.type == is_bser) {
     // If they used bser for the input, select bser for output
     // unless they explicitly requested something else
     if (flags.server_encoding.empty()) {
-      server_pdu = is_bser;
+      server_format.type = is_bser;
     }
     if (flags.output_encoding.empty()) {
-      output_pdu = is_bser;
+      output_format.type = is_bser;
     }
-  } else if (buf.pdu_type == is_bser_v2) {
+  } else if (buf.format.type == is_bser_v2) {
     // If they used bser v2 for the input, select bser v2 for output
     // unless they explicitly requested something else
     if (flags.server_encoding.empty()) {
-      server_pdu = is_bser_v2;
+      server_format.type = is_bser_v2;
     }
     if (flags.output_encoding.empty()) {
-      output_pdu = is_bser_v2;
+      output_format.type = is_bser_v2;
     }
   }
 
@@ -967,7 +961,7 @@ static int inner_main(int argc, char** argv) {
 
   w_set_thread_name("cli");
   auto cmd = build_command(argc, argv);
-  cmd.validateOrExit(output_pdu, output_capabilities);
+  cmd.validateOrExit(output_format);
 
   auto should_start = [](int err) -> bool {
     return err == ECONNREFUSED || err == ENOENT;

@@ -35,7 +35,7 @@ void check_my_sock(watchman_stream* client) {
   json_error_t jerr;
   pid_t my_pid = ::getpid();
 
-  auto res = buf.pduEncodeToStream(is_bser, 0, cmd, client);
+  auto res = buf.pduEncodeToStream(PduFormat{is_bser, 0}, cmd, client);
   if (res.hasError()) {
     log(watchman::FATAL,
         "Failed to send get-pid PDU: ",
@@ -89,7 +89,7 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
       {typed_string_to_json("clock", W_STRING_UNICODE),
        root,
        json_object({{"sync_timeout", json_integer(20000)}})});
-  auto res = buf.pduEncodeToStream(is_bser, 0, cmd, client);
+  auto res = buf.pduEncodeToStream(PduFormat{is_bser, 0}, cmd, client);
   if (res.hasError()) {
     throw std::runtime_error(folly::to<std::string>(
         "Failed to send clock PDU: ", folly::errnoStr(res.error())));
@@ -127,7 +127,7 @@ json_ref get_watch_list(watchman_stream* client) {
   PduBuffer buf;
   json_error_t jerr;
 
-  auto res = buf.pduEncodeToStream(is_bser, 0, cmd, client);
+  auto res = buf.pduEncodeToStream(PduFormat{is_bser, 0}, cmd, client);
   if (res.hasError()) {
     throw std::runtime_error(folly::to<std::string>(
         "Failed to send watch-list PDU: ", folly::errnoStr(res.error())));

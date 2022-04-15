@@ -15,12 +15,23 @@ namespace watchman {
 
 class Stream;
 
-enum PduType {
+enum PduType : uint32_t {
   need_data,
   is_json_compact,
   is_json_pretty,
   is_bser,
   is_bser_v2
+};
+
+/**
+ * Specifies the wire encoding of a Watchman request or response.
+ *
+ * This could be made to fit in 8 bits, but it doesn't matter.
+ */
+struct PduFormat {
+  PduType type = need_data;
+  /// Capability bits only used for BSER v2, defined in bser.h
+  uint32_t capabilities = 0;
 };
 
 class PduBuffer {
@@ -29,8 +40,9 @@ class PduBuffer {
   uint32_t allocd = 0;
   uint32_t rpos = 0;
   uint32_t wpos = 0;
-  PduType pdu_type = need_data;
-  uint32_t capabilities = 0;
+
+  /// The encoding format detected by decodeNext and passThru
+  PduFormat format;
 
   PduBuffer();
   PduBuffer(const PduBuffer&) = delete;
@@ -48,11 +60,8 @@ class PduBuffer {
       const json_ref& json,
       Stream* stm);
 
-  ResultErrno<folly::Unit> pduEncodeToStream(
-      PduType pdu_type,
-      uint32_t capabilities,
-      const json_ref& json,
-      Stream* stm);
+  ResultErrno<folly::Unit>
+  pduEncodeToStream(PduFormat format, const json_ref& json, Stream* stm);
 
   json_ref decodeNext(Stream* stm, json_error_t* jerr);
 
@@ -60,11 +69,8 @@ class PduBuffer {
    * Read a PDU from `stm`, blocking if necessary, and encode it into
    * stdout through `output_pdu_buf`.
    */
-  ResultErrno<folly::Unit> passThru(
-      PduType output_pdu,
-      uint32_t output_capabilities,
-      PduBuffer* output_pdu_buf,
-      Stream* stm);
+  ResultErrno<folly::Unit>
+  passThru(PduFormat output_format, PduBuffer* output_pdu_buf, Stream* stm);
 
  private:
   bool readAndDetectPdu(Stream* stm, json_error_t* jerr);

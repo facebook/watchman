@@ -52,8 +52,7 @@ class Client : public std::enable_shared_from_this<Client> {
   PduBuffer writer;
   bool client_mode = false;
   bool client_is_owner = false;
-  PduType pdu_type;
-  uint32_t capabilities;
+  PduFormat format;
 
   // The command currently being processed by dispatchCommand. Only set by the
   // client thread.

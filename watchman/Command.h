@@ -63,7 +63,7 @@ class Command {
    * validation fails, print an error PDU to stdout in the format specified by
    * `output_pdu` and `output_capabilities` and exit(1).
    */
-  void validateOrExit(PduType output_pdu, uint32_t output_capabilities);
+  void validateOrExit(PduFormat error_format);
 
   /**
    * Called by the client. Sends a command to the daemon and prints the output
@@ -75,10 +75,8 @@ class Command {
   ResultErrno<folly::Unit> run(
       Stream& stream,
       bool persistent,
-      PduType server_pdu,
-      uint32_t server_capabilities,
-      PduType output_pdu,
-      uint32_t output_capabilities) const;
+      PduFormat server_format,
+      PduFormat output_format) const;
 
  private:
   w_string name_;

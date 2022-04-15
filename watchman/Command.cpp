@@ -46,7 +46,7 @@ json_ref Command::render() const {
   return result;
 }
 
-void Command::validateOrExit(PduType output_pdu, uint32_t output_capabilities) {
+void Command::validateOrExit(PduFormat error_format) {
   auto* def = CommandDefinition::lookup(name_.view(), CommandFlags{});
   if (!def) {
     // Nothing known about it, pass the command on anyway for forwards
@@ -67,7 +67,7 @@ void Command::validateOrExit(PduType output_pdu, uint32_t output_capabilities) {
          {"cli_validated", json_true()}});
 
     PduBuffer jr;
-    jr.pduEncodeToStream(output_pdu, output_capabilities, err, w_stm_stdout());
+    jr.pduEncodeToStream(error_format, err, w_stm_stdout());
     exit(1);
   }
 }
@@ -75,10 +75,8 @@ void Command::validateOrExit(PduType output_pdu, uint32_t output_capabilities) {
 ResultErrno<folly::Unit> Command::run(
     Stream& stream,
     bool persistent,
-    PduType server_pdu,
-    uint32_t server_capabilities,
-    PduType output_pdu,
-    uint32_t output_capabilities) const {
+    PduFormat server_format,
+    PduFormat output_format) const {
   // Start in a well-defined non-blocking state as we can't tell
   // what mode we're in on windows until we've set it to something
   // explicitly at least once before!
@@ -87,8 +85,7 @@ ResultErrno<folly::Unit> Command::run(
   PduBuffer buffer;
 
   // Send command
-  auto res = buffer.pduEncodeToStream(
-      server_pdu, server_capabilities, render(), &stream);
+  auto res = buffer.pduEncodeToStream(server_format, render(), &stream);
   if (res.hasError()) {
     logf(
         ERR, "error sending PDU to server: {}\n", folly::errnoStr(res.error()));
@@ -100,15 +97,13 @@ ResultErrno<folly::Unit> Command::run(
   PduBuffer output_pdu_buffer;
   if (persistent) {
     for (;;) {
-      auto res = buffer.passThru(
-          output_pdu, output_capabilities, &output_pdu_buffer, &stream);
+      auto res = buffer.passThru(output_format, &output_pdu_buffer, &stream);
       if (res.hasError()) {
         return res;
       }
     }
   } else {
-    return buffer.passThru(
-        output_pdu, output_capabilities, &output_pdu_buffer, &stream);
+    return buffer.passThru(output_format, &output_pdu_buffer, &stream);
   }
 }
 

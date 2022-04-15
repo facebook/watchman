@@ -270,8 +270,7 @@ void UserClient::clientThread() noexcept {
 
         goto disconnected;
       } else if (request) {
-        pdu_type = reader.pdu_type;
-        capabilities = reader.capabilities;
+        format = reader.format;
         status_.transitionTo(ClientStatus::DISPATCHING_COMMAND);
         dispatchCommand(Command::parse(request), CMD_DAEMON);
       }
@@ -374,8 +373,8 @@ void UserClient::clientThread() noexcept {
       /* Return the data in the same format that was used to ask for it.
        * Update client liveness based on send success.
        */
-      auto encodeResult = writer.pduEncodeToStream(
-          pdu_type, capabilities, response_to_send, stm.get());
+      auto encodeResult =
+          writer.pduEncodeToStream(this->format, response_to_send, stm.get());
       client_alive = encodeResult.hasValue();
       stm->setNonBlock(true);
 
