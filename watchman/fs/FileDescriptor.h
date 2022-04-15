@@ -15,6 +15,7 @@ class w_string;
 namespace watchman {
 
 struct FileInformation;
+struct REPARSE_DATA_BUFFER;
 
 enum class CaseSensitivity {
   // The caller knows that the filesystem path(s) in question are
@@ -93,6 +94,7 @@ class FileDescriptor {
       int
 #endif
       ;
+
   enum class FDType {
     Unknown,
     Generic,
@@ -201,6 +203,10 @@ class FileDescriptor {
   static const FileDescriptor& stdIn();
   static const FileDescriptor& stdOut();
   static const FileDescriptor& stdErr();
+
+#ifdef _WIN32
+  ULONG getReparseTag() const;
+#endif
 
  private:
   system_handle_type fd_{kInvalid};

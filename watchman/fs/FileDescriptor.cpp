@@ -24,6 +24,7 @@
 #include "WinIoCtl.h" // @manual
 #endif
 
+namespace watchman {
 #ifdef _WIN32
 // We declare our own copy here because Ntifs.h is not included in the
 // standard install of the Visual Studio Community compiler.
@@ -53,10 +54,61 @@ struct REPARSE_DATA_BUFFER {
     } GenericReparseBuffer;
   };
 };
-} // namespace
+#ifdef _WIN32
+struct ReparseDataDeleter {
+  void operator()(void* p) {
+    free(p);
+  }
+};
+
+using ReparseDataBuffer =
+    std::unique_ptr<REPARSE_DATA_BUFFER, ReparseDataDeleter>;
 #endif
 
-namespace watchman {
+ReparseDataBuffer getReparseData(FileDescriptor::system_handle_type fd) {
+  auto buffer = ReparseDataBuffer(static_cast<REPARSE_DATA_BUFFER*>(
+      malloc(MAXIMUM_REPARSE_DATA_BUFFER_SIZE)));
+  if (!buffer) {
+    throw std::bad_alloc();
+  }
+
+  DWORD written;
+  auto result = DeviceIoControl(
+      (HANDLE)fd,
+      FSCTL_GET_REPARSE_POINT,
+      nullptr,
+      0,
+      buffer.get(),
+      MAXIMUM_REPARSE_DATA_BUFFER_SIZE,
+      &written,
+      nullptr);
+
+  if (!result && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+    buffer.reset(static_cast<REPARSE_DATA_BUFFER*>(malloc(written)));
+    if (!buffer) {
+      throw std::bad_alloc();
+    }
+
+    result = DeviceIoControl(
+        (HANDLE)fd,
+        FSCTL_GET_REPARSE_POINT,
+        nullptr,
+        0,
+        buffer.get(),
+        MAXIMUM_REPARSE_DATA_BUFFER_SIZE,
+        &written,
+        nullptr);
+  }
+
+  if (!result) {
+    throw std::system_error(
+        GetLastError(), std::system_category(), "FSCTL_GET_REPARSE_POINT");
+  }
+
+  return buffer;
+}
+} // namespace
+#endif
 
 FileDescriptor::~FileDescriptor() {
   close();
@@ -404,55 +456,9 @@ w_string FileDescriptor::readSymbolicLink() const {
   throw std::system_error(
       errno, std::generic_category(), "readlink for readSymbolicLink");
 #else // _WIN32
-  DWORD len = 64 * 1024;
-  auto buf = malloc(len);
-  if (!buf) {
-    throw std::bad_alloc();
-  }
-  SCOPE_EXIT {
-    free(buf);
-  };
+  auto rep = getReparseData(fd_);
   WCHAR* target;
   USHORT targetlen;
-
-  auto result = DeviceIoControl(
-      (HANDLE)fd_,
-      FSCTL_GET_REPARSE_POINT,
-      nullptr,
-      0,
-      buf,
-      len,
-      &len,
-      nullptr);
-
-  // We only give one retry; if the size changed again already, we'll
-  // have another pending notify from the OS to go look at it again
-  // later, and it's totally fine to give up here for now.
-  if (!result && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
-    free(buf);
-    buf = malloc(len);
-    if (!buf) {
-      throw std::bad_alloc();
-    }
-
-    result = DeviceIoControl(
-        (HANDLE)fd_,
-        FSCTL_GET_REPARSE_POINT,
-        nullptr,
-        0,
-        buf,
-        len,
-        &len,
-        nullptr);
-  }
-
-  if (!result) {
-    throw std::system_error(
-        GetLastError(), std::system_category(), "FSCTL_GET_REPARSE_POINT");
-  }
-
-  auto rep = reinterpret_cast<REPARSE_DATA_BUFFER*>(buf);
-
   switch (rep->ReparseTag) {
     case IO_REPARSE_TAG_SYMLINK:
       target = rep->SymbolicLinkReparseBuffer.PathBuffer +
@@ -575,4 +581,11 @@ const FileDescriptor& FileDescriptor::stdErr() {
       FileDescriptor::FDType::Unknown);
   return f;
 }
+
+#ifdef _WIN32
+
+ULONG FileDescriptor::getReparseTag() const {
+  return getReparseData(fd_)->ReparseTag;
+}
+#endif
 } // namespace watchman
