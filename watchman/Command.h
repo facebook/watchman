@@ -84,18 +84,20 @@ class Command {
       Stream& stream,
       bool persistent,
       PduFormat server_format,
-      PduFormat output_format) const;
+      PduFormat output_format,
+      bool no_pretty) const;
 
  private:
   /**
    * Read a PDU from `stream`, blocking if necessary, and encode it into
    * stdout through `output_pdu_buf`.
    */
-  static ResultErrno<folly::Unit> passPduToStdout(
+  ResultErrno<folly::Unit> passPduToStdout(
       Stream& stream,
       PduBuffer& input_buffer,
       PduFormat output_format,
-      PduBuffer& output_pdu_buf);
+      PduBuffer& output_pdu_buf,
+      bool no_pretty) const;
 
   w_string name_;
   json_ref args_;

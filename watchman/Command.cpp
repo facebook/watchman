@@ -81,7 +81,8 @@ ResultErrno<folly::Unit> Command::run(
     Stream& stream,
     bool persistent,
     PduFormat server_format,
-    PduFormat output_format) const {
+    PduFormat output_format,
+    bool no_pretty) const {
   // Start in a well-defined non-blocking state as we can't tell
   // what mode we're in on windows until we've set it to something
   // explicitly at least once before!
@@ -102,14 +103,15 @@ ResultErrno<folly::Unit> Command::run(
   PduBuffer output_pdu_buffer;
   if (persistent) {
     for (;;) {
-      auto res =
-          passPduToStdout(stream, buffer, output_format, output_pdu_buffer);
+      auto res = passPduToStdout(
+          stream, buffer, output_format, output_pdu_buffer, no_pretty);
       if (res.hasError()) {
         return res;
       }
     }
   } else {
-    return passPduToStdout(stream, buffer, output_format, output_pdu_buffer);
+    return passPduToStdout(
+        stream, buffer, output_format, output_pdu_buffer, no_pretty);
   }
 }
 
@@ -117,7 +119,8 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
     Stream& stream,
     PduBuffer& input_buffer,
     PduFormat output_format,
-    PduBuffer& output_pdu_buf) {
+    PduBuffer& output_pdu_buf,
+    bool no_pretty) const {
   json_error_t jerr;
 
   stream.setNonBlock(false);
@@ -127,7 +130,11 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
     return err;
   }
 
-  if (output_pdu_buf.format.type == output_format.type) {
+  auto* def = commandDefinition_;
+  bool pretty_output = def && def->result_printer && !no_pretty &&
+      FileDescriptor::stdOut().isatty();
+
+  if (!pretty_output && output_pdu_buf.format.type == output_format.type) {
     // We can stream it through
     if (!input_buffer.streamPdu(&stream, &jerr)) {
       int err = errno;
@@ -137,15 +144,22 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
     return folly::unit;
   }
 
-  auto j = input_buffer.decodePdu(&stream, &jerr);
-  if (!j) {
+  auto response = input_buffer.decodePdu(&stream, &jerr);
+  if (!response) {
     int err = errno;
     logf(ERR, "failed to parse response: {}\n", jerr.text);
     return err;
   }
 
-  output_pdu_buf.clear();
-  return output_pdu_buf.pduEncodeToStream(output_format, j, w_stm_stdout());
+  if (pretty_output) {
+    def->result_printer(response);
+    // TODO: Can result_printer return an error?
+    return folly::unit;
+  } else {
+    output_pdu_buf.clear();
+    return output_pdu_buf.pduEncodeToStream(
+        output_format, response, w_stm_stdout());
+  }
 }
 
 } // namespace watchman

@@ -803,7 +803,8 @@ static ResultErrno<folly::Unit> try_command(
 
   auto stream = std::move(stmResult).value();
 
-  return command.run(*stream, flags.persistent, server_format, output_format);
+  return command.run(
+      *stream, flags.persistent, server_format, output_format, flags.no_pretty);
 }
 
 static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {

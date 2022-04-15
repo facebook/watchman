@@ -38,8 +38,13 @@ CommandDefinition::CommandDefinition(
     std::string_view capname,
     CommandHandler handler,
     CommandFlags flags,
-    CommandValidator validator)
-    : name{name}, handler{handler}, flags{flags}, validator{validator} {
+    CommandValidator validator,
+    ResultPrinter result_printer)
+    : name{name},
+      flags{flags},
+      validator{validator},
+      handler{handler},
+      result_printer{result_printer} {
   next_ = commandsList;
   commandsList = this;
 

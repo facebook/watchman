@@ -482,6 +482,14 @@ w_string FileDescriptor::readSymbolicLink() const {
 #endif
 }
 
+bool FileDescriptor::isatty() const {
+#ifdef _WIN32
+  return GetFileType(reinterpret_cast<HANDLE>(fd_)) == FILE_TYPE_CHAR;
+#else
+  return ::isatty(fd_);
+#endif
+}
+
 Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
 #ifndef _WIN32
   auto result = ::read(fd_, buf, size);

@@ -20,11 +20,27 @@ namespace watchman {
 class Client;
 class Command;
 
+/**
+ * Validates a command's arguments. Runs on the client. May modify the given
+ * command. Should throw an exception (ideally CommandValidationError) if
+ * validation fails.
+ */
+using CommandValidator = void (*)(Command& command);
+
+/**
+ * Executes a command's primary action. Usually runs on the server, but there
+ * are client-only commands.
+ */
 using CommandHandler = void (*)(Client* client, const json_ref& args);
 
-// Should throw an exception (ideally CommandValidationError) if validation
-// fails
-using CommandValidator = void (*)(Command& command);
+/**
+ * For commands that support pretty, human-readable output, this function is
+ * called, on the client, with a result PDU. It should print its output to
+ * stdout.
+ *
+ * Only called when the output is a tty.
+ */
+using ResultPrinter = void (*)(const json_ref& result);
 
 struct CommandFlags : OptionSet<CommandFlags, uint8_t> {};
 
@@ -35,16 +51,18 @@ inline constexpr auto CMD_ALLOW_ANY_USER = CommandFlags::raw(8);
 
 struct CommandDefinition {
   const std::string_view name;
-  const CommandHandler handler;
   const CommandFlags flags;
   const CommandValidator validator;
+  const CommandHandler handler;
+  const ResultPrinter result_printer;
 
   CommandDefinition(
       std::string_view name,
       std::string_view capname,
       CommandHandler handler,
       CommandFlags flags,
-      CommandValidator validator);
+      CommandValidator validator,
+      ResultPrinter result_printer);
 
   /**
    * Provide a way to query (and eventually modify) command line arguments
@@ -70,7 +88,7 @@ json_ref capability_get_list();
 
 #define W_CMD_REG(name, func, flags, clivalidate)                       \
   static const ::watchman::CommandDefinition w_gen_symbol(w_cmd_def_) { \
-    (name), "cmd-" name, (func), (flags), (clivalidate)                 \
+    (name), "cmd-" name, (func), (flags), (clivalidate), nullptr        \
   }
 
 #define W_CAP_REG1(symbol, name)           \

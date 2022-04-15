@@ -193,6 +193,12 @@ class FileDescriptor {
   /** Returns the symbolic link target */
   w_string readSymbolicLink() const;
 
+  /**
+   * Returns true if this FileDescriptor is connected to a tty device.
+   * Calls isatty() on unix and GetFileType on Windows.
+   */
+  bool isatty() const;
+
   /** read(2), but yielding a Result for system independent error reporting */
   Result<int, std::error_code> read(void* buf, int size) const;
 
