@@ -19,21 +19,6 @@
 #include "jansson_config.h" // @manual=//watchman/thirdparty/jansson:config_h
 #include "watchman/thirdparty/jansson/utf.h"
 
-/* version */
-
-#define JANSSON_MAJOR_VERSION 2
-#define JANSSON_MINOR_VERSION 4
-#define JANSSON_MICRO_VERSION 0
-
-/* Micro version is omitted if it's 0 */
-#define JANSSON_VERSION "2.4"
-
-/* Version as a 3-byte hex number, e.g. 0x010201 == 1.2.1. Use this
-   for numeric comparisons, e.g. #if JANSSON_VERSION_HEX >= ... */
-#define JANSSON_VERSION_HEX                                       \
-  ((JANSSON_MAJOR_VERSION << 16) | (JANSSON_MINOR_VERSION << 8) | \
-   (JANSSON_MICRO_VERSION << 0))
-
 /* types */
 
 typedef enum {
@@ -205,11 +190,11 @@ inline json_type json_typeof(const json_t* json) {
 
 /* construction, destruction, reference counting */
 
-json_ref json_object(void);
+json_ref json_object();
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values);
 json_ref json_object_of_size(size_t nelems);
-json_ref json_array(void);
+json_ref json_array();
 json_ref json_array_of_size(size_t nelems);
 json_ref json_array(std::initializer_list<json_ref> values);
 json_ref w_string_to_json(const w_string& str);
@@ -222,10 +207,10 @@ json_ref typed_string_to_json(Args&&... args) {
 const w_string& json_to_w_string(const json_t* json);
 json_ref json_integer(json_int_t value);
 json_ref json_real(double value);
-json_ref json_true(void);
-json_ref json_false(void);
+json_ref json_true();
+json_ref json_false();
 #define json_boolean(val) ((val) ? json_true() : json_false())
-json_ref json_null(void);
+json_ref json_null();
 
 /* error reporting */
 
