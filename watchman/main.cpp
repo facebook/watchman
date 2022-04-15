@@ -787,16 +787,6 @@ static void setup_sock_name() {
       /*require_absolute=*/logging::log_name != "-");
 }
 
-static bool should_start(int err) {
-  if (err == ECONNREFUSED) {
-    return true;
-  }
-  if (err == ENOENT) {
-    return true;
-  }
-  return false;
-}
-
 static ResultErrno<folly::Unit> try_command(
     const Command& command,
     int timeout) {
@@ -997,6 +987,10 @@ static int inner_main(int argc, char** argv) {
   w_set_thread_name("cli");
   auto cmd = build_command(argc, argv);
   cmd.validateOrExit(output_pdu, output_capabilities);
+
+  auto should_start = [](int err) -> bool {
+    return err == ECONNREFUSED || err == ENOENT;
+  };
 
   auto ran = try_command(cmd, 0);
   if (ran.hasError() && should_start(ran.error())) {
