@@ -60,7 +60,7 @@ w_string::w_string(const WCHAR* wpath, size_t pathlen) {
   }
 
   str_ = (w_string_t*)(new char[sizeof(w_string_t) + len + 1]);
-  new (str_) watchman_string();
+  new (str_) w_string_t;
 
   str_->refcnt = 1;
   str_->len = len;
