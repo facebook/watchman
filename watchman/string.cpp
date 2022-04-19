@@ -39,7 +39,7 @@ w_string w_string_piece::asLowerCase(w_string_type_t stringType) const {
 
   /* need to make a lowercase version */
   s = (w_string_t*)(new char[sizeof(*s) + size() + 1]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   s->len = size();
@@ -68,7 +68,7 @@ w_string w_string_piece::asLowerCaseSuffix(w_string_type_t stringType) const {
 
   /* need to make a lowercase version */
   s = (w_string_t*)(new char[sizeof(*s) + suffixPiece.size() + 1]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   s->len = suffixPiece.size();
@@ -254,8 +254,6 @@ bool w_string_piece::startsWithCaseInsensitive(w_string_piece prefix) const {
 
 // string
 
-w_string::w_string() {}
-
 w_string::w_string(std::nullptr_t) {}
 
 w_string::~w_string() {
@@ -297,7 +295,7 @@ w_string::w_string(w_string&& other) noexcept : str_(other.str_) {
   other.str_ = nullptr;
 }
 
-w_string& w_string::operator=(w_string&& other) {
+w_string& w_string::operator=(w_string&& other) noexcept {
   if (&other == this) {
     return *this;
   }
@@ -307,17 +305,11 @@ w_string& w_string::operator=(w_string&& other) {
   return *this;
 }
 
-void w_string::reset() {
+void w_string::reset() noexcept {
   if (str_) {
     w_string_delref(str_);
     str_ = nullptr;
   }
-}
-
-w_string_t* w_string::release() {
-  auto res = str_;
-  str_ = nullptr;
-  return res;
 }
 
 static inline uint32_t checked_len(size_t len) {
@@ -374,7 +366,7 @@ w_string w_string::normalizeSeparators(char targetSeparator) const {
   }
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   s->len = len;
@@ -389,7 +381,7 @@ w_string w_string::normalizeSeparators(char targetSeparator) const {
   }
   buf[len] = 0;
 
-  return s;
+  return w_string{s};
 }
 
 bool w_string::operator<(const w_string& other) const {
@@ -414,7 +406,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   }
 
   s = (w_string_t*)(new char[sizeof(*s) + length]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   buf = const_cast<char*>(s->buf);
@@ -462,7 +454,7 @@ w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type) {
   char* buf;
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   s->len = len;
@@ -474,28 +466,6 @@ w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type) {
   s->type = type;
 
   return s;
-}
-
-w_string w_string::vprintf(const char* format, va_list args) {
-  w_string_t* s;
-  int len;
-  char* buf;
-  va_list args_copy;
-
-  va_copy(args_copy, args);
-  // Get the length needed
-  len = vsnprintf(nullptr, 0, format, args_copy);
-  va_end(args_copy);
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = const_cast<char*>(s->buf);
-  vsnprintf(buf, len + 1, format, args);
-
-  return w_string(s, false);
 }
 
 void w_string_addref(w_string_t* str) {

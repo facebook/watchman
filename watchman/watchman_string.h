@@ -26,8 +26,6 @@
 #include <string_view>
 #include <vector>
 
-struct watchman_string;
-typedef struct watchman_string w_string_t;
 class w_string_piece;
 
 typedef enum {
@@ -36,7 +34,7 @@ typedef enum {
   W_STRING_MIXED
 } w_string_type_t;
 
-struct watchman_string {
+struct w_string_t {
   std::atomic<long> refcnt;
   uint32_t _hval;
   uint32_t len;
@@ -49,13 +47,13 @@ struct watchman_string {
   // This must be the last element of this struct.
   const char buf[1];
 
-  inline watchman_string()
+  w_string_t()
       : refcnt(0), len(0), type(W_STRING_BYTE), hval_computed(0), buf{0} {}
 };
 
 uint32_t w_string_compute_hval(w_string_t* str);
 
-static inline uint32_t w_string_hval(w_string_t* str) {
+inline uint32_t w_string_hval(w_string_t* str) {
   if (str->hval_computed) {
     return str->_hval;
   }
@@ -111,7 +109,7 @@ class w_string_piece {
           std::is_class<String>::value &&
               !std::is_same<String, w_string>::value,
           int>::type = 0>
-  inline /* implicit */ w_string_piece(const String& str)
+  /* implicit */ w_string_piece(const String& str)
       : s_(str.data()), e_(str.data() + str.size()) {}
 
   /** Construct from w_string.  This is almost the same as
@@ -143,15 +141,15 @@ class w_string_piece {
   w_string_piece& operator=(const w_string_piece& other) = default;
   w_string_piece(w_string_piece&& other) noexcept;
 
-  inline const char* data() const {
+  const char* data() const {
     return s_;
   }
 
-  inline bool empty() const {
+  bool empty() const {
     return e_ == s_;
   }
 
-  inline size_t size() const {
+  size_t size() const {
     return e_ - s_;
   }
 
@@ -237,21 +235,30 @@ class w_string_piece {
 
 bool w_string_equal_caseless(w_string_piece a, w_string_piece b);
 
-/** A smart pointer class for tracking w_string_t instances */
+/**
+ * w_string is a reference-counted, immutable, 8-bit string type.
+ * It can hold known-unicode text, known-binary data, or a mixture of both.
+ * The default-initialized and moved-from w_string values are falsey.
+ */
 class w_string {
  public:
-  /** Initialize a nullptr */
-  w_string();
-  /* implicit */ w_string(std::nullptr_t);
+  /* implicit */ w_string(std::nullptr_t = nullptr);
 
-  /** Make a new string from some bytes and a type */
+  /**
+   * Make a new string from some bytes and a type.
+   */
   w_string(
       const char* buf,
       size_t len,
       w_string_type_t stringType = W_STRING_BYTE);
+
+  /**
+   * Make a new string from a null-terminated array.
+   */
   /* implicit */ w_string(
       const char* buf,
       w_string_type_t stringType = W_STRING_BYTE);
+
   explicit w_string(std::string_view sv) : w_string{sv.data(), sv.size()} {}
 
 #ifdef _WIN32
@@ -264,33 +271,39 @@ class w_string {
 #endif
 
   /** Initialize, taking a ref on w_string_t */
-  /* implicit */ w_string(w_string_t* str, bool addRef = true);
-  /** Release the string reference when we fall out of scope */
+  explicit w_string(w_string_t* str, bool addRef = true);
+
   ~w_string();
+
   /** Copying adds a ref */
   w_string(const w_string& other);
   w_string& operator=(const w_string& other);
+
   /** Moving steals a ref */
   w_string(w_string&& other) noexcept;
-  w_string& operator=(w_string&& other);
+  w_string& operator=(w_string&& other) noexcept;
 
-  /** Stop tracking the underlying string object, decrementing
-   * the reference count. */
-  void reset();
-
-  /** Stop tracking the underlying string object, returning the
-   * reference to the caller.  The caller is responsible for
-   * decrementing the refcount */
-  w_string_t* release();
+  /**
+   * Stop tracking the underlying string object, decrementing the reference
+   * count.
+   */
+  void reset() noexcept;
 
   operator w_string_t*() const {
     return str_;
   }
 
+  /**
+   * Returns a copy of this w_string's data as a std::string.
+   */
   std::string string() const {
     return std::string{view()};
   }
 
+  /**
+   * Returns a std::string_view covering this w_string's data. Returns the empty
+   * string_view if null.
+   */
   std::string_view view() const {
     if (str_ == nullptr) {
       return {};
@@ -298,7 +311,11 @@ class w_string {
     return std::string_view(data(), size());
   }
 
-  inline w_string_piece piece() const {
+  /**
+   * Returns a w_string_piece covering this w_string's data. Returns the empty
+   * w_string_piece if null.
+   */
+  w_string_piece piece() const {
     if (str_ == nullptr) {
       return w_string_piece();
     }
@@ -350,9 +367,6 @@ class w_string {
    * the python os.path.join() function. */
   static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
-  /** Similar to asprintf, but returns a w_string */
-  static w_string vprintf(const char* format, va_list ap);
-
   /** build a w_string by concatenating the string formatted representation
    * of each of the supplied arguments */
   template <typename... Args>
@@ -374,7 +388,7 @@ class w_string {
     auto size = fmt::formatted_size(format_str, args...);
 
     w_string_t* s = (w_string_t*)(new char[sizeof(*s) + size + 1]);
-    new (s) watchman_string();
+    new (s) w_string_t;
 
     {
       // in case format_to throws
@@ -398,7 +412,7 @@ class w_string {
    * normalized to unix slashes */
   w_string normalizeSeparators(char targetSeparator = '/') const;
 
-  inline void ensureNotNull() const {
+  void ensureNotNull() const {
     if (!str_) {
       throw std::runtime_error("failed assertion w_string::ensureNotNull");
     }

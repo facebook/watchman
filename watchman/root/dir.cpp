@@ -48,7 +48,7 @@ w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   }
 
   s = (w_string_t*)(new char[sizeof(*s) + length]);
-  new (s) watchman_string();
+  new (s) w_string_t;
 
   s->refcnt = 1;
   s->len = length - 1;
