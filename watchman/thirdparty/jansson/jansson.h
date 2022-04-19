@@ -4,17 +4,18 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#ifndef JANSSON_H
-#define JANSSON_H
+#pragma once
 
 #include "watchman/watchman_string.h" // Needed for w_string_t
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <cstdlib> /* for size_t */
-#include <unordered_map>
-#include <string>
 #include <atomic>
+#include <cstdlib> /* for size_t */
+#include <map>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
 #include <vector>
 #include "jansson_config.h" // @manual=//watchman/thirdparty/jansson:config_h
 #include "watchman/thirdparty/jansson/utf.h"
@@ -332,4 +333,74 @@ int json_dump_callback(
     void* data,
     size_t flags);
 
-#endif
+namespace watchman::json {
+
+/**
+ * Specializations may provide two static members: toJson and fromJson.
+ *
+ * `static json_ref toJson(T value)`
+ * returns a JSON encoding of the given value.
+
+ * `static T fromJson(const json_ref& v)`
+ * returns a decoded value, or throws an exception if `v` has the wrong type.
+ */
+template <typename T>
+struct Serde;
+
+template <typename T>
+json_ref to(T&& v) {
+  return Serde<std::remove_const_t<std::remove_reference_t<T>>>::toJson(
+      std::forward<T>(v));
+}
+
+template <typename T>
+T from(const json_ref& v) {
+  return Serde<T>::fromJson(v);
+}
+
+// TODO: flesh out the following list of specializations:
+
+template <>
+struct Serde<bool> {
+  static json_ref toJson(bool v) {
+    return json_boolean(v);
+  }
+
+  static bool fromJson(const json_ref& v) {
+    return v.asBool();
+  }
+};
+
+template <>
+struct Serde<w_string> {
+  static json_ref toJson(w_string v) {
+    return w_string_to_json(v);
+  }
+
+  static w_string fromJson(const json_ref& v) {
+    return v.asString();
+  }
+};
+
+template <typename V>
+struct Serde<std::map<w_string, V>> {
+  static json_ref toJson(const std::map<w_string, V>& m) {
+    auto o = json_object_of_size(m.size());
+    for (auto& [name, value] : m) {
+      json_object_set(o, name.c_str(), json::to(value));
+    }
+    return o;
+  }
+
+  static std::map<w_string, V> fromJson(const json_ref& v) {
+    auto& hashmap = v.object();
+
+    std::map<w_string, V> result;
+    for (auto& [key, value] : hashmap) {
+      result.emplace(key, json::from<V>(value));
+    }
+    return result;
+  }
+};
+
+} // namespace watchman::json
