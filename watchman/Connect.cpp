@@ -30,8 +30,12 @@ ResultErrno<std::unique_ptr<Stream>> w_stm_connect(int timeoutms) {
 
 #ifdef _WIN32
   if (!disable_named_pipe) {
-    return w_stm_connect_named_pipe(
-        get_named_pipe_sock_path().c_str(), timeoutms);
+    std::unique_ptr<Stream> stm =
+        w_stm_connect_named_pipe(get_named_pipe_sock_path().c_str(), timeoutms);
+    if (stm) {
+      return stm;
+    }
+    err = errno;
   }
 #endif
 
