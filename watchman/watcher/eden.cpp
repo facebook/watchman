@@ -712,12 +712,7 @@ class EdenView final : public QueryableView {
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
         thresholdForFreshInstance_(
-            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)) {
-    // Get the current journal position so that we can keep track of
-    // cookie file changes
-    auto client = getEdenClient(thriftChannel_);
-    client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
-  }
+            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)) {}
 
   void timeGenerator(const Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
@@ -1185,46 +1180,6 @@ class EdenView final : public QueryableView {
 
   void clearWatcherDebugInfo() override {}
 
-  // Called by the subscriberThread to scan for cookie file creation
-  // events.  These are used to manage sequencing for state-enter and
-  // state-leave in eden.
-  void checkCookies(const std::shared_ptr<Root>& root) {
-    // Obtain the list of changes since our last request, or since we started
-    // up the watcher (we set the initial value of lastCookiePosition_ during
-    // construction).
-    try {
-      FileDelta delta;
-      auto client = getEdenClient(thriftChannel_);
-      client->sync_getFilesChangedSince(
-          delta, mountPoint_, lastCookiePosition_);
-
-      // TODO: in the future it would be nice to compute the paths in a loop
-      // first, and then add a bulk CookieSync::notifyCookies() method to avoid
-      // locking and unlocking its internal mutex so frequently.
-      for (auto& file : *delta.createdPaths()) {
-        auto full = w_string::pathCat({rootPath_, file});
-        root->cookies.notifyCookie(full);
-      }
-
-      // Remember this position for subsequent calls
-      lastCookiePosition_ = *delta.toPosition();
-    } catch (const EdenError& err) {
-      // EDOM is journal truncation, which we can recover from.
-      // Other errors (including ERANGE/mountGeneration changed)
-      // are not recoverable, so let them propagate.
-      XCHECK(err.errorCode_ref());
-      if (*err.errorCode_ref() != EDOM) {
-        throw;
-      }
-      // Journal was truncated: we can remain connected and have continuity
-      // with the Journal sequence numbers, but we may have missed cookie
-      // file events, so let's abort all currently outstanding cookies. The
-      // cookie sync mechanism will retry if there is sufficient time remaining
-      // in their individual retry schedule(s).
-      root->cookies.abortAllCookies();
-    }
-  }
-
   std::unique_ptr<StreamingEdenServiceAsyncClient> rocketSubscribe(
       std::shared_ptr<Root> root,
       SettleCallback& settleCallback,
@@ -1247,9 +1202,14 @@ class EdenView final : public QueryableView {
                   subscriberEventBase_.timer().scheduleTimeout(
                       &settleCallback, settleTimeout);
 
-                  // We need to process cookie files with the lowest
-                  // possible latency, so we consume that information now
-                  checkCookies(root);
+                  // The subscribeStreamTemporary mentions that
+                  // getCurrentJournalPosition needs to be called to continue
+                  // receiving notifications, but since Watchman doesn't need
+                  // it, just drop it on the floor.
+                  auto edenClient = getEdenClient(thriftChannel_);
+                  JournalPosition journal;
+                  edenClient->sync_getCurrentJournalPosition(
+                      journal, mountPoint_);
                 } catch (const std::exception& exc) {
                   log(ERR,
                       "Exception while processing eden subscription: ",
@@ -1418,7 +1378,6 @@ class EdenView final : public QueryableView {
   w_string rootPath_;
   std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
   folly::EventBase subscriberEventBase_;
-  JournalPosition lastCookiePosition_;
   std::string mountPoint_;
   folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
   bool splitGlobPattern_;
