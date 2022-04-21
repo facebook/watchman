@@ -111,9 +111,10 @@ IgnoreSet computeIgnoreSet(
 struct RootRecrawlInfo : json::Repr {
   int64_t count;
   bool should_recrawl;
-  w_string warning;
+  std::optional<w_string> warning;
 
   json_ref toJson() const;
+  static RootRecrawlInfo fromJson(const json_ref& args);
 };
 
 struct RootQueryInfo : json::Repr {
@@ -124,11 +125,12 @@ struct RootQueryInfo : json::Repr {
   int64_t view_lock_wait_duration_milliseconds;
   w_string state;
   int64_t client_pid;
-  w_string request_id;
+  std::optional<w_string> request_id;
   json_ref query;
   std::optional<w_string> subscription_name;
 
   json_ref toJson() const;
+  static RootQueryInfo fromJson(const json_ref& args);
 };
 
 struct RootDebugStatus : json::Repr {
@@ -145,6 +147,7 @@ struct RootDebugStatus : json::Repr {
   w_string crawl_status;
 
   json_ref toJson() const;
+  static RootDebugStatus fromJson(const json_ref& args);
 };
 
 /**

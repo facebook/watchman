@@ -10,6 +10,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <atomic>
 #include <cstdlib> /* for size_t */
 #include <map>
@@ -47,12 +48,8 @@ struct json_t {
 };
 
 #if JSON_INTEGER_IS_LONG_LONG
-#ifdef _WIN32
-#define JSON_INTEGER_FORMAT "I64d"
-#else
-#define JSON_INTEGER_FORMAT "lld"
-#endif
-typedef long long json_int_t;
+#define JSON_INTEGER_FORMAT PRId64
+using json_int_t = int64_t;
 #else
 #define JSON_INTEGER_FORMAT "ld"
 typedef long json_int_t;
@@ -366,7 +363,7 @@ template <typename T>
 struct Serde {
   static_assert(
       std::is_base_of_v<Repr, T>,
-      "T must either derive Repr or provide a Serde specializatiion");
+      "T must either derive Repr or provide a Serde specialization");
 
   static json_ref toJson(const T& v) {
     return v.toJson();
@@ -437,12 +434,27 @@ json_ref to(T&& v) {
 }
 
 template <typename T>
-T from(const json_ref& v) {
-  return Serde<T>::fromJson(v);
+T from(const json_ref& j) {
+  return Serde<T>::fromJson(j);
 }
 
 // Compound Serde Instances
 // TODO: add new specializations as necessary
+
+template <typename T>
+struct Serde<std::optional<T>> {
+  static json_ref toJson(const std::optional<T>& o) {
+    return o ? Serde<T>::toJson(*o) : nullptr;
+  }
+
+  static std::optional<T> fromJson(const json_ref& j) {
+    if (j.isNull()) {
+      return std::nullopt;
+    } else {
+      return Serde<T>::fromJson(j);
+    }
+  }
+};
 
 template <typename T>
 struct Serde<std::vector<T>> {
@@ -454,6 +466,17 @@ struct Serde<std::vector<T>> {
       arr.push_back(json::to(element));
     }
     return a;
+  }
+
+  static std::vector<T> fromJson(const json_ref& j) {
+    auto& array = j.array();
+
+    std::vector<T> result;
+    result.reserve(array.size());
+    for (auto& element : array) {
+      result.push_back(Serde<T>::fromJson(element));
+    }
+    return result;
   }
 };
 
@@ -467,8 +490,8 @@ struct Serde<std::map<w_string, V>> {
     return o;
   }
 
-  static std::map<w_string, V> fromJson(const json_ref& v) {
-    auto& hashmap = v.object();
+  static std::map<w_string, V> fromJson(const json_ref& j) {
+    auto& hashmap = j.object();
 
     std::map<w_string, V> result;
     for (auto& [key, value] : hashmap) {
@@ -477,5 +500,49 @@ struct Serde<std::map<w_string, V>> {
     return result;
   }
 };
+
+/**
+ * Sets `field` to Serde<T>'s interpretation of a JSON value. Throws if decoding
+ * fails.
+ */
+template <typename T>
+void assign(T& field, const json_ref& value) {
+  field = json::from<T>(value);
+}
+
+/**
+ * Sets `field` to Serde<T>'s interpretation of a JSON object field. This
+ * overload exists to provide more contextual error messages. Throws if decoding
+ * fails.
+ */
+template <typename T>
+void assign(T& field, const json_ref& object, const char* key) {
+  try {
+    field = json::from<T>(object.get(key));
+  } catch (const std::exception& e) {
+    throw std::domain_error(fmt::format("field {}: {}", key, e.what()));
+  }
+}
+
+/**
+ * Sets `field` to Serde<T>'s interpretation of a JSON object field, but only if
+ * the key is defined. Throws if decoding fails.
+ *
+ * Note that `field` is not assigned if the key is not defined.
+ */
+template <typename T>
+void assign_if(T& field, const json_ref& object, const char* key) {
+  auto& map = object.object();
+  auto it = map.find(key);
+  if (it == map.end()) {
+    return;
+  }
+
+  try {
+    field = json::from<T>(it->second);
+  } catch (const std::exception& e) {
+    throw std::domain_error(fmt::format("field {}: {}", key, e.what()));
+  }
+}
 
 } // namespace watchman::json

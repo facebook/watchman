@@ -17,6 +17,14 @@ json_ref RootRecrawlInfo::toJson() const {
   });
 }
 
+RootRecrawlInfo RootRecrawlInfo::fromJson(const json_ref& args) {
+  RootRecrawlInfo result;
+  json::assign(result.count, args, "count");
+  json::assign(result.should_recrawl, args, "should-recrawl");
+  json::assign(result.warning, args, "warning");
+  return result;
+}
+
 json_ref RootQueryInfo::toJson() const {
   auto obj = json_object({
       {"elapsed-milliseconds", json::to(elapsed_milliseconds)},
@@ -38,6 +46,33 @@ json_ref RootQueryInfo::toJson() const {
   return obj;
 }
 
+RootQueryInfo RootQueryInfo::fromJson(const json_ref& args) {
+  RootQueryInfo result;
+  json::assign(result.elapsed_milliseconds, args, "elapsed-milliseconds");
+  json::assign(
+      result.cookie_sync_duration_milliseconds,
+      args,
+      "cookie-sync-duration-milliseconds");
+  json::assign(
+      result.generation_duration_milliseconds,
+      args,
+      "generation-duration-milliseconds");
+  json::assign(
+      result.render_duration_milliseconds,
+      args,
+      "render-duration-milliseconds");
+  json::assign(
+      result.view_lock_wait_duration_milliseconds,
+      args,
+      "view-lock-wait-duration-milliseconds");
+  json::assign(result.state, args, "state");
+  json::assign(result.client_pid, args, "client-pid");
+  json::assign(result.request_id, args, "request-id");
+  json::assign(result.query, args, "query");
+  json::assign_if(result.subscription_name, args, "subscription-name");
+  return result;
+}
+
 json_ref RootDebugStatus::toJson() const {
   return json_object({
       {"path", json::to(path)},
@@ -52,6 +87,22 @@ json_ref RootDebugStatus::toJson() const {
       {"cancelled", json::to(cancelled)},
       {"crawl-status", json::to(crawl_status)},
   });
+}
+
+RootDebugStatus RootDebugStatus::fromJson(const json_ref& args) {
+  RootDebugStatus result;
+  json::assign(result.path, args, "path");
+  json::assign(result.fstype, args, "fstype");
+  json::assign(result.case_sensitive, args, "case_sensitive");
+  json::assign(result.cookie_prefix, args, "cookie_prefix");
+  json::assign(result.cookie_dir, args, "cookie_dir");
+  json::assign(result.cookie_list, args, "cookie_list");
+  json::assign(result.recrawl_info, args, "recrawl_info");
+  json::assign(result.queries, args, "queries");
+  json::assign(result.done_initial, args, "done_initial");
+  json::assign(result.cancelled, args, "cancelled");
+  json::assign(result.crawl_status, args, "crawl-status");
+  return result;
 }
 
 } // namespace watchman

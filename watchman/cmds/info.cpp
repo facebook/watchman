@@ -88,11 +88,11 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
 
     static Response fromJson(const json_ref& args) {
       Response result;
-      result.version = json::from<w_string>(args.get("version"));
-      result.buildinfo = args.get_default("buildinfo").asOptionalString();
+      json::assign(result.version, args.get("version"));
+      json::assign(result.buildinfo, args.get("buildinfo"));
       auto caps = args.get_default("capabilities");
       if (caps) {
-        result.capabilities = json::from<std::map<w_string, bool>>(caps);
+        json::assign(result.capabilities, caps);
       }
       result.error = args.get_default("error").asOptionalString();
       return result;

@@ -235,7 +235,7 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root);
 
-struct DebugStatusCommand : TypedCommand<DebugStatusCommand> {
+struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
   static constexpr std::string_view name = "debug-status";
 
   static constexpr CommandFlags flags = CMD_DAEMON | CMD_ALLOW_ANY_USER;
@@ -253,6 +253,13 @@ struct DebugStatusCommand : TypedCommand<DebugStatusCommand> {
           {"roots", json::to(roots)},
       });
     }
+
+    static Response fromJson(const json_ref& args) {
+      Response result;
+      json::assign(result.version, args, "version");
+      json::assign(result.roots, args, "roots");
+      return result;
+    }
   };
 
   static Response handle(const Request&) {
@@ -260,6 +267,20 @@ struct DebugStatusCommand : TypedCommand<DebugStatusCommand> {
     res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
     res.roots = Root::getStatusForAllRoots();
     return res;
+  }
+
+  static void printResult(const Response& response) {
+    fmt::print("ROOTS\n-----\n");
+    for (auto& root : response.roots) {
+      fmt::print("{}\n", root.path);
+      if (root.cancelled) {
+        fmt::print("  - cancelled: true\n");
+      }
+      fmt::print("  - fstype: {}\n", root.fstype);
+      fmt::print("  - crawl_status: {}\n", root.crawl_status);
+      fmt::print("  - done_initial: {}\n", root.done_initial);
+      fmt::print("\n");
+    }
   }
 };
 WATCHMAN_COMMAND(debug_status, DebugStatusCommand);

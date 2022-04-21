@@ -149,7 +149,9 @@ RootDebugStatus Root::getStatus() const {
     auto info = recrawlInfo.rlock();
     recrawl_info.count = info->recrawlCount;
     recrawl_info.should_recrawl = info->shouldRecrawl;
-    recrawl_info.warning = info->warning;
+    if (info->warning) {
+      recrawl_info.warning = info->warning;
+    }
 
     if (!inner.done_initial) {
       crawl_status = folly::to<std::string>(

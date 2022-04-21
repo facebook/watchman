@@ -18,6 +18,30 @@
 #include "utf.h"
 #include "watchman/watchman_string.h"
 
+namespace {
+const char* getTypeName(json_type t) {
+  switch (t) {
+    case JSON_OBJECT:
+      return "object";
+    case JSON_ARRAY:
+      return "array";
+    case JSON_STRING:
+      return "string";
+    case JSON_INTEGER:
+      return "integer";
+    case JSON_REAL:
+      return "real";
+    case JSON_TRUE:
+      return "true";
+    case JSON_FALSE:
+      return "false";
+    case JSON_NULL:
+      return "null";
+  }
+  return "<unknown>";
+}
+} // namespace
+
 json_ref::json_ref() : ref_(nullptr) {}
 json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
 
@@ -73,7 +97,8 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
 
 const w_string& json_ref::asString() const {
   if (!json_is_string(ref_)) {
-    throw std::domain_error("json_ref not a string");
+    throw std::domain_error(
+        fmt::format("json_ref expected string, got {}", getTypeName(type())));
   }
   return json_to_string(ref_)->value;
 }
