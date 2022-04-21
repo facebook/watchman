@@ -21,7 +21,9 @@
 
 using namespace watchman;
 
-class VersionCommand : public TypedCommand<VersionCommand> {
+namespace {
+
+class VersionCommand : public PrettyCommand<VersionCommand> {
  public:
   static constexpr std::string_view name = "version";
 
@@ -71,21 +73,29 @@ class VersionCommand : public TypedCommand<VersionCommand> {
 
     json_ref toJson() const {
       auto response = json_object();
-      response.set("version", typed_string_to_json(version));
+      response.set("version", json::to(version));
       if (buildinfo) {
-        response.set("buildinfo", typed_string_to_json(buildinfo.value()));
+        response.set("buildinfo", json::to(buildinfo.value()));
       }
       if (!capabilities.empty()) {
-        auto caps = json_object();
-        for (auto& [name, have] : capabilities) {
-          caps.set(name, json_boolean(have));
-        }
-        response.set("capabilities", std::move(caps));
+        response.set("capabilities", json::to(capabilities));
       }
       if (error) {
-        response.set("error", typed_string_to_json(error.value()));
+        response.set("error", json::to(error.value()));
       }
       return response;
+    }
+
+    static Response fromJson(const json_ref& args) {
+      Response result;
+      result.version = json::from<w_string>(args.get("version"));
+      result.buildinfo = args.get_default("buildinfo").asOptionalString();
+      auto caps = args.get_default("capabilities");
+      if (caps) {
+        result.capabilities = json::from<std::map<w_string, bool>>(caps);
+      }
+      result.error = args.get_default("error").asOptionalString();
+      return result;
     }
   };
 
@@ -124,6 +134,16 @@ class VersionCommand : public TypedCommand<VersionCommand> {
     }
 
     return response;
+  }
+
+  static void printResult(const Response& response) {
+    if (response.error) {
+      fmt::print("error: {}\n", response.error.value());
+    }
+    fmt::print("version: {}\n", response.version);
+    if (response.buildinfo) {
+      fmt::print("buildinfo: {}\n", response.buildinfo.value());
+    }
   }
 };
 
@@ -194,6 +214,8 @@ static json_ref cmd_get_config(Client* client, const json_ref& args) {
   return resp;
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root);
+
+} // namespace
 
 /* vim:ts=2:sw=2:et:
  */

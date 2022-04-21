@@ -75,8 +75,14 @@ const w_string& json_ref::asString() const {
   if (!json_is_string(ref_)) {
     throw std::domain_error("json_ref not a string");
   }
-  auto jstr = json_to_string(ref_);
-  return jstr->value;
+  return json_to_string(ref_)->value;
+}
+
+std::optional<w_string> json_ref::asOptionalString() const {
+  if (!json_is_string(ref_)) {
+    return std::nullopt;
+  }
+  return json_to_string(ref_)->value;
 }
 
 const char* json_ref::asCString() const {

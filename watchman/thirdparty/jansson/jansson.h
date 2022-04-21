@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cstdlib> /* for size_t */
 #include <map>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -169,7 +170,18 @@ class json_ref {
     return type() == JSON_REAL;
   }
 
+  /**
+   * Throws if not a string.
+   */
   const w_string& asString() const;
+
+  /**
+   * If not a string, returns std::nullopt.
+   *
+   * A more efficient method would return a nullable pointer.
+   */
+  std::optional<w_string> asOptionalString() const;
+
   const char* asCString() const;
   bool asBool() const;
   json_int_t asInt() const;

@@ -89,10 +89,7 @@ class TypedCommand : public CommandDefinition {
   /// Override to implement a validator.
   static constexpr CommandValidator validate = nullptr;
 
-  /// Override to implement a result printer.
-  static constexpr ResultPrinter printResult = nullptr;
-
-  TypedCommand()
+  explicit TypedCommand(ResultPrinter resultPrinter = nullptr)
       : CommandDefinition{
             T::name,
             // TODO: eliminate this allocation
@@ -100,7 +97,7 @@ class TypedCommand : public CommandDefinition {
             T::handleRaw,
             T::flags,
             T::validate,
-            T::printResult} {}
+            resultPrinter} {}
 
   static json_ref handleRaw(Client*, const json_ref& args) {
     // In advance of having individual handlers take a Command struct directly,
@@ -114,6 +111,24 @@ class TypedCommand : public CommandDefinition {
 
     using Request = typename T::Request;
     return T::handle(Request::fromJson(adjusted_args)).toJson();
+  }
+};
+
+/**
+ * A subclass of TypedCommand that also provides can print a human-readable
+ * representation of the response.
+ *
+ * TODO: It might be possible to morge this into TypedCommand by using SFINAE to
+ * detect the existence of a printResult method.
+ */
+template <typename T>
+class PrettyCommand : public TypedCommand<T> {
+ public:
+  PrettyCommand() : TypedCommand<T>{&printResultRaw} {}
+
+  static void printResultRaw(const json_ref& result) {
+    using Response = typename T::Response;
+    return T::printResult(Response::fromJson(result));
   }
 };
 
