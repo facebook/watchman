@@ -177,6 +177,39 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
   return make_unique<StreamingEdenServiceAsyncClient>(std::move(channel));
 }
 
+class GetJournalPositionCallback : public folly::HHWheelTimer::Callback {
+ public:
+  GetJournalPositionCallback(
+      folly::EventBase* eventBase,
+      std::shared_ptr<apache::thrift::RequestChannel> thriftChannel,
+      std::string mountPoint)
+      : eventBase_{eventBase},
+        thriftChannel_{std::move(thriftChannel)},
+        mountPoint_{std::move(mountPoint)} {}
+
+  void timeoutExpired() noexcept override {
+    try {
+      auto edenClient = getEdenClient(thriftChannel_);
+
+      // Calling getCurrentJournalPosition will allow EdenFS to send new
+      // notification about files changed.
+      JournalPosition journal;
+      edenClient->sync_getCurrentJournalPosition(journal, mountPoint_);
+    } catch (const std::exception& exc) {
+      log(ERR,
+          "error while getting EdenFS's journal position; cancel watch: ",
+          exc.what(),
+          "\n");
+      eventBase_->terminateLoopSoon();
+    }
+  }
+
+ private:
+  folly::EventBase* eventBase_;
+  std::shared_ptr<apache::thrift::RequestChannel> thriftChannel_;
+  std::string mountPoint_;
+};
+
 /** Create a thrift client that will connect to the eden server associated
  * with the current user.
  * This particular client uses the RocketClientChannel channel that
@@ -1183,15 +1216,19 @@ class EdenView final : public QueryableView {
   std::unique_ptr<StreamingEdenServiceAsyncClient> rocketSubscribe(
       std::shared_ptr<Root> root,
       SettleCallback& settleCallback,
-      std::chrono::milliseconds& settleTimeout) {
+      GetJournalPositionCallback& getJournalPositionCallback,
+      std::chrono::milliseconds settleTimeout) {
     auto client = getRocketEdenClient(root->root_path, &subscriberEventBase_);
     auto stream = client->sync_subscribeStreamTemporary(
         std::string(root->root_path.data(), root->root_path.size()));
     std::move(stream)
         .subscribeExTry(
             &subscriberEventBase_,
-            [&settleCallback, this, root, settleTimeout](
-                folly::Try<JournalPosition>&& t) {
+            [&settleCallback,
+             &getJournalPositionCallback,
+             this,
+             root,
+             settleTimeout](folly::Try<JournalPosition>&& t) {
               if (t.hasValue()) {
                 try {
                   log(DBG, "Got subscription push from eden\n");
@@ -1202,14 +1239,15 @@ class EdenView final : public QueryableView {
                   subscriberEventBase_.timer().scheduleTimeout(
                       &settleCallback, settleTimeout);
 
-                  // The subscribeStreamTemporary mentions that
-                  // getCurrentJournalPosition needs to be called to continue
-                  // receiving notifications, but since Watchman doesn't need
-                  // it, just drop it on the floor.
-                  auto edenClient = getEdenClient(thriftChannel_);
-                  JournalPosition journal;
-                  edenClient->sync_getCurrentJournalPosition(
-                      journal, mountPoint_);
+                  // For bursty writes to the working copy, let's limit the
+                  // amount of notification that Watchman receives by
+                  // scheduling a getCurrentJournalPosition call in the future.
+                  //
+                  // Thus, we're guarantee to only receive one notification per
+                  // settleTimeout/2 and no more, regardless of how much
+                  // writing is done in the repository.
+                  subscriberEventBase_.timer().scheduleTimeout(
+                      &getJournalPositionCallback, settleTimeout / 2);
                 } catch (const std::exception& exc) {
                   log(ERR,
                       "Exception while processing eden subscription: ",
@@ -1248,12 +1286,15 @@ class EdenView final : public QueryableView {
 
     try {
       // Prepare the callback
-      SettleCallback settleCallback(&subscriberEventBase_, root);
+      SettleCallback settleCallback{&subscriberEventBase_, root};
+      GetJournalPositionCallback getJournalPositionCallback{
+          &subscriberEventBase_, thriftChannel_, mountPoint_};
       // Figure out the correct value for settling
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
       std::unique_ptr<StreamingEdenServiceAsyncClient> client;
 
-      client = rocketSubscribe(root, settleCallback, settleTimeout);
+      client = rocketSubscribe(
+          root, settleCallback, getJournalPositionCallback, settleTimeout);
 
       // This will run until the stream ends
       log(DBG, "Started subscription thread loop\n");
