@@ -1041,6 +1041,11 @@ CookieSync::SyncResult InMemoryView::syncToNow(
   return syncResult;
 }
 
+folly::SemiFuture<CookieSync::SyncResult> InMemoryView::sync(
+    const std::shared_ptr<Root>& root) {
+  return root->cookies.sync();
+}
+
 CookieSync::SyncResult InMemoryView::syncToNowCookies(
     const std::shared_ptr<Root>& root,
     std::chrono::milliseconds timeout) {

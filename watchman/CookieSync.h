@@ -59,7 +59,7 @@ class CookieSync {
    * It is recommended that you minimize the actions performed
    * in that context to avoid holding up the IO thread.
    **/
-  folly::Future<SyncResult> sync();
+  folly::SemiFuture<SyncResult> sync();
 
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just

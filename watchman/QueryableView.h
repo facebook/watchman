@@ -58,6 +58,15 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
       const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) = 0;
 
+  /**
+   * Synchronize this view with the working copy.
+   *
+   * The returned future will complete when this view caught up with all the
+   * writes to the working copy.
+   */
+  virtual folly::SemiFuture<CookieSync::SyncResult> sync(
+      const std::shared_ptr<Root>& root) = 0;
+
   // Specialized query function that is used to test whether
   // version control files exist as part of some settling handling.
   // It should query the view and return true if any of the named

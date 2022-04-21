@@ -177,6 +177,15 @@ class InMemoryView final : public QueryableView {
       const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) override;
 
+  /**
+   * Write cookies to the working copy and wait to see them.
+   *
+   * The returned future will complete when all the cookies written to the
+   * working copy have been noticed by the underlying watcher.
+   */
+  folly::SemiFuture<CookieSync::SyncResult> sync(
+      const std::shared_ptr<Root>& root) override;
+
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
 

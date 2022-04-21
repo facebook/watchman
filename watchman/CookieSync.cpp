@@ -71,7 +71,7 @@ std::vector<w_string> CookieSync::getOutstandingCookieFileList() const {
   return result;
 }
 
-folly::Future<CookieSync::SyncResult> CookieSync::sync() {
+folly::SemiFuture<CookieSync::SyncResult> CookieSync::sync() {
   auto prefixes = cookiePrefix();
   auto serial = serial_++;
 
@@ -127,7 +127,7 @@ folly::Future<CookieSync::SyncResult> CookieSync::sync() {
 
   cookiesLock->insert(pendingCookies.begin(), pendingCookies.end());
 
-  return cookie->promise.getFuture().thenValue(
+  return cookie->promise.getSemiFuture().deferValue(
       [cookieFileNames = std::move(cookieFileNames)](folly::Unit) mutable {
         return SyncResult{std::move(cookieFileNames)};
       });

@@ -977,24 +977,44 @@ class EdenView final : public QueryableView {
   }
 
   CookieSync::SyncResult syncToNow(
-      const std::shared_ptr<Root>&,
+      const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) override {
-    auto client = getEdenClient(thriftChannel_);
     try {
-      client
-          ->semifuture_synchronizeWorkingCopy(
-              mountPoint_, facebook::eden::SynchronizeWorkingCopyParams{})
-          .get(timeout);
+      return sync(root).get(timeout);
     } catch (const folly::FutureTimeout& ex) {
       throw std::system_error(ETIMEDOUT, std::generic_category(), ex.what());
-    } catch (const TApplicationException& ex) {
-      if (ex.getType() != TApplicationException::UNKNOWN_METHOD) {
-        throw;
-      }
-
-      // On older EdenFS version, no synchronization is needed.
     }
     return {};
+  }
+
+  folly::SemiFuture<CookieSync::SyncResult> sync(
+      const std::shared_ptr<Root>&) override {
+    return folly::makeSemiFutureWith([this]() {
+             // Set an unlimited timeout. The caller is responsible for using a
+             // timeout to bound the time spent in this method.
+             facebook::eden::SyncBehavior sync;
+             sync.syncTimeoutSeconds() = -1;
+
+             facebook::eden::SynchronizeWorkingCopyParams params;
+             params.sync() = sync;
+
+             auto client = getEdenClient(thriftChannel_);
+             return client->semifuture_synchronizeWorkingCopy(
+                 mountPoint_, params);
+           })
+        .defer([](folly::Try<folly::Unit> try_) {
+          if (try_.hasException()) {
+            if (auto* exc =
+                    try_.tryGetExceptionObject<TApplicationException>()) {
+              if (exc->getType() == TApplicationException::UNKNOWN_METHOD) {
+                return folly::Try{CookieSync::SyncResult{}};
+              }
+            }
+            return folly::Try<CookieSync::SyncResult>{
+                std::move(try_.exception())};
+          }
+          return folly::Try{CookieSync::SyncResult{}};
+        });
   }
 
   void executeGlobBasedQuery(

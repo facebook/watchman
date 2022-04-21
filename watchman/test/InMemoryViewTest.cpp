@@ -6,6 +6,7 @@
  */
 
 #include "watchman/InMemoryView.h"
+#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 #include "watchman/fs/FSDetect.h"
 #include "watchman/query/GlobTree.h"
@@ -241,8 +242,11 @@ TEST_F(
 
   // A query starts, but the watcher has not notified us.
 
+  auto executor = folly::ManualExecutor{};
+
   // Query, to synchronize, writes a cookie to the filesystem.
-  auto syncFuture1 = root->cookies.sync();
+  auto syncFuture1 =
+      root->cookies.sync().via(folly::Executor::getKeepAliveToken(executor));
 
   // But we want to know exactly when it unblocks:
   auto syncFuture = std::move(syncFuture1).thenValue([&](auto) {
@@ -264,9 +268,12 @@ TEST_F(
   pending.lock()->add(
       "/root", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
 
+  executor.drain();
+
   EXPECT_FALSE(syncFuture.isReady());
   // This will notice the cookie and unblock.
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+  executor.drain();
   EXPECT_TRUE(syncFuture.isReady());
 
   EXPECT_EQ(100, std::move(syncFuture).get());
@@ -313,8 +320,11 @@ TEST_F(
 
   // A query starts, but the watcher has not notified us.
 
+  auto executor = folly::ManualExecutor{};
+
   // Query, to synchronize, writes a cookie to the filesystem.
-  auto syncFuture1 = root->cookies.sync();
+  auto syncFuture1 =
+      root->cookies.sync().via(folly::Executor::getKeepAliveToken(executor));
 
   // But we want to know exactly when it unblocks:
   auto syncFuture = std::move(syncFuture1).thenValue([&](auto) {
@@ -344,6 +354,7 @@ TEST_F(
 
   // This will notice the cookie and unblock.
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+  executor.drain();
   EXPECT_TRUE(syncFuture.isReady());
 
   EXPECT_EQ(100, std::move(syncFuture).get());
@@ -370,8 +381,11 @@ TEST_F(
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
 
+  auto executor = folly::ManualExecutor{};
+
   // A query is immediately issued. To synchronize, a cookie is written.
-  auto syncFuture1 = root->cookies.sync();
+  auto syncFuture1 =
+      root->cookies.sync().via(folly::Executor::getKeepAliveToken(executor));
 
   // But we want to know exactly when it unblocks:
   auto syncFuture = std::move(syncFuture1).thenValue([&](auto) {
@@ -387,12 +401,16 @@ TEST_F(
     EXPECT_EQ(100, file->stat.size);
   });
 
+  executor.drain();
+
   EXPECT_FALSE(syncFuture.isReady());
 
   // Initial crawl...
 
   InMemoryView::IoThreadState state{std::chrono::minutes(5)};
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
+
+  executor.drain();
 
   // ... should unblock the cookie when it's done.
   EXPECT_TRUE(syncFuture.isReady());

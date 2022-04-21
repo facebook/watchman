@@ -102,15 +102,15 @@ static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
       {{"root", w_string_to_json(root->root_path)},
        {"state-enter", w_string_to_json(parsed.name)}});
 
-  root->cookies
-      .sync()
+  root->view()
+      ->sync(root)
       // Note that it is possible that the sync()
       // might throw.  If that happens the exception will bubble back
       // to the client as an error PDU.
       // after this point, any errors are async and the client is
       // unaware of them.
-      .thenTry([assertion, parsed, root](
-                   folly::Try<CookieSync::SyncResult>&& result) {
+      .defer([assertion, parsed, root](
+                 folly::Try<CookieSync::SyncResult>&& result) {
         try {
           result.throwUnlessValue();
         } catch (const std::exception& exc) {
@@ -146,7 +146,8 @@ static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
             assertion->enterPayload = payload;
           }
         }
-      });
+      })
+      .via(&getThreadPool());
 
   return response;
 }
@@ -218,8 +219,10 @@ static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)}});
 
-  root->cookies.sync().thenTry(
-      [assertion, parsed, root](folly::Try<CookieSync::SyncResult>&& result) {
+  root->view()
+      ->sync(root)
+      .defer([assertion, parsed, root](
+                 folly::Try<CookieSync::SyncResult>&& result) {
         try {
           result.throwUnlessValue();
         } catch (const std::exception& exc) {
@@ -230,7 +233,8 @@ static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
         }
         // Notify and exit the state
         w_leave_state(nullptr, assertion, false, parsed.metadata);
-      });
+      })
+      .via(&getThreadPool());
   return response;
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root);
