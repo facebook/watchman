@@ -80,6 +80,16 @@ struct CommandDefinition {
 };
 
 /**
+ * For commands that have no request parameters, write:
+ * `using Request = NullRequest`
+ */
+struct NullRequest {
+  static NullRequest fromJson(const json_ref&) {
+    return {};
+  }
+};
+
+/**
  * Provides a typed interface for CommandDefinition that can optionally handle
  * validation, result-printing, request decoding, and response encoding.
  */

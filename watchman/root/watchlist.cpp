@@ -125,36 +125,31 @@ json_ref w_root_watch_list_to_json() {
   return arr;
 }
 
-json_ref Root::getStatusForAllRoots() {
-  auto arr = json_array();
+std::vector<RootDebugStatus> Root::getStatusForAllRoots() {
+  std::vector<RootDebugStatus> result;
 
   auto map = watched_roots.rlock();
-  for (const auto& it : *map) {
-    auto root = it.second;
-    json_array_append_new(arr, root->getStatus());
+  result.reserve(map->size());
+  for (const auto& [name, root] : *map) {
+    result.push_back(root->getStatus());
   }
 
-  return arr;
+  return result;
 }
 
-json_ref Root::getStatus() const {
-  auto obj = json_object();
+RootDebugStatus Root::getStatus() const {
+  RootDebugStatus obj;
   auto now = std::chrono::steady_clock::now();
 
-  auto cookie_array = json_array();
-  for (auto& name : cookies.getOutstandingCookieFileList()) {
-    cookie_array.array().push_back(w_string_to_json(name));
-  }
+  auto cookie_array = cookies.getOutstandingCookieFileList();
 
   std::string crawl_status;
-  auto recrawl_info = json_object();
+  RootRecrawlInfo recrawl_info;
   {
     auto info = recrawlInfo.rlock();
-    recrawl_info.set({
-        {"count", json_integer(info->recrawlCount)},
-        {"should-recrawl", json_boolean(info->shouldRecrawl)},
-        {"warning", w_string_to_json(info->warning)},
-    });
+    recrawl_info.count = info->recrawlCount;
+    recrawl_info.should_recrawl = info->shouldRecrawl;
+    recrawl_info.warning = info->warning;
 
     if (!inner.done_initial) {
       crawl_status = folly::to<std::string>(
@@ -187,11 +182,10 @@ json_ref Root::getStatus() const {
     }
   }
 
-  auto query_info = json_array();
+  std::vector<RootQueryInfo> query_info;
   {
     auto locked = queries.rlock();
     for (auto& ctx : *locked) {
-      auto info = json_object();
       auto elapsed = now - ctx->created;
 
       const char* queryState = "?";
@@ -216,61 +210,52 @@ json_ref Root::getStatus() const {
           break;
       }
 
-      info.set({
-          {"elapsed-milliseconds",
-           json_integer(
-               std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
-                   .count())},
-          {"cookie-sync-duration-milliseconds",
-           json_integer(ctx->cookieSyncDuration.load().count())},
-          {"generation-duration-milliseconds",
-           json_integer(ctx->generationDuration.load().count())},
-          {"render-duration-milliseconds",
-           json_integer(ctx->renderDuration.load().count())},
-          {"view-lock-wait-duration-milliseconds",
-           json_integer(ctx->viewLockWaitDuration.load().count())},
-          {"state", typed_string_to_json(queryState)},
-          {"client-pid", json_integer(ctx->query->clientPid)},
-          {"request-id", w_string_to_json(ctx->query->request_id)},
-          {"query", json_ref(ctx->query->query_spec)},
-      });
+      RootQueryInfo info;
+      info.elapsed_milliseconds =
+          std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
+              .count();
+      info.cookie_sync_duration_milliseconds =
+          ctx->cookieSyncDuration.load().count();
+      info.generation_duration_milliseconds =
+          ctx->generationDuration.load().count();
+      info.render_duration_milliseconds = ctx->renderDuration.load().count();
+      info.view_lock_wait_duration_milliseconds =
+          ctx->viewLockWaitDuration.load().count();
+      info.state = queryState;
+      info.client_pid = ctx->query->clientPid;
+      info.request_id = ctx->query->request_id;
+      info.query = ctx->query->query_spec;
       if (ctx->query->subscriptionName) {
-        info.set(
-            "subscription-name",
-            w_string_to_json(ctx->query->subscriptionName));
+        info.subscription_name = ctx->query->subscriptionName;
       }
 
-      query_info.array().push_back(info);
+      query_info.push_back(std::move(info));
     }
   }
 
-  auto cookiePrefix = cookies.cookiePrefix();
-  auto jsonCookiePrefix = json_array();
-  for (const auto& name : cookiePrefix) {
-    jsonCookiePrefix.array().push_back(w_string_to_json(name));
+  std::vector<w_string> cookiePrefix;
+  for (const auto& name : cookies.cookiePrefix()) {
+    // If cookiePrefix() returned a std::vector, we could move the string here.
+    cookiePrefix.push_back(name);
   }
 
-  auto cookieDirs = cookies.cookieDirs();
-  auto jsonCookieDirs = json_array();
-  for (const auto& dir : cookieDirs) {
-    jsonCookieDirs.array().push_back(w_string_to_json(dir));
+  std::vector<w_string> cookieDirs;
+  for (const auto& dir : cookies.cookieDirs()) {
+    // If cookieDirs() returned a std::vector, we could move the string here.
+    cookieDirs.push_back(dir);
   }
 
-  obj.set({
-      {"path", w_string_to_json(root_path)},
-      {"fstype", w_string_to_json(fs_type)},
-      {"case_sensitive",
-       json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)},
-      {"cookie_prefix", std::move(jsonCookiePrefix)},
-      {"cookie_dir", std::move(jsonCookieDirs)},
-      {"cookie_list", std::move(cookie_array)},
-      {"recrawl_info", std::move(recrawl_info)},
-      {"queries", std::move(query_info)},
-      {"done_initial", json_boolean(inner.done_initial)},
-      {"cancelled", json_boolean(inner.cancelled)},
-      {"crawl-status",
-       w_string_to_json(w_string(crawl_status.data(), crawl_status.size()))},
-  });
+  obj.path = root_path;
+  obj.fstype = fs_type;
+  obj.case_sensitive = case_sensitive == CaseSensitivity::CaseSensitive;
+  obj.cookie_prefix = cookiePrefix;
+  obj.cookie_dir = cookieDirs;
+  obj.cookie_list = cookie_array;
+  obj.recrawl_info = std::move(recrawl_info);
+  obj.queries = std::move(query_info);
+  obj.done_initial = inner.done_initial;
+  obj.cancelled = inner.cancelled;
+  obj.crawl_status = w_string{crawl_status.data(), crawl_status.size()};
   return obj;
 }
 

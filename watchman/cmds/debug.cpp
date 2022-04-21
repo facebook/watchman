@@ -16,7 +16,8 @@
 #include "watchman/root/Root.h"
 #include "watchman/watchman_cmd.h"
 
-using namespace watchman;
+namespace watchman {
+namespace {
 
 static json_ref cmd_debug_recrawl(Client* client, const json_ref& args) {
   /* resolve the root */
@@ -234,17 +235,34 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root);
 
-static json_ref cmd_debug_status(Client*, const json_ref&) {
-  auto resp = make_response();
-  auto roots = Root::getStatusForAllRoots();
-  resp.set("roots", std::move(roots));
-  return resp;
-}
-W_CMD_REG(
-    "debug-status",
-    cmd_debug_status,
-    CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    NULL);
+struct DebugStatusCommand : TypedCommand<DebugStatusCommand> {
+  static constexpr std::string_view name = "debug-status";
+
+  static constexpr CommandFlags flags = CMD_DAEMON | CMD_ALLOW_ANY_USER;
+
+  using Request = NullRequest;
+
+  struct Response {
+    // TODO: should version be included automatically?
+    w_string version;
+    std::vector<RootDebugStatus> roots;
+
+    json_ref toJson() const {
+      return json_object({
+          {"version", json::to(version)},
+          {"roots", json::to(roots)},
+      });
+    }
+  };
+
+  static Response handle(const Request&) {
+    Response res;
+    res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
+    res.roots = Root::getStatusForAllRoots();
+    return res;
+  }
+};
+WATCHMAN_COMMAND(debug_status, DebugStatusCommand);
 
 static json_ref cmd_debug_watcher_info(
     Client* clientbase,
@@ -273,8 +291,6 @@ W_CMD_REG(
     cmd_debug_watcher_info_clear,
     CMD_DAEMON,
     NULL);
-
-namespace {
 
 void addCacheStats(json_ref& resp, const CacheStats& stats) {
   resp.set(
@@ -344,6 +360,4 @@ W_CMD_REG(
     w_cmd_realpath_root);
 
 } // namespace
-
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

@@ -108,6 +108,45 @@ IgnoreSet computeIgnoreSet(
     const w_string& root_path,
     const Configuration& config);
 
+struct RootRecrawlInfo : json::Repr {
+  int64_t count;
+  bool should_recrawl;
+  w_string warning;
+
+  json_ref toJson() const;
+};
+
+struct RootQueryInfo : json::Repr {
+  int64_t elapsed_milliseconds;
+  int64_t cookie_sync_duration_milliseconds;
+  int64_t generation_duration_milliseconds;
+  int64_t render_duration_milliseconds;
+  int64_t view_lock_wait_duration_milliseconds;
+  w_string state;
+  int64_t client_pid;
+  w_string request_id;
+  json_ref query;
+  std::optional<w_string> subscription_name;
+
+  json_ref toJson() const;
+};
+
+struct RootDebugStatus : json::Repr {
+  w_string path;
+  w_string fstype;
+  bool case_sensitive;
+  std::vector<w_string> cookie_prefix;
+  std::vector<w_string> cookie_dir;
+  std::vector<w_string> cookie_list;
+  RootRecrawlInfo recrawl_info;
+  std::vector<RootQueryInfo> queries;
+  bool done_initial;
+  bool cancelled;
+  w_string crawl_status;
+
+  json_ref toJson() const;
+};
+
 /**
  * Represents a watched root directory.
  *
@@ -240,8 +279,8 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   bool stopWatch();
   json_ref triggerListToJson() const;
 
-  static json_ref getStatusForAllRoots();
-  json_ref getStatus() const;
+  static std::vector<RootDebugStatus> getStatusForAllRoots();
+  RootDebugStatus getStatus() const;
 
   // Annotate the sample with some standard metadata taken from a root.
   void addPerfSampleMetadata(PerfSample& sample) const;

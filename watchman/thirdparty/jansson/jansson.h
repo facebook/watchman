@@ -348,6 +348,12 @@ int json_dump_callback(
 namespace watchman::json {
 
 /**
+ * Derive from Repr to indicate a struct has toJson and fromJson members and
+ * will automatically have a Serde instance.
+ */
+struct Repr {};
+
+/**
  * Specializations may provide two static members: toJson and fromJson.
  *
  * `static json_ref toJson(T value)`
@@ -357,20 +363,32 @@ namespace watchman::json {
  * returns a decoded value, or throws an exception if `v` has the wrong type.
  */
 template <typename T>
-struct Serde;
+struct Serde {
+  static_assert(
+      std::is_base_of_v<Repr, T>,
+      "T must either derive Repr or provide a Serde specializatiion");
 
-template <typename T>
-json_ref to(T&& v) {
-  return Serde<std::remove_const_t<std::remove_reference_t<T>>>::toJson(
-      std::forward<T>(v));
-}
+  static json_ref toJson(const T& v) {
+    return v.toJson();
+  }
 
-template <typename T>
-T from(const json_ref& v) {
-  return Serde<T>::fromJson(v);
-}
+  static T fromJson(const json_ref& v) {
+    return T::fromJson(v);
+  }
+};
 
-// TODO: flesh out the following list of specializations:
+// Primitive Serde Instances
+// TODO: flesh this out
+
+template <>
+struct Serde<json_ref> {
+  static json_ref toJson(json_ref v) {
+    return v;
+  }
+  static json_ref fromJson(json_ref v) {
+    return v;
+  }
+};
 
 template <>
 struct Serde<bool> {
@@ -384,6 +402,17 @@ struct Serde<bool> {
 };
 
 template <>
+struct Serde<json_int_t> {
+  static json_ref toJson(json_int_t i) {
+    return json_integer(i);
+  }
+
+  static json_int_t fromJson(const json_ref& v) {
+    return v.asInt();
+  }
+};
+
+template <>
 struct Serde<w_string> {
   static json_ref toJson(w_string v) {
     return w_string_to_json(v);
@@ -391,6 +420,40 @@ struct Serde<w_string> {
 
   static w_string fromJson(const json_ref& v) {
     return v.asString();
+  }
+};
+
+template <typename T>
+json_ref to(T&& v) {
+  using Base = std::remove_const_t<std::remove_reference_t<T>>;
+  if constexpr (std::is_integral_v<Base>) {
+    // TODO: json_int_t is a signed 64-bit integer. It would be nice to
+    // bounds-check here. It should only be necessary if Base is uint64_t and
+    // the high bit is set.
+    return Serde<json_int_t>::toJson(v);
+  } else {
+    return Serde<Base>::toJson(std::forward<T>(v));
+  }
+}
+
+template <typename T>
+T from(const json_ref& v) {
+  return Serde<T>::fromJson(v);
+}
+
+// Compound Serde Instances
+// TODO: add new specializations as necessary
+
+template <typename T>
+struct Serde<std::vector<T>> {
+  static json_ref toJson(const std::vector<T>& v) {
+    auto a = json_array();
+    auto& arr = a.array();
+    arr.reserve(v.size());
+    for (const auto& element : v) {
+      arr.push_back(json::to(element));
+    }
+    return a;
   }
 };
 

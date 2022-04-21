@@ -65,7 +65,7 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
   };
 
   struct Response {
-    // TODO: should this be automatic?
+    // TODO: should version be included automatically?
     w_string version;
     std::optional<w_string> buildinfo;
     std::map<w_string, bool> capabilities;
