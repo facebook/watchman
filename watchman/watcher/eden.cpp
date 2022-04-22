@@ -24,6 +24,7 @@
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman/ChildProcess.h"
 #include "watchman/Errors.h"
+#include "watchman/LRUCache.h"
 #include "watchman/QueryableView.h"
 #include "watchman/ThreadPool.h"
 #include "watchman/fs/FSDetect.h"
@@ -745,7 +746,12 @@ class EdenView final : public QueryableView {
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
         thresholdForFreshInstance_(
-            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)) {}
+            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)),
+        filesChangedBetweenCommits_(
+            Configuration(),
+            "scm_hg_files_between_commits",
+            32,
+            10) {}
 
   void timeGenerator(const Query* query, QueryContext* ctx) const override {
     ctx->generationStarted();
@@ -1344,8 +1350,11 @@ class EdenView final : public QueryableView {
 
     auto client = getEdenClient(thriftChannel_);
 
-    std::vector<std::tuple<std::string, std::string>> commitsDiffed;
-    std::vector<folly::SemiFuture<ScmStatus>> futs;
+    // -1 = removed
+    // 0 = changed
+    // 1 = added
+    std::unordered_map<std::string, int> byFile;
+
     for (auto i = 0ul; i + 1 < commits.size(); i++) {
       auto& commitFrom = commits[i];
       auto& commitTo = commits[i + 1];
@@ -1356,64 +1365,64 @@ class EdenView final : public QueryableView {
         continue;
       }
 
-      auto fut = client->semifuture_getScmStatusBetweenRevisions(
-          std::string{rootPath_.view()}, commitFrom, commitTo);
-      futs.push_back(std::move(fut));
+      auto key = fmt::format("{}:{}", commitFrom, commitTo);
+      auto status =
+          filesChangedBetweenCommits_
+              .get(
+                  key,
+                  [&](auto&&) -> folly::Future<ScmStatus> {
+                    // Note, we can't use future_getScmStatusBetweenRevisions
+                    // here as the .get() below will drive a secondary future
+                    // that LRUCache creates and not the one returned by this
+                    // lambda. Thus we need to make sure the SemiFuture is
+                    // running on an executor.
+                    return client
+                        ->semifuture_getScmStatusBetweenRevisions(
+                            std::string{rootPath_.view()}, commitFrom, commitTo)
+                        .via(&getThreadPool());
+                  })
+              // TODO(xavierd): rate limit in EdenFS so all the
+              // getScmStatusBetweenRevisions calls can be sent to it
+              // concurrently instead of sequentially.
+              .get()
+              ->value();
 
-      commitsDiffed.emplace_back(commitFrom, commitTo);
+      if (!status.errors()->empty()) {
+        throw SCMError(
+            "Failed to get status betwen ", commitFrom, " and ", commitTo);
+      }
+
+      for (const auto& [name, file_status] : *status.entries()) {
+        switch (file_status) {
+          case ScmFileStatus::ADDED:
+            byFile[name] += 1;
+            break;
+          case ScmFileStatus::MODIFIED:
+            byFile[name];
+            break;
+          case ScmFileStatus::REMOVED:
+            byFile[name] -= 1;
+            break;
+          default:
+            break;
+        }
+      }
     }
 
-    return folly::collect(futs)
-        .deferValue([&commitsDiffed](std::vector<ScmStatus> collectedRes) {
-          // -1 = removed
-          // 0 = changed
-          // 1 = added
-          std::unordered_map<std::string, int> byFile;
+    SCM::StatusResult res;
 
-          for (auto i = 0ul; i < collectedRes.size(); i++) {
-            const auto& status = collectedRes[i];
-            if (!status.errors()->empty()) {
-              const auto& [commitFrom, commitTo] = commitsDiffed[i];
-              throw SCMError(
-                  "Failed to get status betwen ",
-                  commitFrom,
-                  " and ",
-                  commitTo);
-            }
+    for (auto& [name, count] : byFile) {
+      if (count > 0) {
+        res.addedFiles.emplace_back(name);
+      } else if (count == 0) {
+        res.changedFiles.emplace_back(name);
+        continue;
+      } else {
+        res.removedFiles.emplace_back(name);
+      }
+    }
 
-            for (const auto& [name, file_status] : *status.entries()) {
-              switch (file_status) {
-                case ScmFileStatus::ADDED:
-                  byFile[name] += 1;
-                  break;
-                case ScmFileStatus::MODIFIED:
-                  byFile[name];
-                  break;
-                case ScmFileStatus::REMOVED:
-                  byFile[name] -= 1;
-                  break;
-                default:
-                  break;
-              }
-            }
-          }
-
-          SCM::StatusResult res;
-
-          for (auto& [name, count] : byFile) {
-            if (count > 0) {
-              res.addedFiles.emplace_back(name);
-            } else if (count == 0) {
-              res.changedFiles.emplace_back(name);
-              continue;
-            } else {
-              res.removedFiles.emplace_back(name);
-            }
-          }
-
-          return res;
-        })
-        .get();
+    return res;
   }
 
   w_string rootPath_;
@@ -1423,6 +1432,8 @@ class EdenView final : public QueryableView {
   folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
   bool splitGlobPattern_;
   unsigned int thresholdForFreshInstance_;
+
+  mutable LRUCache<std::string, ScmStatus> filesChangedBetweenCommits_;
 };
 
 #ifdef _WIN32
