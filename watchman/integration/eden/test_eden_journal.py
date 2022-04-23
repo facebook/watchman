@@ -92,8 +92,9 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # to false negatives.
         time.sleep(1)
 
-        # pyre-fixme[16]: Optional type has no attribute `remove`.
-        self.eden.remove(root)
+        eden = self.eden
+        assert eden is not None
+        eden.remove(root)
         watches = self.watchmanCommand("watch-list")
         self.assertNotIn(root, watches["roots"])
 
@@ -219,8 +220,9 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         clock = self.watchmanCommand("clock", root)
 
-        # pyre-fixme[16]: Optional type has no attribute `get_thrift_client`.
-        with self.eden.get_thrift_client() as thrift_client:
+        eden = self.eden
+        assert eden is not None
+        with eden.get_thrift_client_legacy() as thrift_client:
             thrift_client.setJournalMemoryLimit(root, 0)
             self.assertEqual(0, thrift_client.getJournalMemoryLimit(root))
 
