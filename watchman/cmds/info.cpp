@@ -89,7 +89,7 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
     static Response fromJson(const json_ref& args) {
       Response result;
       json::assign(result.version, args.get("version"));
-      json::assign(result.buildinfo, args.get("buildinfo"));
+      json::assign_if(result.buildinfo, args, "buildinfo");
       auto caps = args.get_default("capabilities");
       if (caps) {
         json::assign(result.capabilities, caps);
