@@ -423,7 +423,7 @@ struct Serde<w_string> {
 template <typename T>
 json_ref to(T&& v) {
   using Base = std::remove_const_t<std::remove_reference_t<T>>;
-  if constexpr (std::is_integral_v<Base>) {
+  if constexpr (std::is_integral_v<Base> && !std::is_same_v<Base, bool>) {
     // TODO: json_int_t is a signed 64-bit integer. It would be nice to
     // bounds-check here. It should only be necessary if Base is uint64_t and
     // the high bit is set.
@@ -444,7 +444,7 @@ T from(const json_ref& j) {
 template <typename T>
 struct Serde<std::optional<T>> {
   static json_ref toJson(const std::optional<T>& o) {
-    return o ? Serde<T>::toJson(*o) : nullptr;
+    return o ? Serde<T>::toJson(*o) : json_null();
   }
 
   static std::optional<T> fromJson(const json_ref& j) {
