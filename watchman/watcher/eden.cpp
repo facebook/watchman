@@ -211,20 +211,6 @@ class GetJournalPositionCallback : public folly::HHWheelTimer::Callback {
   std::string mountPoint_;
 };
 
-/** Create a thrift client that will connect to the eden server associated
- * with the current user.
- * This particular client uses the RocketClientChannel channel that
- * is required to use the new thrift streaming protocol. */
-std::unique_ptr<StreamingEdenServiceAsyncClient> getRocketEdenClient(
-    w_string_piece rootPath,
-    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  auto addr = getEdenSocketAddress(rootPath);
-
-  return make_unique<StreamingEdenServiceAsyncClient>(
-      apache::thrift::RocketClientChannel::newChannel(
-          AsyncSocket::UniquePtr(new AsyncSocket(eb, addr))));
-}
-
 class EdenFileResult : public FileResult {
  public:
   EdenFileResult(
@@ -725,7 +711,7 @@ std::shared_ptr<apache::thrift::RequestChannel> makeThriftChannel(
             numRetries,
             apache::thrift::ReconnectingRequestChannel::newChannel(
                 eb, [rootPath](folly::EventBase& eb) {
-                  return apache::thrift::HeaderClientChannel::newChannel(
+                  return apache::thrift::RocketClientChannel::newChannel(
                       AsyncSocket::newSocket(
                           &eb, getEdenSocketAddress(rootPath)));
                 }));
@@ -1021,7 +1007,7 @@ class EdenView final : public QueryableView {
       SettleCallback& settleCallback,
       GetJournalPositionCallback& getJournalPositionCallback,
       std::chrono::milliseconds settleTimeout) {
-    auto client = getRocketEdenClient(root->root_path, &subscriberEventBase_);
+    auto client = getEdenClient(thriftChannel_);
     auto stream = client->sync_subscribeStreamTemporary(
         std::string(root->root_path.data(), root->root_path.size()));
     std::move(stream)
