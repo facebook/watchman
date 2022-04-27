@@ -528,13 +528,14 @@ void assign(T& field, const json_ref& object, const char* key) {
  * Sets `field` to Serde<T>'s interpretation of a JSON object field, but only if
  * the key is defined. Throws if decoding fails.
  *
- * Note that `field` is not assigned if the key is not defined.
+ * If the key is not defined, `field` is assigned its zero value.
  */
 template <typename T>
 void assign_if(T& field, const json_ref& object, const char* key) {
   auto& map = object.object();
   auto it = map.find(key);
   if (it == map.end()) {
+    field = T{};
     return;
   }
 

@@ -249,6 +249,8 @@ RootDebugStatus Root::getStatus() const {
 
   obj.path = root_path;
   obj.fstype = fs_type;
+  obj.uptime =
+      std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
   obj.case_sensitive = case_sensitive == CaseSensitivity::CaseSensitive;
   obj.cookie_prefix = cookiePrefix;
   obj.cookie_dir = cookieDirs;

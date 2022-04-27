@@ -77,6 +77,7 @@ json_ref RootDebugStatus::toJson() const {
   return json_object({
       {"path", json::to(path)},
       {"fstype", json::to(fstype)},
+      {"uptime", json::to(uptime)},
       {"case_sensitive", json::to(case_sensitive)},
       {"cookie_prefix", json::to(cookie_prefix)},
       {"cookie_dir", json::to(cookie_dir)},
@@ -93,6 +94,7 @@ RootDebugStatus RootDebugStatus::fromJson(const json_ref& args) {
   RootDebugStatus result;
   json::assign(result.path, args, "path");
   json::assign(result.fstype, args, "fstype");
+  json::assign_if(result.uptime, args, "uptime");
   json::assign(result.case_sensitive, args, "case_sensitive");
   json::assign(result.cookie_prefix, args, "cookie_prefix");
   json::assign(result.cookie_dir, args, "cookie_dir");

@@ -277,6 +277,7 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
         fmt::print("  - cancelled: true\n");
       }
       fmt::print("  - fstype: {}\n", root.fstype);
+      fmt::print("  - uptime: {} s\n", root.uptime);
       fmt::print("  - crawl_status: {}\n", root.crawl_status);
       fmt::print("  - done_initial: {}\n", root.done_initial);
       fmt::print("\n");

@@ -121,7 +121,7 @@ bool json_ref::asBool() const {
     case JSON_FALSE:
       return false;
     default:
-      throw std::domain_error("asBool called on non-boolean");
+      throw std::domain_error(fmt::format("asBool called on non-boolean: {}", getTypeName(type())));
   }
 }
 

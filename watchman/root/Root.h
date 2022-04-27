@@ -136,6 +136,7 @@ struct RootQueryInfo : json::Repr {
 struct RootDebugStatus : json::Repr {
   w_string path;
   w_string fstype;
+  int64_t uptime;
   bool case_sensitive;
   std::vector<w_string> cookie_prefix;
   std::vector<w_string> cookie_dir;
@@ -168,6 +169,9 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   folly::Synchronized<
       std::unordered_map<w_string, std::unique_ptr<TriggerCommand>>>
       triggers;
+
+  const std::chrono::steady_clock::time_point startTime =
+      std::chrono::steady_clock::now();
 
   CookieSync cookies;
 
