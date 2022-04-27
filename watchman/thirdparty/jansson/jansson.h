@@ -250,12 +250,12 @@ int json_object_update(const json_t* src, json_t* target);
 int json_object_update_existing(const json_t* src, json_t* target);
 int json_object_update_missing(const json_t* src, json_t* target);
 
-static JSON_INLINE int
+inline int
 json_object_set(json_t* object, const char* key, json_t* value) {
   return json_object_set_new(object, key, json_ref(value));
 }
 
-static JSON_INLINE int
+inline int
 json_object_set_nocheck(json_t* object, const char* key, json_t* value) {
   return json_object_set_new_nocheck(object, key, json_ref(value));
 }
@@ -272,16 +272,16 @@ int json_array_set_template(json_t* array, json_t* templ);
 int json_array_set_template_new(json_t* json, json_ref&& templ);
 json_t* json_array_get_template(const json_t* array);
 
-static JSON_INLINE int
+inline int
 json_array_set(json_t* array, size_t index, json_t* value) {
   return json_array_set_new(array, index, json_ref(value));
 }
 
-static JSON_INLINE int json_array_append(json_t* array, json_t* value) {
+inline int json_array_append(json_t* array, json_t* value) {
   return json_array_append_new(array, json_ref(value));
 }
 
-static JSON_INLINE int
+inline int
 json_array_insert(json_t* array, size_t index, json_t* value) {
   return json_array_insert_new(array, index, json_ref(value));
 }

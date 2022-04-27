@@ -16,11 +16,10 @@
  * by hand.
  */
 
-#ifndef JANSSON_CONFIG_H
-#define JANSSON_CONFIG_H
+#pragma once
 
 #include "config.h"
-#define JSON_INLINE inline
+
 #if HAVE_STRTOLL
 # define JSON_INTEGER_IS_LONG_LONG 1
 #else
@@ -30,6 +29,4 @@
 # define JSON_HAVE_LOCALECONV 1
 #else
 # define JSON_HAVE_LOCALECONV 0
-#endif
-
 #endif
