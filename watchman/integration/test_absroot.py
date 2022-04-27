@@ -24,7 +24,6 @@ class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
 
             dot = "" if os.name == "nt" else "."
 
-            # pyre-fixme[16]: `TestAbsoluteRoot` has no attribute `transport`.
             if self.transport == "cli":
                 res = self.watchmanCommand("watch", dot)
                 self.assertEqual(root, norm_absolute_path(res["watch"]))

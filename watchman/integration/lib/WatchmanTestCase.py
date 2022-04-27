@@ -81,7 +81,11 @@ class TempDirPerTestMixin(unittest.TestCase):
         return name
 
 
+# pyre-ignore[13]: `WatchmanTestCase` has no attribute `transport`.
 class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
+    transport: str
+    encoding: str
+
     def __init__(self, methodName: str = "run") -> None:
         super(WatchmanTestCase, self).__init__(methodName)
         # pyre-fixme[16]: `WatchmanTestCase` has no attribute `setDefaultConfiguration`.
@@ -96,7 +100,6 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return False
 
     def checkPersistentSession(self) -> None:
-        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
         if self.requiresPersistentSession() and self.transport == "cli":
             self.skipTest("need persistent session")
 
@@ -131,9 +134,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
                 timeout=self.socketTimeout,
-                # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
                 transport=self.transport,
-                # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
                 sockpath=(inst or WatchmanInstance.getSharedInstance()).getSockPath(),
@@ -168,8 +169,6 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return name
 
     def _getLongTestID(self) -> str:
-        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
-        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
         return "%s.%s.%s" % (self.id(), self.transport, self.encoding)
 
     def run(self, result):
@@ -222,9 +221,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return WatchmanInstance.getSharedInstance().getServerLogContents().split("\n")
 
     def setConfiguration(self, transport, encoding) -> None:
-        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `transport`.
         self.transport = transport
-        # pyre-fixme[16]: `WatchmanTestCase` has no attribute `encoding`.
         self.encoding = encoding
 
     def removeRelative(self, base, *fname) -> None:

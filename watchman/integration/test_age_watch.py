@@ -41,7 +41,6 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("subscribe", root, "s", {"fields": ["name"]})
 
         # subscription won't stick in cli mode
-        # pyre-fixme[16]: `TestAgeOutWatch` has no attribute `transport`.
         if self.transport != "cli":
             self.assertWaitFor(lambda: self.rootIsWatched(root))
 
