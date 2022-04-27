@@ -20,11 +20,6 @@
 
 #include "config.h"
 
-#if HAVE_STRTOLL
-# define JSON_INTEGER_IS_LONG_LONG 1
-#else
-# define JSON_INTEGER_IS_LONG_LONG 0
-#endif
 #if HAVE_LOCALECONV
 # define JSON_HAVE_LOCALECONV 1
 #else

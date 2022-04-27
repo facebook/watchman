@@ -429,14 +429,10 @@ out:
   lex->value.string.clear();
 }
 
-#if JSON_INTEGER_IS_LONG_LONG
 #ifdef _MSC_VER // Microsoft Visual Studio
 #define json_strtoint _strtoi64
 #else
 #define json_strtoint strtoll
-#endif
-#else
-#define json_strtoint strtol
 #endif
 
 static int lex_scan_number(lex_t* lex, int c, json_error_t* error) {

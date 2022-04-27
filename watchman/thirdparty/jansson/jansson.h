@@ -47,13 +47,8 @@ struct json_t {
   json_t(json_type type, SingletonHack&&);
 };
 
-#if JSON_INTEGER_IS_LONG_LONG
 #define JSON_INTEGER_FORMAT PRId64
 using json_int_t = int64_t;
-#else
-#define JSON_INTEGER_FORMAT "ld"
-typedef long json_int_t;
-#endif /* JSON_INTEGER_IS_LONG_LONG */
 
 class json_ref {
   json_t* ref_;
