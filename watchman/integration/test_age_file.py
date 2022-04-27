@@ -14,6 +14,7 @@ from watchman.integration.lib import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAgeOutFile(WatchmanTestCase.WatchmanTestCase):
+    @WatchmanTestCase.skip_for(transports=["cli"])
     def test_age_file(self) -> None:
         root = self.mkdtemp()
 
