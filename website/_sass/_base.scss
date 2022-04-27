@@ -973,6 +973,11 @@ a.blockButton {
   margin: 0 auto;
   text-align: center;
   color: white;
+  height: 30px;
+  position: fixed;
+  z-index: 100;
+  min-width: 100%;
+  background: #1F242A;
 
   a {
     color: #f2f2f2;
