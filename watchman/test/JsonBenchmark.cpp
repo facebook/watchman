@@ -44,6 +44,29 @@ void encode_zero_point_zero(benchmark::State& state) {
 }
 BENCHMARK(encode_zero_point_zero);
 
+void decode_doubles(benchmark::State& state) {
+  // 3.7 ^ 500 still fits in a double.
+  constexpr size_t N = 500;
+  // Produce a variety of doubles.
+  constexpr double B = 3.7;
+
+  auto arr = json_array_of_size(N);
+  double value = 1;
+  for (size_t i = 0; i < N; ++i) {
+    json_array_append(arr, json_real(value));
+    value *= B;
+  }
+
+  auto encoded = json_dumps(arr, JSON_COMPACT);
+
+  for (auto _ : state) {
+    json_error_t err;
+    benchmark::DoNotOptimize(json_loads(encoded.c_str(), 0, &err));
+  }
+}
+
+BENCHMARK(decode_doubles);
+
 } // namespace
 
 BENCHMARK_MAIN();
