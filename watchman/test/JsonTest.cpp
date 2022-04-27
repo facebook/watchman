@@ -25,18 +25,19 @@ std::string json_dtostr(double value) {
 }
 
 TEST(JsonTest, dtostr) {
+  EXPECT_EQ("0.0", json_dtostr(0));
   EXPECT_EQ(
       "0.33333333333333331", json_dtostr(0.3333333333333333333333333333333333));
   EXPECT_EQ(
       "0.66666666666666663", json_dtostr(0.6666666666666666666666666666666666));
   EXPECT_EQ(
-      "3.3333333333333333e33",
+      "3.3333333333333333e+33",
       json_dtostr(3333333333333333333333333333333333.0));
   EXPECT_EQ(
       "6.6666666666666667e33",
       json_dtostr(6666666666666666666666666666666666.0));
   EXPECT_EQ("1.0", json_dtostr(1.0));
-  EXPECT_EQ("1e20", json_dtostr(100000000000000000000.0));
+  EXPECT_EQ("1e+20", json_dtostr(100000000000000000000.0));
 }
 
 TEST(JsonTest, double_round_trip) {
@@ -51,7 +52,9 @@ TEST(JsonTest, double_round_trip) {
     auto encoded = json_dumps(json_real(d), JSON_ENCODE_ANY | JSON_COMPACT);
     json_error_t err{};
     auto value = json_loads(encoded.c_str(), JSON_DECODE_ANY, &err);
-    EXPECT_EQ(d, json_real_value(value));
+
+    EXPECT_EQ(JSON_REAL, value.type());
+    EXPECT_EQ(d, json_real_value(value)) << " encoded = " << encoded;
   }
 }
 

@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fmt/compile.h>
 #include <stdio.h>
 #include <string.h>
 #include "jansson_private.h"
@@ -37,21 +38,6 @@ static void to_locale(std::string& strbuffer) {
     strbuffer.replace(pos, 1, point);
   }
 }
-
-static void from_locale(char* buffer) {
-  const char* point;
-  char* pos;
-
-  point = localeconv()->decimal_point;
-  if (*point == '.') {
-    /* No conversion needed */
-    return;
-  }
-
-  pos = strchr(buffer, *point);
-  if (pos)
-    *pos = '.';
-}
 #endif
 
 int jsonp_strtod(std::string& strbuffer, double* out) {
@@ -76,53 +62,20 @@ int jsonp_strtod(std::string& strbuffer, double* out) {
 }
 
 int jsonp_dtostr(char* buffer, size_t size, double value) {
-  int ret;
-  char *start, *end;
-  size_t length;
-
-  ret = snprintf(buffer, size, "%.17g", value);
-  if (ret < 0)
+  auto result = fmt::format_to_n(buffer, size, FMT_COMPILE("{:.17g}"), value);
+  if (result.size >= size) {
     return -1;
-
-  length = (size_t)ret;
-  if (length >= size)
-    return -1;
-
-#if JSON_HAVE_LOCALECONV
-  from_locale(buffer);
-#endif
-
-  /* Make sure there's a dot or 'e' in the output. Otherwise
-     a real is converted to an integer when decoding */
-  if (strchr(buffer, '.') == NULL && strchr(buffer, 'e') == NULL) {
-    if (length + 3 >= size) {
-      /* No space to append ".0" */
+  }
+  // If `value` is integral, buffer may not contain a . or e, so add one. This
+  // avoids parsing a double as an integer, even though the JSON spec does not
+  // differentiate between types of numbers.
+  if (nullptr == memchr(buffer, '.', result.size) && nullptr == memchr(buffer, 'e', result.size)) {
+    if (result.size + 2 >= size) {
       return -1;
     }
-    buffer[length] = '.';
-    buffer[length + 1] = '0';
-    buffer[length + 2] = '\0';
-    length += 2;
+    buffer[result.size] = '.';
+    buffer[result.size + 1] = '0';
+    return result.size + 2;
   }
-
-  /* Remove leading '+' from positive exponent. Also remove leading
-     zeros from exponents (added by some printf() implementations) */
-  start = strchr(buffer, 'e');
-  if (start) {
-    start++;
-    end = start + 1;
-
-    if (*start == '-')
-      start++;
-
-    while (*end == '0')
-      end++;
-
-    if (end != start) {
-      memmove(start, end, length - (size_t)(end - buffer));
-      length -= (size_t)(end - start);
-    }
-  }
-
-  return (int)length;
+  return result.size;
 }
