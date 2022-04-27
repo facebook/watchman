@@ -45,6 +45,15 @@ struct QuerySince {
   bool is_fresh_instance() const {
     return std::get<Clock>(since).is_fresh_instance;
   }
+
+  /**
+   * Set the clock to a fresh instance.
+   *
+   * Throws if this holds a Timestamp.
+   */
+  void set_fresh_instance() {
+    std::get<Clock>(since).is_fresh_instance = true;
+  }
 };
 
 struct ClockPosition {
