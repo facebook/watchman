@@ -8,57 +8,48 @@
 #include <assert.h>
 #include <errno.h>
 #include <fmt/compile.h>
+#include <locale.h>
 #include <stdio.h>
 #include <string.h>
 #include "jansson_private.h"
 
-#if JSON_HAVE_LOCALECONV
-#include <locale.h>
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
 
-/*
-  - This code assumes that the decimal separator is exactly one
-    character.
-
-  - If setlocale() is called by another thread between the call to
-    localeconv() and the call to sprintf() or strtod(), the result may
-    be wrong. setlocale() is not thread-safe and should not be used
-    this way. Multi-threaded programs should use uselocale() instead.
-*/
-
-static void to_locale(std::string& strbuffer) {
-  const char* point = localeconv()->decimal_point;
-
-  if (*point == '.') {
-    /* No conversion needed */
-    return;
-  }
-
-  auto pos = strbuffer.find('.');
-  if (pos != std::string::npos) {
-    strbuffer.replace(pos, 1, point);
-  }
+namespace {
+#ifdef _WIN32
+_locale_t getCLocale() {
+  static _locale_t c = _create_locale(LC_ALL, "C");
+  return c;
+}
+#else
+locale_t getCLocale() {
+  static locale_t c = newlocale(LC_ALL_MASK, "C", (locale_t)0);
+  return c;
 }
 #endif
+} // namespace
 
 int jsonp_strtod(std::string& strbuffer, double* out) {
-  double value;
+#ifdef _WIN32
   char* end;
-
-#if JSON_HAVE_LOCALECONV
-  to_locale(strbuffer);
-#endif
-
-  errno = 0;
-  value = strtod(strbuffer.c_str(), &end);
-  assert(end == strbuffer.c_str() + strbuffer.size());
-
-  if (errno == ERANGE && value != 0) {
-    /* Overflow */
+  double result = _strtod_l(strbuffer.c_str(), &end, getCLocale());
+  if (strbuffer.c_str() == end) {
+    return -1;
+  }
+  *out = result;
+  return 0;
+#else
+  char* end;
+  double result = strtod_l(strbuffer.c_str(), &end, getCLocale());
+  if (strbuffer.c_str() == end) {
     return -1;
   }
 
-  *out = value;
+  *out = result;
   return 0;
+#endif
 }
 
 int jsonp_dtostr(char* buffer, size_t size, double value) {
@@ -69,7 +60,8 @@ int jsonp_dtostr(char* buffer, size_t size, double value) {
   // If `value` is integral, buffer may not contain a . or e, so add one. This
   // avoids parsing a double as an integer, even though the JSON spec does not
   // differentiate between types of numbers.
-  if (nullptr == memchr(buffer, '.', result.size) && nullptr == memchr(buffer, 'e', result.size)) {
+  if (nullptr == memchr(buffer, '.', result.size) &&
+      nullptr == memchr(buffer, 'e', result.size)) {
     if (result.size + 2 >= size) {
       return -1;
     }
