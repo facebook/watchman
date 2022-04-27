@@ -753,9 +753,8 @@ class EdenView final : public QueryableView {
             32,
             10) {}
 
-  void timeGenerator(const Query* query, QueryContext* ctx) const override {
+  void timeGenerator(const Query* /*query*/, QueryContext* ctx) const override {
     ctx->generationStarted();
-    auto client = getEdenClient(thriftChannel_);
 
     FileDelta delta;
     JournalPosition resultPosition;
@@ -765,38 +764,12 @@ class EdenView final : public QueryableView {
           "timestamp based since queries are not supported with eden");
     }
 
-    // This is the fall back for a fresh instance result set.
-    // There are two different code paths that may need this, so
-    // it is broken out as a lambda.
-    auto getAllFiles = [this,
-                        ctx,
-                        &client,
-                        includeDotfiles =
-                            (query->glob_flags & WM_PERIOD) == 0]() {
-      if (ctx->query->empty_on_fresh_instance) {
-        // Avoid a full tree walk if we don't need it!
-        return std::vector<NameAndDType>();
-      }
-
-      std::string globPattern;
-      if (ctx->query->relative_root) {
-        w_string_piece rel(ctx->query->relative_root);
-        rel.advance(ctx->root->root_path.size() + 1);
-        globPattern.append(rel.data(), rel.size());
-        globPattern.append("/");
-      }
-      globPattern.append("**");
-      return globNameAndDType(
-          client.get(),
-          mountPoint_,
-          std::vector<std::string>{globPattern},
-          includeDotfiles);
-    };
-
     std::vector<NameAndDType> fileInfo;
     // We use the list of created files to synthesize the "new" field
     // in the file results
     std::unordered_set<std::string> createdFileNames;
+
+    auto client = getEdenClient(thriftChannel_);
 
     // The code that was previously here was UB if given a timestamp since.
     // Instead, at least throw an exception at this point.
@@ -808,7 +781,7 @@ class EdenView final : public QueryableView {
       // We need to translate this to a fresh instance result set and
       // return a list of all possible matching files.
       client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
-      fileInfo = getAllFiles();
+      fileInfo = getAllFilesForFreshInstance(ctx);
     } else {
       // Query eden to fill in the mountGeneration field.
       JournalPosition position;
@@ -906,8 +879,9 @@ class EdenView final : public QueryableView {
           // Watchman to fetch metadata about a ton of files, causing delay in
           // answering the query and large amount of network traffic.
           //
-          // Let's fallback to the `getAllFiles` answer which for any well
-          // behaved tool will simply return an empty list and a fresh instance.
+          // On these monorepos, tools also set the empty_on_fresh_instance
+          // flag, thus we can simply pretend to return a fresh instance and an
+          // empty fileInfo list.
           if (thresholdForFreshInstance_ != 0 &&
               mergedFileList.size() > thresholdForFreshInstance_ &&
               ctx->query->empty_on_fresh_instance) {
@@ -956,7 +930,7 @@ class EdenView final : public QueryableView {
         // so treat this as equivalent to a fresh instance result
         since_clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
-        fileInfo = getAllFiles();
+        fileInfo = getAllFilesForFreshInstance(ctx);
       } catch (const SCMError& err) {
         // Most likely this means a checkout occurred but we encountered
         // an error trying to get the list of files changed between the two
@@ -968,7 +942,7 @@ class EdenView final : public QueryableView {
             "\n");
         since_clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
-        fileInfo = getAllFiles();
+        fileInfo = getAllFilesForFreshInstance(ctx);
       }
     }
 
@@ -1325,6 +1299,38 @@ class EdenView final : public QueryableView {
   }
 
  private:
+  /**
+   * Returns all the files in the watched directory for a fresh instance.
+   *
+   * In the case where the query specifically ask for an empty file list on a
+   * fresh instance, an empty vector will be returned.
+   */
+  std::vector<NameAndDType> getAllFilesForFreshInstance(
+      QueryContext* ctx) const {
+    if (ctx->query->empty_on_fresh_instance) {
+      // Avoid a full tree walk if we don't need it!
+      return std::vector<NameAndDType>();
+    }
+
+    std::string globPattern;
+    if (ctx->query->relative_root) {
+      w_string_piece rel(ctx->query->relative_root);
+      rel.advance(ctx->root->root_path.size() + 1);
+      globPattern.append(rel.data(), rel.size());
+      globPattern.append("/");
+    }
+    globPattern.append("**");
+
+    auto includeDotfiles = (ctx->query->glob_flags & WM_PERIOD) == 0;
+
+    auto client = getEdenClient(thriftChannel_);
+    return globNameAndDType(
+        client.get(),
+        mountPoint_,
+        std::vector<std::string>{std::move(globPattern)},
+        includeDotfiles);
+  }
+
   // Compute the set of paths that have changed across all of the transitions
   // between the list of given commits.
   //
