@@ -96,7 +96,7 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
     : type(type), refcount(-1) {}
 
 const w_string& json_ref::asString() const {
-  if (!json_is_string(ref_)) {
+  if (!*this || !isString()) {
     throw std::domain_error(
         fmt::format("json_ref expected string, got {}", getTypeName(type())));
   }
@@ -104,7 +104,7 @@ const w_string& json_ref::asString() const {
 }
 
 std::optional<w_string> json_ref::asOptionalString() const {
-  if (!json_is_string(ref_)) {
+  if (!*this || !isString()) {
     return std::nullopt;
   }
   return json_to_string(ref_)->value;
@@ -579,18 +579,16 @@ json_ref w_string_to_json(w_string str) {
   return json_ref(new json_string_t(str), false);
 }
 
-const char* json_string_value(const json_t* json) {
-  json_string_t* jstr;
+const char* json_string_value(const json_ref& json) {
+  if (!json || !json.isString()) {
+    return nullptr;
+  }
 
-  if (!json_is_string(json))
-    return NULL;
-
-  jstr = json_to_string(json);
-  return jstr->value.c_str();
+  return json_to_string(json)->value.c_str();
 }
 
-const w_string& json_to_w_string(const json_t* json) {
-  if (!json_is_string(json)) {
+const w_string& json_to_w_string(const json_ref& json) {
+  if (!json || !json.isString()) {
     throw std::runtime_error("expected json string object");
   }
 
@@ -601,7 +599,7 @@ static int json_string_equal(json_t* string1, json_t* string2) {
   return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
-static json_ref json_string_copy(const json_t* string) {
+static json_ref json_string_copy(const json_ref& string) {
   return w_string_to_json(json_to_w_string(string));
 }
 
@@ -742,7 +740,7 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
   if (json_is_array(json1))
     return json_array_equal(json1, json2);
 
-  if (json_is_string(json1))
+  if (json1.isString())
     return json_string_equal(json1, json2);
 
   if (json1.isInt())
@@ -769,7 +767,7 @@ json_ref json_deep_copy(const json_ref& json) {
   /* for the rest of the types, deep copying doesn't differ from
      shallow copying */
 
-  if (json_is_string(json))
+  if (json.isString())
     return json_string_copy(json);
 
   if (json.isInt())

@@ -191,7 +191,6 @@ inline json_type json_typeof(const json_t* json) {
 }
 #define json_is_object(json) (json && json_typeof(json) == JSON_OBJECT)
 #define json_is_array(json) (json && json_typeof(json) == JSON_ARRAY)
-#define json_is_string(json) (json && json_typeof(json) == JSON_STRING)
 
 /* construction, destruction, reference counting */
 
@@ -209,7 +208,7 @@ json_ref typed_string_to_json(Args&&... args) {
   return w_string_to_json(w_string(std::forward<Args>(args)...));
 }
 
-const w_string& json_to_w_string(const json_t* json);
+const w_string& json_to_w_string(const json_ref& json);
 json_ref json_integer(json_int_t value);
 json_ref json_real(double value);
 json_ref json_true();
@@ -278,7 +277,7 @@ inline int json_array_insert(json_t* array, size_t index, json_t* value) {
   return json_array_insert_new(array, index, json_ref(value));
 }
 
-const char* json_string_value(const json_t* string);
+const char* json_string_value(const json_ref& string);
 json_int_t json_integer_value(const json_ref& integer);
 double json_real_value(const json_ref& real);
 double json_number_value(const json_ref& json);
