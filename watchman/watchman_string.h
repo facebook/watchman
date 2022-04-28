@@ -385,7 +385,7 @@ class w_string {
    */
   template <typename... Args>
   static w_string format(fmt::string_view format_str, Args&&... args) {
-    auto size = fmt::formatted_size(format_str, args...);
+    auto size = fmt::formatted_size(fmt::runtime(format_str), args...);
 
     w_string_t* s = (w_string_t*)(new char[sizeof(*s) + size + 1]);
     new (s) w_string_t;
@@ -400,7 +400,7 @@ class w_string {
       s->len = uint32_t(size);
 
       auto mut_buf = const_cast<char*>(s->buf);
-      fmt::format_to(mut_buf, format_str, args...);
+      fmt::format_to(mut_buf, fmt::runtime(format_str), args...);
 
       mut_buf[s->len] = 0;
     }

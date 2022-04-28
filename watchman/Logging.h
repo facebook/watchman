@@ -71,7 +71,8 @@ class Log {
 
     char timebuf[64];
 
-    auto message = fmt::format(format_str, std::forward<Args>(args)...);
+    auto message =
+        fmt::format(fmt::runtime(format_str), std::forward<Args>(args)...);
     auto payload = json_object(
         {{"log",
           typed_string_to_json(w_string::build(
