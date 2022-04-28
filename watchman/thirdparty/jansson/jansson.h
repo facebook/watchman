@@ -9,8 +9,8 @@
 #include "watchman/watchman_string.h" // Needed for w_string_t
 
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <atomic>
 #include <cstdlib> /* for size_t */
 #include <map>
@@ -23,7 +23,7 @@
 
 /* types */
 
-typedef enum {
+enum json_type : char {
   JSON_OBJECT,
   JSON_ARRAY,
   JSON_STRING,
@@ -32,7 +32,7 @@ typedef enum {
   JSON_TRUE,
   JSON_FALSE,
   JSON_NULL
-} json_type;
+};
 
 struct json_t {
   json_type type;
@@ -53,15 +53,17 @@ class json_ref {
   json_t* ref_;
 
   static inline json_t* incref(json_t* json) {
-    if (json && json->refcount != (size_t)-1) {
-      ++json->refcount;
+    if (json && json->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
+      json->refcount.fetch_add(1, std::memory_order_relaxed);
     }
     return json;
   }
 
   static inline void decref(json_t* json) {
-    if (json && json->refcount != (size_t)-1 && --json->refcount == 0) {
-      json_delete(json);
+    if (json && json->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
+      if (1 == json->refcount.fetch_sub(1, std::memory_order_acq_rel)) {
+        json_delete(json);
+      }
     }
   }
   static void json_delete(json_t* json);
@@ -244,8 +246,7 @@ int json_object_update(const json_t* src, json_t* target);
 int json_object_update_existing(const json_t* src, json_t* target);
 int json_object_update_missing(const json_t* src, json_t* target);
 
-inline int
-json_object_set(json_t* object, const char* key, json_t* value) {
+inline int json_object_set(json_t* object, const char* key, json_t* value) {
   return json_object_set_new(object, key, json_ref(value));
 }
 
@@ -266,8 +267,7 @@ int json_array_set_template(json_t* array, json_t* templ);
 int json_array_set_template_new(json_t* json, json_ref&& templ);
 json_t* json_array_get_template(const json_t* array);
 
-inline int
-json_array_set(json_t* array, size_t index, json_t* value) {
+inline int json_array_set(json_t* array, size_t index, json_t* value) {
   return json_array_set_new(array, index, json_ref(value));
 }
 
@@ -275,8 +275,7 @@ inline int json_array_append(json_t* array, json_t* value) {
   return json_array_append_new(array, json_ref(value));
 }
 
-inline int
-json_array_insert(json_t* array, size_t index, json_t* value) {
+inline int json_array_insert(json_t* array, size_t index, json_t* value) {
   return json_array_insert_new(array, index, json_ref(value));
 }
 
