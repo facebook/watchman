@@ -351,16 +351,6 @@ static int json_object_equal(json_t* object1, json_t* object2) {
   return 1;
 }
 
-static json_ref json_object_copy(const json_t* object) {
-  auto result = json_object();
-  if (!result)
-    return nullptr;
-
-  json_object_update(object, result);
-
-  return result;
-}
-
 static json_ref json_object_deep_copy(const json_t* object) {
   json_t* result;
 
@@ -560,20 +550,6 @@ static int json_array_equal(json_t* array1, json_t* array2) {
   }
 
   return 1;
-}
-
-static json_ref json_array_copy(const json_t* array) {
-  auto result = json_array();
-  if (!result)
-    return nullptr;
-
-  auto& target_vector = json_to_array(result)->table;
-  const auto& src_vector = json_to_array(array)->table;
-
-  target_vector.insert(
-      target_vector.begin(), src_vector.begin(), src_vector.end());
-
-  return result;
 }
 
 static json_ref json_array_deep_copy(const json_t* array) {
@@ -787,32 +763,6 @@ int json_equal(json_t* json1, json_t* json2) {
 }
 
 /*** copying ***/
-
-json_ref json_copy(const json_ref& json) {
-  if (!json)
-    return nullptr;
-
-  if (json_is_object(json))
-    return json_object_copy(json);
-
-  if (json_is_array(json))
-    return json_array_copy(json);
-
-  if (json_is_string(json))
-    return json_string_copy(json);
-
-  if (json_is_integer(json))
-    return json_integer_copy(json);
-
-  if (json_is_real(json))
-    return json_real_copy(json);
-
-  if (json.isTrue() || json.isFalse() || json.isNull()) {
-    return json;
-  }
-
-  return nullptr;
-}
 
 json_ref json_deep_copy(const json_ref& json) {
   if (!json)

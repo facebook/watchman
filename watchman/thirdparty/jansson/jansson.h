@@ -298,7 +298,6 @@ int json_equal(json_t* value1, json_t* value2);
 
 /* copying */
 
-json_ref json_copy(const json_ref& value);
 json_ref json_deep_copy(const json_ref& value);
 
 /* decoding */
