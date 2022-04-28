@@ -282,11 +282,6 @@ else()
     "${CMAKE_CURRENT_BINARY_DIR}/config.h")
 endif()
 
-configure_file(
-  watchman/thirdparty/jansson/jansson_config.h.in
-  watchman/thirdparty/jansson/jansson_config.h)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/watchman/thirdparty/jansson)
-
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 

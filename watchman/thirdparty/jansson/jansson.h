@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include "jansson_config.h" // @manual=//watchman/thirdparty/jansson:config_h
 #include "watchman/thirdparty/jansson/utf.h"
 
 /* types */
