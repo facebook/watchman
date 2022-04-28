@@ -232,7 +232,7 @@ static void prepend_watchmanconfig_to_array(json_ref& ref) {
   if (json_array_size(ref) == 0) {
     // json_array_insert_new at index can fail when the array is empty,
     // so just append in this case.
-    json_array_append_new(
+    json_array_append(
         ref, typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
     return;
   }

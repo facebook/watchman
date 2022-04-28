@@ -330,7 +330,7 @@ QueryResult w_query_execute(
 
           auto pathList = json_array_of_size(changedFiles.size());
           for (auto& f : changedFiles) {
-            json_array_append_new(pathList, w_string_to_json(f));
+            json_array_append(pathList, w_string_to_json(f));
           }
 
           auto spec = r->view()->getMostRecentRootNumberAndTickValue();

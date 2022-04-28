@@ -63,7 +63,7 @@ class PerfLogThread {
     if (!wlock->samples) {
       wlock->samples = json_array();
     }
-    json_array_append_new(wlock->samples, std::move(sample));
+    json_array_append(wlock->samples, std::move(sample));
     cond_.notify_one();
   }
 };

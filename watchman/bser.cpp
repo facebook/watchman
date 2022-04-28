@@ -509,7 +509,7 @@ static json_ref bunser_array(
       return nullptr;
     }
 
-    if (json_array_append_new(arrval, std::move(item))) {
+    if (json_array_append(arrval, std::move(item))) {
       *used = total;
       snprintf(jerr->text, sizeof(jerr->text), "failed to append array item");
       return nullptr;
@@ -595,7 +595,7 @@ static json_ref bunser_template(
           std::move(val));
     }
 
-    json_array_append_new(arrval, std::move(item));
+    json_array_append(arrval, std::move(item));
   }
 
   *used = total;

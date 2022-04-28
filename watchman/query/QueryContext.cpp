@@ -148,7 +148,7 @@ json_ref QueryContext::renderResults() {
   }
 
   for (auto& result : resultsArray) {
-    json_array_append_new(results, std::move(result));
+    json_array_append(results, std::move(result));
   }
 
   return results;

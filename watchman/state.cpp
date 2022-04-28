@@ -170,7 +170,7 @@ bool w_root_save_state(json_ref& state) {
       auto triggers = root->triggerListToJson();
       json_object_set_new(obj, "triggers", std::move(triggers));
 
-      json_array_append_new(watched_dirs, std::move(obj));
+      json_array_append(watched_dirs, std::move(obj));
     }
   }
 

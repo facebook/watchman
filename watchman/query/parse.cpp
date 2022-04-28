@@ -319,8 +319,7 @@ void w_query_legacy_field_list(QueryFieldList* flist) {
   auto list = json_array();
 
   for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
-    json_array_append_new(
-        list, typed_string_to_json(names[i], W_STRING_UNICODE));
+    json_array_append(list, typed_string_to_json(names[i], W_STRING_UNICODE));
   }
 
   parse_field_list(list, flist);
@@ -406,7 +405,7 @@ std::shared_ptr<Query> parseQueryLegacy(
     if (negated) {
       term = json_array({typed_string_to_json("not", W_STRING_UNICODE), term});
     }
-    json_array_append_new(container, std::move(term));
+    json_array_append(container, std::move(term));
 
     // Reset negated flag
     negated = false;

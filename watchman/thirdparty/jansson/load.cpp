@@ -684,7 +684,7 @@ static json_ref parse_array(lex_t* lex, size_t flags, json_error_t* error) {
     if (!elem)
       goto error;
 
-    if (json_array_append(array, elem)) {
+    if (json_array_append(array, std::move(elem))) {
       goto error;
     }
 

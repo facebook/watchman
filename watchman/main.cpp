@@ -903,8 +903,7 @@ static Command build_command(int argc, char** argv) {
   w_string name = argv[0];
   auto args = json_array();
   for (int i = 1; i < argc; i++) {
-    json_array_append_new(
-        args, typed_string_to_json(argv[i], W_STRING_UNICODE));
+    json_array_append(args, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
   return Command{std::move(name), std::move(args)};

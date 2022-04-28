@@ -222,7 +222,7 @@ void spawn_command(
       }
       argspace_remaining -= size;
 
-      json_array_append_new(args, w_string_to_json(item));
+      json_array_append(args, w_string_to_json(item));
     }
   }
 

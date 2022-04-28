@@ -461,17 +461,14 @@ int json_array_set_new(json_t* json, size_t index, json_ref&& value) {
   return 0;
 }
 
-int json_array_append_new(json_t* json, json_ref&& value) {
-  json_array_t* array;
-
+int json_array_append(const json_ref& json, json_ref value) {
   if (!value)
     return -1;
 
   if (!json_is_array(json) || json == value) {
     return -1;
   }
-  array = json_to_array(json);
-  array->table.emplace_back(std::move(value));
+  json_to_array(json)->table.push_back(std::move(value));
   return 0;
 }
 
@@ -561,7 +558,7 @@ static json_ref json_array_deep_copy(const json_t* array) {
     return nullptr;
 
   for (i = 0; i < json_array_size(array); i++)
-    json_array_append_new(result, json_deep_copy(json_array_get(array, i)));
+    json_array_append(result, json_deep_copy(json_array_get(array, i)));
 
   return result;
 }

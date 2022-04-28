@@ -103,7 +103,7 @@ json_ref w_root_stop_watch_all() {
           saveGlobalStateHook == root->getSaveGlobalStateHook(),
           "all roots must contain the same saveGlobalStateHook");
     }
-    json_array_append_new(stopped, w_string_to_json(root->root_path));
+    json_array_append(stopped, w_string_to_json(root->root_path));
   }
 
   if (saveGlobalStateHook) {
@@ -119,7 +119,7 @@ json_ref w_root_watch_list_to_json() {
   auto map = watched_roots.rlock();
   for (const auto& it : *map) {
     auto root = it.second;
-    json_array_append_new(arr, w_string_to_json(root->root_path));
+    json_array_append(arr, w_string_to_json(root->root_path));
   }
 
   return arr;

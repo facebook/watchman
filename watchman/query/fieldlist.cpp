@@ -321,7 +321,7 @@ json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
   auto templ = json_array_of_size(fieldList.size());
 
   for (auto& f : fieldList) {
-    json_array_append_new(templ, w_string_to_json(f->name));
+    json_array_append(templ, w_string_to_json(f->name));
   }
 
   return templ;
