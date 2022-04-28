@@ -192,7 +192,6 @@ inline json_type json_typeof(const json_t* json) {
 #define json_is_object(json) (json && json_typeof(json) == JSON_OBJECT)
 #define json_is_array(json) (json && json_typeof(json) == JSON_ARRAY)
 #define json_is_string(json) (json && json_typeof(json) == JSON_STRING)
-#define json_is_integer(json) (json && json_typeof(json) == JSON_INTEGER)
 
 /* construction, destruction, reference counting */
 
@@ -280,7 +279,7 @@ inline int json_array_insert(json_t* array, size_t index, json_t* value) {
 }
 
 const char* json_string_value(const json_t* string);
-json_int_t json_integer_value(const json_t* integer);
+json_int_t json_integer_value(const json_ref& integer);
 double json_real_value(const json_ref& real);
 double json_number_value(const json_ref& json);
 

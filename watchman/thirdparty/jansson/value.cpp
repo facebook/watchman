@@ -614,10 +614,10 @@ json_ref json_integer(json_int_t value) {
   return json_ref(new json_integer_t(value), false);
 }
 
-json_int_t json_integer_value(const json_t* json) {
-  if (!json_is_integer(json))
+json_int_t json_integer_value(const json_ref& json) {
+  if (!json || !json.isInt()) {
     return 0;
-
+  }
   return json_to_integer(json)->value;
 }
 
@@ -629,7 +629,10 @@ static int json_integer_equal(json_t* integer1, json_t* integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
 }
 
-static json_t* json_integer_copy(const json_t* integer) {
+static json_ref json_integer_copy(const json_ref& integer) {
+  // TODO: IF nothing checks object identity, since integer values are
+  // immutable, we could merely increment the reference count and avoid
+  // allocation here.
   return json_integer(json_integer_value(integer));
 }
 
@@ -657,6 +660,9 @@ static int json_real_equal(json_t* real1, json_t* real2) {
 }
 
 static json_ref json_real_copy(const json_ref& real) {
+  // TODO: IF nothing checks object identity, since real values are
+  // immutable, we could merely increment the reference count and avoid
+  // allocation here.
   return json_real(json_real_value(real));
 }
 
@@ -666,7 +672,7 @@ double json_number_value(const json_ref& json) {
   if (!json) {
     return 0.0;
   }
-  if (json_is_integer(json))
+  if (json.isInt())
     return (double)json_integer_value(json);
   else if (json.isDouble())
     return json_real_value(json);
@@ -739,7 +745,7 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
   if (json_is_string(json1))
     return json_string_equal(json1, json2);
 
-  if (json_is_integer(json1))
+  if (json1.isInt())
     return json_integer_equal(json1, json2);
 
   if (json1.isDouble())
@@ -766,7 +772,7 @@ json_ref json_deep_copy(const json_ref& json) {
   if (json_is_string(json))
     return json_string_copy(json);
 
-  if (json_is_integer(json))
+  if (json.isInt())
     return json_integer_copy(json);
 
   if (json.isDouble())
