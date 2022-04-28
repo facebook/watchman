@@ -105,7 +105,7 @@ class json_ref {
   void set(const w_string& key, json_ref&& val);
 
   /** Set a list of key/value pairs */
-  inline void set(
+  void set(
       std::initializer_list<std::pair<const char*, json_ref&&>> pairs) {
     for (auto& p : pairs) {
       set(p.first, std::move(p.second));
@@ -129,37 +129,43 @@ class json_ref {
   /** Returns a reference to the array value at the specified index.
    * Throws out_of_range or domain_error if the index is bad or if
    * this is not an array */
-  inline const json_ref& at(std::size_t idx) const {
+  const json_ref& at(std::size_t idx) const {
     return array().at(idx);
   }
 
-  inline json_type type() const {
+  json_type type() const {
     assert(ref_ != nullptr);
     return ref_->type;
   }
 
-  inline bool isObject() const {
+  bool isObject() const {
     return type() == JSON_OBJECT;
   }
-  inline bool isArray() const {
+  bool isArray() const {
     return type() == JSON_ARRAY;
   }
-  inline bool isString() const {
+  bool isString() const {
     return type() == JSON_STRING;
   }
-  inline bool isBool() const {
+  bool isBool() const {
     return (type() == JSON_TRUE || type() == JSON_FALSE);
   }
-  inline bool isNull() const {
+  bool isTrue() const {
+    return type() == JSON_TRUE;
+  }
+  bool isFalse() const {
+    return type() == JSON_FALSE;
+  }
+  bool isNull() const {
     return type() == JSON_NULL;
   }
-  inline bool isNumber() const {
+  bool isNumber() const {
     return isInt() || isDouble();
   }
-  inline bool isInt() const {
+  bool isInt() const {
     return type() == JSON_INTEGER;
   }
-  inline bool isDouble() const {
+  bool isDouble() const {
     return type() == JSON_REAL;
   }
 
@@ -189,10 +195,6 @@ inline json_type json_typeof(const json_t* json) {
 #define json_is_integer(json) (json && json_typeof(json) == JSON_INTEGER)
 #define json_is_real(json) (json && json_typeof(json) == JSON_REAL)
 #define json_is_number(json) (json_is_integer(json) || json_is_real(json))
-#define json_is_true(json) (json && json_typeof(json) == JSON_TRUE)
-#define json_is_false(json) (json && json_typeof(json) == JSON_FALSE)
-#define json_is_boolean(json) (json_is_true(json) || json_is_false(json))
-#define json_is_null(json) (json && json_typeof(json) == JSON_NULL)
 
 /* construction, destruction, reference counting */
 
@@ -296,8 +298,8 @@ int json_equal(json_t* value1, json_t* value2);
 
 /* copying */
 
-json_ref json_copy(const json_t* value);
-json_ref json_deep_copy(const json_t* value);
+json_ref json_copy(const json_ref& value);
+json_ref json_deep_copy(const json_ref& value);
 
 /* decoding */
 

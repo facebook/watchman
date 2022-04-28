@@ -788,7 +788,7 @@ int json_equal(json_t* json1, json_t* json2) {
 
 /*** copying ***/
 
-json_ref json_copy(const json_t* json) {
+json_ref json_copy(const json_ref& json) {
   if (!json)
     return nullptr;
 
@@ -807,14 +807,14 @@ json_ref json_copy(const json_t* json) {
   if (json_is_real(json))
     return json_real_copy(json);
 
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
-    return const_cast<json_t*>(json);
+  if (json.isTrue() || json.isFalse() || json.isNull()) {
+    return json;
   }
 
   return nullptr;
 }
 
-json_ref json_deep_copy(const json_t* json) {
+json_ref json_deep_copy(const json_ref& json) {
   if (!json)
     return nullptr;
 
@@ -836,8 +836,8 @@ json_ref json_deep_copy(const json_t* json) {
   if (json_is_real(json))
     return json_real_copy(json);
 
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
-    return const_cast<json_t*>(json);
+  if (json.isTrue() || json.isFalse() || json.isNull()) {
+    return json;
   }
 
   return nullptr;
