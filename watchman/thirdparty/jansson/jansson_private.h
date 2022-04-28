@@ -14,8 +14,7 @@
 #include <vector>
 #include "jansson.h"
 
-struct json_object_t {
-  json_t json;
+struct json_object_t : json_t {
   std::unordered_map<w_string, json_ref> map;
 
   json_object_t(size_t sizeHint = 0);
@@ -24,8 +23,7 @@ struct json_object_t {
       const char* key);
 };
 
-struct json_array_t {
-  json_t json;
+struct json_array_t : json_t {
   std::vector<json_ref> table;
   json_ref templ;
 
@@ -33,45 +31,42 @@ struct json_array_t {
   json_array_t(std::initializer_list<json_ref> values);
 };
 
-struct json_string_t {
-  json_t json;
+struct json_string_t : json_t {
   w_string value;
 
   json_string_t(w_string str);
 };
 
-struct json_real_t {
-  json_t json;
+struct json_real_t : json_t {
   double value;
 
   json_real_t(double value);
 };
 
-struct json_integer_t {
-  json_t json;
+struct json_integer_t : json_t {
   json_int_t value;
 
   json_integer_t(json_int_t value);
 };
 
 inline json_object_t* json_to_object(const json_t* json) {
-  return reinterpret_cast<json_object_t*>(const_cast<json_t*>(json));
+  return static_cast<json_object_t*>(const_cast<json_t*>(json));
 }
 
 inline json_array_t* json_to_array(const json_t* json) {
-  return reinterpret_cast<json_array_t*>(const_cast<json_t*>(json));
+  return static_cast<json_array_t*>(const_cast<json_t*>(json));
 }
 
 inline json_string_t* json_to_string(const json_t* json) {
-  return reinterpret_cast<json_string_t*>(const_cast<json_t*>(json));
+  return static_cast<json_string_t*>(const_cast<json_t*>(json));
 }
 
 inline json_real_t* json_to_real(const json_t* json) {
-  return reinterpret_cast<json_real_t*>(const_cast<json_t*>(json));
+  return static_cast<json_real_t*>(const_cast<json_t*>(json));
 }
 
 inline json_integer_t* json_to_integer(const json_t* json) {
-  return reinterpret_cast<json_integer_t*>(const_cast<json_t*>(json));
+  return static_cast<json_integer_t*>(const_cast<json_t*>(json));
 }
 
 void jsonp_error_init(json_error_t* error, const char* source);

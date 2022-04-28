@@ -141,13 +141,12 @@ std::unordered_map<w_string, json_ref>& json_ref::object() {
   return json_to_object(ref_)->map;
 }
 
-json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT) {
+json_object_t::json_object_t(size_t sizeHint) : json_t(JSON_OBJECT) {
   map.reserve(sizeHint);
 }
 
 json_ref json_object_of_size(size_t size) {
-  auto object = new json_object_t(size);
-  return json_ref(&object->json, false);
+  return json_ref(new json_object_t(size), false);
 }
 
 json_ref json_object(
@@ -379,12 +378,12 @@ static json_ref json_object_deep_copy(const json_t* object) {
 
 /*** array ***/
 
-json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY) {
+json_array_t::json_array_t(size_t sizeHint) : json_t(JSON_ARRAY) {
   table.reserve(std::max(sizeHint, size_t(8)));
 }
 
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
-    : json(JSON_ARRAY), table(values) {}
+    : json_t(JSON_ARRAY), table(values) {}
 
 const std::vector<json_ref>& json_ref::array() const {
   if (!json_is_array(ref_)) {
@@ -401,8 +400,7 @@ std::vector<json_ref>& json_ref::array() {
 }
 
 json_ref json_array_of_size(size_t nelems) {
-  auto array = new json_array_t(nelems);
-  return json_ref(&array->json, false);
+  return json_ref(new json_array_t(nelems), false);
 }
 
 json_ref json_array(void) {
@@ -410,8 +408,7 @@ json_ref json_array(void) {
 }
 
 json_ref json_array(std::initializer_list<json_ref> values) {
-  auto array = new json_array_t(std::move(values));
-  return json_ref(&array->json, false);
+  return json_ref(new json_array_t(std::move(values)), false);
 }
 
 int json_array_set_template(json_t* json, json_t* templ) {
@@ -595,15 +592,14 @@ static json_ref json_array_deep_copy(const json_t* array) {
 /*** string ***/
 
 json_string_t::json_string_t(w_string str)
-    : json(JSON_STRING), value(std::move(str)) {}
+    : json_t(JSON_STRING), value(std::move(str)) {}
 
 json_ref w_string_to_json(w_string str) {
   if (!str) {
     return json_null();
   }
 
-  auto string = new json_string_t(str);
-  return json_ref(&string->json, false);
+  return json_ref(new json_string_t(str), false);
 }
 
 const char* json_string_value(const json_t* json) {
@@ -635,11 +631,10 @@ static json_ref json_string_copy(const json_t* string) {
 /*** integer ***/
 
 json_integer_t::json_integer_t(json_int_t value)
-    : json(JSON_INTEGER), value(value) {}
+    : json_t(JSON_INTEGER), value(value) {}
 
 json_ref json_integer(json_int_t value) {
-  auto integer = new json_integer_t(value);
-  return json_ref(&integer->json, false);
+  return json_ref(new json_integer_t(value), false);
 }
 
 json_int_t json_integer_value(const json_t* json) {
@@ -672,14 +667,13 @@ static json_t* json_integer_copy(const json_t* integer) {
 
 /*** real ***/
 
-json_real_t::json_real_t(double value) : json(JSON_REAL), value(value) {}
+json_real_t::json_real_t(double value) : json_t(JSON_REAL), value(value) {}
 
 json_ref json_real(double value) {
   if (std::isnan(value) || std::isinf(value)) {
     return nullptr;
   }
-  auto real = new json_real_t(value);
-  return json_ref(&real->json, false);
+  return json_ref(new json_real_t(value), false);
 }
 
 double json_real_value(const json_t* json) {
