@@ -599,10 +599,6 @@ static int json_string_equal(json_t* string1, json_t* string2) {
   return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
-static json_ref json_string_copy(const json_ref& string) {
-  return w_string_to_json(json_to_w_string(string));
-}
-
 /*** integer ***/
 
 json_integer_t::json_integer_t(json_int_t value)
@@ -627,13 +623,6 @@ static int json_integer_equal(json_t* integer1, json_t* integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
 }
 
-static json_ref json_integer_copy(const json_ref& integer) {
-  // TODO: IF nothing checks object identity, since integer values are
-  // immutable, we could merely increment the reference count and avoid
-  // allocation here.
-  return json_integer(json_integer_value(integer));
-}
-
 /*** real ***/
 
 json_real_t::json_real_t(double value) : json_t(JSON_REAL), value(value) {}
@@ -655,13 +644,6 @@ double json_real_value(const json_ref& json) {
 
 static int json_real_equal(json_t* real1, json_t* real2) {
   return json_real_value(real1) == json_real_value(real2);
-}
-
-static json_ref json_real_copy(const json_ref& real) {
-  // TODO: IF nothing checks object identity, since real values are
-  // immutable, we could merely increment the reference count and avoid
-  // allocation here.
-  return json_real(json_real_value(real));
 }
 
 /*** number ***/
@@ -764,21 +746,8 @@ json_ref json_deep_copy(const json_ref& json) {
   if (json_is_array(json))
     return json_array_deep_copy(json);
 
-  /* for the rest of the types, deep copying doesn't differ from
-     shallow copying */
+  // For the rest of the types, the values are immutable, so just increment the
+  // reference count.
 
-  if (json.isString())
-    return json_string_copy(json);
-
-  if (json.isInt())
-    return json_integer_copy(json);
-
-  if (json.isDouble())
-    return json_real_copy(json);
-
-  if (json.isTrue() || json.isFalse() || json.isNull()) {
-    return json;
-  }
-
-  return nullptr;
+  return json;
 }
