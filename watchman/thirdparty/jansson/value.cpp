@@ -121,7 +121,8 @@ bool json_ref::asBool() const {
     case JSON_FALSE:
       return false;
     default:
-      throw std::domain_error(fmt::format("asBool called on non-boolean: {}", getTypeName(type())));
+      throw std::domain_error(
+          fmt::format("asBool called on non-boolean: {}", getTypeName(type())));
   }
 }
 
@@ -160,7 +161,7 @@ json_ref json_object(
   return object;
 }
 
-json_ref json_object(void) {
+json_ref json_object() {
   return json_object_of_size(0);
 }
 
@@ -393,7 +394,7 @@ json_ref json_array_of_size(size_t nelems) {
   return json_ref(new json_array_t(nelems), false);
 }
 
-json_ref json_array(void) {
+json_ref json_array() {
   return json_array_of_size(8);
 }
 
@@ -624,15 +625,6 @@ json_int_t json_ref::asInt() const {
   return json_integer_value(ref_);
 }
 
-int json_integer_set(json_t* json, json_int_t value) {
-  if (!json_is_integer(json))
-    return -1;
-
-  json_to_integer(json)->value = value;
-
-  return 0;
-}
-
 static int json_integer_equal(json_t* integer1, json_t* integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
 }
@@ -652,37 +644,31 @@ json_ref json_real(double value) {
   return json_ref(new json_real_t(value), false);
 }
 
-double json_real_value(const json_t* json) {
-  if (!json_is_real(json))
+double json_real_value(const json_ref& json) {
+  if (!json || !json.isDouble()) {
     return 0;
-
-  return json_to_real(json)->value;
-}
-
-int json_real_set(json_t* json, double value) {
-  if (!json_is_real(json) || std::isnan(value) || std::isinf(value)) {
-    return -1;
   }
 
-  json_to_real(json)->value = value;
-
-  return 0;
+  return json_to_real(json)->value;
 }
 
 static int json_real_equal(json_t* real1, json_t* real2) {
   return json_real_value(real1) == json_real_value(real2);
 }
 
-static json_t* json_real_copy(const json_t* real) {
+static json_ref json_real_copy(const json_ref& real) {
   return json_real(json_real_value(real));
 }
 
 /*** number ***/
 
-double json_number_value(const json_t* json) {
+double json_number_value(const json_ref& json) {
+  if (!json) {
+    return 0.0;
+  }
   if (json_is_integer(json))
     return (double)json_integer_value(json);
-  else if (json_is_real(json))
+  else if (json.isDouble())
     return json_real_value(json);
   else
     return 0.0;
@@ -690,17 +676,17 @@ double json_number_value(const json_t* json) {
 
 /*** simple values ***/
 
-json_ref json_true(void) {
+json_ref json_true() {
   static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
   return &the_true;
 }
 
-json_ref json_false(void) {
+json_ref json_false() {
   static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
   return &the_false;
 }
 
-json_ref json_null(void) {
+json_ref json_null() {
   static json_t the_null{JSON_NULL, json_t::SingletonHack()};
   return &the_null;
 }
@@ -733,7 +719,7 @@ void json_ref::json_delete(json_t* json) {
 
 /*** equality ***/
 
-int json_equal(json_t* json1, json_t* json2) {
+int json_equal(const json_ref& json1, const json_ref& json2) {
   if (!json1 || !json2)
     return 0;
 
@@ -756,7 +742,7 @@ int json_equal(json_t* json1, json_t* json2) {
   if (json_is_integer(json1))
     return json_integer_equal(json1, json2);
 
-  if (json_is_real(json1))
+  if (json1.isDouble())
     return json_real_equal(json1, json2);
 
   return 0;
@@ -783,7 +769,7 @@ json_ref json_deep_copy(const json_ref& json) {
   if (json_is_integer(json))
     return json_integer_copy(json);
 
-  if (json_is_real(json))
+  if (json.isDouble())
     return json_real_copy(json);
 
   if (json.isTrue() || json.isFalse() || json.isNull()) {

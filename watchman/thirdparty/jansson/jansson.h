@@ -193,8 +193,6 @@ inline json_type json_typeof(const json_t* json) {
 #define json_is_array(json) (json && json_typeof(json) == JSON_ARRAY)
 #define json_is_string(json) (json && json_typeof(json) == JSON_STRING)
 #define json_is_integer(json) (json && json_typeof(json) == JSON_INTEGER)
-#define json_is_real(json) (json && json_typeof(json) == JSON_REAL)
-#define json_is_number(json) (json_is_integer(json) || json_is_real(json))
 
 /* construction, destruction, reference counting */
 
@@ -283,18 +281,15 @@ inline int json_array_insert(json_t* array, size_t index, json_t* value) {
 
 const char* json_string_value(const json_t* string);
 json_int_t json_integer_value(const json_t* integer);
-double json_real_value(const json_t* real);
-double json_number_value(const json_t* json);
-
-int json_integer_set(json_t* integer, json_int_t value);
-int json_real_set(json_t* real, double value);
+double json_real_value(const json_ref& real);
+double json_number_value(const json_ref& json);
 
 #define JSON_VALIDATE_ONLY 0x1
 #define JSON_STRICT 0x2
 
 /* equality */
 
-int json_equal(json_t* value1, json_t* value2);
+int json_equal(const json_ref& value1, const json_ref& value2);
 
 /* copying */
 
@@ -327,11 +322,11 @@ json_ref json_load_file(const char* path, size_t flags);
 typedef int (
     *json_dump_callback_t)(const char* buffer, size_t size, void* data);
 
-std::string json_dumps(const json_t* json, size_t flags);
-int json_dumpf(const json_t* json, FILE* output, size_t flags);
-int json_dump_file(const json_t* json, const char* path, size_t flags);
+std::string json_dumps(const json_ref& json, size_t flags);
+int json_dumpf(const json_ref& json, FILE* output, size_t flags);
+int json_dump_file(const json_ref& json, const char* path, size_t flags);
 int json_dump_callback(
-    const json_t* json,
+    const json_ref& json,
     json_dump_callback_t callback,
     void* data,
     size_t flags);

@@ -171,7 +171,7 @@ static int dump_string(
 }
 
 static int do_dump(
-    const json_t* json,
+    const json_ref& json,
     size_t flags,
     int depth,
     json_dump_callback_t dump,
@@ -344,7 +344,7 @@ static int do_dump(
   }
 }
 
-std::string json_dumps(const json_t* json, size_t flags) {
+std::string json_dumps(const json_ref& json, size_t flags) {
   std::string strbuff;
 
   if (json_dump_callback(json, dump_to_string, (void*)&strbuff, flags)) {
@@ -353,25 +353,22 @@ std::string json_dumps(const json_t* json, size_t flags) {
   return strbuff;
 }
 
-int json_dumpf(const json_t* json, FILE* output, size_t flags) {
+int json_dumpf(const json_ref& json, FILE* output, size_t flags) {
   return json_dump_callback(json, dump_to_file, (void*)output, flags);
 }
 
-int json_dump_file(const json_t* json, const char* path, size_t flags) {
-  int result;
-
-  FILE* output = fopen(path, "w");
+int json_dump_file(const json_ref& json, const char* path, size_t flags) {
+  std::unique_ptr<FILE, int(*)(FILE*)> output{
+    fopen(path, "w"),
+    &fclose};
   if (!output)
     return -1;
 
-  result = json_dumpf(json, output, flags);
-
-  fclose(output);
-  return result;
+  return json_dumpf(json, output.get(), flags);
 }
 
 int json_dump_callback(
-    const json_t* json,
+    const json_ref& json,
     json_dump_callback_t callback,
     void* data,
     size_t flags) {
