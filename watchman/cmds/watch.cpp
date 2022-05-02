@@ -65,23 +65,20 @@ static json_ref cmd_clock(Client* client, const json_ref& args) {
   if (json_array_size(args) == 3) {
     auto& opts = args.at(2);
     if (!opts.isObject()) {
-      client->sendErrorResponse(
+      throw ErrorResponse(
           "the third argument to 'clock' must be an optional object");
-      return nullptr;
     }
 
     auto sync = opts.get_default("sync_timeout");
     if (sync) {
       if (!sync.isInt()) {
-        client->sendErrorResponse(
+        throw ErrorResponse(
             "the sync_timeout option passed to 'clock' must be an integer");
-        return nullptr;
       }
       sync_timeout = sync.asInt();
     }
   } else if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments to 'clock'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'clock'");
   }
 
   /* resolve the root */
@@ -107,8 +104,7 @@ W_CMD_REG(
 static json_ref cmd_watch_delete(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments to 'watch-del'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'watch-del'");
   }
 
   auto root = resolveRoot(client, args);
@@ -272,8 +268,7 @@ static w_string resolve_projpath(
 static json_ref cmd_watch(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments to 'watch'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'watch'");
   }
 
   auto root = resolveOrCreateRoot(client, args);
@@ -303,8 +298,7 @@ W_CMD_REG(
 static json_ref cmd_watch_project(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments to 'watch-project'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'watch-project'");
   }
 
   w_string rel_path_from_watch;

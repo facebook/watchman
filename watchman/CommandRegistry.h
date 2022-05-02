@@ -21,6 +21,21 @@ namespace watchman {
 class Client;
 class Command;
 
+struct ErrorResponse : std::runtime_error {
+  ErrorResponse(const char* message);
+
+  template <typename First, typename... Rest>
+  ErrorResponse(
+      fmt::format_string<First, Rest...> fmt,
+      First&& first,
+      Rest&&... rest)
+      : ErrorResponse(fmt::format(
+                          std::move(fmt),
+                          std::forward<First>(first),
+                          std::forward<Rest>(rest)...)
+                          .c_str()) {}
+};
+
 /**
  * Validates a command's arguments. Runs on the client. May modify the given
  * command. Should throw an exception (ideally CommandValidationError) if
@@ -31,6 +46,8 @@ using CommandValidator = void (*)(Command& command);
 /**
  * Executes a command's primary action. Usually runs on the server, but there
  * are client-only commands.
+ *
+ * Returns a success response, or throws ErrorResponse.
  */
 using CommandHandler = json_ref (*)(Client* client, const json_ref& args);
 

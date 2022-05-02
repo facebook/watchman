@@ -33,6 +33,9 @@ struct CommandRegistry {
 
 } // namespace
 
+ErrorResponse::ErrorResponse(const char* message)
+    : std::runtime_error{message} {}
+
 CommandDefinition::CommandDefinition(
     std::string_view name,
     std::string_view capname,

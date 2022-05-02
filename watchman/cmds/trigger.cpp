@@ -31,13 +31,11 @@ static json_ref cmd_trigger_delete(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse("wrong number of arguments");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments");
   }
   auto jname = args.at(2);
   if (!jname.isString()) {
-    client->sendErrorResponse("expected 2nd parameter to be trigger name");
-    return nullptr;
+    throw ErrorResponse("expected 2nd parameter to be trigger name");
   }
   tname = json_to_w_string(jname);
 
@@ -86,7 +84,6 @@ W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root);
 
 static json_ref build_legacy_trigger(
     const std::shared_ptr<Root>& root,
-    Client* client,
     const json_ref& args) {
   uint32_t next_arg = 0;
   uint32_t i;
@@ -110,8 +107,7 @@ static json_ref build_legacy_trigger(
   json_object_set(trig, "expression", expr.get_default("expression"));
 
   if (next_arg >= args.array().size()) {
-    client->sendErrorResponse("no command was specified");
-    return nullptr;
+    throw ErrorResponse("no command was specified");
   }
 
   n = json_array_size(args) - next_arg;
@@ -120,8 +116,7 @@ static json_ref build_legacy_trigger(
   for (i = 0; i < n; i++) {
     auto ele = args.at(i + next_arg);
     if (!ele.isString()) {
-      client->sendErrorResponse("expected argument {} to be a string", i);
-      return nullptr;
+      throw ErrorResponse("expected argument {} to be a string", i);
     }
     command.push_back(std::move(ele));
   }
@@ -142,16 +137,12 @@ static json_ref cmd_trigger(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   if (json_array_size(args) < 3) {
-    client->sendErrorResponse("not enough arguments");
-    return nullptr;
+    throw ErrorResponse("not enough arguments");
   }
 
   trig = args.at(2);
   if (trig.isString()) {
-    trig = build_legacy_trigger(root, client, args);
-    if (!trig) {
-      return nullptr;
-    }
+    trig = build_legacy_trigger(root, args);
   }
 
   cmd = std::make_unique<TriggerCommand>(getInterface, root, trig);

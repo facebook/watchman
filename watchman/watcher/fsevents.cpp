@@ -846,22 +846,19 @@ json_ref FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "wrong number of arguments for 'debug-fsevents-inject-drop'");
-    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
 
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
-    client->sendErrorResponse("root is not using the fsevents watcher");
-    return nullptr;
+    throw ErrorResponse("root is not using the fsevents watcher");
   }
 
   if (!watcher->attemptResyncOnDrop_) {
-    client->sendErrorResponse("fsevents_try_resync is not enabled");
-    return nullptr;
+    throw ErrorResponse("fsevents_try_resync is not enabled");
   }
 
   FSEventStreamEventId last_good;

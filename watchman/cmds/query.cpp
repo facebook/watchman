@@ -17,8 +17,7 @@ using namespace watchman;
 /* query /root {query} */
 static json_ref cmd_query(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse("wrong number of arguments for 'query'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'query'");
   }
 
   auto root = resolveRoot(client, args);

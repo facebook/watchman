@@ -18,8 +18,7 @@ using namespace watchman;
 static json_ref cmd_find(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) < 2) {
-    client->sendErrorResponse("not enough arguments for 'find'");
-    return nullptr;
+    throw ErrorResponse("not enough arguments for 'find'");
   }
 
   auto root = resolveRoot(client, args);

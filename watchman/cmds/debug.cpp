@@ -22,8 +22,7 @@ namespace {
 static json_ref cmd_debug_recrawl(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments for 'debug-recrawl'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'debug-recrawl'");
   }
 
   auto root = resolveRoot(client, args);
@@ -42,9 +41,7 @@ static json_ref cmd_debug_show_cursors(Client* client, const json_ref& args) {
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse(
-        "wrong number of arguments for 'debug-show-cursors'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'debug-show-cursors'");
   }
 
   auto root = resolveRoot(client, args);
@@ -74,8 +71,7 @@ W_CMD_REG(
 static json_ref cmd_debug_ageout(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse("wrong number of arguments for 'debug-ageout'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'debug-ageout'");
   }
 
   auto root = resolveRoot(client, args);
@@ -129,14 +125,12 @@ static json_ref cmd_debug_set_subscriptions_paused(
   for (auto& it : paused_map) {
     auto sub_iter = client->subscriptions.find(it.first);
     if (sub_iter == client->subscriptions.end()) {
-      client->sendErrorResponse(
+      throw ErrorResponse(
           "this client does not have a subscription named '{}'", it.first);
-      return nullptr;
     }
     if (!it.second.isBool()) {
-      client->sendErrorResponse(
+      throw ErrorResponse(
           "new value for subscription '{}' not a boolean", it.first);
-      return nullptr;
     }
   }
 
@@ -330,17 +324,14 @@ void addCacheStats(json_ref& resp, const CacheStats& stats) {
 json_ref debugContentHashCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse(
-        "wrong number of arguments for 'debug-contenthash'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'debug-contenthash'");
   }
 
   auto root = resolveRoot(client, args);
 
   auto view = std::dynamic_pointer_cast<InMemoryView>(root->view());
   if (!view) {
-    client->sendErrorResponse("root is not an InMemoryView watcher");
-    return nullptr;
+    throw ErrorResponse("root is not an InMemoryView watcher");
   }
 
   auto stats = view->debugAccessCaches().contentHashCache.stats();
@@ -357,17 +348,15 @@ W_CMD_REG(
 json_ref debugSymlinkTargetCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "wrong number of arguments for 'debug-symlink-target-cache'");
-    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
 
   auto view = std::dynamic_pointer_cast<InMemoryView>(root->view());
   if (!view) {
-    client->sendErrorResponse("root is not an InMemoryView watcher");
-    return nullptr;
+    throw ErrorResponse("root is not an InMemoryView watcher");
   }
 
   auto stats = view->debugAccessCaches().symlinkTargetCache.stats();

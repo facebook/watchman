@@ -329,14 +329,11 @@ static json_ref cmd_flush_subscriptions(
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
     subs = args.at(2).get_default("subscriptions", nullptr);
     if (!sync_timeout_obj.isInt()) {
-      client->sendErrorResponse("'sync_timeout' must be an integer");
-      return nullptr;
+      throw ErrorResponse("'sync_timeout' must be an integer");
     }
     sync_timeout = sync_timeout_obj.asInt();
   } else {
-    client->sendErrorResponse(
-        "wrong number of arguments to 'flush-subscriptions'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'flush-subscriptions'");
   }
 
   auto root = resolveRoot(client, args);
@@ -344,35 +341,31 @@ static json_ref cmd_flush_subscriptions(
   std::vector<w_string> subs_to_sync;
   if (subs) {
     if (!subs.isArray()) {
-      client->sendErrorResponse(
+      throw ErrorResponse(
           "expected 'subscriptions' to be an array of subscription names");
-      return nullptr;
     }
 
     for (auto& sub_name : subs.array()) {
       if (!sub_name.isString()) {
-        client->sendErrorResponse(
+        throw ErrorResponse(
             "expected 'subscriptions' to be an array of subscription names");
-        return nullptr;
       }
 
       auto& sub_name_str = json_to_w_string(sub_name);
       auto sub_iter = client->subscriptions.find(sub_name_str);
       if (sub_iter == client->subscriptions.end()) {
-        client->sendErrorResponse(
+        throw ErrorResponse(
             "this client does not have a subscription named '{}'",
             sub_name_str);
-        return nullptr;
       }
       auto& sub = sub_iter->second;
       if (sub->root != root) {
-        client->sendErrorResponse(
+        throw ErrorResponse(
             "subscription '{}' is on root '{}' different from command root "
             "'{}'",
             sub_name_str,
             sub->root->root_path,
             root->root_path);
-        return nullptr;
       }
 
       subs_to_sync.push_back(sub_name_str);
@@ -457,8 +450,7 @@ static json_ref cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   auto jstr = json_array_get(args, 2);
   const char* name = json_string_value(jstr);
   if (!name) {
-    client->sendErrorResponse("expected 2nd parameter to be subscription name");
-    return nullptr;
+    throw ErrorResponse("expected 2nd parameter to be subscription name");
   }
 
   auto sname = json_to_w_string(jstr);
@@ -490,16 +482,14 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
   UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
-    client->sendErrorResponse("wrong number of arguments for subscribe");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for subscribe");
   }
 
   auto root = resolveRoot(client, args);
 
   jname = args.at(2);
   if (!jname.isString()) {
-    client->sendErrorResponse("expected 2nd parameter to be subscription name");
-    return nullptr;
+    throw ErrorResponse("expected 2nd parameter to be subscription name");
   }
 
   query_spec = args.at(3);
@@ -510,14 +500,12 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   defer_list = query_spec.get_default("defer");
   if (defer_list && !defer_list.isArray()) {
-    client->sendErrorResponse("defer field must be an array of strings");
-    return nullptr;
+    throw ErrorResponse("defer field must be an array of strings");
   }
 
   drop_list = query_spec.get_default("drop");
   if (drop_list && !drop_list.isArray()) {
-    client->sendErrorResponse("drop field must be an array of strings");
-    return nullptr;
+    throw ErrorResponse("drop field must be an array of strings");
   }
 
   sub = std::make_shared<ClientSubscription>(root, client->shared_from_this());
@@ -527,8 +515,7 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   auto defer = query_spec.get_default("defer_vcs", json_true());
   if (!defer.isBool()) {
-    client->sendErrorResponse("defer_vcs must be boolean");
-    return nullptr;
+    throw ErrorResponse("defer_vcs must be boolean");
   }
   sub->vcs_defer = defer.asBool();
 

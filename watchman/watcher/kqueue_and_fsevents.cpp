@@ -321,24 +321,22 @@ static json_ref cmd_debug_kqueue_and_fsevents_recrawl(
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "wrong number of arguments for 'debug-kqueue-and-fsevents-recrawl'");
-    return nullptr;
   }
 
   auto root = resolveRoot(client, args);
 
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
-    client->sendErrorResponse("root is not using the kqueue+fsevents watcher");
-    return nullptr;
+    throw ErrorResponse("root is not using the kqueue+fsevents watcher");
   }
 
   /* Get the path that the recrawl should be triggered on */
   const auto& json_path = args.at(2);
   auto path = json_string_value(json_path);
   if (!path) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "invalid value for argument 2, expected a string naming the path to trigger a recrawl on");
   }
 

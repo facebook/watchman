@@ -24,19 +24,16 @@ struct state_arg {
 };
 
 // Parses the args for state-enter and state-leave
-static bool parse_state_arg(
-    Client* client,
-    const json_ref& args,
-    struct state_arg* parsed) {
+static void
+parse_state_arg(Client*, const json_ref& args, struct state_arg* parsed) {
   parsed->sync_timeout = kDefaultQuerySyncTimeout;
   parsed->metadata = nullptr;
   parsed->name = nullptr;
 
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "invalid number of arguments, expected 3, got {}",
         json_array_size(args));
-    return false;
   }
 
   const auto& state_args = args.at(2);
@@ -44,7 +41,7 @@ static bool parse_state_arg(
   // [cmd, root, statename]
   if (state_args.isString()) {
     parsed->name = json_to_w_string(state_args);
-    return true;
+    return;
   }
 
   // [cmd, root, {name:, metadata:, sync_timeout:}]
@@ -57,11 +54,10 @@ static bool parse_state_arg(
              .asInt());
 
   if (parsed->sync_timeout < ms::zero()) {
-    client->sendErrorResponse("sync_timeout must be >= 0");
-    return false;
+    throw ErrorResponse("sync_timeout must be >= 0");
   }
 
-  return true;
+  return;
 }
 
 namespace watchman {
@@ -72,13 +68,10 @@ static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  if (!parse_state_arg(client, args, &parsed)) {
-    return nullptr;
-  }
+  parse_state_arg(client, args, &parsed);
 
   if (client->states.find(parsed.name) != client->states.end()) {
-    client->sendErrorResponse("state {} is already asserted", parsed.name);
-    return nullptr;
+    throw ErrorResponse("state {} is already asserted", parsed.name);
   }
 
   auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
@@ -166,27 +159,22 @@ static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  if (!parse_state_arg(client, args, &parsed)) {
-    return nullptr;
-  }
+  parse_state_arg(client, args, &parsed);
 
   auto it = client->states.find(parsed.name);
   if (it == client->states.end()) {
-    client->sendErrorResponse("state {} is not asserted", parsed.name);
-    return nullptr;
+    throw ErrorResponse("state {} is not asserted", parsed.name);
   }
 
   assertion = it->second.lock();
   if (!assertion) {
-    client->sendErrorResponse("state {} was implicitly vacated", parsed.name);
-    return nullptr;
+    throw ErrorResponse("state {} was implicitly vacated", parsed.name);
   }
 
   // Sanity check ownership
   if (mapGetDefault(client->states, parsed.name).lock() != assertion) {
-    client->sendErrorResponse(
+    throw ErrorResponse(
         "state {} was not asserted by this session", parsed.name);
-    return nullptr;
   }
 
   // Mark as pending leave; we haven't vacated the state until we've
@@ -194,8 +182,7 @@ static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
   {
     auto assertedStates = root->assertedStates.wlock();
     if (assertion->disposition == ClientStateDisposition::Done) {
-      client->sendErrorResponse("state {} was implicitly vacated", parsed.name);
-      return nullptr;
+      throw ErrorResponse("state {} was implicitly vacated", parsed.name);
     }
     // Note that there is a potential race here wrt. this state being
     // asserted again by another client and the broadcast

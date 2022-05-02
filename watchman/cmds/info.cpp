@@ -196,8 +196,7 @@ static json_ref cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
 
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments for 'get-config'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments for 'get-config'");
   }
 
   auto root = resolveRoot(client, args);

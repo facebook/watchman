@@ -34,17 +34,6 @@ class Client : public std::enable_shared_from_this<Client> {
 
   void enqueueResponse(json_ref resp);
 
-  template <typename T, typename... Rest>
-  void sendErrorResponse(
-      fmt::format_string<T, Rest...> fmt,
-      T&& arg,
-      Rest&&... rest) {
-    return sendErrorResponse(fmt::format(
-        std::move(fmt), std::forward<T>(arg), std::forward<Rest>(rest)...));
-  }
-
-  void sendErrorResponse(std::string_view formatted);
-
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
@@ -67,6 +56,18 @@ class Client : public std::enable_shared_from_this<Client> {
   // Logging Subscriptions
   std::shared_ptr<Publisher::Subscriber> debugSub;
   std::shared_ptr<Publisher::Subscriber> errorSub;
+
+ protected:
+  void sendErrorResponse(std::string_view formatted);
+
+  template <typename T, typename... Rest>
+  void sendErrorResponse(
+      fmt::format_string<T, Rest...> fmt,
+      T&& arg,
+      Rest&&... rest) {
+    return sendErrorResponse(fmt::format(
+        std::move(fmt), std::forward<T>(arg), std::forward<Rest>(rest)...));
+  }
 };
 
 enum class OnStateTransition { QueryAnyway, DontAdvance };

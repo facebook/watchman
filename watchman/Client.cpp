@@ -138,9 +138,13 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
       // path is.
       auto rendered = command.render();
 
-      json_ref response = def->handler(this, rendered);
-      if (response) {
-        enqueueResponse(std::move(response));
+      try {
+        json_ref response = def->handler(this, rendered);
+        if (response) {
+          enqueueResponse(std::move(response));
+        }
+      } catch (const ErrorResponse& e) {
+        sendErrorResponse(e.what());
       }
 
       if (sample.finish()) {

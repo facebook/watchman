@@ -16,16 +16,14 @@ using namespace watchman;
 // log-level "off"
 static json_ref cmd_loglevel(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse("wrong number of arguments to 'log-level'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'log-level'");
   }
 
   watchman::LogLevel level;
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    client->sendErrorResponse("invalid log level for 'log-level'");
-    return nullptr;
+    throw ErrorResponse("invalid log level for 'log-level'");
   }
 
   auto clientRef = client->shared_from_this();
@@ -54,18 +52,16 @@ static json_ref cmd_loglevel(Client* client, const json_ref& args) {
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL);
 
 // log "debug" "text to log"
-static json_ref cmd_log(Client* client, const json_ref& args) {
+static json_ref cmd_log(Client*, const json_ref& args) {
   if (json_array_size(args) != 3) {
-    client->sendErrorResponse("wrong number of arguments to 'log'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'log'");
   }
 
   watchman::LogLevel level;
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    client->sendErrorResponse("invalid log level for 'log'");
-    return nullptr;
+    throw ErrorResponse("invalid log level for 'log'");
   }
 
   auto text = json_to_w_string(args.at(2));
@@ -79,19 +75,16 @@ static json_ref cmd_log(Client* client, const json_ref& args) {
 W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL);
 
 // change the server log level for the logs
-static json_ref cmd_global_log_level(Client* client, const json_ref& args) {
+static json_ref cmd_global_log_level(Client*, const json_ref& args) {
   if (json_array_size(args) != 2) {
-    client->sendErrorResponse(
-        "wrong number of arguments to 'global-log-level'");
-    return nullptr;
+    throw ErrorResponse("wrong number of arguments to 'global-log-level'");
   }
 
   watchman::LogLevel level;
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
   } catch (std::out_of_range&) {
-    client->sendErrorResponse("invalid log level for 'global-log-level'");
-    return nullptr;
+    throw ErrorResponse("invalid log level for 'global-log-level'");
   }
 
   watchman::getLog().setStdErrLoggingLevel(level);
