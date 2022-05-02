@@ -495,7 +495,7 @@ static json_ref bunser_array(
   total += needed;
   buf += needed;
 
-  auto arrval = json_array();
+  std::vector<json_ref> arrval;
   for (i = 0; i < nelems; i++) {
     needed = 0;
     auto item = bunser(buf, end, &needed, jerr);
@@ -508,15 +508,11 @@ static json_ref bunser_array(
       return nullptr;
     }
 
-    if (json_array_append(arrval, std::move(item))) {
-      *used = total;
-      snprintf(jerr->text, sizeof(jerr->text), "failed to append array item");
-      return nullptr;
-    }
+    arrval.push_back(std::move(item));
   }
 
   *used = total;
-  return arrval;
+  return json_array(std::move(arrval));
 }
 
 static json_ref bunser_template(
@@ -569,7 +565,8 @@ static json_ref bunser_template(
   np = json_array_size(templ);
 
   // Now load up the array with object values
-  auto arrval = json_array_of_size((size_t)nelems);
+  std::vector<json_ref> arrval;
+  arrval.reserve((size_t)nelems);
   for (i = 0; i < nelems; i++) {
     auto item = json_object_of_size((size_t)np);
     for (ip = 0; ip < np; ip++) {
@@ -594,11 +591,11 @@ static json_ref bunser_template(
           std::move(val));
     }
 
-    json_array_append(arrval, std::move(item));
+    arrval.push_back(std::move(item));
   }
 
   *used = total;
-  return arrval;
+  return json_array(std::move(arrval));
 }
 
 static json_ref bunser_object(

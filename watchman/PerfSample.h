@@ -83,7 +83,7 @@ void perf_shutdown();
 void processSamples(
     size_t argv_limit,
     size_t maximum_batch_size,
-    json_ref samples,
+    std::vector<json_ref>& samples,
     std::function<void(std::vector<std::string>)> command_line,
     std::function<void(std::string)> single_large_sample);
 

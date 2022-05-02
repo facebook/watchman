@@ -488,10 +488,11 @@ void InotifyWatcher::stopThreads() {
 json_ref InotifyWatcher::getDebugInfo() {
   json_ref events = json_null();
   if (ringBuffer_) {
-    events = json_array();
+    std::vector<json_ref> arr;
     for (auto& entry : ringBuffer_->readAll()) {
-      json_array_append(events, entry.asJsonValue());
+      arr.push_back(entry.asJsonValue());
     }
+    events = json_array(std::move(arr));
   }
   return json_object({
       {"events", events},

@@ -1168,10 +1168,11 @@ void InMemoryView::clearWatcherDebugInfo() {
 json_ref InMemoryView::getViewDebugInfo() const {
   auto processedPathsResult = json_null();
   if (processedPaths_) {
-    processedPathsResult = json_array();
+    std::vector<json_ref> paths;
     for (auto& entry : processedPaths_->readAll()) {
-      json_array_append(processedPathsResult, entry.asJsonValue());
+      paths.push_back(entry.asJsonValue());
     }
+    processedPathsResult = json_array(std::move(paths));
   }
   return json_object({
       {"processed_paths", processedPathsResult},

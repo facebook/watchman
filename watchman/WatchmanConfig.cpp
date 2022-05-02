@@ -198,23 +198,20 @@ static bool is_array_of_strings(const json_ref& ref) {
 
 // Given an array of string values, if that array does not contain
 // a ".watchmanconfig" entry, prepend it
-static void prepend_watchmanconfig_to_array(json_ref& ref) {
+static void prepend_watchmanconfig_to_array(std::vector<json_ref>& ref) {
   const char* val;
 
-  if (json_array_size(ref) == 0) {
-    // json_array_insert_new at index can fail when the array is empty,
-    // so just append in this case.
-    json_array_append(
-        ref, typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
+  if (ref.empty()) {
+    ref.push_back(typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
     return;
   }
 
-  val = json_string_value(json_array_get(ref, 0));
+  val = json_string_value(ref[0]);
   if (!strcmp(val, ".watchmanconfig")) {
     return;
   }
-  json_array_insert_new(
-      ref, 0, typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
+  ref.insert(
+      ref.begin(), typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
 }
 
 // Compute the effective value of the root_files configuration and
@@ -241,9 +238,9 @@ json_ref cfg_compute_root_files(bool* enforcing) {
       *enforcing = false;
       return nullptr;
     }
-    prepend_watchmanconfig_to_array(ref);
-
-    return ref;
+    std::vector<json_ref> arr = ref.array();
+    prepend_watchmanconfig_to_array(arr);
+    return json_array(std::move(arr));
   }
 
   // Try legacy root_restrict_files configuration
@@ -257,9 +254,10 @@ json_ref cfg_compute_root_files(bool* enforcing) {
       *enforcing = false;
       return nullptr;
     }
-    prepend_watchmanconfig_to_array(ref);
+    std::vector<json_ref> arr = ref.array();
+    prepend_watchmanconfig_to_array(arr);
     *enforcing = true;
-    return ref;
+    return json_array(std::move(arr));
   }
 
   // Synthesize our conservative default value.

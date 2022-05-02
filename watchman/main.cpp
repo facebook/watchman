@@ -901,12 +901,12 @@ static Command build_command(int argc, char** argv) {
   }
 
   w_string name = argv[0];
-  auto args = json_array();
+  std::vector<json_ref> args;
   for (int i = 1; i < argc; i++) {
-    json_array_append(args, typed_string_to_json(argv[i], W_STRING_UNICODE));
+    args.push_back(typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
-  return Command{std::move(name), std::move(args)};
+  return Command{std::move(name), json_array(std::move(args))};
 }
 
 static SpawnResult try_spawn_watchman(

@@ -33,22 +33,20 @@ Command Command::parse(const json_ref& pdu) {
   }
 
   const auto& pdu_array = pdu.array();
-  auto args = json_array();
-  auto& args_array = args.array();
+  std::vector<json_ref> args_array;
   args_array.reserve(pdu_array.size() - 1);
   for (size_t i = 1; i < pdu_array.size(); ++i) {
     args_array.push_back(pdu_array[i]);
   }
 
-  return Command{w_string{cmd_name}, std::move(args)};
+  return Command{w_string{cmd_name}, json_array(std::move(args_array))};
 }
 
 json_ref Command::render() const {
-  auto result = json_array();
-  auto& arr = result.array();
+  std::vector<json_ref> arr;
   arr.push_back(w_string_to_json(name_));
   arr.insert(arr.end(), args_.array().begin(), args_.array().end());
-  return result;
+  return json_array(std::move(arr));
 }
 
 void Command::validateOrExit(PduFormat error_format) {

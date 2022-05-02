@@ -27,7 +27,6 @@ struct json_array_t : json_t {
   std::vector<json_ref> table;
   json_ref templ;
 
-  json_array_t(size_t sizeHint = 0);
   json_array_t(std::vector<json_ref> values);
   json_array_t(std::initializer_list<json_ref> values);
 };

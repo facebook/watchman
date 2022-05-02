@@ -300,6 +300,9 @@ std::shared_ptr<Query> parseQuery(
 }
 
 void w_query_legacy_field_list(QueryFieldList* flist) {
+  // TODO: Avoid the round-trip through json_ref and insert the requested fields
+  // into QueryFieldList directly.
+
   static const char* names[] = {
       "name",
       "exists",
@@ -316,13 +319,13 @@ void w_query_legacy_field_list(QueryFieldList* flist) {
       "cclock",
       "oclock"};
   uint8_t i;
-  auto list = json_array();
+  std::vector<json_ref> list;
 
   for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
-    json_array_append(list, typed_string_to_json(names[i], W_STRING_UNICODE));
+    list.push_back(typed_string_to_json(names[i], W_STRING_UNICODE));
   }
 
-  parse_field_list(list, flist);
+  parse_field_list(json_array(std::move(list)), flist);
 }
 
 // Translate from the legacy array into the new style, then
@@ -339,7 +342,8 @@ std::shared_ptr<Query> parseQueryLegacy(
   bool negated = false;
   uint32_t i;
   const char* term_name = "match";
-  json_ref included, excluded;
+  std::vector<json_ref> included_array;
+  std::vector<json_ref> excluded_array;
   auto query_obj = json_object();
 
   if (!args.isArray()) {
@@ -383,19 +387,19 @@ std::shared_ptr<Query> parseQueryLegacy(
     }
 
     // Which group are we going to file it into
-    json_ref container;
+    std::vector<json_ref>* container;
     if (include) {
-      if (!included) {
-        included =
-            json_array({typed_string_to_json("anyof", W_STRING_UNICODE)});
+      if (included_array.empty()) {
+        included_array.push_back(
+            typed_string_to_json("anyof", W_STRING_UNICODE));
       }
-      container = included;
+      container = &included_array;
     } else {
-      if (!excluded) {
-        excluded =
-            json_array({typed_string_to_json("anyof", W_STRING_UNICODE)});
+      if (excluded_array.empty()) {
+        excluded_array.push_back(
+            typed_string_to_json("anyof", W_STRING_UNICODE));
       }
-      container = excluded;
+      container = &excluded_array;
     }
 
     auto term = json_array(
@@ -405,16 +409,21 @@ std::shared_ptr<Query> parseQueryLegacy(
     if (negated) {
       term = json_array({typed_string_to_json("not", W_STRING_UNICODE), term});
     }
-    json_array_append(container, std::move(term));
+    container->push_back(std::move(term));
 
     // Reset negated flag
     negated = false;
     term_name = "match";
   }
 
-  if (excluded) {
-    excluded =
-        json_array({typed_string_to_json("not", W_STRING_UNICODE), excluded});
+  json_ref included =
+      included_array.empty() ? nullptr : json_array(std::move(included_array));
+
+  json_ref excluded;
+  if (!excluded_array.empty()) {
+    excluded = json_array(
+        {typed_string_to_json("not", W_STRING_UNICODE),
+         json_array(std::move(excluded_array))});
   }
 
   json_ref query_array;

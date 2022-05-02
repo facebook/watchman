@@ -163,14 +163,14 @@ W_CMD_REG(
     nullptr);
 
 static json_ref getDebugSubscriptionInfo(Root* root) {
-  auto subscriptions = json_array();
+  std::vector<json_ref> subscriptions;
   for (const auto& user_client : UserClient::getAllClients()) {
     for (const auto& sub : user_client->subscriptions) {
       if (root == sub.second->root.get()) {
-        auto last_responses = json_array();
+        std::vector<json_ref> last_responses;
         for (auto& response : sub.second->lastResponses) {
           char timebuf[64];
-          last_responses.array().push_back(json_object({
+          last_responses.push_back(json_object({
               {"written_time",
                typed_string_to_json(Log::timeString(
                    timebuf,
@@ -180,15 +180,15 @@ static json_ref getDebugSubscriptionInfo(Root* root) {
           }));
         }
 
-        subscriptions.array().push_back(json_object({
+        subscriptions.push_back(json_object({
             {"name", w_string_to_json(sub.first)},
             {"client_id", json_integer(user_client->unique_id)},
-            {"last_responses", last_responses},
+            {"last_responses", json_array(std::move(last_responses))},
         }));
       }
     }
   }
-  return subscriptions;
+  return json_array(std::move(subscriptions));
 }
 
 static json_ref cmd_debug_get_subscriptions(

@@ -89,12 +89,13 @@ bool capability_supported(std::string_view name) {
 json_ref capability_get_list() {
   auto& caps = CommandRegistry::get().capabilities;
 
-  auto arr = json_array_of_size(caps.size());
+  std::vector<json_ref> arr;
+  arr.reserve(caps.size());
   for (auto& name : caps) {
-    json_array_append(arr, typed_string_to_json(name.c_str()));
+    arr.push_back(typed_string_to_json(name.c_str()));
   }
 
-  return arr;
+  return json_array(std::move(arr));
 }
 
 } // namespace watchman

@@ -21,13 +21,13 @@ json_ref make_sample(int i) {
 } // namespace
 
 TEST(Perf, sample_batches_are_limited_to_batch_size) {
-  auto samples = json_array({
+  std::vector<json_ref> samples = {
       make_sample(1),
       make_sample(2),
       make_sample(3),
       make_sample(4),
       make_sample(5),
-  });
+  };
 
   std::vector<std::vector<std::string>> calls;
 
@@ -51,13 +51,13 @@ TEST(Perf, sample_batches_are_limited_to_batch_size) {
 }
 
 TEST(Perf, sample_batches_are_limited_if_total_size_exceeds_argv_limit) {
-  auto samples = json_array({
+  std::vector<json_ref> samples = {
       make_sample(1),
       make_sample(2),
       make_sample(3),
       make_sample(4),
       make_sample(5),
-  });
+  };
 
   std::vector<std::vector<std::string>> calls;
 
@@ -84,10 +84,10 @@ TEST(Perf, sample_batches_are_limited_if_total_size_exceeds_argv_limit) {
 }
 
 TEST(Perf, large_samples_are_passed_in_stdin) {
-  auto samples = json_array({
+  std::vector<json_ref> samples = {
       make_sample(1),
       make_sample(2),
-  });
+  };
 
   std::vector<std::vector<std::string>> arg_calls;
   std::vector<std::string> stdin_calls;

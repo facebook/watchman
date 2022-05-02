@@ -389,9 +389,9 @@ static json_ref cmd_flush_subscriptions(
   root->syncToNow(std::chrono::milliseconds(sync_timeout));
 
   auto resp = make_response();
-  auto synced = json_array();
-  auto no_sync_needed = json_array();
-  auto dropped = json_array();
+  std::vector<json_ref> synced;
+  std::vector<json_ref> no_sync_needed;
+  std::vector<json_ref> dropped;
 
   for (auto& sub_name_str : subs_to_sync) {
     auto sub_iter = client->subscriptions.find(sub_name_str);
@@ -414,7 +414,7 @@ static json_ref cmd_flush_subscriptions(
           " is vacated. Advanced ticks to ",
           sub->last_sub_tick,
           "\n");
-      json_array_append(dropped, w_string_to_json(sub_name_str));
+      dropped.push_back(w_string_to_json(sub_name_str));
     } else {
       // flush-subscriptions means that we _should NOT defer_ notifications. So
       // ignore defer and defer_vcs.
@@ -427,17 +427,17 @@ static json_ref cmd_flush_subscriptions(
           root, out_position, OnStateTransition::QueryAnyway);
       if (sub_result) {
         client->enqueueResponse(std::move(sub_result));
-        json_array_append(synced, w_string_to_json(sub_name_str));
+        synced.push_back(w_string_to_json(sub_name_str));
       } else {
-        json_array_append(no_sync_needed, w_string_to_json(sub_name_str));
+        no_sync_needed.push_back(w_string_to_json(sub_name_str));
       }
     }
   }
 
   resp.set(
-      {{"synced", std::move(synced)},
-       {"no_sync_needed", std::move(no_sync_needed)},
-       {"dropped", std::move(dropped)}});
+      {{"synced", json_array(std::move(synced))},
+       {"no_sync_needed", json_array(std::move(no_sync_needed))},
+       {"dropped", json_array(std::move(dropped))}});
   add_root_warnings_to_response(resp, root);
   return resp;
 }
@@ -603,17 +603,17 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
     resp.set("saved-state-info", std::move(saved_state_info));
   }
 
-  auto asserted_states = json_array();
+  std::vector<json_ref> asserted_states;
   {
     auto rootAssertedStates = root->assertedStates.rlock();
     for (const auto& key : sub->drop_or_defer) {
       if (rootAssertedStates->isStateAsserted(key.first)) {
         // Not sure what to do in case of failure here. -jupi
-        json_array_append(asserted_states, w_string_to_json(key.first));
+        asserted_states.push_back(w_string_to_json(key.first));
       }
     }
   }
-  resp.set("asserted-states", json_ref(asserted_states));
+  resp.set("asserted-states", json_array(std::move(asserted_states)));
 
   // TODO: It would be nice to return something that indicates the start of a
   // potential stream of responses, rather than manually enqueuing here and

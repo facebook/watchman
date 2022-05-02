@@ -114,13 +114,14 @@ class TypedCommand : public CommandDefinition {
     // let's shift off the first entry `args`, since we know it's the command
     // name.
     auto& arr = args.array();
-    auto adjusted_args = json_array();
+    std::vector<json_ref> adjusted_args;
     for (size_t i = 1; i < arr.size(); ++i) {
-      json_array_append(adjusted_args, arr[i]);
+      adjusted_args.push_back(arr[i]);
     }
 
     using Request = typename T::Request;
-    return T::handle(Request::fromJson(adjusted_args)).toJson();
+    return T::handle(Request::fromJson(json_array(std::move(adjusted_args))))
+        .toJson();
   }
 };
 

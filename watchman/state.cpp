@@ -154,7 +154,7 @@ void w_state_save() {
 bool w_root_save_state(json_ref& state) {
   bool result = true;
 
-  auto watched_dirs = json_array();
+  std::vector<json_ref> watched_dirs;
 
   logf(DBG, "saving state\n");
 
@@ -170,11 +170,11 @@ bool w_root_save_state(json_ref& state) {
       auto triggers = root->triggerListToJson();
       json_object_set_new(obj, "triggers", std::move(triggers));
 
-      json_array_append(watched_dirs, std::move(obj));
+      watched_dirs.push_back(std::move(obj));
     }
   }
 
-  json_object_set_new(state, "watched", std::move(watched_dirs));
+  json_object_set_new(state, "watched", json_array(std::move(watched_dirs)));
 
   return result;
 }

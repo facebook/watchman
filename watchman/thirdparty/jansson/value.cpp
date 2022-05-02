@@ -312,36 +312,31 @@ static json_ref json_object_deep_copy(const json_ref& object) {
 
 /*** array ***/
 
-json_array_t::json_array_t(size_t sizeHint) : json_t(JSON_ARRAY) {
-  table.reserve(std::max(sizeHint, size_t(8)));
+json_array_t::json_array_t(std::vector<json_ref> values)
+    : json_t(JSON_ARRAY), table{std::move(values)} {
+  for (auto& v : table) {
+    if (!v) {
+      throw std::runtime_error(
+          "cannot create an array with a nullptr json_ref");
+    }
+  }
 }
 
-json_array_t::json_array_t(std::vector<json_ref> values)
-    : json_t(JSON_ARRAY), table(std::move(values)) {}
-
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
-    : json_t(JSON_ARRAY), table(values) {}
+    : json_t(JSON_ARRAY), table(values) {
+  for (auto& v : table) {
+    if (!v) {
+      throw std::runtime_error(
+          "cannot create an array with a nullptr json_ref");
+    }
+  }
+}
 
 const std::vector<json_ref>& json_ref::array() const {
   if (!*this || !isArray()) {
     throw std::domain_error("json_ref::array() called for non-array");
   }
   return json_to_array(ref_)->table;
-}
-
-std::vector<json_ref>& json_ref::array() {
-  if (!*this || !isArray()) {
-    throw std::domain_error("json_ref::array() called for non-array");
-  }
-  return json_to_array(ref_)->table;
-}
-
-json_ref json_array_of_size(size_t nelems) {
-  return json_ref(new json_array_t(nelems), false);
-}
-
-json_ref json_array() {
-  return json_array_of_size(8);
 }
 
 json_ref json_array(std::vector<json_ref> values) {
@@ -392,78 +387,6 @@ json_ref json_array_get(const json_ref& json, size_t index) {
   return array->table[index];
 }
 
-int json_array_set_new(const json_ref& json, size_t index, json_ref&& value) {
-  json_array_t* array;
-
-  if (!value)
-    return -1;
-
-  if (!json || !json.isArray() || json.get() == value.get()) {
-    return -1;
-  }
-  array = json_to_array(json);
-
-  if (index >= array->table.size()) {
-    return -1;
-  }
-
-  array->table[index] = std::move(value);
-
-  return 0;
-}
-
-int json_array_append(const json_ref& json, json_ref value) {
-  if (!value)
-    return -1;
-
-  if (!json || !json.isArray() || json.get() == value.get()) {
-    return -1;
-  }
-  json_to_array(json)->table.push_back(std::move(value));
-  return 0;
-}
-
-int json_array_insert_new(
-    const json_ref& json,
-    size_t index,
-    json_ref&& value) {
-  if (!value)
-    return -1;
-
-  if (!json || !json.isArray() || json.get() == value.get()) {
-    return -1;
-  }
-  auto array = json_to_array(json);
-  if (index > array->table.size()) {
-    return -1;
-  }
-
-  auto it = array->table.begin();
-  std::advance(it, index);
-
-  array->table.insert(it, std::move(value));
-  return 0;
-}
-
-int json_array_remove(const json_ref& json, size_t index) {
-  json_array_t* array;
-
-  if (!json || !json.isArray()) {
-    return -1;
-  }
-  array = json_to_array(json);
-
-  if (index > array->table.size()) {
-    return -1;
-  }
-
-  auto it = array->table.begin();
-  std::advance(it, index);
-
-  array->table.erase(it);
-  return 0;
-}
-
 static int json_array_equal(const json_ref& array1, const json_ref& array2) {
   size_t i, size;
 
@@ -483,14 +406,12 @@ static int json_array_equal(const json_ref& array1, const json_ref& array2) {
 }
 
 static json_ref json_array_deep_copy(const json_ref& array) {
-  auto result = json_array();
-  if (!result)
-    return nullptr;
+  std::vector<json_ref> result;
 
   for (auto& elem : array.array())
-    json_array_append(result, json_deep_copy(elem));
+    result.push_back(json_deep_copy(elem));
 
-  return result;
+  return json_array(std::move(result));
 }
 
 /*** string ***/

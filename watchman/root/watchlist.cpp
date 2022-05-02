@@ -71,7 +71,7 @@ bool findEnclosingRoot(
 
 json_ref w_root_stop_watch_all() {
   std::vector<Root*> roots;
-  json_ref stopped = json_array();
+  std::vector<json_ref> stopped;
 
   Root::SaveGlobalStateHook saveGlobalStateHook = nullptr;
 
@@ -103,26 +103,26 @@ json_ref w_root_stop_watch_all() {
           saveGlobalStateHook == root->getSaveGlobalStateHook(),
           "all roots must contain the same saveGlobalStateHook");
     }
-    json_array_append(stopped, w_string_to_json(root->root_path));
+    stopped.push_back(w_string_to_json(root->root_path));
   }
 
   if (saveGlobalStateHook) {
     saveGlobalStateHook();
   }
 
-  return stopped;
+  return json_array(std::move(stopped));
 }
 
 json_ref w_root_watch_list_to_json() {
-  auto arr = json_array();
+  std::vector<json_ref> arr;
 
   auto map = watched_roots.rlock();
   for (const auto& it : *map) {
     auto root = it.second;
-    json_array_append(arr, w_string_to_json(root->root_path));
+    arr.push_back(w_string_to_json(root->root_path));
   }
 
-  return arr;
+  return json_array(std::move(arr));
 }
 
 std::vector<RootDebugStatus> Root::getStatusForAllRoots() {
@@ -264,16 +264,16 @@ RootDebugStatus Root::getStatus() const {
 }
 
 json_ref Root::triggerListToJson() const {
-  auto arr = json_array();
+  std::vector<json_ref> arr;
   {
     auto map = triggers.rlock();
     for (const auto& it : *map) {
       const auto& cmd = it.second;
-      json_array_append(arr, cmd->definition);
+      arr.push_back(cmd->definition);
     }
   }
 
-  return arr;
+  return json_array(std::move(arr));
 }
 
 void w_root_free_watched_roots() {

@@ -815,10 +815,11 @@ std::unique_ptr<DirHandle> FSEventsWatcher::startWatchDir(
 json_ref FSEventsWatcher::getDebugInfo() {
   json_ref events = json_null();
   if (ringBuffer_) {
-    events = json_array();
+    std::vector<json_ref> elements;
     for (auto& entry : ringBuffer_->readAll()) {
-      json_array_append(events, entry.asJsonValue());
+      elements.push_back(entry.asJsonValue());
     }
+    events = json_array(std::move(elements));
   }
   return json_object({
       {"events", events},

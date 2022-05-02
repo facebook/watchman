@@ -41,7 +41,7 @@ void ClientStateAssertions::queueAssertion(
 }
 
 json_ref ClientStateAssertions::debugStates() const {
-  auto states = json_array();
+  std::vector<json_ref> states;
   for (const auto& state_q : states_) {
     for (const auto& state : state_q.second) {
       auto obj = json_object();
@@ -60,10 +60,10 @@ json_ref ClientStateAssertions::debugStates() const {
           obj.set("state", w_string_to_json("Done"));
           break;
       }
-      json_array_append(states, obj);
+      states.push_back(std::move(obj));
     }
   }
-  return states;
+  return json_array(std::move(states));
 }
 
 bool ClientStateAssertions::removeAssertion(

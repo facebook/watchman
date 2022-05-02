@@ -18,13 +18,13 @@
 using namespace watchman;
 
 void w_cmd_realpath_root(Command& command) {
-  auto& args = command.args();
+  std::vector<json_ref> args = command.args().array();
 
-  if (json_array_size(args) < 1) {
+  if (args.empty()) {
     throw CommandValidationError("wrong number of arguments");
   }
 
-  const char* path = json_string_value(json_array_get(args, 0));
+  const char* path = json_string_value(args[0]);
   if (!path) {
     throw CommandValidationError(
         "second argument must be a string expressing the path to the watch");
@@ -32,7 +32,7 @@ void w_cmd_realpath_root(Command& command) {
 
   try {
     auto resolved = realPath(path);
-    args.array()[0] = w_string_to_json(resolved);
+    args[0] = w_string_to_json(resolved);
   } catch (const std::exception& exc) {
     throw CommandValidationError(
         "Could not resolve ",
@@ -40,6 +40,8 @@ void w_cmd_realpath_root(Command& command) {
         " to the canonical watch path: ",
         exc.what());
   }
+
+  command.args() = json_array(std::move(args));
 }
 W_CAP_REG("clock-sync-timeout")
 
@@ -200,14 +202,16 @@ bool find_project_root(
 // relpath will hold the path to the project dir, relative to the
 // watched dir.  If it is NULL it means that the project dir is
 // equivalent to the watched dir.
-static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
+static w_string resolve_projpath(
+    std::vector<json_ref>& args,
+    w_string& relpath) {
   const char* path;
   bool enforcing;
-  if (json_array_size(args) < 2) {
+  if (args.size() < 2) {
     throw CommandValidationError("wrong number of arguments");
   }
 
-  path = json_string_value(json_array_get(args, 1));
+  path = json_string_value(args[1]);
   if (!path) {
     throw CommandValidationError("second argument must be a string");
   }
@@ -230,14 +234,14 @@ static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
   if (findEnclosingRoot(resolved, prefix, relpiece)) {
     relpath = relpiece.asWString();
     resolved = prefix.asWString();
-    json_array_set_new(args, 1, w_string_to_json(resolved));
+    args[1] = w_string_to_json(resolved);
     return resolved;
   }
   auto resolvedpiece = resolved.piece();
   if (find_project_root(root_files, resolvedpiece, relpiece)) {
     relpath = relpiece.asWString();
     resolved = resolvedpiece.asWString();
-    json_array_set_new(args, 1, w_string_to_json(resolved));
+    args[1] = w_string_to_json(resolved);
     return resolved;
   }
 
@@ -304,9 +308,9 @@ static json_ref cmd_watch_project(Client* client, const json_ref& args) {
   }
 
   w_string rel_path_from_watch;
-  auto dir_to_watch = resolve_projpath(args, rel_path_from_watch);
-
-  auto root = resolveOrCreateRoot(client, args);
+  std::vector<json_ref> args_array = args.array();
+  auto dir_to_watch = resolve_projpath(args_array, rel_path_from_watch);
+  auto root = resolveOrCreateRoot(client, json_array(std::move(args_array)));
 
   root->view()->waitUntilReadyToQuery().get();
 

@@ -112,12 +112,13 @@ class json_ref {
     }
   }
 
-  /** Returns a reference to the underlying array.
+  /**
+   * Returns a reference to the underlying array.
    * Throws domain_error if this is not an array.
    * This is useful both for iterating the array contents
-   * and for returning the size of the array. */
+   * and for returning the size of the array.
+   */
   const std::vector<json_ref>& array() const;
-  std::vector<json_ref>& array();
 
   /** Returns a reference to the underlying map object.
    * Throws domain_error if this is not an object.
@@ -192,8 +193,6 @@ json_ref json_object();
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values);
 json_ref json_object_of_size(size_t nelems);
-json_ref json_array();
-json_ref json_array_of_size(size_t nelems);
 json_ref json_array(std::vector<json_ref> values);
 json_ref json_array(std::initializer_list<json_ref> values);
 json_ref w_string_to_json(w_string str);
@@ -246,20 +245,8 @@ json_object_set_nocheck(const json_ref& object, const char* key, const json_ref&
 
 size_t json_array_size(const json_ref& array);
 json_ref json_array_get(const json_ref& array, size_t index);
-int json_array_set_new(const json_ref& array, size_t index, json_ref&& value);
-int json_array_append(const json_ref& array, json_ref value);
-int json_array_insert_new(const json_ref& array, size_t index, json_ref&& value);
-int json_array_remove(const json_ref& array, size_t index);
 int json_array_set_template_new(const json_ref& json, json_ref&& templ);
 json_ref json_array_get_template(const json_ref& array);
-
-inline int json_array_set(const json_ref& array, size_t index, json_t* value) {
-  return json_array_set_new(array, index, json_ref(value));
-}
-
-inline int json_array_insert(const json_ref& array, size_t index, json_t* value) {
-  return json_array_insert_new(array, index, json_ref(value));
-}
 
 const char* json_string_value(const json_ref& string);
 json_int_t json_integer_value(const json_ref& integer);
@@ -430,13 +417,12 @@ struct Serde<std::optional<T>> {
 template <typename T>
 struct Serde<std::vector<T>> {
   static json_ref toJson(const std::vector<T>& v) {
-    auto a = json_array();
-    auto& arr = a.array();
+    std::vector<json_ref> arr;
     arr.reserve(v.size());
     for (const auto& element : v) {
       arr.push_back(json::to(element));
     }
-    return a;
+    return json_array(std::move(arr));
   }
 
   static std::vector<T> fromJson(const json_ref& j) {

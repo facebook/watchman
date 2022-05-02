@@ -17,15 +17,19 @@ void encode_doubles(benchmark::State& state) {
   // Produce a variety of doubles.
   constexpr double B = 3.7;
 
-  auto arr = json_array_of_size(N);
+  std::vector<json_ref> arr;
+  arr.reserve(N);
+
   double value = 1;
   for (size_t i = 0; i < N; ++i) {
-    json_array_append(arr, json_real(value));
+    arr.push_back(json_real(value));
     value *= B;
   }
 
+  json_ref array = json_array(std::move(arr));
+
   for (auto _ : state) {
-    benchmark::DoNotOptimize(json_dumps(arr, JSON_COMPACT));
+    benchmark::DoNotOptimize(json_dumps(array, JSON_COMPACT));
   }
 }
 BENCHMARK(encode_doubles);
@@ -33,13 +37,16 @@ BENCHMARK(encode_doubles);
 void encode_zero_point_zero(benchmark::State& state) {
   constexpr size_t N = 500;
 
-  auto arr = json_array_of_size(N);
+  std::vector<json_ref> arr;
+  arr.reserve(N);
   for (size_t i = 0; i < N; ++i) {
-    json_array_append(arr, json_real(0));
+    arr.push_back(json_real(0));
   }
 
+  json_ref array = json_array(std::move(arr));
+
   for (auto _ : state) {
-    benchmark::DoNotOptimize(json_dumps(arr, JSON_COMPACT));
+    benchmark::DoNotOptimize(json_dumps(array, JSON_COMPACT));
   }
 }
 BENCHMARK(encode_zero_point_zero);
@@ -50,14 +57,16 @@ void decode_doubles(benchmark::State& state) {
   // Produce a variety of doubles.
   constexpr double B = 3.7;
 
-  auto arr = json_array_of_size(N);
+  std::vector<json_ref> arr;
+  arr.reserve(N);
   double value = 1;
   for (size_t i = 0; i < N; ++i) {
-    json_array_append(arr, json_real(value));
+    arr.push_back(json_real(value));
     value *= B;
   }
 
-  auto encoded = json_dumps(arr, JSON_COMPACT);
+  json_ref array = json_array(std::move(arr));
+  auto encoded = json_dumps(array, JSON_COMPACT);
 
   for (auto _ : state) {
     json_error_t err;

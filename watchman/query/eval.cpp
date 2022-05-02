@@ -201,12 +201,13 @@ static void execute_common(
     res->isFreshInstance |= since_clock && since_clock->is_fresh_instance;
   }
   if (sample && !ctx->namesToLog.empty()) {
-    auto nameList = json_array_of_size(ctx->namesToLog.size());
+    std::vector<json_ref> nameList;
+    nameList.reserve(ctx->namesToLog.size());
     for (auto& name : ctx->namesToLog) {
-      nameList.array().push_back(w_string_to_json(name));
+      nameList.push_back(w_string_to_json(name));
 
       // Avoid listing everything!
-      if (nameList.array().size() >= 12) {
+      if (nameList.size() >= 12) {
         break;
       }
     }
@@ -214,7 +215,8 @@ static void execute_common(
     sample->add_meta(
         "num_special_files_in_result_set",
         json_integer(ctx->namesToLog.size()));
-    sample->add_meta("special_files_in_result_set", std::move(nameList));
+    sample->add_meta(
+        "special_files_in_result_set", json_array(std::move(nameList)));
     sample->force_log();
   }
 

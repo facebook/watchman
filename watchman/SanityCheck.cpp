@@ -81,7 +81,7 @@ void check_my_sock(watchman_stream* client) {
  * Run clock command for the specified root. Useful for getting time
  * information.
  */
-void check_clock_command(watchman_stream* client, json_ref& root) {
+void check_clock_command(watchman_stream* client, const json_ref& root) {
   PduBuffer buf;
   json_error_t jerr;
 

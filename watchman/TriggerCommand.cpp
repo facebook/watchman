@@ -197,12 +197,12 @@ void spawn_command(
   }
 
   // Compute args
-  auto args = json_deep_copy(cmd->command);
+  std::vector<json_ref> args = cmd->command.array();
 
   if (cmd->append_files) {
     // Measure how much space the base args take up
-    for (size_t i = 0; i < json_array_size(args); i++) {
-      const char* ele = json_string_value(json_array_get(args, i));
+    for (size_t i = 0; i < args.size(); i++) {
+      const char* ele = json_string_value(args[i]);
 
       argspace_remaining -= strlen(ele) + 1 + sizeof(char*);
     }
@@ -222,7 +222,7 @@ void spawn_command(
       }
       argspace_remaining -= size;
 
-      json_array_append(args, w_string_to_json(item));
+      args.push_back(w_string_to_json(item));
     }
   }
 
@@ -275,7 +275,8 @@ void spawn_command(
       cmd->current_proc->kill();
       cmd->current_proc->wait();
     }
-    cmd->current_proc = std::make_unique<ChildProcess>(args, std::move(opts));
+    cmd->current_proc = std::make_unique<ChildProcess>(
+        json_array(std::move(args)), std::move(opts));
   } catch (const std::exception& exc) {
     log(ERR,
         "trigger ",

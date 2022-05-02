@@ -318,13 +318,14 @@ void QueryFieldList::add(const w_string& name) {
 }
 
 json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
-  auto templ = json_array_of_size(fieldList.size());
+  std::vector<json_ref> templ;
+  templ.reserve(fieldList.size());
 
   for (auto& f : fieldList) {
-    json_array_append(templ, w_string_to_json(f->name));
+    templ.push_back(w_string_to_json(f->name));
   }
 
-  return templ;
+  return json_array(std::move(templ));
 }
 
 void parse_field_list(json_ref field_list, QueryFieldList* selected) {

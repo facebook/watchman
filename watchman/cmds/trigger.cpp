@@ -115,16 +115,17 @@ static json_ref build_legacy_trigger(
   }
 
   n = json_array_size(args) - next_arg;
-  auto command = json_array_of_size(n);
+  std::vector<json_ref> command;
+  command.reserve(n);
   for (i = 0; i < n; i++) {
     auto ele = args.at(i + next_arg);
     if (!ele.isString()) {
       client->sendErrorResponse("expected argument {} to be a string", i);
       return nullptr;
     }
-    json_array_append(command, ele);
+    command.push_back(std::move(ele));
   }
-  json_object_set_new(trig, "command", std::move(command));
+  json_object_set_new(trig, "command", json_array(std::move(command)));
 
   return trig;
 }

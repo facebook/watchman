@@ -142,6 +142,7 @@ void QueryContext::fetchEvalBatchNow() {
 RenderResult QueryContext::renderResults() {
   std::optional<json_ref> templ;
   if (query->fieldList.size() > 1) {
+    // build a template for the serializer
     templ = field_list_to_json_name_array(query->fieldList);
   }
   return RenderResult{std::move(resultsArray), std::move(templ)};

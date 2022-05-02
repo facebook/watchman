@@ -671,22 +671,18 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
 }
 
 static json_ref parse_array(lex_t* lex, size_t flags, json_error_t* error) {
-  auto array = json_array();
-  if (!array)
-    return nullptr;
+  std::vector<json_ref> array;
 
   lex_scan(lex, error);
   if (lex->token == ']')
-    return array;
+    return json_array(array);
 
   while (lex->token) {
     auto elem = parse_value(lex, flags, error);
     if (!elem)
       goto error;
 
-    if (json_array_append(array, std::move(elem))) {
-      goto error;
-    }
+    array.push_back(std::move(elem));
 
     lex_scan(lex, error);
     if (lex->token != ',')
@@ -700,7 +696,7 @@ static json_ref parse_array(lex_t* lex, size_t flags, json_error_t* error) {
     goto error;
   }
 
-  return array;
+  return json_array(std::move(array));
 
 error:
   return nullptr;
