@@ -161,18 +161,9 @@ void cfg_set_global(const char* name, const json_ref& val) {
   state->global_cfg.set(name, json_ref(val));
 }
 
-static json_ref cfg_get_raw(const char* name, const json_ref* optr) {
-  json_ref val;
-
-  if (*optr) {
-    val = optr->get_default(name);
-  }
-  return val;
-}
-
 json_ref cfg_get_json(const char* name) {
   auto state = configState.rlock();
-  return cfg_get_raw(name, &state->global_cfg);
+  return state->global_cfg.get_default(name);
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
@@ -418,10 +409,7 @@ json_ref Configuration::get(const char* name) const {
   auto state = configState.rlock();
 
   // then: global config options
-  if (!val) {
-    val = cfg_get_raw(name, &state->global_cfg);
-  }
-  return val;
+  return state->global_cfg.get_default(name);
 }
 
 const char* Configuration::getString(const char* name, const char* defval)
