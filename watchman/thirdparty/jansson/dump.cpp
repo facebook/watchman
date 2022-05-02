@@ -358,9 +358,7 @@ int json_dumpf(const json_ref& json, FILE* output, size_t flags) {
 }
 
 int json_dump_file(const json_ref& json, const char* path, size_t flags) {
-  std::unique_ptr<FILE, int(*)(FILE*)> output{
-    fopen(path, "w"),
-    &fclose};
+  std::unique_ptr<FILE, int (*)(FILE*)> output{fopen(path, "w"), &fclose};
   if (!output)
     return -1;
 
@@ -372,8 +370,12 @@ int json_dump_callback(
     json_dump_callback_t callback,
     void* data,
     size_t flags) {
+  if (!json) {
+    return -1;
+  }
+
   if (!(flags & JSON_ENCODE_ANY)) {
-    if (!json_is_array(json) && !json_is_object(json))
+    if (!json.isArray() && !json.isObject())
       return -1;
   }
 

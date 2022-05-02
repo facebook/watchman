@@ -129,14 +129,14 @@ bool json_ref::asBool() const {
 /*** object ***/
 
 const std::unordered_map<w_string, json_ref>& json_ref::object() const {
-  if (!json_is_object(ref_)) {
+  if (!*this || type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::object() called for non-object");
   }
   return json_to_object(ref_)->map;
 }
 
 std::unordered_map<w_string, json_ref>& json_ref::object() {
-  if (!json_is_object(ref_)) {
+  if (!*this || type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::object() called for non-object");
   }
   return json_to_object(ref_)->map;
@@ -165,14 +165,12 @@ json_ref json_object() {
   return json_object_of_size(0);
 }
 
-size_t json_object_size(const json_t* json) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
+size_t json_object_size(const json_ref& json) {
+  if (!json || !json.isObject()) {
     return 0;
+  }
 
-  object = json_to_object(json);
-  return object->map.size();
+  return json_to_object(json)->map.size();
 }
 
 typename std::unordered_map<w_string, json_ref>::iterator
@@ -182,7 +180,7 @@ json_object_t::findCString(const char* key) {
 }
 
 const json_ref& json_ref::get(const char* key) const {
-  if (!json_is_object(ref_)) {
+  if (!*this || type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::get called on a non object type");
   }
   auto object = json_to_object(ref_);
@@ -195,7 +193,7 @@ const json_ref& json_ref::get(const char* key) const {
 }
 
 json_ref json_ref::get_default(const char* key, json_ref defval) const {
-  if (!json_is_object(ref_)) {
+  if (!*this || type() != JSON_OBJECT) {
     return defval;
   }
   auto object = json_to_object(ref_);
@@ -206,13 +204,12 @@ json_ref json_ref::get_default(const char* key, json_ref defval) const {
   return it->second;
 }
 
-json_t* json_object_get(const json_t* json, const char* key) {
-  json_object_t* object;
+json_ref json_object_get(const json_ref& json, const char* key) {
+  if (!json || !json.isObject()) {
+    return nullptr;
+  }
 
-  if (!json_is_object(json))
-    return NULL;
-
-  object = json_to_object(json);
+  auto* object = json_to_object(json);
   auto it = object->findCString(key);
   if (it == object->map.end()) {
     return nullptr;
@@ -221,18 +218,20 @@ json_t* json_object_get(const json_t* json, const char* key) {
 }
 
 int json_object_set_new_nocheck(
-    json_t* json,
+    const json_ref& json,
     const char* key,
     json_ref&& value) {
-  json_object_t* object;
+  if (!json || !json.isObject()) {
+    return -1;
+  }
 
   if (!value)
     return -1;
 
-  if (!key || !json_is_object(json) || json == value) {
+  if (!key || json == value) {
     return -1;
   }
-  object = json_to_object(json);
+  auto* object = json_to_object(json);
 
   w_string key_string(key);
   object->map[key_string] = std::move(value);
@@ -263,70 +262,13 @@ int json_object_set_new(json_t* json, const char* key, json_ref&& value) {
   return json_object_set_new_nocheck(json, key, std::move(value));
 }
 
-int json_object_del(json_t* json, const char* key) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
-    return -1;
-
-  object = json_to_object(json);
-  auto it = object->findCString(key);
-  if (it == object->map.end()) {
-    return -1;
-  }
-  object->map.erase(it);
-  return 0;
-}
-
-int json_object_clear(json_t* json) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
-    return -1;
-
-  object = json_to_object(json);
-  object->map.clear();
-
-  return 0;
-}
-
-int json_object_update(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
+int json_object_update(const json_ref& src, const json_ref& target) {
+  if (!src || !target || !src.isObject() || !target.isObject())
     return -1;
 
   auto target_obj = json_to_object(target);
   for (auto& it : json_to_object(src)->map) {
     target_obj->map[it.first] = it.second;
-  }
-
-  return 0;
-}
-
-int json_object_update_existing(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    auto find = target_obj->map.find(it.first);
-    if (find != target_obj->map.end()) {
-      target_obj->map[it.first] = it.second;
-    }
-  }
-
-  return 0;
-}
-
-int json_object_update_missing(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    auto find = target_obj->map.find(it.first);
-    if (find == target_obj->map.end()) {
-      target_obj->map[it.first] = it.second;
-    }
   }
 
   return 0;
@@ -377,14 +319,14 @@ json_array_t::json_array_t(std::initializer_list<json_ref> values)
     : json_t(JSON_ARRAY), table(values) {}
 
 const std::vector<json_ref>& json_ref::array() const {
-  if (!json_is_array(ref_)) {
+  if (!*this || !isArray()) {
     throw std::domain_error("json_ref::array() called for non-array");
   }
   return json_to_array(ref_)->table;
 }
 
 std::vector<json_ref>& json_ref::array() {
-  if (!json_is_array(ref_)) {
+  if (!*this || !isArray()) {
     throw std::domain_error("json_ref::array() called for non-array");
   }
   return json_to_array(ref_)->table;
@@ -402,34 +344,35 @@ json_ref json_array(std::initializer_list<json_ref> values) {
   return json_ref(new json_array_t(std::move(values)), false);
 }
 
-int json_array_set_template(json_t* json, json_t* templ) {
+int json_array_set_template(const json_ref& json, json_t* templ) {
   return json_array_set_template_new(json, json_ref(templ));
 }
 
-int json_array_set_template_new(json_t* json, json_ref&& templ) {
-  json_array_t* array;
-  if (!json_is_array(json))
+int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
+  if (!json || !json.isArray()) {
     return 0;
-  array = json_to_array(json);
-  array->templ = std::move(templ);
+  }
+  json_to_array(json)->templ = std::move(templ);
   return 1;
 }
 
-json_t* json_array_get_template(const json_t* array) {
-  if (!json_is_array(array))
+json_t* json_array_get_template(const json_ref& array) {
+  if (!array || !array.isArray()) {
     return 0;
+  }
   return json_to_array(array)->templ;
 }
 
-size_t json_array_size(const json_t* json) {
-  if (!json_is_array(json))
+size_t json_array_size(const json_ref& json) {
+  if (!json || !json.isArray()) {
     return 0;
+  }
 
   return json_to_array(json)->table.size();
 }
 
-json_ref json_array_get(const json_t* json, size_t index) {
-  if (!json_is_array(json)) {
+json_ref json_array_get(const json_ref& json, size_t index) {
+  if (!json || !json.isArray()) {
     return nullptr;
   }
   auto array = json_to_array(json);
@@ -441,13 +384,13 @@ json_ref json_array_get(const json_t* json, size_t index) {
   return array->table[index];
 }
 
-int json_array_set_new(json_t* json, size_t index, json_ref&& value) {
+int json_array_set_new(const json_ref& json, size_t index, json_ref&& value) {
   json_array_t* array;
 
   if (!value)
     return -1;
 
-  if (!json_is_array(json) || json == value) {
+  if (!json || !json.isArray() || json == value) {
     return -1;
   }
   array = json_to_array(json);
@@ -465,18 +408,21 @@ int json_array_append(const json_ref& json, json_ref value) {
   if (!value)
     return -1;
 
-  if (!json_is_array(json) || json == value) {
+  if (!json || !json.isArray() || json == value) {
     return -1;
   }
   json_to_array(json)->table.push_back(std::move(value));
   return 0;
 }
 
-int json_array_insert_new(json_t* json, size_t index, json_ref&& value) {
+int json_array_insert_new(
+    const json_ref& json,
+    size_t index,
+    json_ref&& value) {
   if (!value)
     return -1;
 
-  if (!json_is_array(json) || json == value) {
+  if (!json || !json.isArray() || json == value) {
     return -1;
   }
   auto array = json_to_array(json);
@@ -491,11 +437,12 @@ int json_array_insert_new(json_t* json, size_t index, json_ref&& value) {
   return 0;
 }
 
-int json_array_remove(json_t* json, size_t index) {
+int json_array_remove(const json_ref& json, size_t index) {
   json_array_t* array;
 
-  if (!json_is_array(json))
+  if (!json || !json.isArray()) {
     return -1;
+  }
   array = json_to_array(json);
 
   if (index > array->table.size()) {
@@ -506,27 +453,6 @@ int json_array_remove(json_t* json, size_t index) {
   std::advance(it, index);
 
   array->table.erase(it);
-  return 0;
-}
-
-int json_array_clear(json_t* json) {
-  if (!json_is_array(json))
-    return -1;
-  json_to_array(json)->table.clear();
-  return 0;
-}
-
-int json_array_extend(json_t* json, json_t* other_json) {
-  json_array_t *array, *other;
-
-  if (!json_is_array(json) || !json_is_array(other_json))
-    return -1;
-  array = json_to_array(json);
-  other = json_to_array(other_json);
-
-  array->table.insert(
-      array->table.end(), other->table.begin(), other->table.end());
-
   return 0;
 }
 
@@ -550,15 +476,13 @@ static int json_array_equal(json_t* array1, json_t* array2) {
   return 1;
 }
 
-static json_ref json_array_deep_copy(const json_t* array) {
-  size_t i;
-
+static json_ref json_array_deep_copy(const json_ref& array) {
   auto result = json_array();
   if (!result)
     return nullptr;
 
-  for (i = 0; i < json_array_size(array); i++)
-    json_array_append(result, json_deep_copy(json_array_get(array, i)));
+  for (auto& elem : array.array())
+    json_array_append(result, json_deep_copy(elem));
 
   return result;
 }
@@ -713,10 +637,10 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
   if (json1 == json2)
     return 1;
 
-  if (json_is_object(json1))
+  if (json1.isObject())
     return json_object_equal(json1, json2);
 
-  if (json_is_array(json1))
+  if (json1.isArray())
     return json_array_equal(json1, json2);
 
   if (json1.isString())
@@ -737,10 +661,10 @@ json_ref json_deep_copy(const json_ref& json) {
   if (!json)
     return nullptr;
 
-  if (json_is_object(json))
+  if (json.isObject())
     return json_object_deep_copy(json);
 
-  if (json_is_array(json))
+  if (json.isArray())
     return json_array_deep_copy(json);
 
   // For the rest of the types, the values are immutable, so just increment the

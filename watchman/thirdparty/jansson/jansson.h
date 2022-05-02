@@ -189,8 +189,6 @@ class json_ref {
 inline json_type json_typeof(const json_t* json) {
   return json->type;
 }
-#define json_is_object(json) (json && json_typeof(json) == JSON_OBJECT)
-#define json_is_array(json) (json && json_typeof(json) == JSON_ARRAY)
 
 /* construction, destruction, reference counting */
 
@@ -231,18 +229,14 @@ struct json_error_t {
 
 /* getters, setters, manipulation */
 
-size_t json_object_size(const json_t* object);
-json_t* json_object_get(const json_t* object, const char* key);
+size_t json_object_size(const json_ref& object);
+json_ref json_object_get(const json_ref& object, const char* key);
 int json_object_set_new(json_t* object, const char* key, json_ref&& value);
 int json_object_set_new_nocheck(
-    json_t* object,
+    const json_ref& object,
     const char* key,
     json_ref&& value);
-int json_object_del(json_t* object, const char* key);
-int json_object_clear(json_t* object);
-int json_object_update(const json_t* src, json_t* target);
-int json_object_update_existing(const json_t* src, json_t* target);
-int json_object_update_missing(const json_t* src, json_t* target);
+int json_object_update(const json_ref& src, const json_ref& target);
 
 inline int json_object_set(json_t* object, const char* key, json_t* value) {
   return json_object_set_new(object, key, json_ref(value));
@@ -253,23 +247,21 @@ json_object_set_nocheck(json_t* object, const char* key, json_t* value) {
   return json_object_set_new_nocheck(object, key, json_ref(value));
 }
 
-size_t json_array_size(const json_t* array);
-json_ref json_array_get(const json_t* array, size_t index);
-int json_array_set_new(json_t* array, size_t index, json_ref&& value);
+size_t json_array_size(const json_ref& array);
+json_ref json_array_get(const json_ref& array, size_t index);
+int json_array_set_new(const json_ref& array, size_t index, json_ref&& value);
 int json_array_append(const json_ref& array, json_ref value);
-int json_array_insert_new(json_t* array, size_t index, json_ref&& value);
-int json_array_remove(json_t* array, size_t index);
-int json_array_clear(json_t* array);
-int json_array_extend(json_t* array, json_t* other);
-int json_array_set_template(json_t* array, json_t* templ);
-int json_array_set_template_new(json_t* json, json_ref&& templ);
-json_t* json_array_get_template(const json_t* array);
+int json_array_insert_new(const json_ref& array, size_t index, json_ref&& value);
+int json_array_remove(const json_ref& array, size_t index);
+int json_array_set_template(const json_ref& array, json_t* templ);
+int json_array_set_template_new(const json_ref& json, json_ref&& templ);
+json_t* json_array_get_template(const json_ref& array);
 
-inline int json_array_set(json_t* array, size_t index, json_t* value) {
+inline int json_array_set(const json_ref& array, size_t index, json_t* value) {
   return json_array_set_new(array, index, json_ref(value));
 }
 
-inline int json_array_insert(json_t* array, size_t index, json_t* value) {
+inline int json_array_insert(const json_ref& array, size_t index, json_t* value) {
   return json_array_insert_new(array, index, json_ref(value));
 }
 

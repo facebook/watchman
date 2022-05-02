@@ -242,12 +242,12 @@ bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   }
 }
 
-static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data);
+static int bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data);
 
 static int bser_template(
     const bser_ctx_t* ctx,
-    const json_t* array,
-    const json_t* templ,
+    const json_ref& array,
+    const json_ref& templ,
     void* data) {
   size_t n = json_array_size(array);
   size_t i, pn;
@@ -302,7 +302,8 @@ static int bser_template(
   return 0;
 }
 
-static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data) {
+static int
+bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data) {
   size_t n = json_array_size(array);
   size_t i;
 
