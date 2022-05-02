@@ -60,6 +60,7 @@ h1, h2, h3, h4 {
   transition: opacity 0.2s ease-in-out;
   width: 100%;
   z-index: 9999;
+  top: 60px;
 
   &.visible {
     opacity: 1.0;
@@ -973,6 +974,11 @@ a.blockButton {
   margin: 0 auto;
   text-align: center;
   color: white;
+  height: 30px;
+  position: fixed;
+  z-index: 100;
+  min-width: 100%;
+  background: #1F242A;
 
   a {
     color: #f2f2f2;
