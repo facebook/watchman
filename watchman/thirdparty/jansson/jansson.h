@@ -194,6 +194,7 @@ json_ref json_object(
 json_ref json_object_of_size(size_t nelems);
 json_ref json_array();
 json_ref json_array_of_size(size_t nelems);
+json_ref json_array(std::vector<json_ref> values);
 json_ref json_array(std::initializer_list<json_ref> values);
 json_ref w_string_to_json(w_string str);
 

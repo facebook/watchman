@@ -245,7 +245,7 @@ json_ref ClientSubscription::buildSubscriptionResults(
         DBG,
         "subscription {} generated {} results\n",
         name,
-        res.resultsArray.array().size());
+        res.resultsArray.results.size());
 
     position = res.clockAtStartOfQuery;
 
@@ -266,7 +266,7 @@ json_ref ClientSubscription::buildSubscriptionResults(
     // and the mergeBase has changed or this is a fresh instance.
     bool mergeBaseChanged = scmAwareQuery &&
         res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
-    if (res.resultsArray.array().empty() && !mergeBaseChanged &&
+    if (res.resultsArray.results.empty() && !mergeBaseChanged &&
         !res.isFreshInstance) {
       updateSubscriptionTicks(&res);
       return nullptr;
@@ -286,7 +286,7 @@ json_ref ClientSubscription::buildSubscriptionResults(
     response.set(
         {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
          {"clock", res.clockAtStartOfQuery.toJson()},
-         {"files", std::move(res.resultsArray)},
+         {"files", std::move(res.resultsArray).toJson()},
          {"root", w_string_to_json(root->root_path)},
          {"subscription", w_string_to_json(name)},
          {"unilateral", json_true()}});

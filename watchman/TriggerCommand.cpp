@@ -72,7 +72,7 @@ ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
 
   // Adjust result to fit within the specified limit
   if (cmd->max_files_stdin > 0) {
-    auto& fileList = res->resultsArray.array();
+    auto& fileList = res->resultsArray.results;
     auto n_files = std::min(size_t(cmd->max_files_stdin), fileList.size());
     fileList.resize(std::min(fileList.size(), n_files));
   }
@@ -103,8 +103,8 @@ ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
       PduBuffer buffer;
 
       logf(DBG, "input_json: sending json object to stm\n");
-      auto encodeResult =
-          buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0);
+      auto encodeResult = buffer.jsonEncodeToStream(
+          std::move(res->resultsArray).toJson(), stdin_file.get(), 0);
       if (encodeResult.hasError()) {
         logf(
             ERR,
@@ -115,7 +115,7 @@ ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
       break;
     }
     case input_name_list:
-      for (auto& name : res->resultsArray.array()) {
+      for (auto& name : res->resultsArray.results) {
         auto& nameStr = json_to_w_string(name);
         if (stdin_file->write(nameStr.data(), nameStr.size()) !=
                 (int)nameStr.size() ||
@@ -155,7 +155,7 @@ void spawn_command(
   // Record an overflow before we call prepare_stdin(), which mutates
   // and resizes the results to fit the specified limit.
   if (cmd->max_files_stdin > 0 &&
-      res->resultsArray.array().size() > cmd->max_files_stdin) {
+      res->resultsArray.results.size() > cmd->max_files_stdin) {
     file_overflow = true;
   }
 
@@ -493,7 +493,7 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
         "trigger \"",
         triggername,
         "\" generated ",
-        res.resultsArray.array().size(),
+        res.resultsArray.results.size(),
         " results\n");
 
     // create a new spec that will be used the next time
@@ -507,7 +507,7 @@ bool TriggerCommand::maybeSpawn(const std::shared_ptr<Root>& root) {
         res.clockAtStartOfQuery.position().ticks,
         " ticks next time\n");
 
-    if (!res.resultsArray.array().empty()) {
+    if (!res.resultsArray.results.empty()) {
       didRun = true;
       spawn_command(root, this, &res, saved_spec.get());
     }

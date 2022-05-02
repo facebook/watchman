@@ -139,19 +139,12 @@ void QueryContext::fetchEvalBatchNow() {
   w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
 }
 
-json_ref QueryContext::renderResults() {
-  // build a template for the serializer
-  auto results = json_array();
+RenderResult QueryContext::renderResults() {
+  std::optional<json_ref> templ;
   if (query->fieldList.size() > 1) {
-    json_array_set_template_new(
-        results, field_list_to_json_name_array(query->fieldList));
+    templ = field_list_to_json_name_array(query->fieldList);
   }
-
-  for (auto& result : resultsArray) {
-    json_array_append(results, std::move(result));
-  }
-
-  return results;
+  return RenderResult{std::move(resultsArray), std::move(templ)};
 }
 
 void QueryContext::maybeRender(std::unique_ptr<FileResult>&& file) {

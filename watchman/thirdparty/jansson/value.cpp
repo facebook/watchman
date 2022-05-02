@@ -254,7 +254,10 @@ void json_ref::set(const char* key, json_ref&& val) {
   json_to_object(ref_)->map[key_string] = std::move(val);
 }
 
-int json_object_set_new(const json_ref& json, const char* key, json_ref&& value) {
+int json_object_set_new(
+    const json_ref& json,
+    const char* key,
+    json_ref&& value) {
   if (!key || !utf8_check_string(key, -1)) {
     return -1;
   }
@@ -313,6 +316,9 @@ json_array_t::json_array_t(size_t sizeHint) : json_t(JSON_ARRAY) {
   table.reserve(std::max(sizeHint, size_t(8)));
 }
 
+json_array_t::json_array_t(std::vector<json_ref> values)
+    : json_t(JSON_ARRAY), table(std::move(values)) {}
+
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
     : json_t(JSON_ARRAY), table(values) {}
 
@@ -336,6 +342,10 @@ json_ref json_array_of_size(size_t nelems) {
 
 json_ref json_array() {
   return json_array_of_size(8);
+}
+
+json_ref json_array(std::vector<json_ref> values) {
+  return json_ref(new json_array_t(std::move(values)), false);
 }
 
 json_ref json_array(std::initializer_list<json_ref> values) {
@@ -536,7 +546,9 @@ json_int_t json_ref::asInt() const {
   return json_integer_value(ref_);
 }
 
-static int json_integer_equal(const json_ref& integer1, const json_ref& integer2) {
+static int json_integer_equal(
+    const json_ref& integer1,
+    const json_ref& integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
 }
 

@@ -9,6 +9,14 @@
 
 namespace watchman {
 
+json_ref RenderResult::toJson() && {
+  auto arr = json_array(std::move(results));
+  if (templ) {
+    json_array_set_template_new(arr, std::move(*templ));
+  }
+  return arr;
+}
+
 json_ref QueryDebugInfo::render() const {
   auto arr = json_array();
   for (auto& fn : cookieFileNames) {

@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include "watchman/Clock.h"
 #include "watchman/query/QueryExpr.h"
+#include "watchman/query/QueryResult.h"
 
 struct watchman_file;
 
@@ -98,11 +99,12 @@ struct QueryContext : QueryContextBase {
   const w_string& getWholeName() override;
 
   /**
-   * Returns a JSON array containing the query results.
+   * Returns a JSON array containing the query results. Also returns an optional
+   * template, for use by json_array_set_template.
    *
    * Consumes the resultsArray field.
    */
-  json_ref renderResults();
+  RenderResult renderResults();
 
   // Adds `file` to the currently accumulating batch of files
   // that require data to be loaded.

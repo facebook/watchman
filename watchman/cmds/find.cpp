@@ -34,7 +34,7 @@ static json_ref cmd_find(Client* client, const json_ref& args) {
   auto response = make_response();
   response.set(
       {{"clock", res.clockAtStartOfQuery.toJson()},
-       {"files", std::move(res.resultsArray)}});
+       {"files", std::move(res.resultsArray).toJson()}});
 
   return response;
 }
