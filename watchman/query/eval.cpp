@@ -328,16 +328,9 @@ QueryResult w_query_execute(
               root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
                   modifiedMergebase, requestId);
 
-          auto pathList = json_array_of_size(changedFiles.size());
-          for (auto& f : changedFiles) {
-            json_array_append(pathList, w_string_to_json(f));
-          }
-
           auto spec = r->view()->getMostRecentRootNumberAndTickValue();
           ClockStamp clock{spec.ticks, ::time(nullptr)};
-          for (auto& pathEntry : pathList.array()) {
-            auto path = json_to_w_string(pathEntry);
-
+          for (const auto& path : changedFiles) {
             auto fullPath = w_string::pathCat({r->root_path, path});
             if (!c->fileMatchesRelativeRoot(fullPath)) {
               continue;
