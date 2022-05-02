@@ -135,7 +135,7 @@ bool ClientStateAssertions::isStateAsserted(w_string stateName) const {
 namespace {
 
 json_ref getIgnoreVcs(const Configuration& config) {
-  json_ref ignores = config.get("ignore_vcs");
+  std::optional<json_ref> ignores = config.get("ignore_vcs");
   if (!ignores) {
     // default to a well-known set of vcs's
     return json_array(
@@ -144,11 +144,11 @@ json_ref getIgnoreVcs(const Configuration& config) {
          typed_string_to_json(".hg")});
   }
 
-  if (!ignores.isArray()) {
+  if (!ignores->isArray()) {
     throw std::runtime_error("ignore_vcs must be an array of strings");
   }
 
-  return ignores;
+  return *ignores;
 }
 
 /**
@@ -197,11 +197,11 @@ IgnoreSet computeIgnoreSet(
   IgnoreSet result;
 
   if (auto ignores = config.get("ignore_dirs")) {
-    if (!ignores.isArray()) {
+    if (!ignores->isArray()) {
       logf(ERR, "ignore_dirs must be an array of strings\n");
     } else {
-      for (size_t i = 0; i < json_array_size(ignores); i++) {
-        auto jignore = json_array_get(ignores, i);
+      for (size_t i = 0; i < json_array_size(*ignores); i++) {
+        auto jignore = json_array_get(*ignores, i);
 
         if (!jignore.isString()) {
           logf(ERR, "ignore_dirs must be an array of strings\n");

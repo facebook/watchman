@@ -397,11 +397,10 @@ namespace watchman {
 
 Configuration::Configuration(const json_ref& local) : local_(local) {}
 
-json_ref Configuration::get(const char* name) const {
+std::optional<json_ref> Configuration::get(const char* name) const {
   // Highest precedence: options set locally
-  json_ref val;
   if (local_) {
-    val = local_.get_default(name);
+    json_ref val = local_.get_default(name);
     if (val) {
       return val;
     }
@@ -409,64 +408,66 @@ json_ref Configuration::get(const char* name) const {
   auto state = configState.rlock();
 
   // then: global config options
-  return state->global_cfg.get_default(name);
+
+  json_ref val = state->global_cfg.get_default(name);
+  if (val) {
+    return val;
+  } else {
+    return std::nullopt;
+  }
 }
 
 const char* Configuration::getString(const char* name, const char* defval)
     const {
   auto val = get(name);
-
-  if (val) {
-    if (!val.isString()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a string"));
-    }
-    return json_string_value(val);
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isString()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a string"));
+  }
+  return json_string_value(*val);
 }
 
 json_int_t Configuration::getInt(const char* name, json_int_t defval) const {
   auto val = get(name);
-
-  if (val) {
-    if (!val.isInt()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be an integer"));
-    }
-    return val.asInt();
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isInt()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be an integer"));
+  }
+  return val->asInt();
 }
 
 bool Configuration::getBool(const char* name, bool defval) const {
   auto val = get(name);
-
-  if (val) {
-    if (!val.isBool()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a boolean"));
-    }
-    return val.asBool();
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isBool()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a boolean"));
+  }
+  return val->asBool();
 }
 
 double Configuration::getDouble(const char* name, double defval) const {
   auto val = get(name);
-
-  if (val) {
-    if (!val.isNumber()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a number"));
-    }
-    return json_real_value(val);
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isNumber()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a number"));
+  }
+  return json_real_value(*val);
 }
 
 } // namespace watchman

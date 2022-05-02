@@ -31,7 +31,7 @@ std::vector<w_string> computeUnconditionalLogFilePrefixes() {
 
   std::vector<w_string> result;
   if (names) {
-    for (auto name : names.array()) {
+    for (auto& name : names->array()) {
       result.push_back(json_to_w_string(name));
     }
   }
