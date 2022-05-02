@@ -420,7 +420,7 @@ void w_leave_state(
     watchman::UserClient* client,
     std::shared_ptr<watchman::ClientStateAssertion> assertion,
     bool abandoned,
-    json_t* metadata) {
+    const json_ref& metadata) {
   // Broadcast about the state leave
   auto payload = json_object(
       {{"root", w_string_to_json(assertion->root->root_path)},

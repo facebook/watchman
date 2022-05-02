@@ -128,7 +128,7 @@ static void check_roundtrip(
   ASSERT_TRUE(expected) << "loaded " << input << " " << jerr.text;
   if (template_text) {
     templ = json_loads(template_text, 0, &jerr);
-    json_array_set_template(expected, templ);
+    json_array_set_template_new(expected, std::move(templ));
   }
 
   auto dump_buf = bdumps(bser_version, bser_capabilities, expected);

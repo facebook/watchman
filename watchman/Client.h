@@ -206,4 +206,4 @@ void w_leave_state(
     watchman::UserClient* client,
     std::shared_ptr<watchman::ClientStateAssertion> assertion,
     bool abandoned,
-    json_t* metadata);
+    const json_ref& metadata);

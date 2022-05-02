@@ -49,24 +49,24 @@ struct json_integer_t : json_t {
   json_integer_t(json_int_t value);
 };
 
-inline json_object_t* json_to_object(const json_t* json) {
-  return static_cast<json_object_t*>(const_cast<json_t*>(json));
+inline json_object_t* json_to_object(const json_ref& json) {
+  return static_cast<json_object_t*>(const_cast<json_t*>(json.get()));
 }
 
-inline json_array_t* json_to_array(const json_t* json) {
-  return static_cast<json_array_t*>(const_cast<json_t*>(json));
+inline json_array_t* json_to_array(const json_ref& json) {
+  return static_cast<json_array_t*>(const_cast<json_t*>(json.get()));
 }
 
-inline json_string_t* json_to_string(const json_t* json) {
-  return static_cast<json_string_t*>(const_cast<json_t*>(json));
+inline json_string_t* json_to_string(const json_ref& json) {
+  return static_cast<json_string_t*>(const_cast<json_t*>(json.get()));
 }
 
-inline json_real_t* json_to_real(const json_t* json) {
-  return static_cast<json_real_t*>(const_cast<json_t*>(json));
+inline json_real_t* json_to_real(const json_ref& json) {
+  return static_cast<json_real_t*>(const_cast<json_t*>(json.get()));
 }
 
-inline json_integer_t* json_to_integer(const json_t* json) {
-  return static_cast<json_integer_t*>(const_cast<json_t*>(json));
+inline json_integer_t* json_to_integer(const json_ref& json) {
+  return static_cast<json_integer_t*>(const_cast<json_t*>(json.get()));
 }
 
 void jsonp_error_init(json_error_t* error, const char* source);

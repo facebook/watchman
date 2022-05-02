@@ -228,7 +228,7 @@ int json_object_set_new_nocheck(
   if (!value)
     return -1;
 
-  if (!key || json == value) {
+  if (!key || json.get() == value.get()) {
     return -1;
   }
   auto* object = json_to_object(json);
@@ -254,7 +254,7 @@ void json_ref::set(const char* key, json_ref&& val) {
   json_to_object(ref_)->map[key_string] = std::move(val);
 }
 
-int json_object_set_new(json_t* json, const char* key, json_ref&& value) {
+int json_object_set_new(const json_ref& json, const char* key, json_ref&& value) {
   if (!key || !utf8_check_string(key, -1)) {
     return -1;
   }
@@ -274,7 +274,7 @@ int json_object_update(const json_ref& src, const json_ref& target) {
   return 0;
 }
 
-static int json_object_equal(json_t* object1, json_t* object2) {
+static int json_object_equal(const json_ref& object1, const json_ref& object2) {
   if (json_object_size(object1) != json_object_size(object2))
     return 0;
 
@@ -294,10 +294,8 @@ static int json_object_equal(json_t* object1, json_t* object2) {
   return 1;
 }
 
-static json_ref json_object_deep_copy(const json_t* object) {
-  json_t* result;
-
-  result = json_object();
+static json_ref json_object_deep_copy(const json_ref& object) {
+  json_ref result = json_object();
   if (!result)
     return nullptr;
 
@@ -344,7 +342,7 @@ json_ref json_array(std::initializer_list<json_ref> values) {
   return json_ref(new json_array_t(std::move(values)), false);
 }
 
-int json_array_set_template(const json_ref& json, json_t* templ) {
+int json_array_set_template(const json_ref& json, const json_ref& templ) {
   return json_array_set_template_new(json, json_ref(templ));
 }
 
@@ -356,9 +354,9 @@ int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
   return 1;
 }
 
-json_t* json_array_get_template(const json_ref& array) {
+json_ref json_array_get_template(const json_ref& array) {
   if (!array || !array.isArray()) {
-    return 0;
+    return nullptr;
   }
   return json_to_array(array)->templ;
 }
@@ -390,7 +388,7 @@ int json_array_set_new(const json_ref& json, size_t index, json_ref&& value) {
   if (!value)
     return -1;
 
-  if (!json || !json.isArray() || json == value) {
+  if (!json || !json.isArray() || json.get() == value.get()) {
     return -1;
   }
   array = json_to_array(json);
@@ -408,7 +406,7 @@ int json_array_append(const json_ref& json, json_ref value) {
   if (!value)
     return -1;
 
-  if (!json || !json.isArray() || json == value) {
+  if (!json || !json.isArray() || json.get() == value.get()) {
     return -1;
   }
   json_to_array(json)->table.push_back(std::move(value));
@@ -422,7 +420,7 @@ int json_array_insert_new(
   if (!value)
     return -1;
 
-  if (!json || !json.isArray() || json == value) {
+  if (!json || !json.isArray() || json.get() == value.get()) {
     return -1;
   }
   auto array = json_to_array(json);
@@ -456,7 +454,7 @@ int json_array_remove(const json_ref& json, size_t index) {
   return 0;
 }
 
-static int json_array_equal(json_t* array1, json_t* array2) {
+static int json_array_equal(const json_ref& array1, const json_ref& array2) {
   size_t i, size;
 
   size = json_array_size(array1);
@@ -464,10 +462,8 @@ static int json_array_equal(json_t* array1, json_t* array2) {
     return 0;
 
   for (i = 0; i < size; i++) {
-    json_t *value1, *value2;
-
-    value1 = json_array_get(array1, i);
-    value2 = json_array_get(array2, i);
+    auto value1 = json_array_get(array1, i);
+    auto value2 = json_array_get(array2, i);
 
     if (!json_equal(value1, value2))
       return 0;
@@ -516,7 +512,7 @@ const w_string& json_to_w_string(const json_ref& json) {
   return json_to_string(json)->value;
 }
 
-static int json_string_equal(json_t* string1, json_t* string2) {
+static int json_string_equal(const json_ref& string1, const json_ref& string2) {
   return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
@@ -540,7 +536,7 @@ json_int_t json_ref::asInt() const {
   return json_integer_value(ref_);
 }
 
-static int json_integer_equal(json_t* integer1, json_t* integer2) {
+static int json_integer_equal(const json_ref& integer1, const json_ref& integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
 }
 
@@ -563,7 +559,7 @@ double json_real_value(const json_ref& json) {
   return json_to_real(json)->value;
 }
 
-static int json_real_equal(json_t* real1, json_t* real2) {
+static int json_real_equal(const json_ref& real1, const json_ref& real2) {
   return json_real_value(real1) == json_real_value(real2);
 }
 
@@ -634,7 +630,7 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
     return 0;
 
   /* this covers true, false and null as they are singletons */
-  if (json1 == json2)
+  if (json1.get() == json2.get())
     return 1;
 
   if (json1.isObject())

@@ -82,7 +82,7 @@ class json_ref {
   json_ref(json_ref&& other) noexcept;
   json_ref& operator=(json_ref&& other) noexcept;
 
-  /* implicit */ operator json_t*() const {
+  json_t* get() const {
     return ref_;
   }
 
@@ -227,19 +227,19 @@ struct json_error_t {
 
 size_t json_object_size(const json_ref& object);
 json_ref json_object_get(const json_ref& object, const char* key);
-int json_object_set_new(json_t* object, const char* key, json_ref&& value);
+int json_object_set_new(const json_ref& object, const char* key, json_ref&& value);
 int json_object_set_new_nocheck(
     const json_ref& object,
     const char* key,
     json_ref&& value);
 int json_object_update(const json_ref& src, const json_ref& target);
 
-inline int json_object_set(json_t* object, const char* key, json_t* value) {
+inline int json_object_set(const json_ref& object, const char* key, const json_ref& value) {
   return json_object_set_new(object, key, json_ref(value));
 }
 
 inline int
-json_object_set_nocheck(json_t* object, const char* key, json_t* value) {
+json_object_set_nocheck(const json_ref& object, const char* key, const json_ref& value) {
   return json_object_set_new_nocheck(object, key, json_ref(value));
 }
 
@@ -249,9 +249,8 @@ int json_array_set_new(const json_ref& array, size_t index, json_ref&& value);
 int json_array_append(const json_ref& array, json_ref value);
 int json_array_insert_new(const json_ref& array, size_t index, json_ref&& value);
 int json_array_remove(const json_ref& array, size_t index);
-int json_array_set_template(const json_ref& array, json_t* templ);
 int json_array_set_template_new(const json_ref& json, json_ref&& templ);
-json_t* json_array_get_template(const json_ref& array);
+json_ref json_array_get_template(const json_ref& array);
 
 inline int json_array_set(const json_ref& array, size_t index, json_t* value) {
   return json_array_set_new(array, index, json_ref(value));

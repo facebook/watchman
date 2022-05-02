@@ -281,20 +281,25 @@ static int do_dump(
       }
 
       if (flags & JSON_SORT_KEYS) {
-        using Pair = std::pair<w_string, json_t*>;
-        std::vector<Pair> items(object->map.begin(), object->map.end());
+        using Pair = std::pair<const w_string, json_ref>;
 
-        std::sort(items.begin(), items.end(), [](const Pair& a, const Pair& b) {
-          return a.first < b.first;
+        std::vector<Pair*> items;
+        items.reserve(object->map.size());
+        for (auto& item : object->map) {
+          items.push_back(&item);
+        }
+
+        std::sort(items.begin(), items.end(), [](const Pair* a, const Pair* b) {
+          return a->first < b->first;
         });
 
         auto sorted_it = items.begin();
         while (sorted_it != items.end()) {
           auto next = std::next(sorted_it);
 
-          dump_string(sorted_it->first.c_str(), dump, data, flags);
+          dump_string((*sorted_it)->first.c_str(), dump, data, flags);
           if (dump(separator, separator_length, data) ||
-              do_dump(sorted_it->second, flags, depth + 1, dump, data)) {
+              do_dump((*sorted_it)->second, flags, depth + 1, dump, data)) {
             return -1;
           }
 
