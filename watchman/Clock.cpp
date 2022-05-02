@@ -54,7 +54,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
     return false;
   };
 
-  switch (json_typeof(value)) {
+  switch (value.type()) {
     case JSON_INTEGER:
       spec = Timestamp{static_cast<time_t>(value.asInt())};
       return;

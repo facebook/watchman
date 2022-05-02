@@ -176,7 +176,7 @@ static int do_dump(
     int depth,
     json_dump_callback_t dump,
     void* data) {
-  switch (json_typeof(json)) {
+  switch (json.type()) {
     case JSON_NULL:
       return dump("null", 4, data);
 

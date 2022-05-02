@@ -630,7 +630,7 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
   if (!json1 || !json2)
     return 0;
 
-  if (json_typeof(json1) != json_typeof(json2))
+  if (json1.type() != json2.type())
     return 0;
 
   /* this covers true, false and null as they are singletons */

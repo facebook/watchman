@@ -186,10 +186,6 @@ class json_ref {
   json_int_t asInt() const;
 };
 
-inline json_type json_typeof(const json_t* json) {
-  return json->type;
-}
-
 /* construction, destruction, reference counting */
 
 json_ref json_object();

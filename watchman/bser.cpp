@@ -367,13 +367,11 @@ static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
 }
 
 int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
-  int type = json_typeof(json);
-
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
-  switch (type) {
+  switch (json.type()) {
     case JSON_NULL:
       return ctx->dump(&bser_null, sizeof(bser_null), data);
     case JSON_TRUE:
