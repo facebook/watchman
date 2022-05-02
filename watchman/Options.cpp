@@ -406,13 +406,11 @@ w_getopt(const OptDesc* opts, int* argcp, char*** argvp) {
             case REQ_INT: {
               auto ival = atoi(optarg);
               *(int*)o->val = ival;
-              cfg_set_arg(o->optname, json_integer(ival));
               break;
             }
             case REQ_STRING: {
               auto sval = typed_string_to_json(optarg, W_STRING_UNICODE);
               *(std::string*)o->val = optarg;
-              cfg_set_arg(o->optname, sval);
               break;
             }
             case OPT_NONE:;
@@ -421,7 +419,6 @@ w_getopt(const OptDesc* opts, int* argcp, char*** argvp) {
         if (o->argtype == OPT_NONE && o->val) {
           auto bval = json_true();
           *(int*)o->val = 1;
-          cfg_set_arg(o->optname, bval);
         }
     }
 

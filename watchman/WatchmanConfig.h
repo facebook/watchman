@@ -12,7 +12,6 @@
 class w_string;
 
 void cfg_shutdown();
-void cfg_set_arg(const char* name, const json_ref& val);
 void cfg_load_global_config_file();
 w_string cfg_get_global_config_file_path();
 json_ref cfg_get_json(const char* name);

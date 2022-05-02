@@ -14,22 +14,6 @@
 
 using namespace watchman;
 
-TEST(Perf, thread_shutdown) {
-  cfg_set_arg("perf_logger_command", json_array({w_string_to_json("echo")}));
-  SCOPE_EXIT {
-    // We must call perf_shutdown() before cfg_shutdown(),
-    // since the perf thread accesses configuration data.
-    perf_shutdown();
-    cfg_shutdown();
-  };
-
-  PerfSample sample("test");
-  sample.force_log();
-  auto logged = sample.finish();
-  EXPECT_TRUE(logged);
-  sample.log();
-}
-
 namespace {
 json_ref make_sample(int i) {
   return json_object({std::make_pair("value", json_integer(i))});

@@ -19,7 +19,6 @@ namespace {
 struct ConfigState {
   json_ref global_cfg;
   w_string global_config_file_path;
-  json_ref arg_cfg;
 };
 folly::Synchronized<ConfigState> configState;
 
@@ -127,7 +126,6 @@ std::optional<json_ref> loadUserConfig() {
 void cfg_shutdown() {
   auto state = configState.wlock();
   state->global_cfg.reset();
-  state->arg_cfg.reset();
 }
 
 w_string cfg_get_global_config_file_path() {
@@ -154,15 +152,6 @@ void cfg_load_global_config_file() {
   }
 }
 
-void cfg_set_arg(const char* name, const json_ref& val) {
-  auto state = configState.wlock();
-  if (!state->arg_cfg) {
-    state->arg_cfg = json_object();
-  }
-
-  state->arg_cfg.set(name, json_ref(val));
-}
-
 void cfg_set_global(const char* name, const json_ref& val) {
   auto state = configState.wlock();
   if (!state->global_cfg) {
@@ -182,16 +171,8 @@ static json_ref cfg_get_raw(const char* name, const json_ref* optr) {
 }
 
 json_ref cfg_get_json(const char* name) {
-  json_ref val;
   auto state = configState.rlock();
-
-  // Highest precedence: command line arguments
-  val = cfg_get_raw(name, &state->arg_cfg);
-  // then: global config options
-  if (!val) {
-    val = cfg_get_raw(name, &state->global_cfg);
-  }
-  return val;
+  return cfg_get_raw(name, &state->global_cfg);
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
@@ -436,10 +417,6 @@ json_ref Configuration::get(const char* name) const {
   }
   auto state = configState.rlock();
 
-  // then: command line arguments
-  if (!val) {
-    val = cfg_get_raw(name, &state->arg_cfg);
-  }
   // then: global config options
   if (!val) {
     val = cfg_get_raw(name, &state->global_cfg);
