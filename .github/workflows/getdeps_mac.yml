@@ -69,8 +69,6 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch fizz
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests fizz
-    - name: Fetch flex
-      run: python3 build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch wangle
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests wangle
     - name: Fetch fbthrift
