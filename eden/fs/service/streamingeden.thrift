@@ -125,6 +125,34 @@ struct HgEvent {
 }
 
 /**
+ * The value of a stream item.
+ *
+ * Each stream item refers to a single file, along with the file status and its
+ * type.
+ */
+struct ChangedFileResult {
+  1: eden.PathString name;
+  2: eden.ScmFileStatus status;
+  // Dtype for this file which may be set to UNKNOWN.
+  3: eden.Dtype dtype;
+}
+
+/**
+ * Return value of the streamChangesSince.
+ */
+struct ChangesSinceResult {
+  1: eden.JournalPosition toPosition;
+}
+
+/**
+ * Argument to streamChangesSince API.
+ */
+struct StreamChangesSinceParams {
+  1: eden.PathString mountPoint;
+  2: eden.JournalPosition fromPosition;
+}
+
+/**
  * This Thrift service defines streaming functions. It is separate from
  * EdenService because older Thrift runtimes do not support Thrift streaming,
  * primarily javadeprecated which is used by Buck. When Buck is updated to
@@ -173,4 +201,27 @@ service StreamingEdenService extends eden.EdenService {
    * started, and finished.
    */
   stream<HgEvent> traceHgEvents(1: eden.PathString mountPoint);
+
+  /**
+   * Returns a stream of changes since the given JournalPosition.
+   *
+   * Files are returned in no special order and aren't guaranteed to be unique.
+   * For instance, a checkout from A to B and then back to A may return all the
+   * files changed in between these revisions twice, once for the first
+   * transition, a second time for the second transition.
+   *
+   * Since the stream can potentially contain a lot of files, clients are
+   * advised to implement some bounding mechanism and close the stream when too
+   * many files have been received.
+   *
+   * Along with the stream, this returns a ChangesSinceResult containing a
+   * JournalPosition to inform the client about the last position considered.
+   * Future calls to streamChangesSince should query from that JournalPosition
+   * to avoid losing information.
+   */
+  ChangesSinceResult, stream<
+    ChangedFileResult throws (1: eden.EdenError ex)
+  > streamChangesSince(1: StreamChangesSinceParams params) throws (
+    1: eden.EdenError ex,
+  );
 }
