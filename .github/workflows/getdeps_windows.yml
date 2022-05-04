@@ -40,8 +40,6 @@ jobs:
       run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch bison
       run: python build/fbcode_builder/getdeps.py fetch --no-tests bison
-    - name: Fetch flex
-      run: python build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch fmt
       run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch googletest
@@ -92,8 +90,6 @@ jobs:
       run: python build/fbcode_builder/getdeps.py build --no-tests glog
     - name: Build bison
       run: python build/fbcode_builder/getdeps.py build --no-tests bison
-    - name: Build flex
-      run: python build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build fmt
       run: python build/fbcode_builder/getdeps.py build --no-tests fmt
     - name: Build googletest
@@ -131,7 +127,7 @@ jobs:
     - name: Build fb303
       run: python build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
-      run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman 
+      run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Copy artifacts
       run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/windows  --final-install-prefix /usr/local
     - uses: actions/upload-artifact@v2
@@ -139,4 +135,4 @@ jobs:
         name: watchman
         path: _artifacts
     - name: Test watchman
-      run: python build/fbcode_builder/getdeps.py test --src-dir=. watchman 
+      run: python build/fbcode_builder/getdeps.py test --src-dir=. watchman
