@@ -1633,6 +1633,12 @@ service EdenService extends fb303_core.BaseService {
   void debugCompactLocalStorage() throws (1: EdenError ex);
 
   /**
+   * Requests EdenFS to drop all pending backing store fetches.
+   * Returns the number of requests EdenFS dropped from the queue.
+   */
+  i64 debugDropAllPendingRequests() throws (1: EdenError ex);
+
+  /**
   * Unloads unused Inodes from a directory inside a mountPoint whose last
   * access time is older than the specified age.
   *
