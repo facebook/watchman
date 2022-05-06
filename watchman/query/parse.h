@@ -35,7 +35,9 @@ std::shared_ptr<watchman::Query> parseQueryLegacy(
 
 void w_query_legacy_field_list(watchman::QueryFieldList* flist);
 
-void parse_field_list(json_ref field_list, watchman::QueryFieldList* selected);
+void parse_field_list(
+    const std::optional<json_ref>& field_list,
+    watchman::QueryFieldList* selected);
 json_ref field_list_to_json_name_array(
     const watchman::QueryFieldList& fieldList);
 

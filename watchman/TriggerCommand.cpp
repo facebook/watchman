@@ -30,11 +30,12 @@ void parse_redirection(
     const char* label) {
   *flags = 0;
 
-  auto ele = trig.get_default(label);
-  if (!ele) {
+  auto maybe = trig.get_optional(label);
+  if (!maybe) {
     // Specifying a redirection is optional
     return;
   }
+  auto& ele = *maybe;
 
   if (!ele.isString()) {
     throw CommandValidationError(label, " must be a string");
@@ -258,9 +259,9 @@ void spawn_command(
     working_dir = root->root_path;
   }
 
-  auto cwd = cmd->definition.get_default("chdir");
+  auto cwd = cmd->definition.get_optional("chdir");
   if (cwd) {
-    auto target = json_to_w_string(cwd);
+    auto target = json_to_w_string(*cwd);
     if (w_is_path_absolute_cstr_len(target.data(), target.size())) {
       working_dir = target;
     } else {
@@ -308,13 +309,13 @@ TriggerCommand::TriggerCommand(
       savedStateFactory_{savedStateFactory},
       ping_(w_event_make_sockets()) {
   auto queryDef = json_object();
-  auto expr = definition.get_default("expression");
+  auto expr = definition.get_optional("expression");
   if (expr) {
-    queryDef.set("expression", json_ref(expr));
+    queryDef.set("expression", json_ref(*expr));
   }
-  auto relative_root = definition.get_default("relative_root");
+  auto relative_root = definition.get_optional("relative_root");
   if (relative_root) {
-    json_object_set_nocheck(queryDef, "relative_root", relative_root);
+    json_object_set_nocheck(queryDef, "relative_root", *relative_root);
   }
 
   query = parseQuery(root, queryDef);
@@ -322,16 +323,17 @@ TriggerCommand::TriggerCommand(
     return;
   }
 
-  auto name = trig.get_default("name");
-  if (!name || !name.isString()) {
+  auto name = trig.get_optional("name");
+  if (!name || !name->isString()) {
     throw CommandValidationError("invalid or missing name");
   }
-  triggername = json_to_w_string(name);
+  triggername = json_to_w_string(*name);
 
-  command = definition.get_default("command");
-  if (!command || !command.isArray() || !json_array_size(command)) {
+  auto cmd = definition.get_optional("command");
+  if (!cmd || !cmd->isArray() || !json_array_size(*cmd)) {
     throw CommandValidationError("invalid command array");
   }
+  command = *cmd;
 
   append_files = trig.get_default("append_files", json_false()).asBool();
   if (append_files) {
@@ -345,14 +347,14 @@ TriggerCommand::TriggerCommand(
     query->dedup_results = true;
   }
 
-  auto ele = definition.get_default("stdin");
+  auto ele = definition.get_optional("stdin");
   if (!ele) {
     stdin_style = input_dev_null;
-  } else if (ele.isArray()) {
+  } else if (ele->isArray()) {
     stdin_style = input_json;
     parse_field_list(ele, &query->fieldList);
-  } else if (ele.isString()) {
-    const char* str = json_string_value(ele);
+  } else if (ele->isString()) {
+    const char* str = json_string_value(*ele);
     if (!strcmp(str, "/dev/null")) {
       stdin_style = input_dev_null;
     } else if (!strcmp(str, "NAME_PER_LINE")) {
@@ -412,7 +414,7 @@ void TriggerCommand::run(const std::shared_ptr<Root>& root) {
         subscriber_->getPending(pending);
         bool seenSettle = false;
         for (auto& item : pending) {
-          if (item->payload.get_default("settled")) {
+          if (item->payload.get_optional("settled")) {
             seenSettle = true;
             break;
           }

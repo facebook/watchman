@@ -20,13 +20,13 @@ using ms = std::chrono::milliseconds;
 struct state_arg {
   w_string name;
   ms sync_timeout;
-  json_ref metadata = nullptr;
+  std::optional<json_ref> metadata;
 };
 
 // Parses the args for state-enter and state-leave
 static void parse_state_arg(Client*, const json_ref& args, state_arg* parsed) {
   parsed->sync_timeout = kDefaultQuerySyncTimeout;
-  parsed->metadata = nullptr;
+  parsed->metadata = std::nullopt;
   parsed->name = nullptr;
 
   if (json_array_size(args) != 3) {
@@ -45,7 +45,7 @@ static void parse_state_arg(Client*, const json_ref& args, state_arg* parsed) {
 
   // [cmd, root, {name:, metadata:, sync_timeout:}]
   parsed->name = json_to_w_string(state_args.get("name"));
-  parsed->metadata = state_args.get_default("metadata");
+  parsed->metadata = state_args.get_optional("metadata");
   parsed->sync_timeout =
       ms(state_args
              .get_default(
@@ -123,7 +123,7 @@ static UntypedResponse cmd_state_enter(
              {"clock", std::move(clock)},
              {"state-enter", w_string_to_json(parsed.name)}});
         if (parsed.metadata) {
-          payload.set("metadata", json_ref(parsed.metadata));
+          payload.set("metadata", json_ref(*parsed.metadata));
         }
 
         {
@@ -222,7 +222,8 @@ static UntypedResponse cmd_state_leave(
           return;
         }
         // Notify and exit the state
-        w_leave_state(nullptr, assertion, false, parsed.metadata);
+        w_leave_state(
+            nullptr, assertion, false, parsed.metadata.value_or(nullptr));
       })
       .via(&getThreadPool());
   return response;

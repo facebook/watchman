@@ -43,17 +43,17 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
       }
 
       auto& params = arr[0];
-      auto req_cap = params.get_default("required");
-      auto opt_cap = params.get_default("optional");
-      if (req_cap && req_cap.isArray()) {
-        auto& req_vec = req_cap.array();
+      auto req_cap = params.get_optional("required");
+      auto opt_cap = params.get_optional("optional");
+      if (req_cap && req_cap->isArray()) {
+        auto& req_vec = req_cap->array();
         result.required.reserve(req_vec.size());
         for (auto& cap : req_vec) {
           result.required.push_back(cap.asString());
         }
       }
-      if (opt_cap && opt_cap.isArray()) {
-        auto& opt_vec = opt_cap.array();
+      if (opt_cap && opt_cap->isArray()) {
+        auto& opt_vec = opt_cap->array();
         result.required.reserve(opt_vec.size());
         for (auto& cap : opt_vec) {
           result.optional.push_back(cap.asString());
@@ -90,11 +90,13 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
       Response result;
       json::assign(result.version, args.get("version"));
       json::assign_if(result.buildinfo, args, "buildinfo");
-      auto caps = args.get_default("capabilities");
+      auto caps = args.get_optional("capabilities");
       if (caps) {
-        json::assign(result.capabilities, caps);
+        json::assign(result.capabilities, *caps);
       }
-      result.error = args.get_default("error").asOptionalString();
+      if (auto error = args.get_optional("error")) {
+        result.error = error->asOptionalString();
+      }
       return result;
     }
   };

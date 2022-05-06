@@ -495,13 +495,13 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
   query->subscriptionName = json_to_w_string(jname);
 
-  json_ref defer_list = query_spec.get_default("defer");
-  if (defer_list && !defer_list.isArray()) {
+  auto defer_list = query_spec.get_optional("defer");
+  if (defer_list && !defer_list->isArray()) {
     throw ErrorResponse("defer field must be an array of strings");
   }
 
-  json_ref drop_list = query_spec.get_default("drop");
-  if (drop_list && !drop_list.isArray()) {
+  auto drop_list = query_spec.get_optional("drop");
+  if (drop_list && !drop_list->isArray()) {
     throw ErrorResponse("drop field must be an array of strings");
   }
 
@@ -520,14 +520,14 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
     size_t i;
 
     if (defer_list) {
-      for (i = 0; i < json_array_size(defer_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(defer_list, i))] =
+      for (i = 0; i < json_array_size(*defer_list); i++) {
+        sub->drop_or_defer[json_to_w_string(json_array_get(*defer_list, i))] =
             false;
       }
     }
     if (drop_list) {
-      for (i = 0; i < json_array_size(drop_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(drop_list, i))] =
+      for (i = 0; i < json_array_size(*drop_list); i++) {
+        sub->drop_or_defer[json_to_w_string(json_array_get(*drop_list, i))] =
             true;
       }
     }

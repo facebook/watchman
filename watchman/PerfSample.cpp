@@ -142,11 +142,11 @@ bool PerfSample::finish() {
     if (wall_time_elapsed_thresh == 0) {
       auto thresh = cfg_get_json("perf_sampling_thresh");
       if (thresh) {
-        if (thresh.isNumber()) {
-          wall_time_elapsed_thresh = json_number_value(thresh);
+        if (thresh->isNumber()) {
+          wall_time_elapsed_thresh = json_number_value(*thresh);
         } else {
           wall_time_elapsed_thresh = json_number_value(
-              thresh.get_default(description, json_real(0.0)));
+              thresh->get_default(description, json_real(0.0)));
         }
       }
     }
@@ -181,7 +181,7 @@ void PerfLogThread::loop() noexcept {
   auto stateDir =
       w_string_piece(flags.watchman_state_file).dirName().asWString();
 
-  json_ref perf_cmd = cfg_get_json("perf_logger_command");
+  json_ref perf_cmd = cfg_get_json("perf_logger_command").value_or(json_null());
   if (perf_cmd.isString()) {
     perf_cmd = json_array({perf_cmd});
   }

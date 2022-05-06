@@ -318,7 +318,7 @@ void UserClient::clientThread() noexcept {
                 dumped,
                 "\n");
 
-            if (item->payload.get_default("canceled")) {
+            if (item->payload.get_optional("canceled")) {
               watchman::log(
                   watchman::ERR,
                   "Cancel subscription ",
@@ -327,7 +327,7 @@ void UserClient::clientThread() noexcept {
 
               UntypedResponse resp;
               resp.set(
-                  {{"root", item->payload.get_default("root")},
+                  {{"root", item->payload.get_default("root", nullptr)},
                    {"unilateral", json_true()},
                    {"canceled", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
@@ -339,8 +339,8 @@ void UserClient::clientThread() noexcept {
               continue;
             }
 
-            if (item->payload.get_default("state-enter") ||
-                item->payload.get_default("state-leave")) {
+            if (item->payload.get_optional("state-enter") ||
+                item->payload.get_optional("state-leave")) {
               UntypedResponse resp;
               resp.insert(
                   item->payload.object().begin(), item->payload.object().end());
@@ -361,7 +361,7 @@ void UserClient::clientThread() noexcept {
               continue;
             }
 
-            if (!sub->debug_paused && item->payload.get_default("settled")) {
+            if (!sub->debug_paused && item->payload.get_optional("settled")) {
               seenSettle = true;
               continue;
             }
@@ -392,11 +392,12 @@ void UserClient::clientThread() noexcept {
       client_alive = encodeResult.hasValue();
       stm->setNonBlock(true);
 
-      json_ref subscriptionValue = response_to_send.get_default("subscription");
+      std::optional<json_ref> subscriptionValue =
+          response_to_send.get_optional("subscription");
       if (kResponseLogLimit && subscriptionValue &&
-          subscriptionValue.isString() &&
-          json_string_value(subscriptionValue)) {
-        auto subscriptionName = json_to_w_string(subscriptionValue);
+          subscriptionValue->isString() &&
+          json_string_value(*subscriptionValue)) {
+        auto subscriptionName = json_to_w_string(*subscriptionValue);
         if (auto* sub = folly::get_ptr(subscriptions, subscriptionName)) {
           if ((*sub)->lastResponses.size() >= kResponseLogLimit) {
             (*sub)->lastResponses.pop_front();

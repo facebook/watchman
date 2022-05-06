@@ -106,7 +106,10 @@ static json_ref build_legacy_trigger(
   auto query = parseQueryLegacy(root, args, 3, &next_arg, nullptr, &expr);
   query->request_id = w_string::build("trigger ", json_to_w_string(args.at(2)));
 
-  json_object_set(trig, "expression", expr.get_default("expression"));
+  json_object_set(
+      trig,
+      "expression",
+      expr.get_optional("expression").value_or(json_null()));
 
   if (next_arg >= args.array().size()) {
     throw ErrorResponse("no command was specified");

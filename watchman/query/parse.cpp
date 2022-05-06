@@ -19,12 +19,12 @@ namespace watchman {
 namespace {
 
 bool parse_since(Query* res, const json_ref& query) {
-  auto since = query.get_default("since");
+  auto since = query.get_optional("since");
   if (!since) {
     return true;
   }
 
-  auto spec = ClockSpec::parseOptionalClockSpec(since);
+  auto spec = ClockSpec::parseOptionalClockSpec(*since);
   if (spec) {
     // res owns the ref to spec
     res->since_spec = std::move(spec);
@@ -37,23 +37,23 @@ bool parse_since(Query* res, const json_ref& query) {
 bool parse_paths(Query* res, const json_ref& query) {
   size_t i;
 
-  auto paths = query.get_default("path");
+  auto paths = query.get_optional("path");
   if (!paths) {
     return true;
   }
 
-  if (!paths.isArray()) {
+  if (!paths->isArray()) {
     throw QueryParseError("'path' must be an array");
   }
 
-  auto size = json_array_size(paths);
+  auto size = json_array_size(*paths);
 
   res->paths.emplace();
   std::vector<QueryPath>& res_paths = *res->paths;
   res_paths.resize(size);
 
   for (i = 0; i < size; i++) {
-    const auto& ele = paths.at(i);
+    const auto& ele = paths->at(i);
     w_string name;
 
     res_paths[i].depth = -1;
@@ -86,16 +86,16 @@ void parse_relative_root(
     const std::shared_ptr<Root>& root,
     Query* res,
     const json_ref& query) {
-  auto relative_root = query.get_default("relative_root");
+  auto relative_root = query.get_optional("relative_root");
   if (!relative_root) {
     return;
   }
 
-  if (!relative_root.isString()) {
+  if (!relative_root->isString()) {
     throw QueryParseError("'relative_root' must be a string");
   }
 
-  auto path = json_to_w_string(relative_root).normalizeSeparators();
+  auto path = json_to_w_string(*relative_root).normalizeSeparators();
   if (path.empty()) {
     // An empty relative_root is equivalent to not specifying
     // a relative root.  Importantly, we want to avoid setting
@@ -110,26 +110,26 @@ void parse_relative_root(
 }
 
 void parse_query_expression(Query* res, const json_ref& query) {
-  auto exp = query.get_default("expression");
+  auto exp = query.get_optional("expression");
   if (!exp) {
     // Empty expression means that we emit all generated files
     return;
   }
 
-  res->expr = parseQueryExpr(res, exp);
+  res->expr = parseQueryExpr(res, *exp);
 }
 
 void parse_request_id(Query* res, const json_ref& query) {
-  auto request_id = query.get_default("request_id");
+  auto request_id = query.get_optional("request_id");
   if (!request_id) {
     return;
   }
 
-  if (!request_id.isString()) {
+  if (!request_id->isString()) {
     throw QueryParseError("'request_id' must be a string");
   }
 
-  res->request_id = json_to_w_string(request_id);
+  res->request_id = json_to_w_string(*request_id);
 }
 
 namespace {
@@ -146,13 +146,13 @@ json_int_t parse_nonnegative_integer(std::string_view name, json_ref v) {
 } // namespace
 
 void parse_sync(Query* res, const json_ref& query) {
-  auto settle_period = query.get_default("settle_period");
-  auto settle_timeout = query.get_default("settle_timeout");
+  auto settle_period = query.get_optional("settle_period");
+  auto settle_timeout = query.get_optional("settle_timeout");
   if (settle_period && settle_timeout) {
     auto settle_period_value =
-        parse_nonnegative_integer("settle_period", settle_period);
+        parse_nonnegative_integer("settle_period", *settle_period);
     auto settle_timeout_value =
-        parse_nonnegative_integer("settle_timeout", settle_timeout);
+        parse_nonnegative_integer("settle_timeout", *settle_timeout);
     Query::SettleTimeouts settle_timeouts;
     settle_timeouts.settle_period =
         std::chrono::milliseconds{settle_period_value};
@@ -234,12 +234,12 @@ void parse_always_include_directories(Query* res, const json_ref& query) {
 
 void parse_benchmark(Query* res, const json_ref& query) {
   // Preserve behavior by supporting a boolean value. Also support int values.
-  auto bench = query.get_default("bench");
+  auto bench = query.get_optional("bench");
   if (bench) {
-    if (bench.isBool()) {
+    if (bench->isBool()) {
       res->bench_iterations = 100;
     } else {
-      res->bench_iterations = bench.asInt();
+      res->bench_iterations = bench->asInt();
     }
   }
 }
@@ -292,7 +292,7 @@ std::shared_ptr<Query> parseQuery(
 
   parse_request_id(res, query);
 
-  parse_field_list(query.get_default("fields"), &res->fieldList);
+  parse_field_list(query.get_optional("fields"), &res->fieldList);
 
   res->query_spec = query;
 

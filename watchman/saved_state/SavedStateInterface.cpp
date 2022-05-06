@@ -16,20 +16,20 @@ namespace watchman {
 SavedStateInterface::~SavedStateInterface() = default;
 
 SavedStateInterface::SavedStateInterface(const json_ref& savedStateConfig) {
-  auto project = savedStateConfig.get_default("project");
+  auto project = savedStateConfig.get_optional("project");
   if (!project) {
     throw QueryParseError("'project' must be present in saved state config");
   }
-  if (!project.isString()) {
+  if (!project->isString()) {
     throw QueryParseError("'project' must be a string");
   }
-  project_ = json_to_w_string(project);
-  auto projectMetadata = savedStateConfig.get_default("project-metadata");
+  project_ = json_to_w_string(*project);
+  auto projectMetadata = savedStateConfig.get_optional("project-metadata");
   if (projectMetadata) {
-    if (!projectMetadata.isString()) {
+    if (!projectMetadata->isString()) {
       throw QueryParseError("'project-metadata' must be a string");
     }
-    projectMetadata_ = json_to_w_string(projectMetadata);
+    projectMetadata_ = json_to_w_string(*projectMetadata);
   } else {
     projectMetadata_ = w_string();
   }

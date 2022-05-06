@@ -60,27 +60,27 @@ ClockSpec::ClockSpec(const json_ref& value) {
       return;
 
     case JSON_OBJECT: {
-      auto clockStr = value.get_default("clock");
+      auto clockStr = value.get_optional("clock");
       if (clockStr) {
-        if (!parseClockString(json_string_value(clockStr))) {
+        if (!parseClockString(json_string_value(*clockStr))) {
           throw std::domain_error("invalid clockspec");
         }
       } else {
         spec = Clock{0, 0, ClockPosition{0, 0}};
       }
 
-      auto scm = value.get_default("scm");
+      auto scm = value.get_optional("scm");
       if (scm) {
         scmMergeBase = json_to_w_string(
-            scm.get_default("mergebase", w_string_to_json("")));
-        scmMergeBaseWith = json_to_w_string(scm.get("mergebase-with"));
-        auto savedState = scm.get_default("saved-state");
+            scm->get_default("mergebase", w_string_to_json("")));
+        scmMergeBaseWith = json_to_w_string(scm->get("mergebase-with"));
+        auto savedState = scm->get_optional("saved-state");
         if (savedState) {
-          savedStateConfig = savedState.get("config");
-          savedStateStorageType = json_to_w_string(savedState.get("storage"));
-          auto commitId = savedState.get_default("commit-id");
+          savedStateConfig = savedState->get("config");
+          savedStateStorageType = json_to_w_string(savedState->get("storage"));
+          auto commitId = savedState->get_optional("commit-id");
           if (commitId) {
-            savedStateCommitId = json_to_w_string(commitId);
+            savedStateCommitId = json_to_w_string(*commitId);
           } else {
             savedStateCommitId = w_string();
           }

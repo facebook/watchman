@@ -185,6 +185,18 @@ json_object_t::findCString(const char* key) {
   return map.find(key_string);
 }
 
+json_ref json_ref::get_default(const char* key, json_ref defval) const {
+  if (!*this || type() != JSON_OBJECT) {
+    return defval;
+  }
+  auto object = json_to_object(ref_);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    return defval;
+  }
+  return it->second;
+}
+
 const json_ref& json_ref::get(const char* key) const {
   if (!*this || type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::get called on a non object type");
@@ -198,14 +210,15 @@ const json_ref& json_ref::get(const char* key) const {
   return it->second;
 }
 
-json_ref json_ref::get_default(const char* key, json_ref defval) const {
+std::optional<json_ref> json_ref::get_optional(const char* key) const {
   if (!*this || type() != JSON_OBJECT) {
-    return defval;
+    return std::nullopt;
   }
+
   auto object = json_to_object(ref_);
   auto it = object->findCString(key);
   if (it == object->map.end()) {
-    return defval;
+    return std::nullopt;
   }
   return it->second;
 }

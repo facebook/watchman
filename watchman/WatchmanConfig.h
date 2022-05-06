@@ -14,7 +14,7 @@ class w_string;
 void cfg_shutdown();
 void cfg_load_global_config_file();
 w_string cfg_get_global_config_file_path();
-json_ref cfg_get_json(const char* name);
+std::optional<json_ref> cfg_get_json(const char* name);
 const char* cfg_get_string(const char* name, const char* defval);
 json_int_t cfg_get_int(const char* name, json_int_t defval);
 bool cfg_get_bool(const char* name, bool defval);

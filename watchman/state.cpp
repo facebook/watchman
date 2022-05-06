@@ -182,22 +182,22 @@ bool w_root_save_state(json_ref& state) {
 bool w_root_load_state(const json_ref& state) {
   size_t i;
 
-  auto watched = state.get_default("watched");
+  auto watched = state.get_optional("watched");
   if (!watched) {
     return true;
   }
 
-  if (!watched.isArray()) {
+  if (!watched->isArray()) {
     return false;
   }
 
-  for (i = 0; i < json_array_size(watched); i++) {
-    const auto& obj = watched.at(i);
+  for (i = 0; i < json_array_size(*watched); i++) {
+    const auto& obj = watched->at(i);
     bool created = false;
     const char* filename;
     size_t j;
 
-    auto triggers = obj.get_default("triggers");
+    auto triggers = obj.get("triggers");
     filename = json_string_value(json_object_get(obj, "path"));
 
     std::shared_ptr<Root> root;
@@ -216,7 +216,7 @@ bool w_root_load_state(const json_ref& state) {
         const auto& tobj = triggers.at(j);
 
         // Legacy rules format
-        auto rarray = tobj.get_default("rules");
+        auto rarray = tobj.get_optional("rules");
         if (rarray) {
           continue;
         }

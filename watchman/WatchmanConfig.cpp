@@ -161,23 +161,22 @@ void cfg_set_global(const char* name, const json_ref& val) {
   state->global_cfg.set(name, json_ref(val));
 }
 
-json_ref cfg_get_json(const char* name) {
+std::optional<json_ref> cfg_get_json(const char* name) {
   auto state = configState.rlock();
-  return state->global_cfg.get_default(name);
+  return state->global_cfg.get_optional(name);
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
   auto val = cfg_get_json(name);
-
-  if (val) {
-    if (!val.isString()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a string"));
-    }
-    return json_string_value(val);
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isString()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a string"));
+  }
+  return json_string_value(*val);
 }
 
 // Return true if the json ref is an array of string values
@@ -223,22 +222,22 @@ static void prepend_watchmanconfig_to_array(std::vector<json_ref>& ref) {
 json_ref cfg_compute_root_files(bool* enforcing) {
   *enforcing = false;
 
-  json_ref ref = cfg_get_json("enforce_root_files");
+  auto ref = cfg_get_json("enforce_root_files");
   if (ref) {
-    if (!ref.isBool()) {
+    if (!ref->isBool()) {
       logf(FATAL, "Expected config value enforce_root_files to be boolean\n");
     }
-    *enforcing = ref.asBool();
+    *enforcing = ref->asBool();
   }
 
   ref = cfg_get_json("root_files");
   if (ref) {
-    if (!is_array_of_strings(ref)) {
+    if (!is_array_of_strings(*ref)) {
       logf(FATAL, "global config root_files must be an array of strings\n");
       *enforcing = false;
       return nullptr;
     }
-    std::vector<json_ref> arr = ref.array();
+    std::vector<json_ref> arr = ref->array();
     prepend_watchmanconfig_to_array(arr);
     return json_array(std::move(arr));
   }
@@ -246,7 +245,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   // Try legacy root_restrict_files configuration
   ref = cfg_get_json("root_restrict_files");
   if (ref) {
-    if (!is_array_of_strings(ref)) {
+    if (!is_array_of_strings(*ref)) {
       logf(
           FATAL,
           "deprecated global config root_restrict_files "
@@ -254,7 +253,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
       *enforcing = false;
       return nullptr;
     }
-    std::vector<json_ref> arr = ref.array();
+    std::vector<json_ref> arr = ref->array();
     prepend_watchmanconfig_to_array(arr);
     *enforcing = true;
     return json_array(std::move(arr));
@@ -289,44 +288,41 @@ std::string cfg_pretty_print_root_files(const json_ref& root_files) {
 
 json_int_t cfg_get_int(const char* name, json_int_t defval) {
   auto val = cfg_get_json(name);
-
-  if (val) {
-    if (!val.isInt()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be an integer"));
-    }
-    return val.asInt();
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isInt()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be an integer"));
+  }
+  return val->asInt();
 }
 
 bool cfg_get_bool(const char* name, bool defval) {
   auto val = cfg_get_json(name);
-
-  if (val) {
-    if (!val.isBool()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a boolean"));
-    }
-    return val.asBool();
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isBool()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a boolean"));
+  }
+  return val->asBool();
 }
 
 double cfg_get_double(const char* name, double defval) {
   auto val = cfg_get_json(name);
-
-  if (val) {
-    if (!val.isNumber()) {
-      throw std::runtime_error(folly::to<std::string>(
-          "Expected config value ", name, " to be a number"));
-    }
-    return json_real_value(val);
+  if (!val) {
+    return defval;
   }
 
-  return defval;
+  if (!val->isNumber()) {
+    throw std::runtime_error(folly::to<std::string>(
+        "Expected config value ", name, " to be a number"));
+  }
+  return json_real_value(*val);
 }
 
 #ifndef _WIN32
@@ -337,15 +333,15 @@ double cfg_get_double(const char* name, double defval) {
       bool write_bits,                                              \
       bool execute_bits) {                                          \
     mode_t ret = 0;                                                 \
-    auto perm = val.get_default(#PROP);                             \
+    auto perm = val.get_optional(#PROP);                            \
     if (perm) {                                                     \
-      if (!perm.isBool()) {                                         \
+      if (!perm->isBool()) {                                        \
         logf(                                                       \
             FATAL,                                                  \
             "Expected config value {}." #PROP " to be a boolean\n", \
             name);                                                  \
       }                                                             \
-      if (perm.asBool()) {                                          \
+      if (perm->asBool()) {                                         \
         ret |= S_IR##SUFFIX;                                        \
         if (write_bits) {                                           \
           ret |= S_IW##SUFFIX;                                      \
@@ -373,12 +369,12 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
   }
 
   if (val) {
-    if (!val.isObject()) {
+    if (!val->isObject()) {
       logf(FATAL, "Expected config value {} to be an object\n", name);
     }
 
-    ret |= get_group_perm(name, val, write_bits, execute_bits);
-    ret |= get_others_perm(name, val, write_bits, execute_bits);
+    ret |= get_group_perm(name, *val, write_bits, execute_bits);
+    ret |= get_others_perm(name, *val, write_bits, execute_bits);
   }
 
   return ret;
@@ -400,21 +396,15 @@ Configuration::Configuration(const json_ref& local) : local_(local) {}
 std::optional<json_ref> Configuration::get(const char* name) const {
   // Highest precedence: options set locally
   if (local_) {
-    json_ref val = local_.get_default(name);
+    std::optional<json_ref> val = local_.get_optional(name);
     if (val) {
-      return val;
+      return std::move(*val);
     }
   }
   auto state = configState.rlock();
 
   // then: global config options
-
-  json_ref val = state->global_cfg.get_default(name);
-  if (val) {
-    return val;
-  } else {
-    return std::nullopt;
-  }
+  return state->global_cfg.get_optional(name);
 }
 
 const char* Configuration::getString(const char* name, const char* defval)

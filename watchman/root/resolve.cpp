@@ -71,19 +71,19 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
 
   auto advice_string = cfg_get_json("illegal_fstypes_advice");
   if (advice_string) {
-    advice = json_string_value(advice_string);
+    advice = json_string_value(*advice_string);
   }
   if (!advice) {
     advice = "relocate the dir to an allowed filesystem type";
   }
 
-  if (!illegal_fstypes.isArray()) {
+  if (!illegal_fstypes->isArray()) {
     logf(ERR, "resolve_root: global config illegal_fstypes is not an array\n");
     return;
   }
 
-  for (i = 0; i < json_array_size(illegal_fstypes); i++) {
-    auto obj = json_array_get(illegal_fstypes, i);
+  for (i = 0; i < json_array_size(*illegal_fstypes); i++) {
+    auto obj = json_array_get(*illegal_fstypes, i);
     const char* name = json_string_value(obj);
 
     if (!name) {

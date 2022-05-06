@@ -101,15 +101,26 @@ class json_ref {
     return ref_ != nullptr;
   }
 
-  /** Returns the value associated with key in a json object.
+  /**
+   * Returns the value associated with key in a json object.
    * Returns defval if this json value is not an object or
-   * if the key was not found. */
-  json_ref get_default(const char* key, json_ref defval = nullptr) const;
+   * if the key was not found.
+   */
+  json_ref get_default(const char* key, json_ref defval) const;
 
-  /** Returns the vaule associated with key in a json object.
+  /**
+   * Returns the value associated with key in a json object.
    * Throws domain_error if this is not a json object or
-   * a range_error if the key is not present. */
+   * a range_error if the key is not present.
+   */
   const json_ref& get(const char* key) const;
+
+  /**
+   * Returns the value associated with a key in a JSON object.
+   * Returns std::nullopt if this JSON value is not an object or if the key is
+   * not found.
+   */
+  std::optional<json_ref> get_optional(const char* key) const;
 
   /** Set key = value */
   void set(const char* key, json_ref&& val);

@@ -56,7 +56,7 @@ void check_my_sock(watchman_stream* client) {
     /* NOTREACHED */
   }
 
-  auto pid = result.get_default("pid");
+  auto pid = result.get_optional("pid");
   if (!pid) {
     log(watchman::FATAL,
         "Failed to get pid from get-pid response: ",
@@ -64,7 +64,7 @@ void check_my_sock(watchman_stream* client) {
         "\n");
     /* NOTREACHED */
   }
-  auto remote_pid = pid.asInt();
+  auto remote_pid = pid->asInt();
 
   if (remote_pid != my_pid) {
     log(watchman::FATAL,
@@ -106,14 +106,14 @@ void check_clock_command(watchman_stream* client, const json_ref& root) {
   }
 
   // Check for error in the response
-  auto error = result.get_default("error");
+  auto error = result.get_optional("error");
   if (error) {
     throw std::runtime_error(folly::to<std::string>(
-        "Clock error : ", json_to_w_string(error).view()));
+        "Clock error : ", json_to_w_string(*error).view()));
   }
 
   // We use presence of "clock" as success
-  auto clock = result.get_default("clock");
+  auto clock = result.get_optional("clock");
   if (!clock) {
     throw std::runtime_error("Failed to get clock in response");
   }
@@ -142,7 +142,7 @@ json_ref get_watch_list(watchman_stream* client) {
         " error:  ",
         folly::errnoStr(errno)));
   }
-  return result.get_default("roots");
+  return result.get("roots");
 }
 
 /**

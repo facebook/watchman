@@ -154,12 +154,12 @@ bool add_glob(GlobTree* tree, const w_string& glob_str) {
 void parse_globs(Query* res, const json_ref& query) {
   size_t i;
 
-  auto globs = query.get_default("glob");
+  auto globs = query.get_optional("glob");
   if (!globs) {
     return;
   }
 
-  if (!globs.isArray()) {
+  if (!globs->isArray()) {
     throw QueryParseError("'glob' must be an array");
   }
 
@@ -181,8 +181,8 @@ void parse_globs(Query* res, const json_ref& query) {
       (noescape.asBool() ? WM_NOESCAPE : 0);
 
   res->glob_tree = make_unique<GlobTree>("", 0);
-  for (i = 0; i < json_array_size(globs); i++) {
-    const auto& ele = globs.at(i);
+  for (i = 0; i < json_array_size(*globs); i++) {
+    const auto& ele = globs->at(i);
     const auto& pattern = json_to_w_string(ele);
 
     if (!add_glob(res->glob_tree.get(), pattern)) {
@@ -202,21 +202,21 @@ static w_string parse_suffix(const json_ref& ele) {
 }
 
 void parse_suffixes(Query* res, const json_ref& query) {
-  auto suffixes = query.get_default("suffix");
+  auto suffixes = query.get_optional("suffix");
   if (!suffixes) {
     return;
   }
 
   std::vector<json_ref> suffixArray;
-  if (suffixes.isString()) {
-    suffixArray.push_back(suffixes);
-  } else if (suffixes.isArray()) {
-    suffixArray = suffixes.array();
+  if (suffixes->isString()) {
+    suffixArray.push_back(*suffixes);
+  } else if (suffixes->isArray()) {
+    suffixArray = suffixes->array();
   } else {
     throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
-  if (query.get_default("glob")) {
+  if (query.get_optional("glob")) {
     throw QueryParseError(
         "'suffix' cannot be used together with the 'glob' generator");
   }

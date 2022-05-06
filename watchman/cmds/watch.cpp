@@ -69,13 +69,13 @@ static UntypedResponse cmd_clock(Client* client, const json_ref& args) {
           "the third argument to 'clock' must be an optional object");
     }
 
-    auto sync = opts.get_default("sync_timeout");
+    auto sync = opts.get_optional("sync_timeout");
     if (sync) {
-      if (!sync.isInt()) {
+      if (!sync->isInt()) {
         throw ErrorResponse(
             "the sync_timeout option passed to 'clock' must be an integer");
       }
-      sync_timeout = sync.asInt();
+      sync_timeout = sync->asInt();
     }
   } else if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'clock'");

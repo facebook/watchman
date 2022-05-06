@@ -328,26 +328,25 @@ json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
   return json_array(std::move(templ));
 }
 
-void parse_field_list(json_ref field_list, QueryFieldList* selected) {
-  uint32_t i;
-
+void parse_field_list(
+    const std::optional<json_ref>& maybe_field_list,
+    QueryFieldList* selected) {
   selected->clear();
 
-  if (!field_list) {
-    // Use the default list
-    field_list = json_array(
-        {typed_string_to_json("name", W_STRING_UNICODE),
-         typed_string_to_json("exists", W_STRING_UNICODE),
-         typed_string_to_json("new", W_STRING_UNICODE),
-         typed_string_to_json("size", W_STRING_UNICODE),
-         typed_string_to_json("mode", W_STRING_UNICODE)});
-  }
+  json_ref field_list = maybe_field_list
+      ? *maybe_field_list
+      : json_array(
+            {typed_string_to_json("name", W_STRING_UNICODE),
+             typed_string_to_json("exists", W_STRING_UNICODE),
+             typed_string_to_json("new", W_STRING_UNICODE),
+             typed_string_to_json("size", W_STRING_UNICODE),
+             typed_string_to_json("mode", W_STRING_UNICODE)});
 
   if (!field_list.isArray()) {
     throw QueryParseError("field list must be an array of strings");
   }
 
-  for (i = 0; i < json_array_size(field_list); i++) {
+  for (size_t i = 0; i < json_array_size(field_list); i++) {
     auto jname = json_array_get(field_list, i);
 
     if (!jname.isString()) {

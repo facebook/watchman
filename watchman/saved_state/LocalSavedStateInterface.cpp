@@ -23,12 +23,12 @@ LocalSavedStateInterface::LocalSavedStateInterface(
     const SCM* scm)
     : SavedStateInterface(savedStateConfig), scm_(scm) {
   // Max commits to search in source control history for a saved state
-  auto maxCommits = savedStateConfig.get_default("max-commits");
+  auto maxCommits = savedStateConfig.get_optional("max-commits");
   if (maxCommits) {
-    if (!maxCommits.isInt()) {
+    if (!maxCommits->isInt()) {
       throw QueryParseError("'max-commits' must be an integer");
     }
-    maxCommits_ = maxCommits.asInt();
+    maxCommits_ = maxCommits->asInt();
     if (maxCommits_ < 1) {
       throw QueryParseError("'max-commits' must be a positive integer");
     }
@@ -37,15 +37,15 @@ LocalSavedStateInterface::LocalSavedStateInterface(
   }
   // Local path to search for saved states. This path will only ever be read,
   // never written.
-  auto localStoragePath = savedStateConfig.get_default("local-storage-path");
+  auto localStoragePath = savedStateConfig.get_optional("local-storage-path");
   if (!localStoragePath) {
     throw QueryParseError(
         "'local-storage-path' must be present in saved state config");
   }
-  if (!localStoragePath.isString()) {
+  if (!localStoragePath->isString()) {
     throw QueryParseError("'local-storage-path' must be a string");
   }
-  localStoragePath_ = json_to_w_string(localStoragePath);
+  localStoragePath_ = json_to_w_string(*localStoragePath);
   if (!w_string_path_is_absolute(localStoragePath_)) {
     throw QueryParseError("'local-storage-path' must be an absolute path");
   }
