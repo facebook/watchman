@@ -62,7 +62,9 @@ parse_state_arg(Client*, const json_ref& args, struct state_arg* parsed) {
 
 namespace watchman {
 
-static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
+static UntypedResponse cmd_state_enter(
+    Client* clientbase,
+    const json_ref& args) {
   struct state_arg parsed;
   auto client = dynamic_cast<UserClient*>(clientbase);
 
@@ -89,7 +91,7 @@ static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
-  auto response = make_response();
+  UntypedResponse response;
 
   response.set(
       {{"root", w_string_to_json(root->root_path)},
@@ -149,7 +151,9 @@ static json_ref cmd_state_enter(Client* clientbase, const json_ref& args) {
 
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root);
 
-static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
+static UntypedResponse cmd_state_leave(
+    Client* clientbase,
+    const json_ref& args) {
   struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
@@ -201,7 +205,7 @@ static json_ref cmd_state_leave(Client* clientbase, const json_ref& args) {
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
-  auto response = make_response();
+  UntypedResponse response;
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)}});

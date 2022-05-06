@@ -146,8 +146,15 @@ json_object_t::json_object_t(size_t sizeHint) : json_t(JSON_OBJECT) {
   map.reserve(sizeHint);
 }
 
+json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
+    : json_t{JSON_OBJECT}, map{std::move(values)} {}
+
 json_ref json_object_of_size(size_t size) {
   return json_ref(new json_object_t(size), false);
+}
+
+json_ref json_object(std::unordered_map<w_string, json_ref> values) {
+  return json_ref(new json_object_t(std::move(values)), false);
 }
 
 json_ref json_object(

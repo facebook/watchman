@@ -18,11 +18,11 @@
 
 using namespace watchman;
 
-static json_ref cmd_shutdown(Client*, const json_ref&) {
+static UntypedResponse cmd_shutdown(Client*, const json_ref&) {
   logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("shutdown-server", json_true());
   return resp;
 }
@@ -33,7 +33,7 @@ W_CMD_REG(
     NULL);
 
 void add_root_warnings_to_response(
-    json_ref& response,
+    UntypedResponse& response,
     const std::shared_ptr<Root>& root) {
   auto info = root->recrawlInfo.rlock();
 

@@ -150,9 +150,8 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
 WATCHMAN_COMMAND(version, VersionCommand);
 
 /* list-capabilities */
-static json_ref cmd_list_capabilities(Client*, const json_ref&) {
-  auto resp = make_response();
-
+static UntypedResponse cmd_list_capabilities(Client*, const json_ref&) {
+  UntypedResponse resp;
   resp.set("capabilities", capability_get_list());
   return resp;
 }
@@ -163,8 +162,8 @@ W_CMD_REG(
     NULL);
 
 /* get-sockname */
-static json_ref cmd_get_sockname(Client*, const json_ref&) {
-  auto resp = make_response();
+static UntypedResponse cmd_get_sockname(Client*, const json_ref&) {
+  UntypedResponse resp;
 
   // For legacy reasons we report the unix domain socket as sockname on
   // unix but the named pipe path on windows
@@ -192,7 +191,7 @@ W_CMD_REG(
     CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
     NULL);
 
-static json_ref cmd_get_config(Client* client, const json_ref& args) {
+static UntypedResponse cmd_get_config(Client* client, const json_ref& args) {
   json_ref config;
 
   if (json_array_size(args) != 2) {
@@ -201,7 +200,7 @@ static json_ref cmd_get_config(Client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  auto resp = make_response();
+  UntypedResponse resp;
 
   config = root->config_file;
 

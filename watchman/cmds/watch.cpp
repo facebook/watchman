@@ -48,7 +48,7 @@ W_CAP_REG("clock-sync-timeout")
 /* Add the current clock value to the response */
 static void annotate_with_clock(
     const std::shared_ptr<Root>& root,
-    json_ref& resp) {
+    UntypedResponse& resp) {
   resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
 }
 
@@ -58,7 +58,7 @@ static void annotate_with_clock(
  * is synced up-to-date and the returned clock represents the
  * latest state.
  */
-static json_ref cmd_clock(Client* client, const json_ref& args) {
+static UntypedResponse cmd_clock(Client* client, const json_ref& args) {
   int sync_timeout = 0;
 
   // TODO: merge this parse and sync logic with the logic in query evaluation
@@ -88,7 +88,7 @@ static json_ref cmd_clock(Client* client, const json_ref& args) {
     root->syncToNow(std::chrono::milliseconds(sync_timeout));
   }
 
-  auto resp = make_response();
+  UntypedResponse resp;
   annotate_with_clock(root, resp);
 
   return resp;
@@ -101,7 +101,7 @@ W_CMD_REG(
 
 /* watch-del /root
  * Stops watching the specified root */
-static json_ref cmd_watch_delete(Client* client, const json_ref& args) {
+static UntypedResponse cmd_watch_delete(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'watch-del'");
@@ -109,7 +109,7 @@ static json_ref cmd_watch_delete(Client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       {{"watch-del", json_boolean(root->stopWatch())},
        {"root", w_string_to_json(root->root_path)}});
@@ -119,8 +119,8 @@ W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root);
 
 /* watch-del-all
  * Stops watching all roots */
-static json_ref cmd_watch_del_all(Client*, const json_ref&) {
-  auto resp = make_response();
+static UntypedResponse cmd_watch_del_all(Client*, const json_ref&) {
+  UntypedResponse resp;
   auto roots = w_root_stop_watch_all();
   resp.set("roots", std::move(roots));
   return resp;
@@ -133,8 +133,8 @@ W_CMD_REG(
 
 /* watch-list
  * Returns a list of watched roots */
-static json_ref cmd_watch_list(Client*, const json_ref&) {
-  auto resp = make_response();
+static UntypedResponse cmd_watch_list(Client*, const json_ref&) {
+  UntypedResponse resp;
   auto root_paths = w_root_watch_list_to_json();
   resp.set("roots", std::move(root_paths));
   return resp;
@@ -265,7 +265,7 @@ static w_string resolve_projpath(
 }
 
 /* watch /root */
-static json_ref cmd_watch(Client* client, const json_ref& args) {
+static UntypedResponse cmd_watch(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'watch'");
@@ -274,7 +274,7 @@ static json_ref cmd_watch(Client* client, const json_ref& args) {
   auto root = resolveOrCreateRoot(client, args);
   root->view()->waitUntilReadyToQuery().get();
 
-  auto resp = make_response();
+  UntypedResponse resp;
 
   if (root->failure_reason) {
     resp.set("error", w_string_to_json(root->failure_reason));
@@ -295,7 +295,7 @@ W_CMD_REG(
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
     w_cmd_realpath_root);
 
-static json_ref cmd_watch_project(Client* client, const json_ref& args) {
+static UntypedResponse cmd_watch_project(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'watch-project'");
@@ -308,7 +308,7 @@ static json_ref cmd_watch_project(Client* client, const json_ref& args) {
 
   root->view()->waitUntilReadyToQuery().get();
 
-  auto resp = make_response();
+  UntypedResponse resp;
 
   if (root->failure_reason) {
     resp.set("error", w_string_to_json(root->failure_reason));

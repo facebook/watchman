@@ -17,6 +17,7 @@ namespace watchman {
 class Client;
 class Command;
 class Root;
+class UntypedResponse;
 } // namespace watchman
 
 // For commands that take the root dir as the second parameter,
@@ -47,9 +48,8 @@ std::shared_ptr<watchman::Root> resolveOrCreateRoot(
     watchman::Client* client,
     const json_ref& args);
 
-json_ref make_response();
 void add_root_warnings_to_response(
-    json_ref& response,
+    watchman::UntypedResponse& response,
     const std::shared_ptr<watchman::Root>& root);
 
 /* vim:ts=2:sw=2:et:

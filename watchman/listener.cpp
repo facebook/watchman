@@ -31,14 +31,6 @@ using namespace watchman;
 
 static FileDescriptor listener_fd;
 
-json_ref make_response() {
-  auto resp = json_object();
-
-  resp.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
-
-  return resp;
-}
-
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
 #include <sys/siginfo.h> // @manual
@@ -564,9 +556,8 @@ bool w_start_listener() {
 }
 
 /* get-pid */
-static json_ref cmd_get_pid(Client*, const json_ref&) {
-  auto resp = make_response();
-
+static UntypedResponse cmd_get_pid(Client*, const json_ref&) {
+  UntypedResponse resp;
   resp.set("pid", json_integer(::getpid()));
   return resp;
 }

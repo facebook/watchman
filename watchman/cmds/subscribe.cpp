@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <folly/MapUtil.h>
 #include "watchman/Client.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
@@ -209,7 +210,7 @@ void ClientSubscription::updateSubscriptionTicks(QueryResult* res) {
   query->since_spec = std::make_unique<ClockSpec>(res->clockAtStartOfQuery);
 }
 
-json_ref ClientSubscription::buildSubscriptionResults(
+std::optional<UntypedResponse> ClientSubscription::buildSubscriptionResults(
     const std::shared_ptr<Root>& root,
     ClockSpec& position,
     OnStateTransition onStateTransition) {
@@ -258,7 +259,7 @@ json_ref ClientSubscription::buildSubscriptionResults(
       if (root->stateTransCount.load() != res.stateTransCountAtStartOfQuery) {
         log(DBG,
             "discarding SCM aware query results, SCM activity interleaved\n");
-        return nullptr;
+        return std::nullopt;
       }
     }
 
@@ -269,10 +270,10 @@ json_ref ClientSubscription::buildSubscriptionResults(
     if (res.resultsArray.results.empty() && !mergeBaseChanged &&
         !res.isFreshInstance) {
       updateSubscriptionTicks(&res);
-      return nullptr;
+      return std::nullopt;
     }
 
-    auto response = make_response();
+    UntypedResponse response;
 
     // It is way too much of a hassle to try to recreate the clock value if it's
     // not a relative clock spec, and it's only going to happen on the first run
@@ -297,7 +298,7 @@ json_ref ClientSubscription::buildSubscriptionResults(
     return response;
   } catch (const QueryExecError& e) {
     log(ERR, "error running subscription ", name, " query: ", e.what());
-    return nullptr;
+    return std::nullopt;
   }
 }
 
@@ -310,13 +311,13 @@ ClockSpec ClientSubscription::runSubscriptionRules(
       buildSubscriptionResults(root, position, OnStateTransition::DontAdvance);
 
   if (response) {
-    add_root_warnings_to_response(response, root);
-    client->enqueueResponse(std::move(response));
+    add_root_warnings_to_response(*response, root);
+    client->enqueueResponse(std::move(*response));
   }
   return position;
 }
 
-static json_ref cmd_flush_subscriptions(
+static UntypedResponse cmd_flush_subscriptions(
     Client* clientbase,
     const json_ref& args) {
   auto client = (UserClient*)clientbase;
@@ -381,7 +382,7 @@ static json_ref cmd_flush_subscriptions(
 
   root->syncToNow(std::chrono::milliseconds(sync_timeout));
 
-  auto resp = make_response();
+  UntypedResponse resp;
   std::vector<json_ref> synced;
   std::vector<json_ref> no_sync_needed;
   std::vector<json_ref> dropped;
@@ -419,7 +420,7 @@ static json_ref cmd_flush_subscriptions(
       auto sub_result = sub->buildSubscriptionResults(
           root, out_position, OnStateTransition::QueryAnyway);
       if (sub_result) {
-        client->enqueueResponse(std::move(sub_result));
+        client->enqueueResponse(std::move(*sub_result));
         synced.push_back(w_string_to_json(sub_name_str));
       } else {
         no_sync_needed.push_back(w_string_to_json(sub_name_str));
@@ -442,7 +443,9 @@ W_CMD_REG(
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-static json_ref cmd_unsubscribe(Client* clientbase, const json_ref& args) {
+static UntypedResponse cmd_unsubscribe(
+    Client* clientbase,
+    const json_ref& args) {
   UserClient* client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
@@ -456,7 +459,7 @@ static json_ref cmd_unsubscribe(Client* clientbase, const json_ref& args) {
   auto sname = json_to_w_string(jstr);
   bool deleted = client->unsubByName(sname);
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       {{"unsubscribe", typed_string_to_json(name)},
        {"deleted", json_boolean(deleted)}});
@@ -470,9 +473,8 @@ W_CMD_REG(
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
+static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
   std::shared_ptr<ClientSubscription> sub;
-  json_ref resp, initial_subscription_results;
   json_ref jfield_list;
   json_ref jname;
   std::shared_ptr<Query> query;
@@ -576,18 +578,19 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   client->subscriptions[sub->name] = sub;
 
-  resp = make_response();
+  UntypedResponse resp;
   resp.set("subscribe", json_ref(jname));
 
   add_root_warnings_to_response(resp, root);
   ClockSpec position;
-  initial_subscription_results = sub->buildSubscriptionResults(
+  auto initial_subscription_results = sub->buildSubscriptionResults(
       root, position, OnStateTransition::DontAdvance);
   resp.set("clock", position.toJson());
-  auto saved_state_info =
-      initial_subscription_results.get_default("saved-state-info");
-  if (saved_state_info) {
-    resp.set("saved-state-info", std::move(saved_state_info));
+  if (initial_subscription_results) {
+    if (auto* saved_state_info =
+            folly::get_ptr(*initial_subscription_results, "saved-state-info")) {
+      resp.set("saved-state-info", *saved_state_info);
+    }
   }
 
   std::vector<json_ref> asserted_states;
@@ -607,9 +610,9 @@ static json_ref cmd_subscribe(Client* clientbase, const json_ref& args) {
   // return null.
   client->enqueueResponse(std::move(resp));
   if (initial_subscription_results) {
-    client->enqueueResponse(std::move(initial_subscription_results));
+    client->enqueueResponse(std::move(*initial_subscription_results));
   }
-  return nullptr;
+  throw ResponseWasHandledManually{};
 }
 W_CMD_REG(
     "subscribe",

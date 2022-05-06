@@ -841,7 +841,7 @@ static RegisterWatcher<FSEventsWatcher> reg("fsevents");
 
 // A helper command to facilitate testing that we can successfully
 // resync the stream.
-json_ref FSEventsWatcher::cmd_debug_fsevents_inject_drop(
+UntypedResponse FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     Client* client,
     const json_ref& args) {
   /* resolve the root */
@@ -869,7 +869,7 @@ json_ref FSEventsWatcher::cmd_debug_fsevents_inject_drop(
     watcher->stream_->inject_drop = true;
   }
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("last_good", json_integer(last_good));
   return resp;
 }

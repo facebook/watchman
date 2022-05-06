@@ -15,7 +15,7 @@
 using namespace watchman;
 
 /* query /root {query} */
-static json_ref cmd_query(Client* client, const json_ref& args) {
+static UntypedResponse cmd_query(Client* client, const json_ref& args) {
   if (json_array_size(args) != 3) {
     throw ErrorResponse("wrong number of arguments for 'query'");
   }
@@ -31,14 +31,14 @@ static json_ref cmd_query(Client* client, const json_ref& args) {
   }
 
   auto res = w_query_execute(query.get(), root, nullptr, getInterface);
-  auto response = make_response();
+  UntypedResponse response;
   response.set(
       {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
        {"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray).toJson()},
        {"debug", res.debugInfo.render()}});
   if (res.savedStateInfo) {
-    response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+    response.set("saved-state-info", std::move(res.savedStateInfo));
   }
 
   add_root_warnings_to_response(response, root);

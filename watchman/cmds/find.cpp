@@ -15,7 +15,7 @@
 using namespace watchman;
 
 /* find /root [patterns] */
-static json_ref cmd_find(Client* client, const json_ref& args) {
+static UntypedResponse cmd_find(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) < 2) {
     throw ErrorResponse("not enough arguments for 'find'");
@@ -30,7 +30,7 @@ static json_ref cmd_find(Client* client, const json_ref& args) {
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
   auto res = w_query_execute(query.get(), root, nullptr, getInterface);
-  auto response = make_response();
+  UntypedResponse response;
   response.set(
       {{"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray).toJson()}});

@@ -33,6 +33,7 @@ class Client : public std::enable_shared_from_this<Client> {
   bool dispatchCommand(const Command& command, CommandFlags mode);
 
   void enqueueResponse(json_ref resp);
+  void enqueueResponse(UntypedResponse resp);
 
   const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
@@ -85,7 +86,7 @@ class ClientSubscription
   void processSubscription();
 
   std::shared_ptr<UserClient> lockClient();
-  json_ref buildSubscriptionResults(
+  std::optional<UntypedResponse> buildSubscriptionResults(
       const std::shared_ptr<Root>& root,
       ClockSpec& position,
       OnStateTransition onStateTransition);

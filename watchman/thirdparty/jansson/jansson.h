@@ -190,6 +190,7 @@ class json_ref {
 /* construction, destruction, reference counting */
 
 json_ref json_object();
+json_ref json_object(std::unordered_map<w_string, json_ref> values);
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values);
 json_ref json_object_of_size(size_t nelems);

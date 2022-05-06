@@ -316,7 +316,7 @@ std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
       view->getWatcher());
 }
 
-static json_ref cmd_debug_kqueue_and_fsevents_recrawl(
+static UntypedResponse cmd_debug_kqueue_and_fsevents_recrawl(
     Client* client,
     const json_ref& args) {
   /* resolve the root */
@@ -342,7 +342,7 @@ static json_ref cmd_debug_kqueue_and_fsevents_recrawl(
 
   watcher->injectRecrawl(path);
 
-  return make_response();
+  return UntypedResponse{};
 }
 
 } // namespace

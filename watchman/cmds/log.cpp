@@ -14,7 +14,7 @@ using namespace watchman;
 // log-level "debug"
 // log-level "error"
 // log-level "off"
-static json_ref cmd_loglevel(Client* client, const json_ref& args) {
+static UntypedResponse cmd_loglevel(Client* client, const json_ref& args) {
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'log-level'");
   }
@@ -45,14 +45,14 @@ static json_ref cmd_loglevel(Client* client, const json_ref& args) {
       client->errorSub = log.subscribe(watchman::ERR, notify);
   }
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("log_level", json_ref(args.at(1)));
   return resp;
 }
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL);
 
 // log "debug" "text to log"
-static json_ref cmd_log(Client*, const json_ref& args) {
+static UntypedResponse cmd_log(Client*, const json_ref& args) {
   if (json_array_size(args) != 3) {
     throw ErrorResponse("wrong number of arguments to 'log'");
   }
@@ -68,14 +68,14 @@ static json_ref cmd_log(Client*, const json_ref& args) {
 
   watchman::log(level, text, "\n");
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("logged", json_true());
   return resp;
 }
 W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL);
 
 // change the server log level for the logs
-static json_ref cmd_global_log_level(Client*, const json_ref& args) {
+static UntypedResponse cmd_global_log_level(Client*, const json_ref& args) {
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments to 'global-log-level'");
   }
@@ -89,7 +89,7 @@ static json_ref cmd_global_log_level(Client*, const json_ref& args) {
 
   watchman::getLog().setStdErrLoggingLevel(level);
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("log_level", json_ref(args.at(1)));
   return resp;
 }

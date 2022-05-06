@@ -18,6 +18,7 @@ struct json_object_t : json_t {
   std::unordered_map<w_string, json_ref> map;
 
   json_object_t(size_t sizeHint = 0);
+  explicit json_object_t(std::unordered_map<w_string, json_ref> values);
 
   typename std::unordered_map<w_string, json_ref>::iterator findCString(
       const char* key);

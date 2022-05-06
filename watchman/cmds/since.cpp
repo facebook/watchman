@@ -15,7 +15,7 @@
 using namespace watchman;
 
 /* since /root <timestamp> [patterns] */
-static json_ref cmd_since(Client* client, const json_ref& args) {
+static UntypedResponse cmd_since(Client* client, const json_ref& args) {
   const char* clockspec;
 
   /* resolve the root */
@@ -35,14 +35,14 @@ static json_ref cmd_since(Client* client, const json_ref& args) {
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
 
   auto res = w_query_execute(query.get(), root, nullptr, getInterface);
-  auto response = make_response();
+  UntypedResponse response;
   response.set(
       {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
        {"clock", res.clockAtStartOfQuery.toJson()},
        {"files", std::move(res.resultsArray).toJson()},
        {"debug", res.debugInfo.render()}});
   if (res.savedStateInfo) {
-    response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+    response.set("saved-state-info", std::move(res.savedStateInfo));
   }
 
   add_root_warnings_to_response(response, root);

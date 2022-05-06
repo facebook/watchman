@@ -21,7 +21,12 @@ namespace watchman {
 class Client;
 class Command;
 
-struct ErrorResponse : std::runtime_error {
+/**
+ * Thrown by command handlers to indicate a potentially expected error, where
+ * the given message is used directly in the Watchman error response.
+ */
+class ErrorResponse : public std::runtime_error {
+ public:
   ErrorResponse(const char* message);
 
   template <typename First, typename... Rest>
@@ -37,6 +42,40 @@ struct ErrorResponse : std::runtime_error {
 };
 
 /**
+ * Thrown by command handlers that manually enqueue a response.
+ */
+class ResponseWasHandledManually : public std::exception {};
+
+/**
+ * Represents an old-style, untyped JSON command response.
+ *
+ * Since JSON ASTs are (or will be) immutable, the response objects are built in
+ * an UntypedResponse before being converted to a JSON object as late as
+ * possible.
+ */
+class UntypedResponse : public std::unordered_map<w_string, json_ref> {
+ public:
+  /**
+   * Automatically sets the "version" field.
+   */
+  UntypedResponse();
+
+  /**
+   * Construct from a previously-composed JSON unordered_map.
+   */
+  explicit UntypedResponse(std::unordered_map<w_string, json_ref> map);
+
+  /**
+   * Consumes the UntypedResponse and converts it into a JSON object.
+   */
+  json_ref toJson() &&;
+
+  void set(const char* key, json_ref value);
+
+  void set(std::initializer_list<std::pair<const char*, json_ref>> values);
+};
+
+/**
  * Validates a command's arguments. Runs on the client. May modify the given
  * command. Should throw an exception (ideally CommandValidationError) if
  * validation fails.
@@ -49,7 +88,8 @@ using CommandValidator = void (*)(Command& command);
  *
  * Returns a success response, or throws ErrorResponse.
  */
-using CommandHandler = json_ref (*)(Client* client, const json_ref& args);
+using CommandHandler =
+    UntypedResponse (*)(Client* client, const json_ref& args);
 
 /**
  * For commands that support pretty, human-readable output, this function is
@@ -126,7 +166,7 @@ class TypedCommand : public CommandDefinition {
             T::validate,
             resultPrinter} {}
 
-  static json_ref handleRaw(Client*, const json_ref& args) {
+  static UntypedResponse handleRaw(Client*, const json_ref& args) {
     // In advance of having individual handlers take a Command struct directly,
     // let's shift off the first entry `args`, since we know it's the command
     // name.
@@ -137,8 +177,10 @@ class TypedCommand : public CommandDefinition {
     }
 
     using Request = typename T::Request;
-    return T::handle(Request::fromJson(json_array(std::move(adjusted_args))))
-        .toJson();
+    auto encodedResponse =
+        T::handle(Request::fromJson(json_array(std::move(adjusted_args))))
+            .toJson();
+    return UntypedResponse{encodedResponse.object()};
   }
 };
 

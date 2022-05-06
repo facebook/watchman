@@ -16,13 +16,13 @@ using namespace watchman;
 
 // This command is present to manually trigger a  heap profile dump when
 // jemalloc is in use.
-static json_ref cmd_debug_prof_dump(Client*, const json_ref&) {
+static UntypedResponse cmd_debug_prof_dump(Client*, const json_ref&) {
   if (!folly::usingJEMalloc()) {
     throw std::runtime_error("jemalloc is not in use");
   }
 
   auto result = mallctl("prof.dump", nullptr, nullptr, nullptr, 0);
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       "prof.dump",
       w_string_to_json(

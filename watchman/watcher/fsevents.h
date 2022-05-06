@@ -11,6 +11,7 @@
 #include "watchman/RingBuffer.h"
 #include "watchman/fs/Pipe.h"
 #include "watchman/watcher/Watcher.h"
+#include "watchman/watchman_cmd.h"
 
 #if HAVE_FSEVENTS
 
@@ -62,7 +63,7 @@ class FSEventsWatcher : public Watcher {
   json_ref getDebugInfo() override;
   void clearDebugInfo() override;
 
-  static json_ref cmd_debug_fsevents_inject_drop(
+  static UntypedResponse cmd_debug_fsevents_inject_drop(
       Client* client,
       const json_ref& args);
 

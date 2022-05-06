@@ -36,6 +36,28 @@ struct CommandRegistry {
 ErrorResponse::ErrorResponse(const char* message)
     : std::runtime_error{message} {}
 
+UntypedResponse::UntypedResponse() {
+  set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
+}
+
+UntypedResponse::UntypedResponse(std::unordered_map<w_string, json_ref> map)
+    : std::unordered_map<w_string, json_ref>{std::move(map)} {}
+
+json_ref UntypedResponse::toJson() && {
+  return json_object(std::move(*this));
+}
+
+void UntypedResponse::set(const char* key, json_ref value) {
+  (*this)[w_string{key, W_STRING_UNICODE}] = std::move(value);
+}
+
+void UntypedResponse::set(
+    std::initializer_list<std::pair<const char*, json_ref>> values) {
+  for (auto& [key, value] : values) {
+    set(key, value);
+  }
+}
+
 CommandDefinition::CommandDefinition(
     std::string_view name,
     std::string_view capname,

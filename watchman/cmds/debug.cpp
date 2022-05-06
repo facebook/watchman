@@ -19,7 +19,7 @@
 namespace watchman {
 namespace {
 
-static json_ref cmd_debug_recrawl(Client* client, const json_ref& args) {
+static UntypedResponse cmd_debug_recrawl(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments for 'debug-recrawl'");
@@ -27,7 +27,7 @@ static json_ref cmd_debug_recrawl(Client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  auto resp = make_response();
+  UntypedResponse resp;
 
   root->scheduleRecrawl("debug-recrawl");
 
@@ -36,7 +36,9 @@ static json_ref cmd_debug_recrawl(Client* client, const json_ref& args) {
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root);
 
-static json_ref cmd_debug_show_cursors(Client* client, const json_ref& args) {
+static UntypedResponse cmd_debug_show_cursors(
+    Client* client,
+    const json_ref& args) {
   json_ref cursors;
 
   /* resolve the root */
@@ -46,7 +48,7 @@ static json_ref cmd_debug_show_cursors(Client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  auto resp = make_response();
+  UntypedResponse resp;
 
   {
     auto map = root->inner.cursors.rlock();
@@ -68,7 +70,7 @@ W_CMD_REG(
     w_cmd_realpath_root);
 
 /* debug-ageout */
-static json_ref cmd_debug_ageout(Client* client, const json_ref& args) {
+static UntypedResponse cmd_debug_ageout(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
     throw ErrorResponse("wrong number of arguments for 'debug-ageout'");
@@ -78,8 +80,7 @@ static json_ref cmd_debug_ageout(Client* client, const json_ref& args) {
 
   std::chrono::seconds min_age(json_array_get(args, 2).asInt());
 
-  auto resp = make_response();
-
+  UntypedResponse resp;
   root->performAgeOut(min_age);
 
   resp.set("ageout", json_true());
@@ -87,7 +88,7 @@ static json_ref cmd_debug_ageout(Client* client, const json_ref& args) {
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root);
 
-static json_ref cmd_debug_poison(Client* client, const json_ref& args) {
+static UntypedResponse cmd_debug_poison(Client* client, const json_ref& args) {
   auto root = resolveRoot(client, args);
 
   auto now = std::chrono::system_clock::now();
@@ -98,7 +99,7 @@ static json_ref cmd_debug_poison(Client* client, const json_ref& args) {
       "debug-poison",
       std::error_code(ENOMEM, std::generic_category()));
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       "poison",
       typed_string_to_json(poisoned_reason.rlock()->c_str(), W_STRING_UNICODE));
@@ -106,16 +107,16 @@ static json_ref cmd_debug_poison(Client* client, const json_ref& args) {
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root);
 
-static json_ref cmd_debug_drop_privs(Client* client, const json_ref&) {
+static UntypedResponse cmd_debug_drop_privs(Client* client, const json_ref&) {
   client->client_is_owner = false;
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("owner", json_boolean(client->client_is_owner));
   return resp;
 }
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
 
-static json_ref cmd_debug_set_subscriptions_paused(
+static UntypedResponse cmd_debug_set_subscriptions_paused(
     Client* clientbase,
     const json_ref& args) {
   auto client = (UserClient*)clientbase;
@@ -146,7 +147,7 @@ static json_ref cmd_debug_set_subscriptions_paused(
         json_object({{"old", json_boolean(old_paused)}, {"new", it.second}}));
   }
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("paused", std::move(states));
   return resp;
 }
@@ -185,20 +186,20 @@ static json_ref getDebugSubscriptionInfo(Root* root) {
   return json_array(std::move(subscriptions));
 }
 
-static json_ref cmd_debug_get_subscriptions(
+static UntypedResponse cmd_debug_get_subscriptions(
     Client* clientbase,
     const json_ref& args) {
   auto client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
 
-  auto resp = make_response();
+  UntypedResponse resp;
   auto debug_info = root->unilateralResponses->getDebugInfo();
   // copy over all the key-value pairs from debug_info
-  resp.object().insert(debug_info.object().begin(), debug_info.object().end());
+  resp.insert(debug_info.object().begin(), debug_info.object().end());
 
   auto subscriptions = getDebugSubscriptionInfo(root.get());
-  resp.object().emplace("subscriptions", subscriptions);
+  resp.emplace("subscriptions", subscriptions);
 
   return resp;
 }
@@ -208,13 +209,13 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root);
 
-static json_ref cmd_debug_get_asserted_states(
+static UntypedResponse cmd_debug_get_asserted_states(
     Client* clientbase,
     const json_ref& args) {
   auto client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
-  auto response = make_response();
+  UntypedResponse response;
 
   // copy over all the key-value pairs to stateSet and release lock
   auto states = root->assertedStates.rlock()->debugStates();
@@ -280,25 +281,25 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
 };
 WATCHMAN_COMMAND(debug_status, DebugStatusCommand);
 
-static json_ref cmd_debug_watcher_info(
+static UntypedResponse cmd_debug_watcher_info(
     Client* clientbase,
     const json_ref& args) {
   auto* client = static_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
-  auto response = make_response();
+  UntypedResponse response;
   response.set("watcher-debug-info", root->view()->getWatcherDebugInfo());
   return response;
 }
 W_CMD_REG("debug-watcher-info", cmd_debug_watcher_info, CMD_DAEMON, NULL);
 
-static json_ref cmd_debug_watcher_info_clear(
+static UntypedResponse cmd_debug_watcher_info_clear(
     Client* clientbase,
     const json_ref& args) {
   auto* client = static_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
-  auto response = make_response();
+  UntypedResponse response;
   root->view()->clearWatcherDebugInfo();
   return response;
 }
@@ -308,7 +309,7 @@ W_CMD_REG(
     CMD_DAEMON,
     NULL);
 
-void addCacheStats(json_ref& resp, const CacheStats& stats) {
+void addCacheStats(UntypedResponse& resp, const CacheStats& stats) {
   resp.set(
       {{"cacheHit", json_integer(stats.cacheHit)},
        {"cacheShare", json_integer(stats.cacheShare)},
@@ -321,7 +322,7 @@ void addCacheStats(json_ref& resp, const CacheStats& stats) {
        {"size", json_integer(stats.size)}});
 }
 
-json_ref debugContentHashCache(Client* client, const json_ref& args) {
+UntypedResponse debugContentHashCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments for 'debug-contenthash'");
@@ -335,7 +336,7 @@ json_ref debugContentHashCache(Client* client, const json_ref& args) {
   }
 
   auto stats = view->debugAccessCaches().contentHashCache.stats();
-  auto resp = make_response();
+  UntypedResponse resp;
   addCacheStats(resp, stats);
   return resp;
 }
@@ -345,7 +346,7 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root);
 
-json_ref debugSymlinkTargetCache(Client* client, const json_ref& args) {
+UntypedResponse debugSymlinkTargetCache(Client* client, const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse(
@@ -360,7 +361,7 @@ json_ref debugSymlinkTargetCache(Client* client, const json_ref& args) {
   }
 
   auto stats = view->debugAccessCaches().symlinkTargetCache.stats();
-  auto resp = make_response();
+  UntypedResponse resp;
   addCacheStats(resp, stats);
   return resp;
 }

@@ -63,11 +63,15 @@ Client::~Client() {
 }
 
 void Client::enqueueResponse(json_ref resp) {
-  responses.emplace_back(std::move(resp));
+  responses.push_back(std::move(resp));
+}
+
+void Client::enqueueResponse(UntypedResponse resp) {
+  enqueueResponse(std::move(resp).toJson());
 }
 
 void Client::sendErrorResponse(std::string_view formatted) {
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("error", typed_string_to_json(formatted));
 
   if (perf_sample) {
@@ -139,12 +143,10 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
       auto rendered = command.render();
 
       try {
-        json_ref response = def->handler(this, rendered);
-        if (response) {
-          enqueueResponse(std::move(response));
-        }
+        enqueueResponse(def->handler(this, rendered));
       } catch (const ErrorResponse& e) {
         sendErrorResponse(e.what());
+      } catch (const ResponseWasHandledManually&) {
       }
 
       if (sample.finish()) {
@@ -323,7 +325,7 @@ void UserClient::clientThread() noexcept {
                   sub->name,
                   " due to root cancellation\n");
 
-              auto resp = make_response();
+              UntypedResponse resp;
               resp.set(
                   {{"root", item->payload.get_default("root")},
                    {"unilateral", json_true()},
@@ -339,8 +341,9 @@ void UserClient::clientThread() noexcept {
 
             if (item->payload.get_default("state-enter") ||
                 item->payload.get_default("state-leave")) {
-              auto resp = make_response();
-              json_object_update(item->payload, resp);
+              UntypedResponse resp;
+              resp.insert(
+                  item->payload.object().begin(), item->payload.object().end());
               // We have the opportunity to populate additional response
               // fields here (since we don't want to block the command).
               // We don't populate the fat clock for SCM aware queries
