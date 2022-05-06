@@ -69,9 +69,20 @@ class json_ref {
   static void json_delete(json_t* json);
 
  public:
-  json_ref();
+  /**
+   * json_ref is an implicitly optional type. It either contains a valid JSON
+   * value, or it's nullptr. To discourage accidental use of nullptr json_ref,
+   * require explicit construction.
+   *
+   * Note: the moved-from json_ref is also nullptr.
+   */
+  explicit json_ref(std::nullptr_t);
+
+  /**
+   * DO NOT USE. Private constructor for internal use by json_* constructor
+   * functions.
+   */
   /* implicit */ json_ref(json_t* ref, bool addRef = true);
-  /* implicit */ json_ref(std::nullptr_t);
 
   ~json_ref();
   void reset(json_t* ref = nullptr);
@@ -105,8 +116,7 @@ class json_ref {
   void set(const w_string& key, json_ref&& val);
 
   /** Set a list of key/value pairs */
-  void set(
-      std::initializer_list<std::pair<const char*, json_ref&&>> pairs) {
+  void set(std::initializer_list<std::pair<const char*, json_ref&&>> pairs) {
     for (auto& p : pairs) {
       set(p.first, std::move(p.second));
     }
@@ -228,19 +238,26 @@ struct json_error_t {
 
 size_t json_object_size(const json_ref& object);
 json_ref json_object_get(const json_ref& object, const char* key);
-int json_object_set_new(const json_ref& object, const char* key, json_ref&& value);
+int json_object_set_new(
+    const json_ref& object,
+    const char* key,
+    json_ref&& value);
 int json_object_set_new_nocheck(
     const json_ref& object,
     const char* key,
     json_ref&& value);
-int json_object_update(const json_ref& src, const json_ref& target);
 
-inline int json_object_set(const json_ref& object, const char* key, const json_ref& value) {
+inline int json_object_set(
+    const json_ref& object,
+    const char* key,
+    const json_ref& value) {
   return json_object_set_new(object, key, json_ref(value));
 }
 
-inline int
-json_object_set_nocheck(const json_ref& object, const char* key, const json_ref& value) {
+inline int json_object_set_nocheck(
+    const json_ref& object,
+    const char* key,
+    const json_ref& value) {
   return json_object_set_new_nocheck(object, key, json_ref(value));
 }
 
@@ -443,7 +460,11 @@ struct Serde<std::map<w_string, V>> {
   static json_ref toJson(const std::map<w_string, V>& m) {
     auto o = json_object_of_size(m.size());
     for (auto& [name, value] : m) {
-      json_object_set(o, name.c_str(), json::to(value));
+      json_ref v = json::to(value);
+      if (!v) {
+        throw std::domain_error("objects must not be nullptr");
+      }
+      json_object_set(o, name.c_str(), std::move(v));
     }
     return o;
   }

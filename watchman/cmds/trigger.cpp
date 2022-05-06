@@ -102,7 +102,7 @@ static json_ref build_legacy_trigger(
              typed_string_to_json("size"),
              typed_string_to_json("mode")})}});
 
-  json_ref expr;
+  json_ref expr = nullptr;
   auto query = parseQueryLegacy(root, args, 3, &next_arg, nullptr, &expr);
   query->request_id = w_string::build("trigger ", json_to_w_string(args.at(2)));
 
@@ -133,7 +133,6 @@ static json_ref build_legacy_trigger(
 static UntypedResponse cmd_trigger(Client* client, const json_ref& args) {
   bool need_save = true;
   std::unique_ptr<TriggerCommand> cmd;
-  json_ref trig;
 
   auto root = resolveRoot(client, args);
 
@@ -141,7 +140,7 @@ static UntypedResponse cmd_trigger(Client* client, const json_ref& args) {
     throw ErrorResponse("not enough arguments");
   }
 
-  trig = args.at(2);
+  json_ref trig = args.at(2);
   if (trig.isString()) {
     trig = build_legacy_trigger(root, args);
   }

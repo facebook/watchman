@@ -17,7 +17,7 @@ using namespace watchman;
 namespace {
 
 struct ConfigState {
-  json_ref global_cfg;
+  json_ref global_cfg = nullptr;
   w_string global_config_file_path;
 };
 folly::Synchronized<ConfigState> configState;
@@ -36,7 +36,7 @@ std::optional<std::pair<json_ref, w_string>> loadSystemConfig() {
   std::string cfg_file_default = std::string{cfg_file} + ".default";
   const char* current_cfg_file;
 
-  json_ref config;
+  json_ref config = json_null();
   try {
     // Try to load system watchman configuration
     try {
@@ -147,7 +147,7 @@ void cfg_load_global_config_file() {
       lockedState->global_cfg = json_object();
     }
     for (auto& [key, value] : userConfig->object()) {
-      lockedState->global_cfg.object()[key] = value;
+      lockedState->global_cfg.object().insert_or_assign(key, value);
     }
   }
 }
@@ -392,6 +392,8 @@ const char* cfg_get_trouble_url() {
 }
 
 namespace watchman {
+
+Configuration::Configuration() : local_(nullptr) {}
 
 Configuration::Configuration(const json_ref& local) : local_(local) {}
 

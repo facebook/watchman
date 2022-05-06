@@ -419,14 +419,14 @@ std::shared_ptr<Query> parseQueryLegacy(
   json_ref included =
       included_array.empty() ? nullptr : json_array(std::move(included_array));
 
-  json_ref excluded;
+  json_ref excluded = nullptr;
   if (!excluded_array.empty()) {
     excluded = json_array(
         {typed_string_to_json("not", W_STRING_UNICODE),
          json_array(std::move(excluded_array))});
   }
 
-  json_ref query_array;
+  json_ref query_array = nullptr;
   if (included && excluded) {
     query_array = json_array(
         {typed_string_to_json("allof", W_STRING_UNICODE), excluded, included});

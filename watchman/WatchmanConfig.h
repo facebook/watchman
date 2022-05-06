@@ -32,7 +32,7 @@ namespace watchman {
 
 class Configuration {
  public:
-  Configuration() = default;
+  Configuration();
   explicit Configuration(const json_ref& local);
 
   std::optional<json_ref> get(const char* name) const;

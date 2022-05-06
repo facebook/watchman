@@ -48,7 +48,7 @@ json_ref UntypedResponse::toJson() && {
 }
 
 void UntypedResponse::set(const char* key, json_ref value) {
-  (*this)[w_string{key, W_STRING_UNICODE}] = std::move(value);
+  insert_or_assign(w_string{key, W_STRING_UNICODE}, std::move(value));
 }
 
 void UntypedResponse::set(

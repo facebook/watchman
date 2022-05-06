@@ -174,7 +174,6 @@ void PerfSample::force_log() {
 
 void PerfLogThread::loop() noexcept {
   std::vector<json_ref> samples;
-  json_ref perf_cmd;
   int64_t sample_batch;
 
   w_set_thread_name("perflog");
@@ -182,7 +181,7 @@ void PerfLogThread::loop() noexcept {
   auto stateDir =
       w_string_piece(flags.watchman_state_file).dirName().asWString();
 
-  perf_cmd = cfg_get_json("perf_logger_command");
+  json_ref perf_cmd = cfg_get_json("perf_logger_command");
   if (perf_cmd.isString()) {
     perf_cmd = json_array({perf_cmd});
   }

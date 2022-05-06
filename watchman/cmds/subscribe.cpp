@@ -475,12 +475,7 @@ W_CMD_REG(
  * Subscribes the client connection to the specified root. */
 static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
   std::shared_ptr<ClientSubscription> sub;
-  json_ref jfield_list;
-  json_ref jname;
   std::shared_ptr<Query> query;
-  json_ref query_spec;
-  json_ref defer_list;
-  json_ref drop_list;
   UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
@@ -489,23 +484,23 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  jname = args.at(2);
+  json_ref jname = args.at(2);
   if (!jname.isString()) {
     throw ErrorResponse("expected 2nd parameter to be subscription name");
   }
 
-  query_spec = args.at(3);
+  json_ref query_spec = args.at(3);
 
   query = parseQuery(root, query_spec);
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
   query->subscriptionName = json_to_w_string(jname);
 
-  defer_list = query_spec.get_default("defer");
+  json_ref defer_list = query_spec.get_default("defer");
   if (defer_list && !defer_list.isArray()) {
     throw ErrorResponse("defer field must be an array of strings");
   }
 
-  drop_list = query_spec.get_default("drop");
+  json_ref drop_list = query_spec.get_default("drop");
   if (drop_list && !drop_list.isArray()) {
     throw ErrorResponse("drop field must be an array of strings");
   }

@@ -42,7 +42,6 @@ const char* getTypeName(json_type t) {
 }
 } // namespace
 
-json_ref::json_ref() : ref_(nullptr) {}
 json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
 
 json_ref::json_ref(json_t* ref, bool addRef) : ref_(ref) {
@@ -240,13 +239,12 @@ int json_object_set_new_nocheck(
   }
   auto* object = json_to_object(json);
 
-  w_string key_string(key);
-  object->map[key_string] = std::move(value);
+  object->map.insert_or_assign(w_string{key}, std::move(value));
   return 0;
 }
 
 void json_ref::set(const w_string& key, json_ref&& val) {
-  json_to_object(ref_)->map[key] = std::move(val);
+  json_to_object(ref_)->map.insert_or_assign(key, std::move(val));
 }
 
 void json_ref::set(const char* key, json_ref&& val) {
@@ -257,8 +255,7 @@ void json_ref::set(const char* key, json_ref&& val) {
   w_assert(json_is_object(ref_), "json_ref::set called for non object type");
 #endif
 
-  w_string key_string(key);
-  json_to_object(ref_)->map[key_string] = std::move(val);
+  json_to_object(ref_)->map.insert_or_assign(w_string{key}, std::move(val));
 }
 
 int json_object_set_new(
@@ -270,18 +267,6 @@ int json_object_set_new(
   }
 
   return json_object_set_new_nocheck(json, key, std::move(value));
-}
-
-int json_object_update(const json_ref& src, const json_ref& target) {
-  if (!src || !target || !src.isObject() || !target.isObject())
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    target_obj->map[it.first] = it.second;
-  }
-
-  return 0;
 }
 
 static int json_object_equal(const json_ref& object1, const json_ref& object2) {
@@ -311,7 +296,7 @@ static json_ref json_object_deep_copy(const json_ref& object) {
 
   auto target_obj = json_to_object(result);
   for (auto& it : json_to_object(object)->map) {
-    target_obj->map[it.first] = json_deep_copy(it.second);
+    target_obj->map.insert_or_assign(it.first, json_deep_copy(it.second));
   }
 
   return result;

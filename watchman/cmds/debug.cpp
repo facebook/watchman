@@ -39,8 +39,6 @@ W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root);
 static UntypedResponse cmd_debug_show_cursors(
     Client* client,
     const json_ref& args) {
-  json_ref cursors;
-
   /* resolve the root */
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments for 'debug-show-cursors'");
@@ -50,14 +48,12 @@ static UntypedResponse cmd_debug_show_cursors(
 
   UntypedResponse resp;
 
-  {
-    auto map = root->inner.cursors.rlock();
-    cursors = json_object_of_size(map->size());
-    for (const auto& it : *map) {
-      const auto& name = it.first;
-      const auto& ticks = it.second;
-      cursors.set(name.c_str(), json_integer(ticks));
-    }
+  auto map = root->inner.cursors.rlock();
+  json_ref cursors = json_object_of_size(map->size());
+  for (const auto& it : *map) {
+    const auto& name = it.first;
+    const auto& ticks = it.second;
+    cursors.set(name.c_str(), json_integer(ticks));
   }
 
   resp.set("cursors", std::move(cursors));

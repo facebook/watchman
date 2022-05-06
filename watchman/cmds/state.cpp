@@ -20,12 +20,11 @@ using ms = std::chrono::milliseconds;
 struct state_arg {
   w_string name;
   ms sync_timeout;
-  json_ref metadata;
+  json_ref metadata = nullptr;
 };
 
 // Parses the args for state-enter and state-leave
-static void
-parse_state_arg(Client*, const json_ref& args, struct state_arg* parsed) {
+static void parse_state_arg(Client*, const json_ref& args, state_arg* parsed) {
   parsed->sync_timeout = kDefaultQuerySyncTimeout;
   parsed->metadata = nullptr;
   parsed->name = nullptr;
@@ -65,7 +64,7 @@ namespace watchman {
 static UntypedResponse cmd_state_enter(
     Client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed;
+  state_arg parsed;
   auto client = dynamic_cast<UserClient*>(clientbase);
 
   auto root = resolveRoot(client, args);
@@ -154,7 +153,7 @@ W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root);
 static UntypedResponse cmd_state_leave(
     Client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed;
+  state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.

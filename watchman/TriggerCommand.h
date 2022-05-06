@@ -25,7 +25,7 @@ struct TriggerCommand {
   w_string triggername;
   std::shared_ptr<Query> query;
   json_ref definition;
-  json_ref command;
+  json_ref command = nullptr;
   ChildProcess::Environment env;
 
   bool append_files;

@@ -192,8 +192,6 @@ W_CMD_REG(
     NULL);
 
 static UntypedResponse cmd_get_config(Client* client, const json_ref& args) {
-  json_ref config;
-
   if (json_array_size(args) != 2) {
     throw ErrorResponse("wrong number of arguments for 'get-config'");
   }
@@ -202,8 +200,7 @@ static UntypedResponse cmd_get_config(Client* client, const json_ref& args) {
 
   UntypedResponse resp;
 
-  config = root->config_file;
-
+  json_ref config = root->config_file;
   if (!config) {
     config = json_object();
   }

@@ -88,7 +88,7 @@ struct ClockSpec {
   w_string scmMergeBase;
   w_string scmMergeBaseWith;
   // Optional saved state parameters
-  json_ref savedStateConfig;
+  json_ref savedStateConfig = nullptr;
   w_string savedStateStorageType;
   w_string savedStateCommitId;
 

@@ -620,8 +620,6 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
     return object;
 
   while (1) {
-    json_ref value;
-
     if (lex->token != TOKEN_STRING) {
       error_set(error, lex, "string or '}' expected");
       return nullptr;
@@ -646,7 +644,7 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
     }
 
     lex_scan(lex, error);
-    value = parse_value(lex, flags, error);
+    json_ref value = parse_value(lex, flags, error);
     if (!value) {
       return nullptr;
     }
@@ -703,43 +701,30 @@ error:
 }
 
 static json_ref parse_value(lex_t* lex, size_t flags, json_error_t* error) {
-  json_ref json;
-
   switch (lex->token) {
-    case TOKEN_STRING: {
-      json = typed_string_to_json(lex->value.string.c_str(), W_STRING_BYTE);
-      break;
-    }
+    case TOKEN_STRING:
+      return typed_string_to_json(lex->value.string.c_str(), W_STRING_BYTE);
 
-    case TOKEN_INTEGER: {
-      json = json_integer(lex->value.integer);
-      break;
-    }
+    case TOKEN_INTEGER:
+      return json_integer(lex->value.integer);
 
-    case TOKEN_REAL: {
-      json = json_real(lex->value.real);
-      break;
-    }
+    case TOKEN_REAL:
+      return json_real(lex->value.real);
 
     case TOKEN_TRUE:
-      json = json_true();
-      break;
+      return json_true();
 
     case TOKEN_FALSE:
-      json = json_false();
-      break;
+      return json_false();
 
     case TOKEN_NULL:
-      json = json_null();
-      break;
+      return json_null();
 
     case '{':
-      json = parse_object(lex, flags, error);
-      break;
+      return parse_object(lex, flags, error);
 
     case '[':
-      json = parse_array(lex, flags, error);
-      break;
+      return parse_array(lex, flags, error);
 
     case TOKEN_INVALID:
       error_set(error, lex, "invalid token");
@@ -749,16 +734,9 @@ static json_ref parse_value(lex_t* lex, size_t flags, json_error_t* error) {
       error_set(error, lex, "unexpected token");
       return nullptr;
   }
-
-  if (!json)
-    return nullptr;
-
-  return json;
 }
 
 static json_ref parse_json(lex_t* lex, size_t flags, json_error_t* error) {
-  json_ref result;
-
   lex_scan(lex, error);
   if (!(flags & JSON_DECODE_ANY)) {
     if (lex->token != '[' && lex->token != '{') {
@@ -767,7 +745,7 @@ static json_ref parse_json(lex_t* lex, size_t flags, json_error_t* error) {
     }
   }
 
-  result = parse_value(lex, flags, error);
+  json_ref result = parse_value(lex, flags, error);
   if (!result)
     return nullptr;
 

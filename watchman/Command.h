@@ -100,7 +100,7 @@ class Command {
       bool no_pretty) const;
 
   w_string name_;
-  json_ref args_;
+  json_ref args_ = nullptr;
 
   const CommandDefinition* commandDefinition_ = nullptr;
 };

@@ -24,7 +24,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     // The item can be released when all subscribers have
     // observed this serial number.
     uint64_t serial;
-    json_ref payload;
+    json_ref payload = nullptr;
   };
 
   // Generic callback that subscribers can register to arrange

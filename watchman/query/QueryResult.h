@@ -35,7 +35,7 @@ struct QueryResult {
   std::unordered_set<w_string> dedupedFileNames;
   ClockSpec clockAtStartOfQuery;
   uint32_t stateTransCountAtStartOfQuery;
-  json_ref savedStateInfo;
+  json_ref savedStateInfo = nullptr;
   QueryDebugInfo debugInfo;
 };
 

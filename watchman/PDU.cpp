@@ -188,7 +188,6 @@ json_ref PduBuffer::readBserPdu(
   json_int_t bser_capabilities;
   uint32_t ideal;
   int r;
-  json_ref obj;
 
   rpos += 2;
 
@@ -241,7 +240,7 @@ json_ref PduBuffer::readBserPdu(
     wpos += r;
   }
 
-  obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
+  json_ref obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
   if (!obj) {
     // obj is a nullptr because deserialization failed. Log the message that
     // failed to deserialize to stderr

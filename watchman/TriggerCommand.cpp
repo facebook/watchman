@@ -73,8 +73,9 @@ ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
   // Adjust result to fit within the specified limit
   if (cmd->max_files_stdin > 0) {
     auto& fileList = res->resultsArray.results;
-    auto n_files = std::min(size_t(cmd->max_files_stdin), fileList.size());
-    fileList.resize(std::min(fileList.size(), n_files));
+    if (fileList.size() > cmd->max_files_stdin) {
+      fileList.erase(fileList.begin() + cmd->max_files_stdin, fileList.end());
+    }
   }
 
   /* prepare the input stream for the child process */

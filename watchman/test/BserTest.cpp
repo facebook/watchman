@@ -120,7 +120,7 @@ static void check_roundtrip(
     const char* template_text) {
   XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
             << bser_capabilities;
-  json_ref templ;
+  json_ref templ = nullptr;
   json_error_t jerr;
   json_int_t needed;
 
