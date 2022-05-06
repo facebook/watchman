@@ -134,19 +134,19 @@ const std::unordered_map<w_string, json_ref>& json_ref::object() const {
   return json_to_object(ref_)->map;
 }
 
-std::unordered_map<w_string, json_ref>& json_ref::object() {
-  if (!*this || type() != JSON_OBJECT) {
-    throw std::domain_error("json_ref::object() called for non-object");
-  }
-  return json_to_object(ref_)->map;
-}
-
 json_object_t::json_object_t(size_t sizeHint) : json_t(JSON_OBJECT) {
   map.reserve(sizeHint);
 }
 
 json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
-    : json_t{JSON_OBJECT}, map{std::move(values)} {}
+    : json_t{JSON_OBJECT}, map{std::move(values)} {
+  for (const auto& [key, value] : values) {
+    if (!value) {
+      throw std::domain_error(
+          "tried to construction a json object with nullptr");
+    }
+  }
+}
 
 json_ref json_object_of_size(size_t size) {
   return json_ref(new json_object_t(size), false);
@@ -244,6 +244,9 @@ int json_object_set_new_nocheck(
 }
 
 void json_ref::set(const w_string& key, json_ref&& val) {
+  if (!val) {
+    throw std::domain_error("tried to set a nullptr");
+  }
   json_to_object(ref_)->map.insert_or_assign(key, std::move(val));
 }
 

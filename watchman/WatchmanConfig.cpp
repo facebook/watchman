@@ -147,7 +147,7 @@ void cfg_load_global_config_file() {
       lockedState->global_cfg = json_object();
     }
     for (auto& [key, value] : userConfig->object()) {
-      lockedState->global_cfg.object().insert_or_assign(key, value);
+      json_object_set(lockedState->global_cfg, key.c_str(), value);
     }
   }
 }
