@@ -7,6 +7,7 @@
 
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysTime.h>
 #include "watchman/IgnoreSet.h"
 #include "watchman/watchman_time.h"
 

@@ -9,6 +9,7 @@
 #include <folly/Overload.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/portability/SysTime.h>
 #include <memory>
 
 using namespace watchman;

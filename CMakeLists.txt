@@ -320,6 +320,7 @@ find_package(Gflags REQUIRED)
 include_directories(SYSTEM ${GFLAGS_INCLUDE_DIR})
 
 find_package(Glog REQUIRED)
+add_compile_definitions(GLOG_NO_ABBREVIATED_SEVERITIES)
 
 # We indirectly depend on boost.  This logic needs to match
 # the same criteria used in thrift, which wants static libs

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <folly/portability/SysTime.h>
 #include <string>
 #include <vector>
 #include "watchman/thirdparty/jansson/jansson.h"

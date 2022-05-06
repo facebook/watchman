@@ -21,7 +21,11 @@
 #endif
 
 #ifdef _WIN32
-#include "WinIoCtl.h" // @manual
+#include <winioctl.h> // @manual
+#include <winsock2.h> // @manual
+
+// TODO: replace with "watchman/fs/WindowsTime.h"
+#include <sys/time.h> // @manual
 #endif
 
 namespace watchman {

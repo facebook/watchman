@@ -38,7 +38,6 @@ static FileDescriptor listener_fd;
 #include <sys/param.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
-#include <sys/time.h>
 #endif
 
 #ifndef _WIN32

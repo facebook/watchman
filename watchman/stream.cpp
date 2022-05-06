@@ -10,6 +10,10 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/watchman_stream.h"
 
+#ifdef _WIN32
+#include <io.h> // @manual
+#endif
+
 using namespace watchman;
 
 int w_poll_events(EventPoll* p, int n, int timeoutms) {

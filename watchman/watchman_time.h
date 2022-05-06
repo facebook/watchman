@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include <folly/portability/SysTime.h>
 #include <chrono>
 #include "watchman/watchman_system.h"
 

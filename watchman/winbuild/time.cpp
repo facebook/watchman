@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <sys/time.h>
 #include "watchman/watchman_time.h"
 
 // 100's of nanoseconds since the FILETIME epoch
