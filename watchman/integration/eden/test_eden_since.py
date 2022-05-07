@@ -18,6 +18,7 @@ def populate(repo, threshold: Optional[int] = None) -> None:
     # explicitly filter out the contents of this directory.  However, in most situations
     # the .hg directory normally should not be ignored.
     config: Dict[str, Any] = {"ignore_dirs": [".hg"]}
+    config["eden_use_streaming_since"] = True
     if threshold:
         config["eden_file_count_threshold_for_fresh_instance"] = threshold
     repo.write_file(".watchmanconfig", json.dumps(config))

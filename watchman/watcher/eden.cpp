@@ -40,20 +40,7 @@
 #include "watchman/watcher/WatcherRegistry.h"
 
 using apache::thrift::TApplicationException;
-using facebook::eden::EdenError;
-using facebook::eden::EntryInformation;
-using facebook::eden::EntryInformationOrError;
-using facebook::eden::FileDelta;
-using facebook::eden::FileInformation;
-using facebook::eden::FileInformationOrError;
-using facebook::eden::Glob;
-using facebook::eden::GlobParams;
-using facebook::eden::JournalPosition;
-using facebook::eden::ScmFileStatus;
-using facebook::eden::ScmStatus;
-using facebook::eden::SHA1Result;
-using facebook::eden::StreamingEdenServiceAsyncClient;
-using facebook::eden::SyncBehavior;
+using namespace facebook::eden;
 using folly::AsyncSocket;
 using folly::to;
 using std::make_unique;
@@ -731,6 +718,7 @@ class EdenView final : public QueryableView {
             config.getInt("eden_retry_connection_count", 3))),
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
+        useStreamingSince_(config.getBool("eden_use_streaming_since", false)),
         thresholdForFreshInstance_(
             config.getInt("eden_file_count_threshold_for_fresh_instance", 0)),
         filesChangedBetweenCommits_(
@@ -1147,6 +1135,20 @@ class EdenView final : public QueryableView {
   };
 
   /**
+   * Build a GetAllChangesSinceResult for a fresh instance.
+   */
+  GetAllChangesSinceResult makeFreshInstance(QueryContext* ctx) const {
+    GetAllChangesSinceResult result;
+
+    ctx->since.set_fresh_instance();
+    getEdenClient(thriftChannel_)
+        ->sync_getCurrentJournalPosition(result.resultPosition, mountPoint_);
+    result.fileInfo = getAllFilesForFreshInstance(ctx);
+
+    return result;
+  }
+
+  /**
    * Compute all the changes by querying the getFilesChangedSince API.
    *
    * This will first compute all the change and then add them to the
@@ -1169,162 +1171,232 @@ class EdenView final : public QueryableView {
     GetAllChangesSinceResult result;
 
     // Now we can get the change journal from eden
-    try {
-      FileDelta delta;
-      client->sync_getFilesChangedSince(delta, mountPoint_, position);
+    FileDelta delta;
+    client->sync_getFilesChangedSince(delta, mountPoint_, position);
 
-      result.createdFileNames.insert(
-          delta.createdPaths()->begin(), delta.createdPaths()->end());
+    result.createdFileNames.insert(
+        delta.createdPaths()->begin(), delta.createdPaths()->end());
 
-      // The list of changed files is the union of the created, added,
-      // and removed sets returned from eden in list form.
-      for (auto& name : *delta.changedPaths()) {
-        result.fileInfo.emplace_back(NameAndDType(std::move(name)));
-      }
-      for (auto& name : *delta.removedPaths()) {
-        result.fileInfo.emplace_back(NameAndDType(std::move(name)));
-      }
-      for (auto& name : *delta.createdPaths()) {
-        result.fileInfo.emplace_back(NameAndDType(std::move(name)));
-      }
-
-      bool didChangeCommits = delta.snapshotTransitions()->size() >= 2 ||
-          (delta.fromPosition()->snapshotHash() !=
-           delta.toPosition()->snapshotHash());
-
-      if (didChangeCommits && getSCM()) {
-        // Check whether they checked out a new commit or reset the commit to
-        // a different hash.  We interrogate source control to discover
-        // the set of changed files between those hashes, and then
-        // add in any paths that may have changed around snapshot hash
-        // changes events;  These are files whose status cannot be
-        // determined purely from source control operations.
-
-        std::unordered_set<std::string> mergedFileList;
-        for (auto& info : result.fileInfo) {
-          mergedFileList.insert(info.name);
-        }
-
-        SCM::StatusResult changedBetweenCommits;
-        if (delta.snapshotTransitions()->empty()) {
-          auto fromHash = folly::hexlify(*delta.fromPosition()->snapshotHash());
-          auto toHash = folly::hexlify(*delta.toPosition()->snapshotHash());
-
-          // Legacy path: this (incorrectly) ignores any commit transitions
-          // between the initial commit hash and the final commit hash.
-          log(ERR,
-              "since ",
-              *position.sequenceNumber(),
-              " we changed commit hashes from ",
-              fromHash,
-              " to ",
-              toHash,
-              "\n");
-
-          std::vector<std::string> commits{
-              std::move(fromHash), std::move(toHash)};
-          changedBetweenCommits = getFilesChangedBetweenCommits(
-              std::move(commits), ctx->query->alwaysIncludeDirectories);
-        } else {
-          std::vector<std::string> commits;
-          commits.reserve(delta.snapshotTransitions()->size());
-          for (auto& hash : *delta.snapshotTransitions()) {
-            commits.push_back(folly::hexlify(hash));
-          }
-          log(ERR,
-              "since ",
-              *position.sequenceNumber(),
-              " we changed commit hashes ",
-              folly::join(" -> ", commits),
-              "\n");
-          changedBetweenCommits = getFilesChangedBetweenCommits(
-              std::move(commits), ctx->query->alwaysIncludeDirectories);
-        }
-
-        for (auto& fileName : changedBetweenCommits.changedFiles) {
-          mergedFileList.insert(std::string{fileName.view()});
-        }
-        for (auto& fileName : changedBetweenCommits.removedFiles) {
-          mergedFileList.insert(std::string{fileName.view()});
-        }
-        for (auto& fileName : changedBetweenCommits.addedFiles) {
-          mergedFileList.insert(std::string{fileName.view()});
-          result.createdFileNames.insert(std::string{fileName.view()});
-        }
-
-        // Engineers usually don't work on a thousands of files, but on an
-        // giant monorepo, the set of files changed in between 2 revisions
-        // can be very large, and continuing down this route would force
-        // Watchman to fetch metadata about a ton of files, causing delay in
-        // answering the query and large amount of network traffic.
-        //
-        // On these monorepos, tools also set the empty_on_fresh_instance
-        // flag, thus we can simply pretend to return a fresh instance and an
-        // empty fileInfo list.
-        if (thresholdForFreshInstance_ != 0 &&
-            mergedFileList.size() > thresholdForFreshInstance_ &&
-            ctx->query->empty_on_fresh_instance) {
-          log(DBG,
-              "Pretending to be a fresh instance due to too many files changed: ",
-              mergedFileList.size(),
-              "\n");
-          ctx->since.set_fresh_instance();
-          result.fileInfo.clear();
-        } else {
-          // We don't know whether the unclean paths are added, removed
-          // or just changed.  We're going to treat them as changed.
-          mergedFileList.insert(
-              std::make_move_iterator(delta.uncleanPaths()->begin()),
-              std::make_move_iterator(delta.uncleanPaths()->end()));
-
-          // Replace the list of fileNames with the de-duped set
-          // of names we've extracted from source control
-          result.fileInfo.clear();
-          for (auto name : mergedFileList) {
-            result.fileInfo.emplace_back(std::move(name));
-          }
-        }
-      }
-
-      result.resultPosition = *delta.toPosition();
-      log(DBG,
-          "wanted from ",
-          *position.sequenceNumber(),
-          " result delta from ",
-          *delta.fromPosition()->sequenceNumber(),
-          " to ",
-          *delta.toPosition()->sequenceNumber(),
-          " with ",
-          result.fileInfo.size(),
-          " changed files\n");
-    } catch (const EdenError& err) {
-      // ERANGE: mountGeneration differs
-      // EDOM: journal was truncated.
-      // For other situations we let the error propagate.
-      XCHECK(err.errorCode_ref());
-      if (*err.errorCode_ref() != ERANGE && *err.errorCode_ref() != EDOM) {
-        throw;
-      }
-      // mountGeneration differs, or journal was truncated,
-      // so treat this as equivalent to a fresh instance result
-      ctx->since.set_fresh_instance();
-      client->sync_getCurrentJournalPosition(
-          result.resultPosition, mountPoint_);
-      result.fileInfo = getAllFilesForFreshInstance(ctx);
-    } catch (const SCMError& err) {
-      // Most likely this means a checkout occurred but we encountered
-      // an error trying to get the list of files changed between the two
-      // commits.  Generate a fresh instance result since we were unable
-      // to compute the list of files changed.
-      log(ERR,
-          "SCM error while processing EdenFS journal update: ",
-          err.what(),
-          "\n");
-      ctx->since.set_fresh_instance();
-      client->sync_getCurrentJournalPosition(
-          result.resultPosition, mountPoint_);
-      result.fileInfo = getAllFilesForFreshInstance(ctx);
+    // The list of changed files is the union of the created, added,
+    // and removed sets returned from eden in list form.
+    for (auto& name : *delta.changedPaths()) {
+      result.fileInfo.emplace_back(std::move(name));
     }
+    for (auto& name : *delta.removedPaths()) {
+      result.fileInfo.emplace_back(std::move(name));
+    }
+    for (auto& name : *delta.createdPaths()) {
+      result.fileInfo.emplace_back(std::move(name));
+    }
+
+    bool didChangeCommits = delta.snapshotTransitions()->size() >= 2 ||
+        (delta.fromPosition()->snapshotHash() !=
+         delta.toPosition()->snapshotHash());
+
+    if (didChangeCommits && getSCM()) {
+      // Check whether they checked out a new commit or reset the commit to
+      // a different hash.  We interrogate source control to discover
+      // the set of changed files between those hashes, and then
+      // add in any paths that may have changed around snapshot hash
+      // changes events;  These are files whose status cannot be
+      // determined purely from source control operations.
+
+      std::unordered_set<std::string> mergedFileList;
+      for (auto& info : result.fileInfo) {
+        mergedFileList.insert(info.name);
+      }
+
+      SCM::StatusResult changedBetweenCommits;
+      if (delta.snapshotTransitions()->empty()) {
+        auto fromHash = folly::hexlify(*delta.fromPosition()->snapshotHash());
+        auto toHash = folly::hexlify(*delta.toPosition()->snapshotHash());
+
+        // Legacy path: this (incorrectly) ignores any commit transitions
+        // between the initial commit hash and the final commit hash.
+        log(ERR,
+            "since ",
+            *position.sequenceNumber(),
+            " we changed commit hashes from ",
+            fromHash,
+            " to ",
+            toHash,
+            "\n");
+
+        std::vector<std::string> commits{
+            std::move(fromHash), std::move(toHash)};
+        changedBetweenCommits = getFilesChangedBetweenCommits(
+            std::move(commits), ctx->query->alwaysIncludeDirectories);
+      } else {
+        std::vector<std::string> commits;
+        commits.reserve(delta.snapshotTransitions()->size());
+        for (auto& hash : *delta.snapshotTransitions()) {
+          commits.push_back(folly::hexlify(hash));
+        }
+        log(ERR,
+            "since ",
+            *position.sequenceNumber(),
+            " we changed commit hashes ",
+            folly::join(" -> ", commits),
+            "\n");
+        changedBetweenCommits = getFilesChangedBetweenCommits(
+            std::move(commits), ctx->query->alwaysIncludeDirectories);
+      }
+
+      for (auto& fileName : changedBetweenCommits.changedFiles) {
+        mergedFileList.insert(std::string{fileName.view()});
+      }
+      for (auto& fileName : changedBetweenCommits.removedFiles) {
+        mergedFileList.insert(std::string{fileName.view()});
+      }
+      for (auto& fileName : changedBetweenCommits.addedFiles) {
+        mergedFileList.insert(std::string{fileName.view()});
+        result.createdFileNames.insert(std::string{fileName.view()});
+      }
+
+      // Engineers usually don't work on a thousands of files, but on an
+      // giant monorepo, the set of files changed in between 2 revisions
+      // can be very large, and continuing down this route would force
+      // Watchman to fetch metadata about a ton of files, causing delay in
+      // answering the query and large amount of network traffic.
+      //
+      // On these monorepos, tools also set the empty_on_fresh_instance
+      // flag, thus we can simply pretend to return a fresh instance and an
+      // empty fileInfo list.
+      if (thresholdForFreshInstance_ != 0 &&
+          mergedFileList.size() > thresholdForFreshInstance_ &&
+          ctx->query->empty_on_fresh_instance) {
+        log(DBG,
+            "Pretending to be a fresh instance due to too many files changed: ",
+            mergedFileList.size(),
+            "\n");
+        ctx->since.set_fresh_instance();
+        result.fileInfo.clear();
+      } else {
+        // We don't know whether the unclean paths are added, removed
+        // or just changed.  We're going to treat them as changed.
+        mergedFileList.insert(
+            std::make_move_iterator(delta.uncleanPaths()->begin()),
+            std::make_move_iterator(delta.uncleanPaths()->end()));
+
+        // Replace the list of fileNames with the de-duped set
+        // of names we've extracted from source control
+        result.fileInfo.clear();
+        for (auto name : mergedFileList) {
+          result.fileInfo.emplace_back(std::move(name));
+        }
+      }
+    }
+
+    result.resultPosition = *delta.toPosition();
+    log(DBG,
+        "wanted from ",
+        *position.sequenceNumber(),
+        " result delta from ",
+        *delta.fromPosition()->sequenceNumber(),
+        " to ",
+        *delta.toPosition()->sequenceNumber(),
+        " with ",
+        result.fileInfo.size(),
+        " changed files\n");
+    return result;
+  }
+
+  GetAllChangesSinceResult getAllChangesSinceStreaming(
+      QueryContext* ctx) const {
+    auto client = getEdenClient(thriftChannel_);
+
+    // Query eden to fill in the mountGeneration field.
+    auto position =
+        client->semifuture_getCurrentJournalPosition(mountPoint_).get();
+    // dial back to the sequence number from the query
+    *position.sequenceNumber() =
+        std::get<QuerySince::Clock>(ctx->since.since).ticks;
+
+    StreamChangesSinceParams params;
+    params.mountPoint_ref() = mountPoint_;
+    params.fromPosition_ref() = position;
+    auto [resultChangesSince, stream] = client->sync_streamChangesSince(params);
+
+    GetAllChangesSinceResult result;
+    result.resultPosition = *resultChangesSince.toPosition();
+
+    // -1 = removed
+    // 0 = changed
+    // 1 = added
+    std::unordered_map<std::string, int> byFile;
+    std::unordered_map<std::string, EdenDtype> dtypes;
+
+    std::move(stream).subscribeInline(
+        [&](folly::Try<ChangedFileResult>&& changeTry) mutable {
+          if (changeTry.hasException()) {
+            log(ERR,
+                "Error: ",
+                folly::exceptionStr(changeTry.exception()),
+                "\n");
+            result = makeFreshInstance(ctx);
+            return false;
+          }
+
+          if (!changeTry.hasValue()) {
+            // End of the stream.
+            return false;
+          }
+
+          const auto& change = changeTry.value();
+          auto& name = *change.name();
+
+          // Changes needs to be deduplicated so a file that was added and then
+          // removed is reported as MODIFIED.
+          switch (*change.status()) {
+            case ScmFileStatus::ADDED:
+              byFile[name] += 1;
+              break;
+            case ScmFileStatus::MODIFIED:
+              byFile[name];
+              break;
+            case ScmFileStatus::REMOVED:
+              byFile[name] -= 1;
+              break;
+            case ScmFileStatus::IGNORED:
+              break;
+          }
+
+          auto dtype = *change.dtype();
+          auto [element, inserted] = dtypes.emplace(name, dtype);
+          if (!inserted && element->second != dtype) {
+            // Due to streamChangesSince not providing any ordering guarantee,
+            // Watchman can't tell what DType a file has in the case where it
+            // changed. Thus let's fallback to an UNKNOWN type, and Watchman
+            // will later query the actual DType from EdenFS.
+            element->second = EdenDtype::UNKNOWN;
+          }
+
+          // Engineers usually don't work on a thousands of files, but on an
+          // giant monorepo, the set of files changed in between 2 revisions
+          // can be very large, and continuing down this route would force
+          // Watchman to fetch metadata about a ton of files, causing delay in
+          // answering the query and large amount of network traffic.
+          //
+          // On these monorepos, tools also set the empty_on_fresh_instance
+          // flag, thus we can simply pretend to return a fresh instance and an
+          // empty fileInfo list.
+          if (thresholdForFreshInstance_ != 0 &&
+              byFile.size() > thresholdForFreshInstance_ &&
+              ctx->query->empty_on_fresh_instance) {
+            result = makeFreshInstance(ctx);
+            return false;
+          }
+
+          return true;
+        });
+
+    for (auto& [name, count] : byFile) {
+      result.fileInfo.emplace_back(name, getDTypeFromEden(dtypes[name]));
+      if (count > 0) {
+        result.createdFileNames.emplace(name);
+      }
+    }
+
     return result;
   }
 
@@ -1341,16 +1413,37 @@ class EdenView final : public QueryableView {
       // didn't match the current root which means that eden was restarted.
       // We need to translate this to a fresh instance result set and
       // return a list of all possible matching files.
-      auto client = getEdenClient(thriftChannel_);
-
-      GetAllChangesSinceResult result;
-      client->sync_getCurrentJournalPosition(
-          result.resultPosition, mountPoint_);
-      result.fileInfo = getAllFilesForFreshInstance(ctx);
-      return result;
+      return makeFreshInstance(ctx);
     }
 
-    return getAllChangesSinceLegacy(ctx);
+    try {
+      if (!useStreamingSince_) {
+        return getAllChangesSinceLegacy(ctx);
+      } else {
+        return getAllChangesSinceStreaming(ctx);
+      }
+    } catch (const EdenError& err) {
+      // ERANGE: mountGeneration differs
+      // EDOM: journal was truncated.
+      // For other situations we let the error propagate.
+      XCHECK(err.errorCode_ref());
+      if (*err.errorCode_ref() != ERANGE && *err.errorCode_ref() != EDOM) {
+        throw;
+      }
+      // mountGeneration differs, or journal was truncated,
+      // so treat this as equivalent to a fresh instance result
+      return makeFreshInstance(ctx);
+    } catch (const SCMError& err) {
+      // Most likely this means a checkout occurred but we encountered
+      // an error trying to get the list of files changed between the two
+      // commits.  Generate a fresh instance result since we were unable
+      // to compute the list of files changed.
+      log(ERR,
+          "SCM error while processing EdenFS journal update: ",
+          err.what(),
+          "\n");
+      return makeFreshInstance(ctx);
+    }
   }
 
   // Compute the set of paths that have changed across all of the transitions
@@ -1459,6 +1552,7 @@ class EdenView final : public QueryableView {
   std::string mountPoint_;
   folly::SharedPromise<folly::Unit> subscribeReadyPromise_;
   bool splitGlobPattern_;
+  bool useStreamingSince_;
   unsigned int thresholdForFreshInstance_;
 
   mutable LRUCache<std::string, ScmStatus> filesChangedBetweenCommits_;
