@@ -225,7 +225,7 @@ void UserClient::vacateStates() {
 
     // This will delete the state from client->states and invalidate
     // the iterator.
-    w_leave_state(this, assertion, true, nullptr);
+    w_leave_state(this, assertion, true, std::nullopt);
   }
 }
 
@@ -428,7 +428,7 @@ void w_leave_state(
     watchman::UserClient* client,
     std::shared_ptr<watchman::ClientStateAssertion> assertion,
     bool abandoned,
-    const json_ref& metadata) {
+    const std::optional<json_ref>& metadata) {
   // Broadcast about the state leave
   auto payload = json_object(
       {{"root", w_string_to_json(assertion->root->root_path)},
@@ -436,7 +436,7 @@ void w_leave_state(
         w_string_to_json(assertion->root->view()->getCurrentClockString())},
        {"state-leave", w_string_to_json(assertion->name)}});
   if (metadata) {
-    payload.set("metadata", json_ref(metadata));
+    payload.set("metadata", json_ref(*metadata));
   }
   if (abandoned) {
     payload.set("abandoned", json_true());

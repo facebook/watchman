@@ -222,8 +222,7 @@ static UntypedResponse cmd_state_leave(
           return;
         }
         // Notify and exit the state
-        w_leave_state(
-            nullptr, assertion, false, parsed.metadata.value_or(nullptr));
+        w_leave_state(nullptr, assertion, false, parsed.metadata);
       })
       .via(&getThreadPool());
   return response;
