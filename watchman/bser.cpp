@@ -313,7 +313,7 @@ bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data) {
 
   auto templ = json_array_get_template(array);
   if (templ) {
-    return bser_template(ctx, array, templ, data);
+    return bser_template(ctx, array, *templ, data);
   }
 
   if (ctx->dump(&bser_array_hdr, sizeof(bser_array_hdr), data)) {

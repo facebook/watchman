@@ -367,9 +367,9 @@ int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
   return 1;
 }
 
-json_ref json_array_get_template(const json_ref& array) {
+std::optional<json_ref> json_array_get_template(const json_ref& array) {
   if (!array || !array.isArray()) {
-    return nullptr;
+    return std::nullopt;
   }
   return json_to_array(array)->templ;
 }
