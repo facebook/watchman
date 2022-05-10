@@ -63,7 +63,7 @@ void parse_redirection(
 }
 
 ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
-    struct TriggerCommand* cmd,
+    TriggerCommand* cmd,
     QueryResult* res) {
   char stdin_file_name[WATCHMAN_NAME_MAX];
 
@@ -142,7 +142,7 @@ ResultErrno<std::unique_ptr<watchman_stream>> prepare_stdin(
 
 void spawn_command(
     const std::shared_ptr<Root>& root,
-    struct TriggerCommand* cmd,
+    TriggerCommand* cmd,
     QueryResult* res,
     ClockSpec* since_spec) {
   bool file_overflow = false;
@@ -199,7 +199,7 @@ void spawn_command(
   }
 
   // Compute args
-  std::vector<json_ref> args = cmd->command.array();
+  std::vector<json_ref> args = cmd->command.value().array();
 
   if (cmd->append_files) {
     // Measure how much space the base args take up
