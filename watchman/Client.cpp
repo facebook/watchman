@@ -285,7 +285,7 @@ void UserClient::clientThread() noexcept {
       } else if (request) {
         format = reader.format;
         status_.transitionTo(ClientStatus::DISPATCHING_COMMAND);
-        dispatchCommand(Command::parse(request), CMD_DAEMON);
+        dispatchCommand(Command::parse(*request), CMD_DAEMON);
       }
     }
 

@@ -299,13 +299,13 @@ json_ref json_deep_copy(const json_ref& value);
 #define JSON_DISABLE_EOF_CHECK 0x2
 #define JSON_DECODE_ANY 0x4
 
-json_ref json_loads(const char* input, size_t flags, json_error_t* error);
-json_ref json_loadb(
+std::optional<json_ref> json_loads(const char* input, size_t flags, json_error_t* error);
+std::optional<json_ref> json_loadb(
     const char* buffer,
     size_t buflen,
     size_t flags,
     json_error_t* error);
-json_ref json_loadf(FILE* input, size_t flags, json_error_t* error);
+std::optional<json_ref> json_loadf(FILE* input, size_t flags, json_error_t* error);
 json_ref json_load_file(const char* path, size_t flags);
 
 /* encoding */

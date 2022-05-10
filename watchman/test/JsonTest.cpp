@@ -53,8 +53,8 @@ TEST(JsonTest, double_round_trip) {
     json_error_t err{};
     auto value = json_loads(encoded.c_str(), JSON_DECODE_ANY, &err);
 
-    EXPECT_EQ(JSON_REAL, value.type());
-    EXPECT_EQ(d, json_real_value(value)) << " encoded = " << encoded;
+    EXPECT_EQ(JSON_REAL, value.value().type());
+    EXPECT_EQ(d, json_real_value(value.value())) << " encoded = " << encoded;
   }
 }
 

@@ -120,7 +120,7 @@ static void check_roundtrip(
     const char* template_text) {
   XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
             << bser_capabilities;
-  json_ref templ = nullptr;
+  std::optional<json_ref> templ;
   json_error_t jerr;
   json_int_t needed;
 
@@ -128,10 +128,10 @@ static void check_roundtrip(
   ASSERT_TRUE(expected) << "loaded " << input << " " << jerr.text;
   if (template_text) {
     templ = json_loads(template_text, 0, &jerr);
-    json_array_set_template_new(expected, std::move(templ));
+    json_array_set_template_new(expected.value(), std::move(templ.value()));
   }
 
-  auto dump_buf = bdumps(bser_version, bser_capabilities, expected);
+  auto dump_buf = bdumps(bser_version, bser_capabilities, expected.value());
   ASSERT_NE(dump_buf, nullptr) << "dumped something";
   const char* end = dump_buf->data() + dump_buf->size();
   hexdump(dump_buf->data(), end);
@@ -141,7 +141,8 @@ static void check_roundtrip(
   EXPECT_TRUE(decoded) << "decoded something err = " << jerr.text;
 
   auto jdump = json_dumps(decoded, JSON_SORT_KEYS);
-  EXPECT_TRUE(json_equal(expected, decoded)) << "round-tripped json_equal";
+  EXPECT_TRUE(json_equal(expected.value(), decoded))
+      << "round-tripped json_equal";
   EXPECT_EQ(jdump, input) << "round-tripped";
 }
 
@@ -156,7 +157,7 @@ static void check_serialization(
   // Test JSON -> BSER serialization.
   json_error_t jerr;
   auto input = json_loads(json_in, 0, &jerr);
-  auto bser_in = bdumps_pdu(bser_version, bser_capabilities, input);
+  auto bser_in = bdumps_pdu(bser_version, bser_capabilities, input.value());
   EXPECT_EQ(*bser_in, bser_out) << "raw bser comparison " << json_in;
 }
 

@@ -66,12 +66,12 @@ TEST(WildMatch, tests) {
         ")"));
   }
   EXPECT_EQ(fclose(test_cases_file), 0);
-  EXPECT_TRUE(test_cases.isArray())
+  EXPECT_TRUE(test_cases.value().isArray())
       << "Expected JSON in " << WILDMATCH_TEST_JSON_FILE << "  to be an array";
 
-  num_tests = json_array_size(test_cases);
+  num_tests = json_array_size(test_cases.value());
   for (index = 0; index < num_tests; index++) {
-    auto test_case_data = json_array_get(test_cases, index);
+    auto test_case_data = json_array_get(test_cases.value(), index);
     run_test(test_case_data);
   }
 }

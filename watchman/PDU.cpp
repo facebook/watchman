@@ -85,18 +85,18 @@ inline PduType PduBuffer::detectPdu() {
   return is_json_compact;
 }
 
-json_ref PduBuffer::readJsonPrettyPdu(
+std::optional<json_ref> PduBuffer::readJsonPrettyPdu(
     watchman_stream* stm,
     json_error_t* jerr) {
   // Assume newline is at the end of what we have
   char* nl = buf + wpos;
   int r = (int)(nl - (buf + rpos));
-  json_ref res = json_loadb(buf + rpos, r, 0, jerr);
+  std::optional<json_ref> res = json_loadb(buf + rpos, r, 0, jerr);
   while (!res) {
     // Maybe we can fill more data into the buffer and retry?
     if (!fillBuffer(stm)) {
       // No, then error is terminal
-      return nullptr;
+      return std::nullopt;
     }
     // Recompute end of buffer
     nl = buf + wpos;
@@ -111,7 +111,9 @@ json_ref PduBuffer::readJsonPrettyPdu(
   return res;
 }
 
-json_ref PduBuffer::readJsonPdu(watchman_stream* stm, json_error_t* jerr) {
+std::optional<json_ref> PduBuffer::readJsonPdu(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   /* look for a newline; that indicates the end of
    * a json packet */
   auto nl = (char*)memchr(buf + rpos, '\n', wpos - rpos);
@@ -127,7 +129,7 @@ json_ref PduBuffer::readJsonPdu(watchman_stream* stm, json_error_t* jerr) {
         nl = buf + wpos;
         break;
       }
-      return nullptr;
+      return std::nullopt;
     }
     nl = (char*)memchr(buf + rpos, '\n', wpos - rpos);
   }
@@ -179,7 +181,7 @@ bool PduBuffer::decodePduInfo(
   return true;
 }
 
-json_ref PduBuffer::readBserPdu(
+std::optional<json_ref> PduBuffer::readBserPdu(
     watchman_stream* stm,
     uint32_t bser_version,
     json_error_t* jerr) {
@@ -194,7 +196,7 @@ json_ref PduBuffer::readBserPdu(
   // We don't handle EAGAIN cleanly in here
   stm->setNonBlock(false);
   if (!decodePduInfo(stm, bser_version, &val, &bser_capabilities, jerr)) {
-    return nullptr;
+    return std::nullopt;
   }
 
   // val tells us exactly how much storage we need for this PDU
@@ -212,7 +214,7 @@ json_ref PduBuffer::readBserPdu(
             sizeof(jerr->text),
             "out of memory while allocating %" PRIu32 " bytes",
             ideal);
-        return nullptr;
+        return std::nullopt;
       }
 
       buf = newBuf;
@@ -235,7 +237,7 @@ json_ref PduBuffer::readBserPdu(
           wpos,
           rpos,
           folly::errnoStr(errno).c_str());
-      return nullptr;
+      return std::nullopt;
     }
     wpos += r;
   }
@@ -446,7 +448,9 @@ bool PduBuffer::streamPdu(watchman_stream* stm, json_error_t* jerr) {
   }
 }
 
-json_ref PduBuffer::decodePdu(watchman_stream* stm, json_error_t* jerr) {
+std::optional<json_ref> PduBuffer::decodePdu(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   switch (format.type) {
     case is_json_compact:
       return readJsonPdu(stm, jerr);
@@ -459,10 +463,12 @@ json_ref PduBuffer::decodePdu(watchman_stream* stm, json_error_t* jerr) {
   }
 }
 
-json_ref PduBuffer::decodeNext(watchman_stream* stm, json_error_t* jerr) {
+std::optional<json_ref> PduBuffer::decodeNext(
+    watchman_stream* stm,
+    json_error_t* jerr) {
   *jerr = json_error_t();
   if (!readAndDetectPdu(stm, jerr)) {
-    return nullptr;
+    return std::nullopt;
   }
   return decodePdu(stm, jerr);
 }

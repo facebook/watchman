@@ -63,19 +63,20 @@ class PduBuffer {
   ResultErrno<folly::Unit>
   pduEncodeToStream(PduFormat format, const json_ref& json, Stream* stm);
 
-  json_ref decodeNext(Stream* stm, json_error_t* jerr);
+  std::optional<json_ref> decodeNext(Stream* stm, json_error_t* jerr);
 
   bool readAndDetectPdu(Stream* stm, json_error_t* jerr);
-  json_ref decodePdu(Stream* stm, json_error_t* jerr);
+  std::optional<json_ref> decodePdu(Stream* stm, json_error_t* jerr);
   bool streamPdu(Stream* stm, json_error_t* jerr);
 
  private:
   uint32_t shuntDown();
   bool fillBuffer(Stream* stm);
   PduType detectPdu();
-  json_ref readJsonPrettyPdu(Stream* stm, json_error_t* jerr);
-  json_ref readJsonPdu(Stream* stm, json_error_t* jerr);
-  json_ref readBserPdu(Stream* stm, uint32_t bser_version, json_error_t* jerr);
+  std::optional<json_ref> readJsonPrettyPdu(Stream* stm, json_error_t* jerr);
+  std::optional<json_ref> readJsonPdu(Stream* stm, json_error_t* jerr);
+  std::optional<json_ref>
+  readBserPdu(Stream* stm, uint32_t bser_version, json_error_t* jerr);
   bool decodePduInfo(
       Stream* stm,
       uint32_t bser_version,

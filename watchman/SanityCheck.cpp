@@ -17,7 +17,7 @@ namespace watchman {
 namespace {
 
 // Work-around decodeNext which implictly resets to non-blocking
-json_ref
+std::optional<json_ref>
 decodeNext(watchman_stream* client, PduBuffer& buf, json_error_t& jerr) {
   client->setNonBlock(false);
   return buf.decodeNext(client, &jerr);
@@ -56,7 +56,7 @@ void check_my_sock(watchman_stream* client) {
     /* NOTREACHED */
   }
 
-  auto pid = result.get_optional("pid");
+  auto pid = result->get_optional("pid");
   if (!pid) {
     log(watchman::FATAL,
         "Failed to get pid from get-pid response: ",
@@ -106,14 +106,14 @@ void check_clock_command(watchman_stream* client, const json_ref& root) {
   }
 
   // Check for error in the response
-  auto error = result.get_optional("error");
+  auto error = result->get_optional("error");
   if (error) {
     throw std::runtime_error(folly::to<std::string>(
         "Clock error : ", json_to_w_string(*error).view()));
   }
 
   // We use presence of "clock" as success
-  auto clock = result.get_optional("clock");
+  auto clock = result->get_optional("clock");
   if (!clock) {
     throw std::runtime_error("Failed to get clock in response");
   }
@@ -142,7 +142,7 @@ json_ref get_watch_list(watchman_stream* client) {
         " error:  ",
         folly::errnoStr(errno)));
   }
-  return result.get("roots");
+  return result->get("roots");
 }
 
 /**

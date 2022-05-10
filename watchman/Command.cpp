@@ -150,13 +150,13 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
   }
 
   if (pretty_output) {
-    def->result_printer(response);
+    def->result_printer(*response);
     // TODO: Can result_printer return an error?
     return folly::unit;
   } else {
     output_pdu_buf.clear();
     return output_pdu_buf.pduEncodeToStream(
-        output_format, response, w_stm_stdout());
+        output_format, *response, w_stm_stdout());
   }
 }
 

@@ -884,7 +884,7 @@ static Command build_command_from_stdin() {
         err.text);
     exit(1);
   }
-  return Command::parse(std::move(cmd));
+  return Command::parse(std::move(*cmd));
 }
 
 static Command build_command(int argc, char** argv) {
