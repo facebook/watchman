@@ -292,7 +292,7 @@ QueryResult w_query_execute(
         // changed files since that saved state, if available.
         auto savedStateInterface = savedStateFactory(
             query->since_spec->savedStateStorageType,
-            query->since_spec->savedStateConfig,
+            query->since_spec->savedStateConfig.value(),
             scm,
             root->config,
             [root](PerfSample& sample) {

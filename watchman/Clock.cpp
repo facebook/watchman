@@ -231,7 +231,7 @@ json_ref ClockSpec::toJson() const {
     if (hasSavedStateParams()) {
       auto savedState = json_object(
           {{"storage", w_string_to_json(savedStateStorageType)},
-           {"config", savedStateConfig}});
+           {"config", savedStateConfig.value()}});
       if (savedStateCommitId != w_string()) {
         json_object_set(
             savedState, "commit-id", w_string_to_json(savedStateCommitId));
