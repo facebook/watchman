@@ -234,14 +234,11 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         first_res = self.query_adir_change_since(root, first_clock)
 
-        # TODO(T104564495): fix this incorrect behavior.
-        # we are asserting some behavior that deviates from non eden watchman
-        # here: "adir" is an "f" type.
-        # watchman tries to check the type of a file after it gets the
-        # notification that that file changed. That is useless for removals.
-        # We will never be able to report the type of file removed on eden.
-        # We should fix this, but for now Watchman just reports unknown types
-        # as f.
+        # TODO(T104564495): Watchman reports removed directories as file
+        # removal. This is caused by EdenFS's Journal not knowing if a
+        # file/directory is removed, and thus this is reported to Watchman as
+        # an UNKNOWN file, which for removed files/directory will be reported
+        # as a removed file.
         self.assertQueryRepsonseEqual(
             [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
             first_res["files"],
@@ -284,7 +281,7 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
         second_res = self.query_adir_change_since(root, second_clock)
 
         self.assertQueryRepsonseEqual(
-            [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
+            [{"name": "adir", "type": "d"}, {"name": "adir/file", "type": "f"}],
             second_res["files"],
         )
 
