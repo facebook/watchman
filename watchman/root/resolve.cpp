@@ -33,8 +33,8 @@ bool root_check_restrict(const char* watch_path) {
     return true;
   }
 
-  for (i = 0; i < json_array_size(root_restrict_files); i++) {
-    auto obj = json_array_get(root_restrict_files, i);
+  for (i = 0; i < json_array_size(*root_restrict_files); i++) {
+    auto obj = json_array_get(*root_restrict_files, i);
     const char* restrict_file = json_string_value(obj);
     bool rv;
 
@@ -216,7 +216,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
   if (!root_check_restrict(root_str.c_str())) {
     bool enforcing;
     auto root_files = cfg_compute_root_files(&enforcing);
-    auto root_files_list = cfg_pretty_print_root_files(root_files);
+    auto root_files_list = cfg_pretty_print_root_files(root_files.value());
     throw RootResolveError(
         "Your watchman administrator has configured watchman "
         "to prevent watching path `",

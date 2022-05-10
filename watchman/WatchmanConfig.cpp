@@ -17,7 +17,7 @@ using namespace watchman;
 namespace {
 
 struct ConfigState {
-  json_ref global_cfg = nullptr;
+  std::optional<json_ref> global_cfg;
   w_string global_config_file_path;
 };
 folly::Synchronized<ConfigState> configState;
@@ -147,7 +147,7 @@ void cfg_load_global_config_file() {
       lockedState->global_cfg = json_object();
     }
     for (auto& [key, value] : userConfig->object()) {
-      json_object_set(lockedState->global_cfg, key.c_str(), value);
+      json_object_set(*lockedState->global_cfg, key.c_str(), value);
     }
   }
 }
@@ -158,12 +158,12 @@ void cfg_set_global(const char* name, const json_ref& val) {
     state->global_cfg = json_object();
   }
 
-  state->global_cfg.set(name, json_ref(val));
+  state->global_cfg->set(name, json_ref(val));
 }
 
 std::optional<json_ref> cfg_get_json(const char* name) {
   auto state = configState.rlock();
-  return state->global_cfg.get_optional(name);
+  return state->global_cfg->get_optional(name);
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
@@ -219,7 +219,7 @@ static void prepend_watchmanconfig_to_array(std::vector<json_ref>& ref) {
 // we will only allow watches on the root_files.
 // The array returned by this function (if not NULL) is guaranteed to
 // list .watchmanconfig as its zeroth element.
-json_ref cfg_compute_root_files(bool* enforcing) {
+std::optional<json_ref> cfg_compute_root_files(bool* enforcing) {
   *enforcing = false;
 
   auto ref = cfg_get_json("enforce_root_files");
@@ -235,7 +235,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
     if (!is_array_of_strings(*ref)) {
       logf(FATAL, "global config root_files must be an array of strings\n");
       *enforcing = false;
-      return nullptr;
+      return std::nullopt;
     }
     std::vector<json_ref> arr = ref->array();
     prepend_watchmanconfig_to_array(arr);
@@ -251,7 +251,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
           "deprecated global config root_restrict_files "
           "must be an array of strings\n");
       *enforcing = false;
-      return nullptr;
+      return std::nullopt;
     }
     std::vector<json_ref> arr = ref->array();
     prepend_watchmanconfig_to_array(arr);
@@ -389,14 +389,14 @@ const char* cfg_get_trouble_url() {
 
 namespace watchman {
 
-Configuration::Configuration() : local_(nullptr) {}
+Configuration::Configuration() {}
 
-Configuration::Configuration(const json_ref& local) : local_(local) {}
+Configuration::Configuration(json_ref local) : local_{std::move(local)} {}
 
 std::optional<json_ref> Configuration::get(const char* name) const {
   // Highest precedence: options set locally
   if (local_) {
-    std::optional<json_ref> val = local_.get_optional(name);
+    std::optional<json_ref> val = local_->get_optional(name);
     if (val) {
       return std::move(*val);
     }
@@ -404,7 +404,10 @@ std::optional<json_ref> Configuration::get(const char* name) const {
   auto state = configState.rlock();
 
   // then: global config options
-  return state->global_cfg.get_optional(name);
+  if (!state->global_cfg) {
+    return std::nullopt;
+  }
+  return state->global_cfg->get_optional(name);
 }
 
 const char* Configuration::getString(const char* name, const char* defval)

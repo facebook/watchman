@@ -23,7 +23,7 @@ double cfg_get_double(const char* name, double defval);
 mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits);
 #endif
 const char* cfg_get_trouble_url();
-json_ref cfg_compute_root_files(bool* enforcing);
+std::optional<json_ref> cfg_compute_root_files(bool* enforcing);
 
 // Convert root files to comma delimited string for error message
 std::string cfg_pretty_print_root_files(const json_ref& root_files);
@@ -33,7 +33,7 @@ namespace watchman {
 class Configuration {
  public:
   Configuration();
-  explicit Configuration(const json_ref& local);
+  explicit Configuration(json_ref local);
 
   std::optional<json_ref> get(const char* name) const;
   const char* getString(const char* name, const char* defval) const;
@@ -42,7 +42,7 @@ class Configuration {
   double getDouble(const char* name, double defval) const;
 
  private:
-  json_ref local_;
+  std::optional<json_ref> local_;
 };
 
 } // namespace watchman

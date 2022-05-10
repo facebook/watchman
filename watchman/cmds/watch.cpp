@@ -234,7 +234,7 @@ static w_string resolve_projpath(
     return resolved;
   }
   auto resolvedpiece = resolved.piece();
-  if (find_project_root(root_files, resolvedpiece, relpiece)) {
+  if (find_project_root(*root_files, resolvedpiece, relpiece)) {
     relpath = relpiece.asWString();
     resolved = resolvedpiece.asWString();
     args[1] = w_string_to_json(resolved);
@@ -247,7 +247,7 @@ static w_string resolve_projpath(
   }
 
   // Convert root files to comma delimited string for error message
-  auto root_files_list = cfg_pretty_print_root_files(root_files);
+  auto root_files_list = cfg_pretty_print_root_files(*root_files);
 
   throw CommandValidationError(
       "resolve_projpath:  None of the files listed in global config "
