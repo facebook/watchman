@@ -5,14 +5,23 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <sys/time.h>
+#include "watchman/fs/WindowsTime.h"
+#include <stdint.h>
 #include "watchman/watchman_time.h"
 
+namespace watchman {
+
+#ifdef _WIN32
+
+namespace {
+
 // 100's of nanoseconds since the FILETIME epoch
-static const uint64_t EPOCH = ((uint64_t)116444736000000000ULL);
+static constexpr uint64_t EPOCH = ((uint64_t)116444736000000000ULL);
+
+} // namespace
 
 // FILETIME is expressed in 100's of nanoseconds
-void FILETIME_LARGE_INTEGER_to_timespec(LARGE_INTEGER ft, struct timespec* ts) {
+void FILETIME_LARGE_INTEGER_to_timespec(LARGE_INTEGER ft, timespec* ts) {
   static const uint32_t factor = WATCHMAN_NSEC_IN_SEC / 100;
 
   ft.QuadPart -= EPOCH;
@@ -21,7 +30,7 @@ void FILETIME_LARGE_INTEGER_to_timespec(LARGE_INTEGER ft, struct timespec* ts) {
   ts->tv_nsec = ft.QuadPart * 100;
 }
 
-void FILETIME_to_timespec(const FILETIME* ft, struct timespec* ts) {
+void FILETIME_to_timespec(const FILETIME* ft, timespec* ts) {
   LARGE_INTEGER li;
 
   li.HighPart = ft->dwHighDateTime;
@@ -30,7 +39,6 @@ void FILETIME_to_timespec(const FILETIME* ft, struct timespec* ts) {
   FILETIME_LARGE_INTEGER_to_timespec(li, ts);
 }
 
-static void timespec_to_timeval(const struct timespec* ts, struct timeval* tv) {
-  tv->tv_sec = (long)ts->tv_sec;
-  tv->tv_usec = (long)(ts->tv_nsec / WATCHMAN_NSEC_IN_USEC);
-}
+#endif
+
+} // namespace watchman

@@ -109,12 +109,7 @@ size_t backtrace_from_exception(
 #endif
 #include <errno.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
-#include <time.h>
 #ifndef _WIN32
 #include <grp.h>
 #include <libgen.h>
@@ -148,7 +143,6 @@ size_t backtrace_from_exception(
 #include <sysexits.h>
 #endif
 #include <spawn.h>
-#include <stddef.h>
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif

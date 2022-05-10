@@ -523,6 +523,7 @@ watchman/FlagMap.cpp
 watchman/IgnoreSet.cpp
 watchman/PendingCollection.cpp
 watchman/fs/Pipe.cpp
+watchman/fs/WindowsTime.cpp
 watchman/ThreadPool.cpp
 watchman/WatchmanConfig.cpp
 watchman/bser.cpp
@@ -536,7 +537,6 @@ watchman/root/file.cpp
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND testsupport_sources
-watchman/winbuild/time.cpp
 watchman/winbuild/backtrace.cpp
 watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
@@ -606,6 +606,7 @@ watchman/SymlinkTargets.cpp
 watchman/ThreadPool.cpp
 watchman/TriggerCommand.cpp
 watchman/fs/UnixDirHandle.cpp
+watchman/fs/WindowsTime.cpp
 watchman/UserDir.cpp
 watchman/WatchmanConfig.cpp
 watchman/fs/WinDirHandle.cpp
@@ -694,7 +695,6 @@ watchman/watcher/win32.cpp
 watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/mkdir.cpp
-watchman/winbuild/time.cpp
 watchman/winbuild/backtrace.cpp
 watchman/winbuild/getopt_long.cpp
 watchman/winbuild/posix_spawn.cpp

@@ -10,13 +10,9 @@
 #include <folly/ScopeGuard.h>
 #include "watchman/fs/FileDescriptor.h"
 #include "watchman/fs/FileSystem.h"
+#include "watchman/fs/WindowsTime.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
-
-#ifdef _WIN32
-// TODO: replace with "watchman/fs/WindowsTime.h"
-#include <sys/time.h> // @manual
-#endif
 
 namespace watchman {
 

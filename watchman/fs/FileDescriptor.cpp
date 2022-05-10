@@ -12,6 +12,7 @@
 #include <system_error>
 #include "watchman/fs/FSDetect.h"
 #include "watchman/fs/FileInformation.h"
+#include "watchman/fs/WindowsTime.h"
 #include "watchman/watchman_string.h"
 
 #ifdef __APPLE__
@@ -23,9 +24,6 @@
 #ifdef _WIN32
 #include <winioctl.h> // @manual
 #include <winsock2.h> // @manual
-
-// TODO: replace with "watchman/fs/WindowsTime.h"
-#include <sys/time.h> // @manual
 #endif
 
 namespace watchman {
