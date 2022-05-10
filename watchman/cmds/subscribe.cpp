@@ -292,7 +292,7 @@ std::optional<UntypedResponse> ClientSubscription::buildSubscriptionResults(
          {"subscription", w_string_to_json(name)},
          {"unilateral", json_true()}});
     if (res.savedStateInfo) {
-      response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+      response.set({{"saved-state-info", std::move(*res.savedStateInfo)}});
     }
 
     return response;

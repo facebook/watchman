@@ -39,7 +39,7 @@ class SavedStateInterface {
   // storage type.
   struct SavedStateResult {
     w_string commitId;
-    json_ref savedStateInfo = nullptr;
+    std::optional<json_ref> savedStateInfo;
   };
   // Returns saved state information for the most recent commit prior to and
   // including lookupCommitId that has a valid saved state for the specified

@@ -42,7 +42,7 @@ static UntypedResponse cmd_since(Client* client, const json_ref& args) {
        {"files", std::move(res.resultsArray).toJson()},
        {"debug", res.debugInfo.render()}});
   if (res.savedStateInfo) {
-    response.set("saved-state-info", std::move(res.savedStateInfo));
+    response.set("saved-state-info", std::move(*res.savedStateInfo));
   }
 
   add_root_warnings_to_response(response, root);
