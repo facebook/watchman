@@ -163,7 +163,11 @@ void cfg_set_global(const char* name, const json_ref& val) {
 
 std::optional<json_ref> cfg_get_json(const char* name) {
   auto state = configState.rlock();
-  return state->global_cfg->get_optional(name);
+  if (state->global_cfg) {
+    return state->global_cfg->get_optional(name);
+  } else {
+    return std::nullopt;
+  }
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
