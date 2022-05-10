@@ -14,7 +14,7 @@ namespace watchman {
 Publisher::Subscriber::Subscriber(
     std::shared_ptr<Publisher> pub,
     Notifier notify,
-    const json_ref& info)
+    const std::optional<json_ref>& info)
     : serial_(0),
       publisher_(std::move(pub)),
       notify_(notify),
@@ -106,7 +106,7 @@ void getPending(
 
 std::shared_ptr<Publisher::Subscriber> Publisher::subscribe(
     Notifier notify,
-    const json_ref& info) {
+    const std::optional<json_ref>& info) {
   auto sub =
       std::make_shared<Publisher::Subscriber>(shared_from_this(), notify, info);
   state_.wlock()->subscribers.emplace_back(sub);
@@ -164,10 +164,8 @@ bool Publisher::enqueue(json_ref&& payload) {
       return false;
     }
 
-    auto item = std::make_shared<Item>();
-    item->payload = std::move(payload);
-    item->serial = wlock->nextSerial++;
-    wlock->items.emplace_back(std::move(item));
+    wlock->items.emplace_back(
+        std::make_shared<Item>(wlock->nextSerial++, std::move(payload)));
   }
 
   // and notify them outside of the lock
@@ -191,9 +189,12 @@ json_ref Publisher::getDebugInfo() const {
   for (auto& sub_ref : rlock->subscribers) {
     auto sub = sub_ref.lock();
     if (sub) {
-      auto sub_json = json_object(
-          {{"serial", json_integer(sub->getSerial())},
-           {"info", sub->getInfo()}});
+      auto sub_json = json_object({
+          {"serial", json_integer(sub->getSerial())},
+      });
+      if (auto& info = sub->getInfo()) {
+        sub_json.set("info", json_ref(*info));
+      }
       subscribers_arr.push_back(std::move(sub_json));
     } else {
       // This is a subscriber that is now dead. It will be cleaned up the next

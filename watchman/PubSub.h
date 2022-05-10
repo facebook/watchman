@@ -20,11 +20,13 @@ namespace watchman {
 class Publisher : public std::enable_shared_from_this<Publisher> {
  public:
   struct Item {
+    Item(uint64_t s, json_ref p) : serial{s}, payload{std::move(p)} {}
+
     // copy of nextSerial_ at the time this was created.
     // The item can be released when all subscribers have
     // observed this serial number.
     uint64_t serial;
-    json_ref payload = nullptr;
+    json_ref payload;
   };
 
   // Generic callback that subscribers can register to arrange
@@ -42,28 +44,28 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     // Advising the subscriber that there may be more items available
     Notifier notify_;
     // Information for debugging purposes
-    const json_ref info_;
+    const std::optional<json_ref> info_;
 
    public:
     ~Subscriber();
     Subscriber(
         std::shared_ptr<Publisher> pub,
         Notifier notify,
-        const json_ref& info);
+        const std::optional<json_ref>& info);
     Subscriber(const Subscriber&) = delete;
 
     // Returns all as yet unseen published items for this subscriber.
     void getPending(std::vector<std::shared_ptr<const Item>>& pending);
 
-    inline uint64_t getSerial() const {
+    uint64_t getSerial() const {
       return serial_;
     }
 
-    inline Notifier& getNotify() {
+    Notifier& getNotify() {
       return notify_;
     }
 
-    inline const json_ref& getInfo() {
+    const std::optional<json_ref>& getInfo() const {
       return info_;
     }
   };
@@ -73,7 +75,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
   // automatically removed.
   std::shared_ptr<Subscriber> subscribe(
       Notifier notify,
-      const json_ref& info = nullptr);
+      const std::optional<json_ref>& info = std::nullopt);
 
   // Returns true if there are any subscribers.
   // This is racy and intended to be used to gate building a payload
