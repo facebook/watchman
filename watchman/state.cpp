@@ -194,11 +194,11 @@ bool w_root_load_state(const json_ref& state) {
   for (i = 0; i < json_array_size(*watched); i++) {
     const auto& obj = watched->at(i);
     bool created = false;
-    const char* filename;
     size_t j;
 
     auto triggers = obj.get("triggers");
-    filename = json_string_value(json_object_get(obj, "path"));
+    auto path = json_object_get(obj, "path");
+    const char* filename = path ? json_string_value(*path) : nullptr;
 
     std::shared_ptr<Root> root;
     try {

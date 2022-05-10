@@ -248,7 +248,7 @@ struct json_error_t {
 /* getters, setters, manipulation */
 
 size_t json_object_size(const json_ref& object);
-json_ref json_object_get(const json_ref& object, const char* key);
+std::optional<json_ref> json_object_get(const json_ref& object, const char* key);
 int json_object_set_new(
     const json_ref& object,
     const char* key,

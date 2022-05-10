@@ -293,7 +293,7 @@ static int bser_template(
       }
 
       // Emit value
-      if (w_bser_dump(ctx, val, data)) {
+      if (w_bser_dump(ctx, *val, data)) {
         return -1;
       }
     }

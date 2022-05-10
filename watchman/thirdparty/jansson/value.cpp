@@ -223,15 +223,15 @@ std::optional<json_ref> json_ref::get_optional(const char* key) const {
   return it->second;
 }
 
-json_ref json_object_get(const json_ref& json, const char* key) {
+std::optional<json_ref> json_object_get(const json_ref& json, const char* key) {
   if (!json || !json.isObject()) {
-    return nullptr;
+    return std::nullopt;
   }
 
   auto* object = json_to_object(json);
   auto it = object->findCString(key);
   if (it == object->map.end()) {
-    return nullptr;
+    return std::nullopt;
   }
   return it->second;
 }
@@ -307,8 +307,6 @@ static int json_object_equal(const json_ref& object1, const json_ref& object2) {
 
 static json_ref json_object_deep_copy(const json_ref& object) {
   json_ref result = json_object();
-  if (!result)
-    return nullptr;
 
   auto target_obj = json_to_object(result);
   for (auto& it : json_to_object(object)->map) {
@@ -486,8 +484,8 @@ static int json_integer_equal(
 json_real_t::json_real_t(double value) : json_t(JSON_REAL), value(value) {}
 
 json_ref json_real(double value) {
-  if (std::isnan(value) || std::isinf(value)) {
-    return nullptr;
+  if (!std::isfinite(value)) {
+    throw std::domain_error("Numeric JSON values must be finite");
   }
   return json_ref(new json_real_t(value), false);
 }
@@ -596,7 +594,7 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
 
 json_ref json_deep_copy(const json_ref& json) {
   if (!json)
-    return nullptr;
+    return json;
 
   if (json.isObject())
     return json_object_deep_copy(json);
