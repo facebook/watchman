@@ -323,12 +323,12 @@ static UntypedResponse cmd_flush_subscriptions(
   auto client = (UserClient*)clientbase;
 
   int sync_timeout;
-  json_ref subs(nullptr);
+  std::optional<json_ref> subs;
 
   // TODO: merge this parse and sync logic with the logic in query evaluation
   if (json_array_size(args) == 3) {
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
-    subs = args.at(2).get_default("subscriptions", nullptr);
+    subs = args.at(2).get_optional("subscriptions");
     if (!sync_timeout_obj.isInt()) {
       throw ErrorResponse("'sync_timeout' must be an integer");
     }
@@ -341,12 +341,12 @@ static UntypedResponse cmd_flush_subscriptions(
 
   std::vector<w_string> subs_to_sync;
   if (subs) {
-    if (!subs.isArray()) {
+    if (!subs->isArray()) {
       throw ErrorResponse(
           "expected 'subscriptions' to be an array of subscription names");
     }
 
-    for (auto& sub_name : subs.array()) {
+    for (auto& sub_name : subs->array()) {
       if (!sub_name.isString()) {
         throw ErrorResponse(
             "expected 'subscriptions' to be an array of subscription names");
