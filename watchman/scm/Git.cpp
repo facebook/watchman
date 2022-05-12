@@ -45,17 +45,14 @@ GitResult runGit(
     auto error = std::string{outputs.second.view()};
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
-    throw SCMError{
-        "failed to ",
+
+    SCMError::throwf(
+        "failed to {}\ncmd = {}\nstdout = {}\nstderr = {}\nstatus = {}",
         description,
-        "\ncmd = ",
         folly::join(" ", cmdline),
-        "\nstdout = ",
         output,
-        "\nstderr = ",
         error,
-        "\nstatus = ",
-        to<std::string>(status)};
+        status);
   }
 
   return GitResult{std::move(outputs.first)};
@@ -168,8 +165,8 @@ w_string Git::mergeBaseWith(w_string_piece commitId, w_string requestId) const {
             }
 
             if (output.size() != 40) {
-              throw SCMError(
-                  "expected merge base to be a 40 character string, got ",
+              SCMError::throwf(
+                  "expected merge base to be a 40 character string, got {}",
                   output);
             }
 

@@ -96,6 +96,25 @@ class inotify_category : public std::error_category {
 // Obtain a ref to the above error category
 const std::error_category& inotify_category();
 
+template <typename T>
+class WatchmanError : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+
+  template <typename... Args>
+  [[noreturn]] static void throwf(
+      fmt::format_string<Args...> fmt,
+      Args&&... args) {
+    if constexpr (nullptr != T::prefix) {
+      // It would be nice to avoid the double-format here.
+      throw T{fmt::format(
+          "{}: {}", T::prefix, fmt::format(fmt, std::forward<Args>(args)...))};
+    } else {
+      throw T{fmt::format(fmt, std::forward<Args>(args)...)};
+    }
+  }
+};
+
 class CommandValidationError : public std::runtime_error {
  public:
   template <typename... Args>

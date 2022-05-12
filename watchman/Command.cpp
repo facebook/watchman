@@ -21,15 +21,15 @@ Command::Command(w_string name, json_ref args)
 
 Command Command::parse(const json_ref& pdu) {
   if (!json_array_size(pdu)) {
-    throw CommandValidationError(
-        "invalid command (expected an array with some elements!)");
+    throw CommandValidationError{
+        "invalid command (expected an array with some elements!)"};
   }
 
   const auto jstr = pdu.array().at(0);
   const char* cmd_name = json_string_value(jstr);
   if (!cmd_name) {
-    throw CommandValidationError(
-        "invalid command: expected element 0 to be the command name");
+    throw CommandValidationError{
+        "invalid command: expected element 0 to be the command name"};
   }
 
   const auto& pdu_array = pdu.array();

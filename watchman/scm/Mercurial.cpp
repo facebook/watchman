@@ -57,15 +57,12 @@ MercurialResult runMercurial(
     auto error = std::string{outputs.second.view()};
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
-    throw SCMError{
-        "failed to ",
+    SCMError::throwf(
+        "failed to {}\ncmd = {}\nstdout = {}\nstderr = {}",
         description,
-        "\ncmd = ",
         folly::join(" ", cmdline),
-        "\nstdout = ",
         output,
-        "\nstderr = ",
-        error};
+        error);
   }
 
   return MercurialResult{std::move(outputs.first)};
@@ -214,13 +211,14 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
                 "query for the merge base");
 
             if (!result.output) {
-              throw SCMError(
-                  "no output was returned from `hg log -T{node} -r ", revset);
+              SCMError::throwf(
+                  "no output was returned from `hg log -T{{node}} -r {}",
+                  revset);
             }
 
             if (result.output.size() != 40) {
-              throw SCMError(
-                  "expected merge base to be a 40 character string, got ",
+              SCMError::throwf(
+                  "expected merge base to be a 40 character string, got {}",
                   result.output.view());
             }
 

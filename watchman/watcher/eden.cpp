@@ -1509,8 +1509,8 @@ class EdenView final : public QueryableView {
               ->value();
 
       if (!status.errors()->empty()) {
-        throw SCMError(
-            "Failed to get status betwen ", commitFrom, " and ", commitTo);
+        SCMError::throwf(
+            "Failed to get status betwen {} and {}", commitFrom, commitTo);
       }
 
       for (const auto& [name, file_status] : *status.entries()) {
