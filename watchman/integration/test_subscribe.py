@@ -74,7 +74,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.assertListEqual(
-            [u"bar", u"foo"],
+            ["bar", "foo"],
             sorted(
                 self.watchmanCommand(
                     "subscribe",
@@ -671,7 +671,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == "nt", "win")
     @WatchmanTestCase.skip_for(codecs=["json"])
     def test_subscribe_unicode(self) -> None:
-        unicode_filename = u"\u263a"
+        unicode_filename = "\u263a"
 
         root = self.mkdtemp()
         a_dir = os.path.join(root, "a")

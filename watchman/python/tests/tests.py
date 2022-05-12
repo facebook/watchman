@@ -34,7 +34,7 @@ if os.path.basename(bser.__file__) == "pybser.py":
         )
     )
 
-PILE_OF_POO = u"\U0001F4A9"
+PILE_OF_POO = "\U0001F4A9"
 NON_UTF8_STRING = b"\xff\xff\xff"
 
 
@@ -247,22 +247,22 @@ class TestBSERDump(unittest.TestCase):
 
         # For Python 3, here we can only check that a Unicode string goes in,
         # not that a Unicode string comes out.
-        self.munged(u"Hello", b"Hello")
+        self.munged("Hello", b"Hello")
 
-        self.roundtrip(u"Hello", value_encoding="utf8")
-        self.roundtrip(u"Hello", value_encoding="ascii")
-        self.roundtrip(u"Hello" + PILE_OF_POO, value_encoding="utf8")
+        self.roundtrip("Hello", value_encoding="utf8")
+        self.roundtrip("Hello", value_encoding="ascii")
+        self.roundtrip("Hello" + PILE_OF_POO, value_encoding="utf8")
 
         # can't use the with form here because Python 2.6
         self.assertRaises(
             UnicodeDecodeError,
             self.roundtrip,
-            u"Hello" + PILE_OF_POO,
+            "Hello" + PILE_OF_POO,
             value_encoding="ascii",
         )
         self.munged(
-            u"Hello" + PILE_OF_POO,
-            u"Hello",
+            "Hello" + PILE_OF_POO,
+            "Hello",
             value_encoding="ascii",
             value_errors="ignore",
         )
@@ -275,13 +275,13 @@ class TestBSERDump(unittest.TestCase):
         )
         self.munged(
             b"hello" + NON_UTF8_STRING,
-            u"hello",
+            "hello",
             value_encoding="utf8",
             value_errors="ignore",
         )
         # TODO: test non-UTF8 strings with surrogateescape in Python 3
 
-        ustr = u"\xe4\xf6\xfc"
+        ustr = "\xe4\xf6\xfc"
         self.munged(ustr, ustr.encode("utf-8"))
 
     def test_list(self):
@@ -294,20 +294,20 @@ class TestBSERDump(unittest.TestCase):
 
     def test_dict(self):
         self.roundtrip({"hello": b"there"})
-        self.roundtrip({"hello": u"there"}, value_encoding="utf8")
-        self.roundtrip({"hello": u"there"}, value_encoding="ascii")
-        self.roundtrip({"hello": u"there" + PILE_OF_POO}, value_encoding="utf8")
+        self.roundtrip({"hello": "there"}, value_encoding="utf8")
+        self.roundtrip({"hello": "there"}, value_encoding="ascii")
+        self.roundtrip({"hello": "there" + PILE_OF_POO}, value_encoding="utf8")
 
         # can't use the with form here because Python 2.6
         self.assertRaises(
             UnicodeDecodeError,
             self.roundtrip,
-            {"hello": u"there" + PILE_OF_POO},
+            {"hello": "there" + PILE_OF_POO},
             value_encoding="ascii",
         )
         self.munged(
-            {"Hello": u"there" + PILE_OF_POO},
-            {"Hello": u"there"},
+            {"Hello": "there" + PILE_OF_POO},
+            {"Hello": "there"},
             value_encoding="ascii",
             value_errors="ignore",
         )
@@ -320,7 +320,7 @@ class TestBSERDump(unittest.TestCase):
         )
         self.munged(
             {"Hello": b"there" + NON_UTF8_STRING},
-            {"Hello": u"there"},
+            {"Hello": "there"},
             value_encoding="utf8",
             value_errors="ignore",
         )
@@ -328,7 +328,7 @@ class TestBSERDump(unittest.TestCase):
         obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": b"there"}), False)
         self.assertEqual(1, len(obj))
         self.assertEqual(b"there", obj.hello)
-        self.assertEqual(b"there", obj[u"hello"])
+        self.assertEqual(b"there", obj["hello"])
         self.assertEqual(b"there", obj[0])
         # make sure this doesn't crash
         self.assertRaises(Exception, lambda: obj[45.25])

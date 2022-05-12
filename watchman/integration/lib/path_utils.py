@@ -51,7 +51,6 @@ if os.name == "nt":
         finally:
             close_handle(h)
 
-
 elif platform.system() == "Darwin":
     import ctypes.util
 
@@ -79,7 +78,6 @@ elif platform.system() == "Darwin":
             return ret
         finally:
             os.close(fd)
-
 
 else:
 

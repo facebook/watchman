@@ -42,7 +42,6 @@ except ImportError:
     class WatchmanEdenTestCase(object):
         pass
 
-
 else:
 
     class WatchmanEdenTestCase(WatchmanTestCase.WatchmanTestCase):

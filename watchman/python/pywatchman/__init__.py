@@ -82,7 +82,6 @@ if _debugging:
             file=sys.stderr,
         )
 
-
 else:
 
     def log(fmt, *args):
