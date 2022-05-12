@@ -7,6 +7,7 @@
 
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <spawn.h>
 #include "watchman/Logging.h"
 #include "watchman/watchman_stream.h"
 

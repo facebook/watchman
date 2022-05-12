@@ -142,7 +142,6 @@ size_t backtrace_from_exception(
 #include <sys/uio.h>
 #include <sysexits.h>
 #endif
-#include <spawn.h>
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
