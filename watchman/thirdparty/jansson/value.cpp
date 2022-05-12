@@ -19,6 +19,7 @@
 #include "watchman/watchman_string.h"
 
 namespace {
+
 const char* getTypeName(json_type t) {
   switch (t) {
     case JSON_OBJECT:
@@ -40,44 +41,48 @@ const char* getTypeName(json_type t) {
   }
   return "<unknown>";
 }
+
+  static json_t the_null{JSON_NULL, json_t::SingletonHack()};
+  static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
+  static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
+
 } // namespace
 
 json_ref::~json_ref() {
-  reset();
+  decref();
 }
 
-void json_ref::reset(json_t* ref) {
-  if (ref_ == ref) {
-    return;
-  }
+void json_ref::reset() {
+  decref();
 
-  if (ref_) {
-    decref(ref_);
-  }
+  ref_ = &the_null;
 
-  ref_ = ref;
-
-  if (ref_) {
-    incref(ref_);
-  }
+  // No-op, but leave in for clarity. Shouldn't matter.
+  incref();
 }
 
-json_ref::json_ref(const json_ref& other) : ref_(nullptr) {
-  reset(other.ref_);
+json_ref::json_ref(const json_ref& other) : ref_(other.ref_) {
+  incref();
 }
 
 json_ref& json_ref::operator=(const json_ref& other) {
-  reset(other.ref_);
+  if (ref_ != other.ref_) {
+    decref();
+    ref_ = other.ref_;
+    incref();
+  }
   return *this;
 }
 
 json_ref::json_ref(json_ref&& other) noexcept : ref_(other.ref_) {
-  other.ref_ = nullptr;
+  other.ref_ = &the_null;
 }
 
 json_ref& json_ref::operator=(json_ref&& other) noexcept {
-  reset();
-  std::swap(ref_, other.ref_);
+  if (ref_ != other.ref_) {
+    decref();
+    ref_ = std::exchange(other.ref_, &the_null);
+  }
   return *this;
 }
 
@@ -87,7 +92,7 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
     : type(type), refcount(-1) {}
 
 const w_string& json_ref::asString() const {
-  if (!*this || !isString()) {
+  if (!isString()) {
     throw std::domain_error(
         fmt::format("json_ref expected string, got {}", getTypeName(type())));
   }
@@ -95,7 +100,7 @@ const w_string& json_ref::asString() const {
 }
 
 std::optional<w_string> json_ref::asOptionalString() const {
-  if (!*this || !isString()) {
+  if (!isString()) {
     return std::nullopt;
   }
   return json_to_string(ref_)->value;
@@ -120,7 +125,7 @@ bool json_ref::asBool() const {
 /*** object ***/
 
 const std::unordered_map<w_string, json_ref>& json_ref::object() const {
-  if (!*this || type() != JSON_OBJECT) {
+  if (type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::object() called for non-object");
   }
   return json_to_object(ref_)->map;
@@ -132,12 +137,6 @@ json_object_t::json_object_t(size_t sizeHint) : json_t(JSON_OBJECT) {
 
 json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
     : json_t{JSON_OBJECT}, map{std::move(values)} {
-  for (const auto& [key, value] : values) {
-    if (!value) {
-      throw std::domain_error(
-          "tried to construction a json object with nullptr");
-    }
-  }
 }
 
 json_ref json_object_of_size(size_t size) {
@@ -164,7 +163,7 @@ json_ref json_object() {
 }
 
 size_t json_object_size(const json_ref& json) {
-  if (!json || !json.isObject()) {
+  if (!json.isObject()) {
     return 0;
   }
 
@@ -178,7 +177,7 @@ json_object_t::findCString(const char* key) {
 }
 
 json_ref json_ref::get_default(const char* key, json_ref defval) const {
-  if (!*this || type() != JSON_OBJECT) {
+  if (type() != JSON_OBJECT) {
     return defval;
   }
   auto object = json_to_object(ref_);
@@ -190,7 +189,7 @@ json_ref json_ref::get_default(const char* key, json_ref defval) const {
 }
 
 const json_ref& json_ref::get(const char* key) const {
-  if (!*this || type() != JSON_OBJECT) {
+  if (type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::get called on a non object type");
   }
   auto object = json_to_object(ref_);
@@ -203,7 +202,7 @@ const json_ref& json_ref::get(const char* key) const {
 }
 
 std::optional<json_ref> json_ref::get_optional(const char* key) const {
-  if (!*this || type() != JSON_OBJECT) {
+  if (type() != JSON_OBJECT) {
     return std::nullopt;
   }
 
@@ -216,7 +215,7 @@ std::optional<json_ref> json_ref::get_optional(const char* key) const {
 }
 
 std::optional<json_ref> json_object_get(const json_ref& json, const char* key) {
-  if (!json || !json.isObject()) {
+  if (!json.isObject()) {
     return std::nullopt;
   }
 
@@ -232,12 +231,9 @@ int json_object_set_new_nocheck(
     const json_ref& json,
     const char* key,
     json_ref&& value) {
-  if (!json || !json.isObject()) {
+  if (!json.isObject()) {
     return -1;
   }
-
-  if (!value)
-    return -1;
 
   if (!key || json.get() == value.get()) {
     return -1;
@@ -249,9 +245,6 @@ int json_object_set_new_nocheck(
 }
 
 void json_ref::set(const w_string& key, json_ref&& val) {
-  if (!val) {
-    throw std::domain_error("tried to set a nullptr");
-  }
   json_to_object(ref_)->map.insert_or_assign(key, std::move(val));
 }
 
@@ -311,27 +304,13 @@ static json_ref json_object_deep_copy(const json_ref& object) {
 /*** array ***/
 
 json_array_t::json_array_t(std::vector<json_ref> values)
-    : json_t(JSON_ARRAY), table{std::move(values)} {
-  for (auto& v : table) {
-    if (!v) {
-      throw std::runtime_error(
-          "cannot create an array with a nullptr json_ref");
-    }
-  }
-}
+    : json_t(JSON_ARRAY), table{std::move(values)} {}
 
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
-    : json_t(JSON_ARRAY), table(values) {
-  for (auto& v : table) {
-    if (!v) {
-      throw std::runtime_error(
-          "cannot create an array with a nullptr json_ref");
-    }
-  }
-}
+    : json_t(JSON_ARRAY), table(values) {}
 
 const std::vector<json_ref>& json_ref::array() const {
-  if (!*this || !isArray()) {
+  if (!isArray()) {
     throw std::domain_error("json_ref::array() called for non-array");
   }
   return json_to_array(ref_)->table;
@@ -350,7 +329,7 @@ int json_array_set_template(const json_ref& json, const json_ref& templ) {
 }
 
 int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
-  if (!json || !json.isArray()) {
+  if (!json.isArray()) {
     return 0;
   }
   json_to_array(json.get())->templ = std::move(templ);
@@ -358,14 +337,14 @@ int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
 }
 
 std::optional<json_ref> json_array_get_template(const json_ref& array) {
-  if (!array || !array.isArray()) {
+  if (!array.isArray()) {
     return std::nullopt;
   }
   return json_to_array(array.get())->templ;
 }
 
 size_t json_array_size(const json_ref& json) {
-  if (!json || !json.isArray()) {
+  if (!json.isArray()) {
     return 0;
   }
 
@@ -412,7 +391,7 @@ json_ref w_string_to_json(w_string str) {
 }
 
 const char* json_string_value(const json_ref& json) {
-  if (!json || !json.isString()) {
+  if (!json.isString()) {
     return nullptr;
   }
 
@@ -420,7 +399,7 @@ const char* json_string_value(const json_ref& json) {
 }
 
 const w_string& json_to_w_string(const json_ref& json) {
-  if (!json || !json.isString()) {
+  if (!json.isString()) {
     throw std::runtime_error("expected json string object");
   }
 
@@ -428,7 +407,8 @@ const w_string& json_to_w_string(const json_ref& json) {
 }
 
 static int json_string_equal(const json_ref& string1, const json_ref& string2) {
-  return json_to_string(string1.get())->value == json_to_string(string2.get())->value;
+  return json_to_string(string1.get())->value ==
+      json_to_string(string2.get())->value;
 }
 
 /*** integer ***/
@@ -441,7 +421,7 @@ json_ref json_integer(json_int_t value) {
 }
 
 json_int_t json_integer_value(const json_ref& json) {
-  if (!json || !json.isInt()) {
+  if (!json.isInt()) {
     return 0;
   }
   return json_to_integer(json.get())->value;
@@ -469,7 +449,7 @@ json_ref json_real(double value) {
 }
 
 double json_real_value(const json_ref& json) {
-  if (!json || !json.isDouble()) {
+  if (!json.isDouble()) {
     return 0;
   }
 
@@ -483,9 +463,6 @@ static int json_real_equal(const json_ref& real1, const json_ref& real2) {
 /*** number ***/
 
 double json_number_value(const json_ref& json) {
-  if (!json) {
-    return 0.0;
-  }
   if (json.isInt())
     return (double)json_integer_value(json);
   else if (json.isDouble())
@@ -497,17 +474,14 @@ double json_number_value(const json_ref& json) {
 /*** simple values ***/
 
 json_ref json_true() {
-  static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
   return json_ref::takeOwnership(&the_true);
 }
 
 json_ref json_false() {
-  static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
   return json_ref::takeOwnership(&the_false);
 }
 
 json_ref json_null() {
-  static json_t the_null{JSON_NULL, json_t::SingletonHack()};
   return json_ref::takeOwnership(&the_null);
 }
 
@@ -540,9 +514,6 @@ void json_ref::json_delete(json_t* json) {
 /*** equality ***/
 
 int json_equal(const json_ref& json1, const json_ref& json2) {
-  if (!json1 || !json2)
-    return 0;
-
   if (json1.type() != json2.type())
     return 0;
 
@@ -571,9 +542,6 @@ int json_equal(const json_ref& json1, const json_ref& json2) {
 /*** copying ***/
 
 json_ref json_deep_copy(const json_ref& json) {
-  if (!json)
-    return json;
-
   if (json.isObject())
     return json_object_deep_copy(json);
 

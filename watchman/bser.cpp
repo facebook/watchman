@@ -354,9 +354,6 @@ static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
     if (bser_bytestring(ctx, key.c_str(), data)) {
       return -1;
     }
-    if (!val) {
-      throw std::domain_error(folly::to<std::string>("trying to serialize null element with key ", key.c_str()));
-    }
     if (w_bser_dump(ctx, val, data)) {
       return -1;
     }

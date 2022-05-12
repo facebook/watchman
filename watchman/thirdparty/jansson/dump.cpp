@@ -372,10 +372,6 @@ int json_dump_callback(
     json_dump_callback_t callback,
     void* data,
     size_t flags) {
-  if (!json) {
-    return -1;
-  }
-
   if (!(flags & JSON_ENCODE_ANY)) {
     if (!json.isArray() && !json.isObject())
       return -1;

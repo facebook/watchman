@@ -50,29 +50,33 @@ struct json_t {
 using json_int_t = int64_t;
 
 class json_ref {
+  // ref_ is never a null pointer. The moved-from json_ref points to the JSON
+  // null singleton.
   json_t* ref_;
 
-  static inline json_t* incref(json_t* json) {
-    if (json && json->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
-      json->refcount.fetch_add(1, std::memory_order_relaxed);
+  void incref() {
+    if (ref_->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
+      ref_->refcount.fetch_add(1, std::memory_order_relaxed);
     }
-    return json;
   }
 
-  static inline void decref(json_t* json) {
-    if (json && json->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
-      if (1 == json->refcount.fetch_sub(1, std::memory_order_acq_rel)) {
-        json_delete(json);
+  void decref() {
+    if (ref_->refcount.load(std::memory_order_relaxed) != (size_t)-1) {
+      if (1 == ref_->refcount.fetch_sub(1, std::memory_order_acq_rel)) {
+        json_delete(ref_);
       }
     }
   }
+
   static void json_delete(json_t* json);
 
   /**
    * DO NOT USE. Private constructor for internal use by json_* constructor
    * functions.
    */
-  explicit json_ref(json_t* ref) : ref_{ref} {}
+  explicit json_ref(json_t* ref) : ref_{ref} {
+    assert(ref_ != nullptr);
+  }
 
  public:
   /**
@@ -92,14 +96,10 @@ class json_ref {
   json_ref(json_ref&& other) noexcept;
   json_ref& operator=(json_ref&& other) noexcept;
 
-  void reset(json_t* ref = nullptr);
+  void reset();
 
   json_t* get() const {
     return ref_;
-  }
-
-  explicit operator bool() const {
-    return ref_ != nullptr;
   }
 
   /**
@@ -475,11 +475,7 @@ struct Serde<std::map<w_string, V>> {
   static json_ref toJson(const std::map<w_string, V>& m) {
     auto o = json_object_of_size(m.size());
     for (auto& [name, value] : m) {
-      json_ref v = json::to(value);
-      if (!v) {
-        throw std::domain_error("objects must not be nullptr");
-      }
-      json_object_set(o, name.c_str(), std::move(v));
+      json_object_set(o, name.c_str(), json::to(value));
     }
     return o;
   }
