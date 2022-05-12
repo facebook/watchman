@@ -301,12 +301,10 @@ o  changeset:   0:b08db10380dd
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         dat = self.getSubFatClocksOnly("scmsub", root=root)
         self.assertEqual(dat[-1]["clock"]["scm"], res["clock"]["scm"])
-        additionalFiles = []
-        if watch["watcher"] == "kqueue+fsevents":
-            # Cookies are written to all the top level directories, thus the
-            # set of files will also include the top level directory, even
-            # though no files changed in it.
-            additionalFiles.append("a")
+        # Cookies are written to all the top level directories, thus the
+        # set of files will also include the top level directory, even
+        # though no files changed in it.
+        additionalFiles = ["a"] if watch["watcher"] == "kqueue+fsevents" else []
         self.assertFileListsEqual(
             res["files"] + additionalFiles, self.getConsolidatedFileList(dat)
         )
