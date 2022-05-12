@@ -94,8 +94,8 @@ bool ClientStateAssertions::removeAssertion(
         if (front->disposition == ClientStateDisposition::Asserted &&
             front->enterPayload) {
           front->root->unilateralResponses->enqueue(
-              std::move(front->enterPayload));
-          front->enterPayload = nullptr;
+              std::move(*front->enterPayload));
+          front->enterPayload = std::nullopt;
         }
       }
       return true;

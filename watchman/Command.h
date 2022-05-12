@@ -22,7 +22,7 @@ class Command {
   /**
    * Constructs a null command used only to start the Watchman server.
    */
-  /* implicit */ Command(std::nullptr_t) {}
+  /* implicit */ Command(std::nullptr_t) : args_{json_null()} {}
 
   Command(w_string name, json_ref args);
 
@@ -100,7 +100,7 @@ class Command {
       bool no_pretty) const;
 
   w_string name_;
-  json_ref args_ = nullptr;
+  json_ref args_;
 
   const CommandDefinition* commandDefinition_ = nullptr;
 };

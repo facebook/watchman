@@ -222,14 +222,16 @@ static void execute_common(
 
   if (sample && sample->finish()) {
     ctx->root->addPerfSampleMetadata(*sample);
-    sample->add_meta(
-        "query_execute",
-        json_object(
-            {{"fresh_instance", json_boolean(res->isFreshInstance)},
-             {"num_deduped", json_integer(ctx->num_deduped)},
-             {"num_results", json_integer(ctx->resultsArray.size())},
-             {"num_walked", json_integer(ctx->getNumWalked())},
-             {"query", ctx->query->query_spec}}));
+    auto meta = json_object({
+        {"fresh_instance", json_boolean(res->isFreshInstance)},
+        {"num_deduped", json_integer(ctx->num_deduped)},
+        {"num_results", json_integer(ctx->resultsArray.size())},
+        {"num_walked", json_integer(ctx->getNumWalked())},
+    });
+    if (ctx->query->query_spec) {
+      meta.set("query", json_ref(*ctx->query->query_spec));
+    }
+    sample->add_meta("query_execute", std::move(meta));
     sample->log();
   }
 

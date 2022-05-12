@@ -90,7 +90,7 @@ struct Query {
   std::unique_ptr<QueryExpr> expr;
 
   // The query that we parsed into this struct
-  json_ref query_spec = nullptr;
+  std::optional<json_ref> query_spec;
 
   QueryFieldList fieldList;
 

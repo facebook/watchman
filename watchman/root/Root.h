@@ -47,7 +47,7 @@ class ClientStateAssertion {
   // Deferred payload to send when this assertion makes it to the front
   // of the queue.
   // locking: You must hold root->assertedStates lock to access this member.
-  json_ref enterPayload = nullptr;
+  std::optional<json_ref> enterPayload;
 
   ClientStateAssertion(const std::shared_ptr<Root>& root, const w_string& name)
       : root(root), name(name) {}
@@ -126,7 +126,7 @@ struct RootQueryInfo : json::Repr {
   w_string state;
   int64_t client_pid;
   std::optional<w_string> request_id;
-  json_ref query = nullptr;
+  std::optional<json_ref> query;
   std::optional<w_string> subscription_name;
 
   json_ref toJson() const;

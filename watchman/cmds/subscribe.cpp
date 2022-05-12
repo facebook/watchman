@@ -552,11 +552,13 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
     auto client_stream = w_string::build(fmt::ptr(client->stm.get()));
     auto info_json = json_object(
         {{"name", w_string_to_json(sub->name)},
-         {"query", sub->query->query_spec},
          {"client", w_string_to_json(client_id)},
          {"stm", w_string_to_json(client_stream)},
          {"is_owner", json_boolean(client->stm->peerIsOwner())},
          {"pid", json_integer(client->stm->getPeerProcessID())}});
+    if (sub->query->query_spec) {
+      info_json.set("query", json_ref(*sub->query->query_spec));
+    }
 
     std::weak_ptr<Client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
