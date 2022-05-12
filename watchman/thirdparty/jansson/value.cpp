@@ -42,14 +42,6 @@ const char* getTypeName(json_type t) {
 }
 } // namespace
 
-json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
-
-json_ref::json_ref(json_t* ref, bool addRef) : ref_(ref) {
-  if (addRef && ref_) {
-    incref(ref_);
-  }
-}
-
 json_ref::~json_ref() {
   reset();
 }
@@ -149,17 +141,17 @@ json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
 }
 
 json_ref json_object_of_size(size_t size) {
-  return json_ref(new json_object_t(size), false);
+  return json_ref::takeOwnership(new json_object_t(size));
 }
 
 json_ref json_object(std::unordered_map<w_string, json_ref> values) {
-  return json_ref(new json_object_t(std::move(values)), false);
+  return json_ref::takeOwnership(new json_object_t(std::move(values)));
 }
 
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values) {
   auto object = json_object_of_size(values.size());
-  auto& map = json_to_object(object)->map;
+  auto& map = json_to_object(object.get())->map;
   for (auto& it : values) {
     map.emplace(w_string(it.first, W_STRING_UNICODE), it.second);
   }
@@ -176,7 +168,7 @@ size_t json_object_size(const json_ref& json) {
     return 0;
   }
 
-  return json_to_object(json)->map.size();
+  return json_to_object(json.get())->map.size();
 }
 
 typename std::unordered_map<w_string, json_ref>::iterator
@@ -228,7 +220,7 @@ std::optional<json_ref> json_object_get(const json_ref& json, const char* key) {
     return std::nullopt;
   }
 
-  auto* object = json_to_object(json);
+  auto* object = json_to_object(json.get());
   auto it = object->findCString(key);
   if (it == object->map.end()) {
     return std::nullopt;
@@ -250,7 +242,7 @@ int json_object_set_new_nocheck(
   if (!key || json.get() == value.get()) {
     return -1;
   }
-  auto* object = json_to_object(json);
+  auto* object = json_to_object(json.get());
 
   object->map.insert_or_assign(w_string{key}, std::move(value));
   return 0;
@@ -289,8 +281,8 @@ static int json_object_equal(const json_ref& object1, const json_ref& object2) {
   if (json_object_size(object1) != json_object_size(object2))
     return 0;
 
-  auto target_obj = json_to_object(object2);
-  for (auto& it : json_to_object(object1)->map) {
+  auto target_obj = json_to_object(object2.get());
+  for (auto& it : json_to_object(object1.get())->map) {
     auto other_it = target_obj->map.find(it.first);
 
     if (other_it == target_obj->map.end()) {
@@ -308,8 +300,8 @@ static int json_object_equal(const json_ref& object1, const json_ref& object2) {
 static json_ref json_object_deep_copy(const json_ref& object) {
   json_ref result = json_object();
 
-  auto target_obj = json_to_object(result);
-  for (auto& it : json_to_object(object)->map) {
+  auto target_obj = json_to_object(result.get());
+  for (auto& it : json_to_object(object.get())->map) {
     target_obj->map.insert_or_assign(it.first, json_deep_copy(it.second));
   }
 
@@ -346,11 +338,11 @@ const std::vector<json_ref>& json_ref::array() const {
 }
 
 json_ref json_array(std::vector<json_ref> values) {
-  return json_ref(new json_array_t(std::move(values)), false);
+  return json_ref::takeOwnership(new json_array_t(std::move(values)));
 }
 
 json_ref json_array(std::initializer_list<json_ref> values) {
-  return json_ref(new json_array_t(std::move(values)), false);
+  return json_ref::takeOwnership(new json_array_t(std::move(values)));
 }
 
 int json_array_set_template(const json_ref& json, const json_ref& templ) {
@@ -361,7 +353,7 @@ int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
   if (!json || !json.isArray()) {
     return 0;
   }
-  json_to_array(json)->templ = std::move(templ);
+  json_to_array(json.get())->templ = std::move(templ);
   return 1;
 }
 
@@ -369,7 +361,7 @@ std::optional<json_ref> json_array_get_template(const json_ref& array) {
   if (!array || !array.isArray()) {
     return std::nullopt;
   }
-  return json_to_array(array)->templ;
+  return json_to_array(array.get())->templ;
 }
 
 size_t json_array_size(const json_ref& json) {
@@ -377,7 +369,7 @@ size_t json_array_size(const json_ref& json) {
     return 0;
   }
 
-  return json_to_array(json)->table.size();
+  return json_to_array(json.get())->table.size();
 }
 
 static int json_array_equal(const json_ref& array1, const json_ref& array2) {
@@ -416,7 +408,7 @@ json_ref w_string_to_json(w_string str) {
     return json_null();
   }
 
-  return json_ref(new json_string_t(str), false);
+  return json_ref::takeOwnership(new json_string_t(str));
 }
 
 const char* json_string_value(const json_ref& json) {
@@ -424,7 +416,7 @@ const char* json_string_value(const json_ref& json) {
     return nullptr;
   }
 
-  return json_to_string(json)->value.c_str();
+  return json_to_string(json.get())->value.c_str();
 }
 
 const w_string& json_to_w_string(const json_ref& json) {
@@ -432,11 +424,11 @@ const w_string& json_to_w_string(const json_ref& json) {
     throw std::runtime_error("expected json string object");
   }
 
-  return json_to_string(json)->value;
+  return json_to_string(json.get())->value;
 }
 
 static int json_string_equal(const json_ref& string1, const json_ref& string2) {
-  return json_to_string(string1)->value == json_to_string(string2)->value;
+  return json_to_string(string1.get())->value == json_to_string(string2.get())->value;
 }
 
 /*** integer ***/
@@ -445,18 +437,18 @@ json_integer_t::json_integer_t(json_int_t value)
     : json_t(JSON_INTEGER), value(value) {}
 
 json_ref json_integer(json_int_t value) {
-  return json_ref(new json_integer_t(value), false);
+  return json_ref::takeOwnership(new json_integer_t(value));
 }
 
 json_int_t json_integer_value(const json_ref& json) {
   if (!json || !json.isInt()) {
     return 0;
   }
-  return json_to_integer(json)->value;
+  return json_to_integer(json.get())->value;
 }
 
 json_int_t json_ref::asInt() const {
-  return json_integer_value(ref_);
+  return json_integer_value(*this);
 }
 
 static int json_integer_equal(
@@ -473,7 +465,7 @@ json_ref json_real(double value) {
   if (!std::isfinite(value)) {
     throw std::domain_error("Numeric JSON values must be finite");
   }
-  return json_ref(new json_real_t(value), false);
+  return json_ref::takeOwnership(new json_real_t(value));
 }
 
 double json_real_value(const json_ref& json) {
@@ -481,7 +473,7 @@ double json_real_value(const json_ref& json) {
     return 0;
   }
 
-  return json_to_real(json)->value;
+  return json_to_real(json.get())->value;
 }
 
 static int json_real_equal(const json_ref& real1, const json_ref& real2) {
@@ -506,17 +498,17 @@ double json_number_value(const json_ref& json) {
 
 json_ref json_true() {
   static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
-  return &the_true;
+  return json_ref::takeOwnership(&the_true);
 }
 
 json_ref json_false() {
   static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
-  return &the_false;
+  return json_ref::takeOwnership(&the_false);
 }
 
 json_ref json_null() {
   static json_t the_null{JSON_NULL, json_t::SingletonHack()};
-  return &the_null;
+  return json_ref::takeOwnership(&the_null);
 }
 
 /*** deletion ***/

@@ -68,30 +68,31 @@ class json_ref {
   }
   static void json_delete(json_t* json);
 
- public:
-  /**
-   * json_ref is an implicitly optional type. It either contains a valid JSON
-   * value, or it's nullptr. To discourage accidental use of nullptr json_ref,
-   * require explicit construction.
-   *
-   * Note: the moved-from json_ref is also nullptr.
-   */
-  explicit json_ref(std::nullptr_t);
-
   /**
    * DO NOT USE. Private constructor for internal use by json_* constructor
    * functions.
    */
-  /* implicit */ json_ref(json_t* ref, bool addRef = true);
+  explicit json_ref(json_t* ref) : ref_{ref} {}
 
+ public:
+  /**
+   * DO NOT USE. Private constructor for internal use by json_* constructor
+   * functions.
+   */
+  static json_ref takeOwnership(json_t* ref) {
+    return json_ref{ref};
+  }
+
+  json_ref() = delete;
   ~json_ref();
-  void reset(json_t* ref = nullptr);
 
   json_ref(const json_ref& other);
   json_ref& operator=(const json_ref& other);
 
   json_ref(json_ref&& other) noexcept;
   json_ref& operator=(json_ref&& other) noexcept;
+
+  void reset(json_t* ref = nullptr);
 
   json_t* get() const {
     return ref_;
@@ -248,7 +249,9 @@ struct json_error_t {
 /* getters, setters, manipulation */
 
 size_t json_object_size(const json_ref& object);
-std::optional<json_ref> json_object_get(const json_ref& object, const char* key);
+std::optional<json_ref> json_object_get(
+    const json_ref& object,
+    const char* key);
 int json_object_set_new(
     const json_ref& object,
     const char* key,
@@ -298,13 +301,15 @@ json_ref json_deep_copy(const json_ref& value);
 #define JSON_DISABLE_EOF_CHECK 0x2
 #define JSON_DECODE_ANY 0x4
 
-std::optional<json_ref> json_loads(const char* input, size_t flags, json_error_t* error);
+std::optional<json_ref>
+json_loads(const char* input, size_t flags, json_error_t* error);
 std::optional<json_ref> json_loadb(
     const char* buffer,
     size_t buflen,
     size_t flags,
     json_error_t* error);
-std::optional<json_ref> json_loadf(FILE* input, size_t flags, json_error_t* error);
+std::optional<json_ref>
+json_loadf(FILE* input, size_t flags, json_error_t* error);
 json_ref json_load_file(const char* path, size_t flags);
 
 /* encoding */

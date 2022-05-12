@@ -263,7 +263,7 @@ static int do_dump(
         separator_length = 2;
       }
 
-      object = json_to_object(json);
+      object = json_to_object(json.get());
       auto it = object->map.begin();
 
       if (dump("{", 1, data)) {
