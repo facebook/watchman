@@ -6,11 +6,9 @@
  */
 
 #include "watchman/fs/Pipe.h"
-#ifdef _WIN32
-#include <event2/util.h> // @manual
-#endif
 #include <folly/Exception.h>
 #include <folly/String.h>
+#include <folly/portability/Event.h>
 #include <system_error>
 
 namespace watchman {
