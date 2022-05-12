@@ -140,8 +140,8 @@ static void check_roundtrip(
   auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
   EXPECT_TRUE(decoded) << "decoded something err = " << jerr.text;
 
-  auto jdump = json_dumps(decoded, JSON_SORT_KEYS);
-  EXPECT_TRUE(json_equal(expected.value(), decoded))
+  auto jdump = json_dumps(decoded.value(), JSON_SORT_KEYS);
+  EXPECT_TRUE(json_equal(expected.value(), decoded.value()))
       << "round-tripped json_equal";
   EXPECT_EQ(jdump, input) << "round-tripped";
 }

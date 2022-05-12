@@ -243,7 +243,7 @@ std::optional<json_ref> PduBuffer::readBserPdu(
     wpos += r;
   }
 
-  json_ref obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
+  std::optional<json_ref> obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
   if (!obj) {
     // obj is a nullptr because deserialization failed. Log the message that
     // failed to deserialize to stderr

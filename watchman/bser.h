@@ -34,7 +34,7 @@ bool bunser_int(
     json_int_t avail,
     json_int_t* needed,
     json_int_t* val);
-json_ref bunser(
+std::optional<json_ref> bunser(
     const char* buf,
     const char* end,
     json_int_t* needed,
