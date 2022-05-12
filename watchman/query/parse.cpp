@@ -418,20 +418,23 @@ std::shared_ptr<Query> parseQueryLegacy(
     term_name = "match";
   }
 
-  json_ref included =
-      included_array.empty() ? nullptr : json_array(std::move(included_array));
+  std::optional<json_ref> included = included_array.empty()
+      ? std::nullopt
+      : std::make_optional(json_array(std::move(included_array)));
 
-  json_ref excluded = nullptr;
+  std::optional<json_ref> excluded;
   if (!excluded_array.empty()) {
     excluded = json_array(
         {typed_string_to_json("not", W_STRING_UNICODE),
          json_array(std::move(excluded_array))});
   }
 
-  json_ref query_array = nullptr;
+  std::optional<json_ref> query_array;
   if (included && excluded) {
     query_array = json_array(
-        {typed_string_to_json("allof", W_STRING_UNICODE), excluded, included});
+        {typed_string_to_json("allof", W_STRING_UNICODE),
+         *excluded,
+         *included});
   } else if (included) {
     query_array = included;
   } else {
@@ -442,7 +445,7 @@ std::shared_ptr<Query> parseQueryLegacy(
   // Otherwise, it is the expression we want to use.
   if (query_array) {
     json_object_set_new_nocheck(
-        query_obj, "expression", std::move(query_array));
+        query_obj, "expression", std::move(*query_array));
   }
 
   // For trigger
