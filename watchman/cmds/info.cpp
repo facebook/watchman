@@ -110,9 +110,6 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
 #endif
 
     if (!request.required.empty() || !request.optional.empty()) {
-      auto cap_res = json_object_of_size(
-          request.required.size() + request.optional.size());
-
       for (const auto& capname : request.optional) {
         response.capabilities[capname] = capability_supported(capname.view());
       }

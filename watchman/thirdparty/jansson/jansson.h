@@ -215,7 +215,6 @@ json_ref json_object();
 json_ref json_object(std::unordered_map<w_string, json_ref> values);
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values);
-json_ref json_object_of_size(size_t nelems);
 json_ref json_array(std::vector<json_ref> values);
 json_ref json_array(std::initializer_list<json_ref> values);
 json_ref w_string_to_json(w_string str);
@@ -473,11 +472,12 @@ struct Serde<std::vector<T>> {
 template <typename V>
 struct Serde<std::map<w_string, V>> {
   static json_ref toJson(const std::map<w_string, V>& m) {
-    auto o = json_object_of_size(m.size());
+    std::unordered_map<w_string, json_ref> o;
+    o.reserve(m.size());
     for (auto& [name, value] : m) {
-      json_object_set(o, name.c_str(), json::to(value));
+      o.insert_or_assign(name, json::to(value));
     }
-    return o;
+    return json_object(std::move(o));
   }
 
   static std::map<w_string, V> fromJson(const json_ref& j) {

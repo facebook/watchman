@@ -42,9 +42,9 @@ const char* getTypeName(json_type t) {
   return "<unknown>";
 }
 
-  static json_t the_null{JSON_NULL, json_t::SingletonHack()};
-  static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
-  static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
+static json_t the_null{JSON_NULL, json_t::SingletonHack()};
+static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
+static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
 
 } // namespace
 
@@ -131,17 +131,8 @@ const std::unordered_map<w_string, json_ref>& json_ref::object() const {
   return json_to_object(ref_)->map;
 }
 
-json_object_t::json_object_t(size_t sizeHint) : json_t(JSON_OBJECT) {
-  map.reserve(sizeHint);
-}
-
 json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
-    : json_t{JSON_OBJECT}, map{std::move(values)} {
-}
-
-json_ref json_object_of_size(size_t size) {
-  return json_ref::takeOwnership(new json_object_t(size));
-}
+    : json_t{JSON_OBJECT}, map{std::move(values)} {}
 
 json_ref json_object(std::unordered_map<w_string, json_ref> values) {
   return json_ref::takeOwnership(new json_object_t(std::move(values)));
@@ -149,17 +140,18 @@ json_ref json_object(std::unordered_map<w_string, json_ref> values) {
 
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values) {
-  auto object = json_object_of_size(values.size());
-  auto& map = json_to_object(object.get())->map;
+  std::unordered_map<w_string, json_ref> object;
+  object.reserve(values.size());
+
   for (auto& it : values) {
-    map.emplace(w_string(it.first, W_STRING_UNICODE), it.second);
+    object.emplace(w_string{it.first, W_STRING_UNICODE}, it.second);
   }
 
-  return object;
+  return json_object(std::move(object));
 }
 
 json_ref json_object() {
-  return json_object_of_size(0);
+  return json_ref::takeOwnership(new json_object_t{{}});
 }
 
 size_t json_object_size(const json_ref& json) {

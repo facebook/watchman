@@ -6,7 +6,7 @@
  */
 
 #include <folly/chrono/Conv.h>
-#include <iomanip>
+#include <unordered_map>
 #include "watchman/Client.h"
 #include "watchman/InMemoryView.h"
 #include "watchman/LRUCache.h"
@@ -49,14 +49,15 @@ static UntypedResponse cmd_debug_show_cursors(
   UntypedResponse resp;
 
   auto map = root->inner.cursors.rlock();
-  json_ref cursors = json_object_of_size(map->size());
+  std::unordered_map<w_string, json_ref> cursors;
+  cursors.reserve(map->size());
   for (const auto& it : *map) {
     const auto& name = it.first;
     const auto& ticks = it.second;
-    cursors.set(name.c_str(), json_integer(ticks));
+    cursors.insert_or_assign(name, json_integer(ticks));
   }
 
-  resp.set("cursors", std::move(cursors));
+  resp.set("cursors", json_object(std::move(cursors)));
   return resp;
 }
 W_CMD_REG(

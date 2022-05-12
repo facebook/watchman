@@ -564,7 +564,8 @@ static std::optional<json_ref> bunser_template(
   std::vector<json_ref> arrval;
   arrval.reserve((size_t)nelems);
   for (i = 0; i < nelems; i++) {
-    auto item = json_object_of_size((size_t)np);
+    std::unordered_map<w_string, json_ref> item;
+    item.reserve(np);
     for (size_t ip = 0; ip < np; ip++) {
       if (*buf == BSER_SKIP) {
         buf++;
@@ -581,11 +582,10 @@ static std::optional<json_ref> bunser_template(
       buf += needed;
       total += needed;
 
-      json_object_set_new_nocheck(
-          item, json_string_value(templ_arr[ip]), std::move(*val));
+      item.insert_or_assign(json_string_value(templ_arr[ip]), std::move(*val));
     }
 
-    arrval.push_back(std::move(item));
+    arrval.push_back(json_object(std::move(item)));
   }
 
   *used = total;
