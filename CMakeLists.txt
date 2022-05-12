@@ -543,7 +543,6 @@ watchman/root/file.cpp
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND testsupport_sources
-watchman/winbuild/pathmap.cpp
 watchman/winbuild/posix_spawn.cpp
 watchman/stream_win.cpp
   )
@@ -697,7 +696,6 @@ if (WIN32)
   list(APPEND watchman_sources
 watchman/stream_win.cpp
 watchman/watcher/win32.cpp
-watchman/winbuild/pathmap.cpp
 watchman/winbuild/mkdir.cpp
 watchman/winbuild/getopt_long.cpp
 watchman/winbuild/posix_spawn.cpp

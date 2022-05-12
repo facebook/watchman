@@ -6,6 +6,8 @@
  */
 
 #include "watchman/fs/FileInformation.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/watchman_string.h"
 #include "watchman/watchman_time.h"
 
 namespace watchman {
@@ -110,3 +112,19 @@ FileInformation FileInformation::makeDeletedFileInformation() {
   return info;
 }
 } // namespace watchman
+
+#ifdef _WIN32
+
+bool w_path_exists(const char* path) {
+  auto wpath = w_string_piece(path).asWideUNC();
+
+  WIN32_FILE_ATTRIBUTE_DATA data;
+  if (!GetFileAttributesExW(wpath.c_str(), GetFileExInfoStandard, &data)) {
+    DWORD err = GetLastError();
+    errno = map_win32_err(err);
+    return false;
+  }
+  return true;
+}
+
+#endif
