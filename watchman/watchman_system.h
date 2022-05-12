@@ -71,15 +71,6 @@ char* realpath(const char* filename, char* target);
 #define O_CLOEXEC _O_NOINHERIT
 #define O_NOFOLLOW 0 /* clowny, but there's no translation */
 
-#define HAVE_BACKTRACE
-#define HAVE_BACKTRACE_SYMBOLS
-size_t backtrace(void** frames, size_t n_frames);
-char** backtrace_symbols(void** array, size_t n_frames);
-size_t backtrace_from_exception(
-    LPEXCEPTION_POINTERS exception,
-    void** frames,
-    size_t n_frames);
-
 #ifdef __cplusplus
 }
 #endif
@@ -147,12 +138,6 @@ size_t backtrace_from_exception(
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
-#endif
-
-#ifdef _WIN32
-#define PRIsize_t "Iu"
-#else
-#define PRIsize_t "zu"
 #endif
 
 #if defined(__clang__)

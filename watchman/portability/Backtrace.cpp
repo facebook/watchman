@@ -5,8 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/portability/Backtrace.h"
+#include <stdint.h>
+#include <mutex>
 #include <vector>
-#include "watchman/watchman_system.h"
+
+#ifdef _WIN32
+
+#define PRIsize_t "Iu"
+
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
 #pragma warning(disable : 4091)
 
@@ -21,8 +28,10 @@
 #define OPTIONAL
 #endif
 
-#include <Dbghelp.h>
-#include <mutex>
+// Must be included before dbghelp.h
+#include <windows.h>
+
+#include <dbghelp.h> // @manual
 
 static std::once_flag sym_init_once;
 static HANDLE proc;
@@ -174,3 +183,5 @@ size_t backtrace_from_exception(
   }
   return i;
 }
+
+#endif

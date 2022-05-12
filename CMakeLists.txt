@@ -494,7 +494,12 @@ add_library(wildmatch STATIC
   watchman/thirdparty/wildmatch/wildmatch.c
   watchman/thirdparty/wildmatch/wildmatch.h
 )
-add_library(log STATIC watchman/PubSub.cpp watchman/LogConfig.cpp watchman/Logging.cpp)
+add_library(log STATIC
+  watchman/PubSub.cpp
+  watchman/LogConfig.cpp
+  watchman/Logging.cpp
+  watchman/portability/Backtrace.cpp
+)
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC watchman/hash.cpp)
 target_link_libraries(hash third_party_deps)
@@ -537,7 +542,6 @@ watchman/root/file.cpp
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND testsupport_sources
-watchman/winbuild/backtrace.cpp
 watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/posix_spawn.cpp
@@ -695,7 +699,6 @@ watchman/watcher/win32.cpp
 watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/mkdir.cpp
-watchman/winbuild/backtrace.cpp
 watchman/winbuild/getopt_long.cpp
 watchman/winbuild/posix_spawn.cpp
   )
