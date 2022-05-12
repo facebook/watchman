@@ -176,7 +176,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   CookieSync cookies;
 
   /* config options loaded via json file */
-  json_ref config_file;
+  std::optional<json_ref> config_file;
   Configuration config;
 
   const std::chrono::milliseconds trigger_settle{0};
@@ -260,7 +260,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
       FileSystem& fileSystem,
       const w_string& root_path,
       const w_string& fs_type,
-      json_ref config_file,
+      std::optional<json_ref> config_file,
       Configuration config,
       std::shared_ptr<QueryableView> view,
       SaveGlobalStateHook saveGlobalStateHook);

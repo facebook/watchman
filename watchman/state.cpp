@@ -81,7 +81,7 @@ bool w_state_load() {
 
   state_saver_thread = std::thread(state_saver);
 
-  json_ref state = nullptr;
+  std::optional<json_ref> state;
   try {
     state = json_load_file(flags.watchman_state_file.c_str(), 0);
   } catch (const std::system_error& exc) {
@@ -104,7 +104,7 @@ bool w_state_load() {
     return false;
   }
 
-  if (!w_root_load_state(state)) {
+  if (!w_root_load_state(state.value())) {
     return false;
   }
 

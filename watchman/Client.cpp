@@ -327,10 +327,12 @@ void UserClient::clientThread() noexcept {
 
               UntypedResponse resp;
               resp.set(
-                  {{"root", item->payload.get_default("root", nullptr)},
-                   {"unilateral", json_true()},
+                  {{"unilateral", json_true()},
                    {"canceled", json_true()},
                    {"subscription", w_string_to_json(sub->name)}});
+              if (auto root = item->payload.get_optional("root")) {
+                resp.set("root", *root);
+              }
               enqueueResponse(std::move(resp));
               // Remember to cancel this subscription.
               // We can't do it in this loop because that would

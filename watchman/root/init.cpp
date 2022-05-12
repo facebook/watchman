@@ -240,7 +240,7 @@ Root::Root(
     FileSystem& fileSystem,
     const w_string& root_path,
     const w_string& fs_type,
-    json_ref config_file,
+    std::optional<json_ref> config_file,
     Configuration config_,
     std::shared_ptr<QueryableView> view,
     SaveGlobalStateHook saveGlobalStateHook)

@@ -33,7 +33,7 @@ namespace watchman {
 class Configuration {
  public:
   Configuration();
-  explicit Configuration(json_ref local);
+  explicit Configuration(std::optional<json_ref> local);
 
   std::optional<json_ref> get(const char* name) const;
   const char* getString(const char* name, const char* defval) const;

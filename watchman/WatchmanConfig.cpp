@@ -392,7 +392,8 @@ namespace watchman {
 
 Configuration::Configuration() {}
 
-Configuration::Configuration(json_ref local) : local_{std::move(local)} {}
+Configuration::Configuration(std::optional<json_ref> local)
+    : local_{std::move(local)} {}
 
 std::optional<json_ref> Configuration::get(const char* name) const {
   // Highest precedence: options set locally

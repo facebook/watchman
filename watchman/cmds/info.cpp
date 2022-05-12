@@ -202,12 +202,12 @@ static UntypedResponse cmd_get_config(Client* client, const json_ref& args) {
 
   UntypedResponse resp;
 
-  json_ref config = root->config_file;
+  std::optional<json_ref> config = root->config_file;
   if (!config) {
     config = json_object();
   }
 
-  resp.set("config", std::move(config));
+  resp.set("config", std::move(*config));
   return resp;
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root);

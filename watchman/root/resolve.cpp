@@ -111,17 +111,17 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
   }
 }
 
-json_ref load_root_config(const char* path) {
+std::optional<json_ref> load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
   snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
 
   if (!w_path_exists(cfgfilename)) {
     if (errno == ENOENT) {
-      return nullptr;
+      return std::nullopt;
     }
     logf(
         ERR, "{} is not accessible: {}\n", cfgfilename, folly::errnoStr(errno));
-    return nullptr;
+    return std::nullopt;
   }
 
   return json_load_file(cfgfilename, 0);
