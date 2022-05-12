@@ -696,7 +696,6 @@ if (WIN32)
   list(APPEND watchman_sources
 watchman/stream_win.cpp
 watchman/watcher/win32.cpp
-watchman/winbuild/mkdir.cpp
 watchman/winbuild/getopt_long.cpp
 watchman/winbuild/posix_spawn.cpp
   )

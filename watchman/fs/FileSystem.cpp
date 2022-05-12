@@ -8,6 +8,7 @@
 #include "watchman/fs/FileSystem.h"
 #include <folly/String.h>
 #include "watchman/fs/FSDetect.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 #include "watchman/watchman_string.h"
 
@@ -380,3 +381,22 @@ w_string readSymbolicLink(const char* path) {
 }
 
 } // namespace watchman
+
+#ifdef _WIN32
+
+int mkdir(const char* path, int) {
+  auto wpath = w_string_piece(path).asWideUNC();
+  DWORD err;
+  BOOL res;
+
+  res = CreateDirectoryW(wpath.c_str(), nullptr);
+  err = GetLastError();
+
+  if (res) {
+    return 0;
+  }
+  errno = map_win32_err(err);
+  return -1;
+}
+
+#endif
