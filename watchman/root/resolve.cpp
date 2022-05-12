@@ -22,9 +22,7 @@ namespace {
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
 bool root_check_restrict(const char* watch_path) {
-  uint32_t i;
   bool enforcing;
-
   auto root_restrict_files = cfg_compute_root_files(&enforcing);
   if (!root_restrict_files) {
     return true;
@@ -33,10 +31,14 @@ bool root_check_restrict(const char* watch_path) {
     return true;
   }
 
-  for (i = 0; i < json_array_size(*root_restrict_files); i++) {
-    auto obj = json_array_get(*root_restrict_files, i);
+  if (!root_restrict_files->isArray()) {
+    return false;
+  }
+  auto& arr = root_restrict_files->array();
+
+  for (size_t i = 0; i < arr.size(); i++) {
+    auto& obj = arr[i];
     const char* restrict_file = json_string_value(obj);
-    bool rv;
 
     if (!restrict_file) {
       logf(
@@ -48,7 +50,7 @@ bool root_check_restrict(const char* watch_path) {
     }
 
     auto restrict_path = folly::to<std::string>(watch_path, "/", restrict_file);
-    rv = w_path_exists(restrict_path.c_str());
+    bool rv = w_path_exists(restrict_path.c_str());
     if (rv)
       return true;
   }
@@ -57,7 +59,6 @@ bool root_check_restrict(const char* watch_path) {
 }
 
 static void check_allowed_fs(const char* filename, const w_string& fs_type) {
-  uint32_t i;
   const char* advice = NULL;
 
   // Report this to the log always, as it is helpful in understanding
@@ -82,8 +83,10 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
     return;
   }
 
-  for (i = 0; i < json_array_size(*illegal_fstypes); i++) {
-    auto obj = json_array_get(*illegal_fstypes, i);
+  auto& arr = illegal_fstypes->array();
+
+  for (size_t i = 0; i < arr.size(); i++) {
+    auto& obj = arr[i];
     const char* name = json_string_value(obj);
 
     if (!name) {

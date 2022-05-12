@@ -32,8 +32,6 @@ static void run_test(const json_ref& test_case_data) {
 TEST(WildMatch, tests) {
   FILE* test_cases_file;
   json_error_t error;
-  size_t num_tests;
-  size_t index;
 
   test_cases_file = fopen(WILDMATCH_TEST_JSON_FILE, "r");
 #ifdef WATCHMAN_TEST_SRC_DIR
@@ -69,9 +67,7 @@ TEST(WildMatch, tests) {
   EXPECT_TRUE(test_cases.value().isArray())
       << "Expected JSON in " << WILDMATCH_TEST_JSON_FILE << "  to be an array";
 
-  num_tests = json_array_size(test_cases.value());
-  for (index = 0; index < num_tests; index++) {
-    auto test_case_data = json_array_get(test_cases.value(), index);
+  for (auto& test_case_data : test_cases.value().array()) {
     run_test(test_case_data);
   }
 }

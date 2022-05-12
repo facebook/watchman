@@ -346,9 +346,7 @@ void parse_field_list(
     throw QueryParseError("field list must be an array of strings");
   }
 
-  for (size_t i = 0; i < json_array_size(field_list); i++) {
-    auto jname = json_array_get(field_list, i);
-
+  for (auto& jname : field_list.array()) {
     if (!jname.isString()) {
       throw QueryParseError("field list must be an array of strings");
     }

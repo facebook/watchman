@@ -102,9 +102,11 @@ class DirNameExpr : public QueryExpr {
             "Invalid number of arguments for '", which, "' term");
       }
 
+      const auto& depth_array = depth.array();
+
       parse_int_compare(depth, &depth_comp);
 
-      if (strcmp("depth", json_string_value(json_array_get(depth, 0)))) {
+      if (strcmp("depth", json_string_value(depth_array[0]))) {
         throw QueryParseError(
             "Third parameter to '",
             which,

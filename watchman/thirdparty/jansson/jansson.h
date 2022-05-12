@@ -273,7 +273,6 @@ inline int json_object_set_nocheck(
 }
 
 size_t json_array_size(const json_ref& array);
-json_ref json_array_get(const json_ref& array, size_t index);
 int json_array_set_template_new(const json_ref& json, json_ref&& templ);
 std::optional<json_ref> json_array_get_template(const json_ref& array);
 

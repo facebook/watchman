@@ -200,8 +200,9 @@ IgnoreSet computeIgnoreSet(
     if (!ignores->isArray()) {
       logf(ERR, "ignore_dirs must be an array of strings\n");
     } else {
-      for (size_t i = 0; i < json_array_size(*ignores); i++) {
-        auto jignore = json_array_get(*ignores, i);
+      auto& arr = ignores->array();
+      for (size_t i = 0; i < arr.size(); i++) {
+        auto& jignore = arr[i];
 
         if (!jignore.isString()) {
           logf(ERR, "ignore_dirs must be an array of strings\n");

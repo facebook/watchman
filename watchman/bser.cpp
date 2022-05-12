@@ -250,7 +250,6 @@ static int bser_template(
     const json_ref& templ,
     void* data) {
   size_t n = json_array_size(array);
-  size_t i, pn;
 
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -271,16 +270,17 @@ static int bser_template(
     return -1;
   }
 
-  pn = json_array_size(templ);
+  auto& array_arr = array.array();
+  auto& templ_arr = templ.array();
+  size_t pn = templ_arr.size();
 
   // For each object
-  for (i = 0; i < n; i++) {
-    auto obj = json_array_get(array, i);
-    size_t pi;
+  for (size_t i = 0; i < n; i++) {
+    auto& obj = array_arr[i];
 
     // For each factored key
-    for (pi = 0; pi < pn; pi++) {
-      const char* key = json_string_value(json_array_get(templ, pi));
+    for (size_t pi = 0; pi < pn; pi++) {
+      const char* key = json_string_value(templ_arr[pi]);
 
       // Look up the object property
       auto val = json_object_get(obj, key);
@@ -304,9 +304,6 @@ static int bser_template(
 
 static int
 bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data) {
-  size_t n = json_array_size(array);
-  size_t i;
-
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
@@ -320,13 +317,12 @@ bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data) {
     return -1;
   }
 
-  if (bser_int(ctx, n, data)) {
+  auto& arr = array.array();
+  if (bser_int(ctx, arr.size(), data)) {
     return -1;
   }
 
-  for (i = 0; i < n; i++) {
-    auto val = json_array_get(array, i);
-
+  for (auto& val : arr) {
     if (w_bser_dump(ctx, val, data)) {
       return -1;
     }
@@ -523,7 +519,6 @@ static json_ref bunser_template(
   json_int_t needed = 0;
   json_int_t total = 0;
   json_int_t i, nelems;
-  json_int_t ip, np;
 
   buf++;
   total++;
@@ -562,14 +557,15 @@ static json_ref bunser_template(
   total += needed;
   buf += needed;
 
-  np = json_array_size(templ);
+  auto& templ_arr = templ.array();
+  size_t np = templ_arr.size();
 
   // Now load up the array with object values
   std::vector<json_ref> arrval;
   arrval.reserve((size_t)nelems);
   for (i = 0; i < nelems; i++) {
     auto item = json_object_of_size((size_t)np);
-    for (ip = 0; ip < np; ip++) {
+    for (size_t ip = 0; ip < np; ip++) {
       if (*buf == BSER_SKIP) {
         buf++;
         total++;
@@ -586,9 +582,7 @@ static json_ref bunser_template(
       total += needed;
 
       json_object_set_new_nocheck(
-          item,
-          json_string_value(json_array_get(templ, (size_t)ip)),
-          std::move(val));
+          item, json_string_value(templ_arr[ip]), std::move(val));
     }
 
     arrval.push_back(std::move(item));

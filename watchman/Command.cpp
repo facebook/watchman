@@ -25,7 +25,7 @@ Command Command::parse(const json_ref& pdu) {
         "invalid command (expected an array with some elements!)");
   }
 
-  const auto jstr = json_array_get(pdu, 0);
+  const auto jstr = pdu.array().at(0);
   const char* cmd_name = json_string_value(jstr);
   if (!cmd_name) {
     throw CommandValidationError(

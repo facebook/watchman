@@ -179,10 +179,10 @@ bool find_project_root(
     const json_ref& root_files,
     w_string_piece& resolved,
     w_string_piece& relpath) {
-  uint32_t i;
-
-  for (i = 0; i < json_array_size(root_files); i++) {
-    auto item = json_array_get(root_files, i);
+  if (!root_files.isArray()) {
+    return false;
+  }
+  for (auto& item : root_files.array()) {
     auto name = json_to_w_string(item);
 
     if (find_file_in_dir_tree(name, resolved, relpath)) {

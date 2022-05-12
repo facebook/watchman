@@ -185,14 +185,11 @@ const char* cfg_get_string(const char* name, const char* defval) {
 
 // Return true if the json ref is an array of string values
 static bool is_array_of_strings(const json_ref& ref) {
-  uint32_t i;
-
   if (!ref.isArray()) {
     return false;
   }
-
-  for (i = 0; i < json_array_size(ref); i++) {
-    if (!json_array_get(ref, i).isString()) {
+  for (auto& elt : ref.array()) {
+    if (!elt.isString()) {
       return false;
     }
   }

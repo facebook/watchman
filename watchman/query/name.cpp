@@ -97,10 +97,10 @@ class NameExpr : public QueryExpr {
     const auto& name = term.at(1);
 
     if (name.isArray()) {
-      uint32_t i;
+      const auto& name_array = name.array();
 
-      for (i = 0; i < json_array_size(name); i++) {
-        if (!json_array_get(name, i).isString()) {
+      for (const auto& ele : name_array) {
+        if (!ele.isString()) {
           throw QueryParseError(
               "Argument 2 to '",
               which,
@@ -108,10 +108,9 @@ class NameExpr : public QueryExpr {
         }
       }
 
-      set.reserve(json_array_size(name));
-      for (i = 0; i < json_array_size(name); i++) {
+      set.reserve(name_array.size());
+      for (const auto& jele : name_array) {
         w_string element;
-        const auto& jele = name.at(i);
         auto ele = json_to_w_string(jele);
 
         if (caseSensitive == CaseSensitivity::CaseInSensitive) {

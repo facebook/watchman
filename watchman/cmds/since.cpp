@@ -22,10 +22,11 @@ static UntypedResponse cmd_since(Client* client, const json_ref& args) {
   if (json_array_size(args) < 3) {
     throw ErrorResponse("not enough arguments for 'since'");
   }
+  auto& arr = args.array();
 
   auto root = resolveRoot(client, args);
 
-  auto clock_ele = json_array_get(args, 2);
+  auto clock_ele = arr[2];
   clockspec = json_string_value(clock_ele);
   if (!clockspec) {
     throw ErrorResponse("expected argument 2 to be a valid clockspec");

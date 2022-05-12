@@ -74,7 +74,7 @@ static UntypedResponse cmd_debug_ageout(Client* client, const json_ref& args) {
 
   auto root = resolveRoot(client, args);
 
-  std::chrono::seconds min_age(json_array_get(args, 2).asInt());
+  std::chrono::seconds min_age(args.array()[2].asInt());
 
   UntypedResponse resp;
   root->performAgeOut(min_age);

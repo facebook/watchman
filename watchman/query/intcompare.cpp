@@ -36,17 +36,19 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   size_t i;
   bool found = false;
 
-  if (json_array_size(term) != 3) {
+  auto& arr = term.array();
+
+  if (arr.size() != 3) {
     throw QueryParseError("integer comparator must have 3 elements");
   }
-  if (!json_array_get(term, 1).isString()) {
+  if (!arr[1].isString()) {
     throw QueryParseError("integer comparator op must be a string");
   }
-  if (!json_array_get(term, 2).isInt()) {
+  if (!arr[2].isInt()) {
     throw QueryParseError("integer comparator operand must be an integer");
   }
 
-  opname = json_string_value(json_array_get(term, 1));
+  opname = json_string_value(arr[1]);
   for (i = 0; i < sizeof(opname_to_op) / sizeof(opname_to_op[0]); i++) {
     if (!strcmp(opname_to_op[i].opname, opname)) {
       comp->op = opname_to_op[i].op;
@@ -60,7 +62,7 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
         "integer comparator opname `", opname, "' is invalid"));
   }
 
-  comp->operand = json_array_get(term, 2).asInt();
+  comp->operand = arr[2].asInt();
 }
 
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp) {

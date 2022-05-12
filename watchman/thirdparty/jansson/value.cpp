@@ -380,32 +380,18 @@ size_t json_array_size(const json_ref& json) {
   return json_to_array(json)->table.size();
 }
 
-json_ref json_array_get(const json_ref& json, size_t index) {
-  if (!json || !json.isArray()) {
-    return nullptr;
-  }
-  auto array = json_to_array(json);
-
-  if (index >= array->table.size()) {
-    return nullptr;
-  }
-
-  return array->table[index];
-}
-
 static int json_array_equal(const json_ref& array1, const json_ref& array2) {
-  size_t i, size;
+  auto& arr1 = array1.array();
+  auto& arr2 = array2.array();
 
-  size = json_array_size(array1);
-  if (size != json_array_size(array2))
+  if (arr1.size() != arr2.size()) {
     return 0;
+  }
 
-  for (i = 0; i < size; i++) {
-    auto value1 = json_array_get(array1, i);
-    auto value2 = json_array_get(array2, i);
-
-    if (!json_equal(value1, value2))
+  for (size_t i = 0; i < arr1.size(); ++i) {
+    if (!json_equal(arr1[i], arr2[i])) {
       return 0;
+    }
   }
 
   return 1;

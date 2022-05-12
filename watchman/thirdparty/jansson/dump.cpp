@@ -219,26 +219,23 @@ static int do_dump(
       return dump_string(json_string_value(json), dump, data, flags);
 
     case JSON_ARRAY: {
-      int i;
-      int n;
-
-      n = json_array_size(json);
+      auto& arr = json.array();
 
       if (dump("[", 1, data)) {
         return -1;
       }
-      if (n == 0) {
+      if (arr.size() == 0) {
         return dump("]", 1, data);
       }
       if (dump_indent(flags, depth + 1, 0, dump, data))
         return -1;
 
-      for (i = 0; i < n; ++i) {
-        if (do_dump(json_array_get(json, i), flags, depth + 1, dump, data)) {
+      for (size_t i = 0; i < arr.size(); ++i) {
+        if (do_dump(arr[i], flags, depth + 1, dump, data)) {
           return -1;
         }
 
-        if (i < n - 1) {
+        if (i < arr.size() - 1) {
           if (dump(",", 1, data) ||
               dump_indent(flags, depth + 1, 1, dump, data)) {
             return -1;

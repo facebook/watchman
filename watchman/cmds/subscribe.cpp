@@ -450,7 +450,7 @@ static UntypedResponse cmd_unsubscribe(
 
   auto root = resolveRoot(client, args);
 
-  auto jstr = json_array_get(args, 2);
+  auto jstr = args.at(2);
   const char* name = json_string_value(jstr);
   if (!name) {
     throw ErrorResponse("expected 2nd parameter to be subscription name");
@@ -474,8 +474,6 @@ W_CMD_REG(
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
 static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
-  std::shared_ptr<ClientSubscription> sub;
-  std::shared_ptr<Query> query;
   UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
@@ -491,7 +489,7 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
 
   json_ref query_spec = args.at(3);
 
-  query = parseQuery(root, query_spec);
+  auto query = parseQuery(root, query_spec);
   query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
   query->subscriptionName = json_to_w_string(jname);
 
@@ -505,7 +503,13 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
     throw ErrorResponse("drop field must be an array of strings");
   }
 
-  sub = std::make_shared<ClientSubscription>(root, client->shared_from_this());
+  const std::vector<json_ref>* defer_array =
+      defer_list ? &defer_list->array() : nullptr;
+  const std::vector<json_ref>* drop_array =
+      drop_list ? &drop_list->array() : nullptr;
+
+  auto sub =
+      std::make_shared<ClientSubscription>(root, client->shared_from_this());
 
   sub->name = json_to_w_string(jname);
   sub->query = query;
@@ -516,20 +520,14 @@ static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
   }
   sub->vcs_defer = defer.asBool();
 
-  if (drop_list || defer_list) {
-    size_t i;
-
-    if (defer_list) {
-      for (i = 0; i < json_array_size(*defer_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(*defer_list, i))] =
-            false;
-      }
+  if (defer_array) {
+    for (auto& elt : *defer_array) {
+      sub->drop_or_defer[json_to_w_string(elt)] = false;
     }
-    if (drop_list) {
-      for (i = 0; i < json_array_size(*drop_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(*drop_list, i))] =
-            true;
-      }
+  }
+  if (drop_array) {
+    for (auto& elt : *drop_array) {
+      sub->drop_or_defer[json_to_w_string(elt)] = true;
     }
   }
 

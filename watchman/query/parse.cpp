@@ -350,8 +350,10 @@ std::shared_ptr<Query> parseQueryLegacy(
     throw QueryParseError("Expected an array");
   }
 
-  for (i = start; i < json_array_size(args); i++) {
-    const char* arg = json_string_value(json_array_get(args, i));
+  auto& args_array = args.array();
+
+  for (i = start; i < args_array.size(); i++) {
+    const char* arg = json_string_value(args_array[i]);
     if (!arg) {
       /* not a string value! */
       throw QueryParseError(folly::to<std::string>(
@@ -360,7 +362,7 @@ std::shared_ptr<Query> parseQueryLegacy(
   }
 
   for (i = start; i < json_array_size(args); i++) {
-    const char* arg = json_string_value(json_array_get(args, i));
+    const char* arg = json_string_value(args_array[i]);
     if (!strcmp(arg, "--")) {
       i++;
       break;
