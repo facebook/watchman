@@ -6,13 +6,14 @@
  */
 
 #pragma once
+
 #include <folly/futures/Future.h>
-#include <spawn.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include "watchman/fs/Pipe.h"
+#include "watchman/portability/PosixSpawn.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"

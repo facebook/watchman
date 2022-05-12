@@ -6,6 +6,7 @@
  */
 
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 #include <list>
 #include "watchman/ChildProcess.h"
 #include "watchman/watchman_system.h"
@@ -18,24 +19,24 @@ TEST(ChildProcess, pipe) {
   opts.pipeStdout();
   ChildProcess echo(
       {
-#ifndef _WIN32
-          "echo",
+#ifdef _WIN32
+          "cmd /c echo hello",
 #else
-          // If we're being built via cmake we know that we
-          // have the cmake executable on hand to invoke its
-          // echo program
-          "cmake",
-          "-E",
           "echo",
+          "hello",
 #endif
-          "hello"},
+      },
       std::move(opts));
 
   auto outputs = echo.communicate();
-  echo.wait();
+  EXPECT_EQ(0, echo.wait())
+      << "\nstdout:\n"
+      << outputs.first << "\nstderr:" << outputs.second << "\n";
 
   w_string_piece line(outputs.first);
-  EXPECT_TRUE(line.startsWith("hello"));
+  EXPECT_TRUE(line.startsWith("hello"))
+      << "\nstdout:\n"
+      << outputs.first << "\nstderr:" << outputs.second << "\n";
 }
 
 void test_pipe_input(bool threaded) {
@@ -74,8 +75,9 @@ void test_pipe_input(bool threaded) {
 }
 
 TEST(ChildProcess, stresstest_pipe_output) {
+  SKIP_IF(folly::kIsWindows);
+
   bool okay = true;
-#ifndef _WIN32
   for (int i = 0; i < 3000; ++i) {
     Options opts;
     opts.pipeStdout();
@@ -88,7 +90,6 @@ TEST(ChildProcess, stresstest_pipe_output) {
       break;
     }
   }
-#endif
   EXPECT_TRUE(okay);
 }
 

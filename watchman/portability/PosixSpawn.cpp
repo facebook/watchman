@@ -5,12 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/portability/PosixSpawn.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <spawn.h>
 #include "watchman/Logging.h"
 #include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
+
+#ifdef _WIN32
 
 using namespace watchman;
 
@@ -487,3 +489,5 @@ int posix_spawnp(
     char* const envp[]) {
   return posix_spawn_common(true, pid, file, file_actions, attrp, argv, envp);
 }
+
+#endif

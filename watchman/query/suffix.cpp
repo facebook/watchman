@@ -43,7 +43,7 @@ class SuffixExpr : public QueryExpr {
     std::unordered_set<w_string> suffixSet;
 
     if (!term.isArray()) {
-      throw QueryParseError("Expected array for 'suffix' term");
+      throw QueryParseError{"Expected array for 'suffix' term"};
     }
 
     if (json_array_size(term) > 2) {

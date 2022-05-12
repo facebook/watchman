@@ -11,8 +11,9 @@
 #include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 
-using watchman::FileDescriptor;
 using namespace watchman;
+
+#ifdef _WIN32
 
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
@@ -794,3 +795,5 @@ FileDescriptor w_handle_open(const char* path, int flags) {
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
   return w_stm_fdopen(w_handle_open(path, flags));
 }
+
+#endif

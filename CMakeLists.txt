@@ -536,17 +536,12 @@ watchman/fs/UnixDirHandle.cpp
 watchman/fs/WinDirHandle.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
+watchman/stream_win.cpp
+watchman/portability/PosixSpawn.cpp
 watchman/portability/WinError.cpp
 watchman/root/dir.cpp
 watchman/root/file.cpp
 )
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(APPEND testsupport_sources
-watchman/winbuild/posix_spawn.cpp
-watchman/stream_win.cpp
-  )
-endif()
 
 add_library(testsupport STATIC ${testsupport_sources})
 target_link_libraries(testsupport log string jansson third_party_deps)
@@ -624,7 +619,9 @@ watchman/state.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/stream_stdout.cpp
+watchman/stream_win.cpp
 # string.cpp (in libstring)
+watchman/portability/PosixSpawn.cpp
 watchman/portability/WinError.cpp
 watchman/query/FileResult.cpp
 watchman/query/LocalFileResult.cpp
@@ -694,10 +691,8 @@ endif()
 
 if (WIN32)
   list(APPEND watchman_sources
-watchman/stream_win.cpp
 watchman/watcher/win32.cpp
 watchman/winbuild/getopt_long.cpp
-watchman/winbuild/posix_spawn.cpp
   )
 endif()
 

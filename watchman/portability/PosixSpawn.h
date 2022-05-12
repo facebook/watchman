@@ -7,6 +7,15 @@
 
 #pragma once
 
+#include <folly/portability/SysTypes.h>
+#include <stdint.h>
+
+#ifndef _WIN32
+
+#include <spawn.h>
+
+#else
+
 // Spawn attributes
 
 typedef struct _posix_spawnattr {
@@ -79,3 +88,5 @@ int posix_spawnp(
 
 #define WNOHANG 1
 pid_t waitpid(pid_t pid, int* status, int options);
+
+#endif
