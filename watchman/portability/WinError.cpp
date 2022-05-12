@@ -5,10 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "watchman/watchman_system.h"
+#include "watchman/portability/WinError.h"
 
-const char* win32_strerror(DWORD err) {
-  static __declspec(thread) char msgbuf[1024];
+#ifdef _WIN32
+
+#include <windows.h>
+
+const char* win32_strerror(uint32_t err) {
+  static thread_local char msgbuf[1024];
 
   FormatMessageA(
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -22,7 +26,7 @@ const char* win32_strerror(DWORD err) {
   return msgbuf;
 }
 
-int map_win32_err(DWORD err) {
+int map_win32_err(uint32_t err) {
   switch (err) {
     case ERROR_SUCCESS:
       return 0;
@@ -80,3 +84,5 @@ int map_win32_err(DWORD err) {
       return EINVAL;
   }
 }
+
+#endif

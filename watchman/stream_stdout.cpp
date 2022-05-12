@@ -6,6 +6,7 @@
  */
 
 #include "watchman/Logging.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 
 using watchman::FileDescriptor;

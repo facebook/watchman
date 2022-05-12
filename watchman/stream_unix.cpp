@@ -12,6 +12,7 @@
 #include "watchman/Logging.h"
 #include "watchman/fs/FileDescriptor.h"
 #include "watchman/fs/Pipe.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 
 #ifdef HAVE_UCRED_H

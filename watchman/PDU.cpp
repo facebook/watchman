@@ -11,6 +11,7 @@
 #include "watchman/Constants.h"
 #include "watchman/Logging.h"
 #include "watchman/bser.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 
 namespace watchman {

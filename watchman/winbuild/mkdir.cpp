@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 

@@ -536,13 +536,13 @@ watchman/fs/UnixDirHandle.cpp
 watchman/fs/WinDirHandle.cpp
 watchman/stream.cpp
 watchman/stream_unix.cpp
+watchman/portability/WinError.cpp
 watchman/root/dir.cpp
 watchman/root/file.cpp
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND testsupport_sources
-watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/posix_spawn.cpp
 watchman/stream_win.cpp
@@ -626,6 +626,7 @@ watchman/stream.cpp
 watchman/stream_unix.cpp
 watchman/stream_stdout.cpp
 # string.cpp (in libstring)
+watchman/portability/WinError.cpp
 watchman/query/FileResult.cpp
 watchman/query/LocalFileResult.cpp
 watchman/query/GlobTree.cpp
@@ -696,7 +697,6 @@ if (WIN32)
   list(APPEND watchman_sources
 watchman/stream_win.cpp
 watchman/watcher/win32.cpp
-watchman/winbuild/errmap.cpp
 watchman/winbuild/pathmap.cpp
 watchman/winbuild/mkdir.cpp
 watchman/winbuild/getopt_long.cpp

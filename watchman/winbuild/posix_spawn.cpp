@@ -9,6 +9,7 @@
 #include <folly/Synchronized.h>
 #include <spawn.h>
 #include "watchman/Logging.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_stream.h"
 
 using namespace watchman;

@@ -54,10 +54,6 @@ extern "C" {
 
 typedef ptrdiff_t ssize_t;
 
-const char* win32_strerror(DWORD err);
-int map_win32_err(DWORD err);
-int map_winsock_err();
-
 #define snprintf _snprintf
 char* dirname(char* path);
 

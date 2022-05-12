@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <system_error>
+#include "watchman/portability/WinError.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 

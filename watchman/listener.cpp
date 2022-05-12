@@ -23,6 +23,7 @@
 #include "watchman/Shutdown.h"
 #include "watchman/SignalHandler.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/portability/WinError.h"
 #include "watchman/sockname.h"
 #include "watchman/state.h"
 #include "watchman/watchman_cmd.h"

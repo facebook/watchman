@@ -10,6 +10,7 @@
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
 #include "watchman/fs/FileSystem.h"
+#include "watchman/portability/WinError.h"
 
 #ifdef _WIN32
 #include <Lmcons.h> // @manual
