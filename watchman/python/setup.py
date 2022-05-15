@@ -9,9 +9,9 @@
 import os
 
 try:
-    from setuptools import setup, Extension
+    from setuptools import Extension, setup
 except ImportError:
-    from distutils.core import setup, Extension
+    from distutils.core import Extension, setup
 
 watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
 if watchman_src_dir is None:

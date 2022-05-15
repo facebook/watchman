@@ -11,7 +11,7 @@ import os.path
 import re
 import sys
 
-from watchman.integration.lib import WatchmanTestCase, HELPER_ROOT
+from watchman.integration.lib import HELPER_ROOT, WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

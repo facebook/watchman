@@ -11,7 +11,7 @@ import os.path
 import sys
 import time
 
-from watchman.integration.lib import WatchmanTestCase, HELPER_ROOT
+from watchman.integration.lib import HELPER_ROOT, WatchmanTestCase
 
 
 TRIG_CWD = os.path.join(HELPER_ROOT, "trig-cwd.py")

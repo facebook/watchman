@@ -15,9 +15,7 @@ import signal
 import subprocess
 import unittest
 
-from watchman.integration.lib import Interrupt
-from watchman.integration.lib import WatchmanInstance
-from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib import Interrupt, WatchmanInstance, WatchmanTestCase
 from watchman.integration.lib.node import node_bin, yarn_bin
 
 

@@ -10,7 +10,7 @@ import os
 import subprocess
 import typing
 
-from pywatchman import CommandError, WatchmanError, encoding
+from pywatchman import CommandError, encoding, WatchmanError
 
 
 try:

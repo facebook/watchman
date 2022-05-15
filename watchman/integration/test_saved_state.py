@@ -6,8 +6,7 @@
 
 
 import pywatchman
-from watchman.integration.lib import WatchmanSCMTestCase
-from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib import WatchmanSCMTestCase, WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

@@ -10,7 +10,7 @@ import os
 import specs.fbthrift as fbthrift
 import specs.folly as folly
 import specs.gmock as gmock
-from shell_quoting import ShellQuoted, path_join
+from shell_quoting import path_join, ShellQuoted
 
 
 "fbcode_builder steps to build & test watchman"

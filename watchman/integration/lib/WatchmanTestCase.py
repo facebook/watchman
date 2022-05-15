@@ -17,9 +17,7 @@ import unittest
 
 import pywatchman
 
-from . import Interrupt
-from . import TempDir
-from . import WatchmanInstance
+from . import Interrupt, TempDir, WatchmanInstance
 from .path_utils import norm_absolute_path, norm_relative_path
 
 

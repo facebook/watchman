@@ -9,8 +9,7 @@
 import os
 from typing import Optional
 
-from . import WatchmanInstance
-from . import WatchmanTestCase
+from . import WatchmanInstance, WatchmanTestCase
 
 
 TestParent = object

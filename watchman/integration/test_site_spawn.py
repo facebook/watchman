@@ -11,7 +11,7 @@ import sys
 import unittest
 
 import pywatchman
-from watchman.integration.lib import WatchmanInstance, HELPER_ROOT
+from watchman.integration.lib import HELPER_ROOT, WatchmanInstance
 
 SITE_SPAWN = os.path.join(HELPER_ROOT, "site_spawn.py")
 SITE_SPAWN_FAIL = os.path.join(HELPER_ROOT, "site_spawn_fail.py")

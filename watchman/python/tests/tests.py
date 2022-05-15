@@ -16,14 +16,14 @@ import unittest
 import uuid
 
 from pywatchman import (
-    SocketConnectError,
-    SocketTimeout,
-    Transport,
-    WatchmanError,
     bser,
     client,
     load,
     pybser,
+    SocketConnectError,
+    SocketTimeout,
+    Transport,
+    WatchmanError,
 )
 
 

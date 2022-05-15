@@ -8,8 +8,7 @@
 import json
 import os
 
-from watchman.integration.lib import WatchmanInstance
-from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib import WatchmanInstance, WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix

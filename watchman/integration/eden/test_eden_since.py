@@ -8,7 +8,7 @@
 import json
 import os
 import shutil
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from watchman.integration.lib import WatchmanEdenTestCase
 

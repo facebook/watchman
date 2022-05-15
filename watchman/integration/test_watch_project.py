@@ -8,8 +8,7 @@
 import os
 
 import pywatchman
-from watchman.integration.lib import WatchmanInstance
-from watchman.integration.lib import WatchmanTestCase
+from watchman.integration.lib import WatchmanInstance, WatchmanTestCase
 from watchman.integration.lib.path_utils import norm_absolute_path, norm_relative_path
 
 

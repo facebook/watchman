@@ -10,8 +10,7 @@ import subprocess
 
 import pywatchman
 
-from . import WatchmanInstance
-from . import WatchmanTestCase
+from . import WatchmanInstance, WatchmanTestCase
 
 
 STRING_TYPES = (str, bytes)
