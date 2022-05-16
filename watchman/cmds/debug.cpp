@@ -236,11 +236,13 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
 
   struct Response : BaseResponse {
     std::vector<RootDebugStatus> roots;
+    std::vector<ClientDebugStatus> clients;
 
     template <typename X>
     void map(X& x) {
       BaseResponse::map(x);
       x("roots", roots);
+      x("clients", clients);
     }
   };
 
@@ -248,6 +250,7 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
     Response res;
     res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
     res.roots = Root::getStatusForAllRoots();
+    res.clients = UserClient::getStatusForAllClients();
     return res;
   }
 
@@ -266,6 +269,11 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
       fmt::print("  - crawl_status: {}\n", root.crawl_status);
       fmt::print("  - done_initial: {}\n", root.done_initial);
       fmt::print("\n");
+    }
+
+    fmt::print("CLIENTS\n-------\n");
+    for (auto& client : response.clients) {
+      fmt::print("  - state: {}\n", client.state);
     }
   }
 };

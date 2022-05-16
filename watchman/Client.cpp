@@ -166,6 +166,34 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
   }
 }
 
+std::string ClientStatus::getName() const {
+  switch (state_.load(std::memory_order_acquire)) {
+    case THREAD_STARTING:
+      return "thread starting";
+    case THREAD_STARTED:
+      return "thread started";
+    case WAITING_FOR_REQUEST:
+      return "waiting for request";
+    /// The client thread is decoding request data.
+    case DECODING_REQUEST:
+      return "decoding request";
+    /// The client thread is executing a request.
+    case DISPATCHING_COMMAND:
+      return "dispatching command";
+    /// The client thread is reading subscription events and processing them.
+    case PROCESSING_SUBSCRIPTION:
+      return "processing subscription";
+    /// The client thread is sending responses.
+    case SENDING_SUBSCRIPTION_RESPONSES:
+      return "sending subscription responses";
+    /// The client thread is shutting down.
+    case THREAD_STOPPING:
+      return "stopping";
+  }
+
+  return "<unknown>";
+}
+
 void UserClient::create(std::unique_ptr<watchman_stream> stm) {
   auto uc = std::make_shared<UserClient>(PrivateBadge{}, std::move(stm));
 
@@ -203,6 +231,22 @@ std::vector<std::shared_ptr<UserClient>> UserClient::getAllClients() {
     v.push_back(std::static_pointer_cast<UserClient>(c->shared_from_this()));
   }
   return v;
+}
+
+std::vector<ClientDebugStatus> UserClient::getStatusForAllClients() {
+  std::vector<ClientDebugStatus> rv;
+  auto lock = clients.rlock();
+  rv.reserve(lock->size());
+  for (auto& c : *lock) {
+    rv.push_back(c->getDebugStatus());
+  }
+  return rv;
+}
+
+ClientDebugStatus UserClient::getDebugStatus() const {
+  ClientDebugStatus rv;
+  rv.state = status_.getName();
+  return rv;
 }
 
 void UserClient::vacateStates() {

@@ -145,11 +145,22 @@ class ClientStatus {
     state_.store(state, std::memory_order_release);
   }
 
+  std::string getName() const;
+
  private:
   // No locking or CAS required, as the tag is only written by UserClient's
   // constructor and the client thread. There will never be simultaneous state
   // transitions.
   std::atomic<State> state_{THREAD_STARTING};
+};
+
+struct ClientDebugStatus : serde::Object {
+  std::string state;
+
+  template <typename X>
+  void map(X& x) {
+    x("state", state);
+  }
 };
 
 /**
@@ -165,6 +176,8 @@ class UserClient final : public Client {
   ~UserClient() override;
 
   static std::vector<std::shared_ptr<UserClient>> getAllClients();
+
+  static std::vector<ClientDebugStatus> getStatusForAllClients();
 
   /* map of subscription name => struct watchman_client_subscription */
   std::unordered_map<w_string, std::shared_ptr<ClientSubscription>>
@@ -194,6 +207,8 @@ class UserClient final : public Client {
   explicit UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm);
 
  private:
+  ClientDebugStatus getDebugStatus() const;
+
   // Abandon any states that haven't been explicit vacated.
   void vacateStates();
 
