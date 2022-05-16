@@ -153,6 +153,7 @@ struct RootQueryInfo : serde::Object {
 struct RootDebugStatus : serde::Object {
   w_string path;
   w_string fstype;
+  w_string watcher;
   int64_t uptime;
   bool case_sensitive;
   std::vector<w_string> cookie_prefix;
@@ -168,6 +169,7 @@ struct RootDebugStatus : serde::Object {
   void map(X& x) {
     x("path", path);
     x("fstype", fstype);
+    x("watcher", watcher);
     x("uptime", uptime);
     x("case_sensitive", case_sensitive);
     x("cookie_prefix", cookie_prefix);

@@ -8,6 +8,7 @@
 #include "watchman/root/watchlist.h"
 #include <folly/Synchronized.h>
 #include <vector>
+#include "watchman/QueryableView.h"
 #include "watchman/TriggerCommand.h"
 #include "watchman/query/Query.h"
 #include "watchman/query/QueryContext.h"
@@ -249,6 +250,7 @@ RootDebugStatus Root::getStatus() const {
 
   obj.path = root_path;
   obj.fstype = fs_type;
+  obj.watcher = view_->getName();
   obj.uptime =
       std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
   obj.case_sensitive = case_sensitive == CaseSensitivity::CaseSensitive;
