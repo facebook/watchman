@@ -13,6 +13,7 @@
 // TODO: We could avoid the Client dependency fi CommandHandler returned a
 // json_ref response or error rather than taking a Client.
 #include "watchman/OptionSet.h"
+#include "watchman/Serde.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_preprocessor.h"
 
@@ -137,14 +138,25 @@ struct CommandDefinition {
 };
 
 /**
+ * Response types should extend BaseResponse by default, since every Watchman
+ * response includes a version string.
+ */
+struct BaseResponse : serde::Object {
+  w_string version;
+
+  BaseResponse();
+
+  template <typename X>
+  void map(X& x) {
+    x.required("version", version);
+  }
+};
+
+/**
  * For commands that have no request parameters, write:
  * `using Request = NullRequest`
  */
-struct NullRequest {
-  static NullRequest fromJson(const json_ref&) {
-    return {};
-  }
-};
+using NullRequest = serde::Nothing;
 
 /**
  * Provides a typed interface for CommandDefinition that can optionally handle
@@ -177,9 +189,8 @@ class TypedCommand : public CommandDefinition {
     }
 
     using Request = typename T::Request;
-    auto encodedResponse =
-        T::handle(Request::fromJson(json_array(std::move(adjusted_args))))
-            .toJson();
+    auto encodedResponse = serde::encode(T::handle(
+        serde::decode<Request>(json_array(std::move(adjusted_args)))));
     return UntypedResponse{encodedResponse.object()};
   }
 };
@@ -198,7 +209,7 @@ class PrettyCommand : public TypedCommand<T> {
 
   static void printResultRaw(const json_ref& result) {
     using Response = typename T::Response;
-    return T::printResult(Response::fromJson(result));
+    return T::printResult(serde::decode<Response>(result));
   }
 };
 

@@ -13,6 +13,7 @@
 #include "watchman/IgnoreSet.h"
 #include "watchman/PendingCollection.h"
 #include "watchman/PubSub.h"
+#include "watchman/Serde.h"
 #include "watchman/WatchmanConfig.h"
 #include "watchman/fs/FileSystem.h"
 #include "watchman/thirdparty/jansson/jansson.h"
@@ -108,16 +109,20 @@ IgnoreSet computeIgnoreSet(
     const w_string& root_path,
     const Configuration& config);
 
-struct RootRecrawlInfo : json::Repr {
+struct RootRecrawlInfo : serde::Object {
   int64_t count;
   bool should_recrawl;
   std::optional<w_string> warning;
 
-  json_ref toJson() const;
-  static RootRecrawlInfo fromJson(const json_ref& args);
+  template <typename X>
+  void map(X& x) {
+    x("count", count);
+    x("should-recrawl", should_recrawl);
+    x("warning", warning);
+  }
 };
 
-struct RootQueryInfo : json::Repr {
+struct RootQueryInfo : serde::Object {
   int64_t elapsed_milliseconds;
   int64_t cookie_sync_duration_milliseconds;
   int64_t generation_duration_milliseconds;
@@ -129,11 +134,23 @@ struct RootQueryInfo : json::Repr {
   std::optional<json_ref> query;
   std::optional<w_string> subscription_name;
 
-  json_ref toJson() const;
-  static RootQueryInfo fromJson(const json_ref& args);
+  template <typename X>
+  void map(X& x) {
+    x("elapsed-milliseconds", elapsed_milliseconds);
+    x("cookie-sync-duration-milliseconds", cookie_sync_duration_milliseconds);
+    x("generation-duration-milliseconds", generation_duration_milliseconds);
+    x("render-duration-milliseconds", render_duration_milliseconds);
+    x("view-lock-wait-duration-milliseconds",
+      view_lock_wait_duration_milliseconds);
+    x("state", state);
+    x("client-pid", client_pid);
+    x("request-id", request_id);
+    x.skip_if(
+        "query", query, [](const auto& query) { return !query.has_value(); });
+  }
 };
 
-struct RootDebugStatus : json::Repr {
+struct RootDebugStatus : serde::Object {
   w_string path;
   w_string fstype;
   int64_t uptime;
@@ -147,8 +164,21 @@ struct RootDebugStatus : json::Repr {
   bool cancelled;
   w_string crawl_status;
 
-  json_ref toJson() const;
-  static RootDebugStatus fromJson(const json_ref& args);
+  template <typename X>
+  void map(X& x) {
+    x("path", path);
+    x("fstype", fstype);
+    x("uptime", uptime);
+    x("case_sensitive", case_sensitive);
+    x("cookie_prefix", cookie_prefix);
+    x("cookie_dir", cookie_dir);
+    x("cookie_list", cookie_list);
+    x("recrawl_info", recrawl_info);
+    x("queries", queries);
+    x("done_initial", done_initial);
+    x("cancelled", cancelled);
+    x("crawl-status", crawl_status);
+  }
 };
 
 /**

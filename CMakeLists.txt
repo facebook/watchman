@@ -655,7 +655,6 @@ watchman/cmds/state.cpp
 watchman/cmds/subscribe.cpp
 watchman/cmds/trigger.cpp
 watchman/cmds/watch.cpp
-watchman/root/Root.cpp
 watchman/root/ageout.cpp
 watchman/root/dir.cpp
 watchman/root/file.cpp

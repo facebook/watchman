@@ -232,25 +232,15 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
 
   static constexpr CommandFlags flags = CMD_DAEMON | CMD_ALLOW_ANY_USER;
 
-  using Request = NullRequest;
+  using Request = serde::Array<0>;
 
-  struct Response {
-    // TODO: should version be included automatically?
-    w_string version;
+  struct Response : BaseResponse {
     std::vector<RootDebugStatus> roots;
 
-    json_ref toJson() const {
-      return json_object({
-          {"version", json::to(version)},
-          {"roots", json::to(roots)},
-      });
-    }
-
-    static Response fromJson(const json_ref& args) {
-      Response result;
-      json::assign(result.version, args, "version");
-      json::assign(result.roots, args, "roots");
-      return result;
+    template <typename X>
+    void map(X& x) {
+      BaseResponse::map(x);
+      x("roots", roots);
     }
   };
 

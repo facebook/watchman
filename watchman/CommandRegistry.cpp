@@ -101,6 +101,8 @@ std::vector<const CommandDefinition*> CommandDefinition::getAll() {
   return defs;
 }
 
+BaseResponse::BaseResponse() : version{PACKAGE_VERSION, W_STRING_UNICODE} {}
+
 void capability_register(std::string_view name) {
   CommandRegistry::get().capabilities.emplace(std::string{name});
 }

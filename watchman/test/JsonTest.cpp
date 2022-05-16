@@ -11,7 +11,6 @@
 using namespace ::testing;
 
 namespace {
-using namespace watchman;
 
 std::string json_dtostr(double value) {
   char buf[30];
