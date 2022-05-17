@@ -99,7 +99,9 @@ TEST(Perf, large_samples_are_passed_in_stdin) {
       [&](std::vector<std::string> samples) {
         arg_calls.push_back(std::move(samples));
       },
-      [&](std::string stdin) { stdin_calls.push_back(std::move(stdin)); });
+      [&](std::string stdin_str) {
+        stdin_calls.push_back(std::move(stdin_str));
+      });
 
   ASSERT_EQ(0, arg_calls.size());
   ASSERT_EQ(2, stdin_calls.size());
