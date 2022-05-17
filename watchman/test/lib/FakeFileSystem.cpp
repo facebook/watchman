@@ -12,13 +12,15 @@ namespace watchman {
 
 namespace {
 
+constexpr folly::StringPiece kRootPrefix = folly::kIsWindows ? "Z:\\" : "/";
+
 /**
  * Ensures the specified path is absolute, and returns it minus the leading
  * slash. The following sequence of /-delimited names can be used to traverse
  * the filesystem tree.
  */
 folly::StringPiece parseAbsolute(folly::StringPiece path) {
-  if (path.removePrefix('/')) {
+  if (path.removePrefix(kRootPrefix)) {
     return path;
   } else {
     throw std::logic_error{fmt::format("Path {} must be absolute", path)};
@@ -35,10 +37,11 @@ folly::StringPiece parseAbsolute(const char* path) {
  */
 std::pair<folly::StringPiece, folly::StringPiece> parseAbsoluteBasename(
     const char* path) {
-  if (*path != '/') {
+  folly::StringPiece parsed{path};
+  if (!parsed.removePrefix(kRootPrefix)) {
     throw std::logic_error{fmt::format("Path {} must be absolute", path)};
   }
-  ++path;
+  path = parsed.data(); // It's still null-terminated.
 
   const char* slash = strrchr(path, '/');
   if (!slash) {
@@ -213,9 +216,11 @@ void FakeFileSystem::touch(const char* path) {
 
 void FakeFileSystem::defineContents(std::initializer_list<const char*> paths) {
   for (folly::StringPiece path : paths) {
-    if (path.removeSuffix('/')) {
+    if (path.removeSuffix(kRootPrefix)) {
+      fmt::print("addNode dir: {}\n", path);
       addNode(path.str().c_str(), fakeDir());
     } else {
+      fmt::print("addNode file: {}\n", path);
       addNode(path.str().c_str(), fakeFile());
     }
   }
@@ -227,6 +232,7 @@ void FakeFileSystem::addNode(const char* path, const FileInformation& fi) {
 
   auto piece = parseAbsolute(path);
   while (!piece.empty()) {
+    fmt::print("piece = {}\n", piece);
     size_t idx = piece.find('/');
     folly::StringPiece this_level;
     if (idx == folly::StringPiece::npos) {
@@ -294,7 +300,9 @@ FileInformation FakeFileSystem::fakeDir() {
   fi.ino = inodeNumber_.fetch_add(1, std::memory_order_acq_rel);
   fi.dev = kDefaultDev;
   fi.nlink = 2; // TODO: to populate
-  // fi.fileAttributes = 0;
+#ifdef _WIN32
+  fi.fileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+#endif
   // TODO: populate timestamps
   return fi;
 }
@@ -308,7 +316,9 @@ FileInformation FakeFileSystem::fakeFile() {
   fi.ino = inodeNumber_.fetch_add(1, std::memory_order_acq_rel);
   fi.dev = kDefaultDev;
   fi.nlink = 1;
-  // fi.fileAttributes = 0;
+#ifdef _WIN32
+  fi.fileAttributes = 0;
+#endif
   // TODO: populate timestamps
   return fi;
 }

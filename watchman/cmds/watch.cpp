@@ -34,10 +34,9 @@ void w_cmd_realpath_root(Command& command) {
     auto resolved = realPath(path);
     args[0] = w_string_to_json(resolved);
   } catch (const std::exception& exc) {
-    throw CommandValidationError(
-        "Could not resolve ",
+    CommandValidationError::throwf(
+        "Could not resolve {} to the canonical watch path: {}",
         path,
-        " to the canonical watch path: ",
         exc.what());
   }
 
@@ -216,11 +215,10 @@ static w_string resolve_projpath(
 
   auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
-    throw CommandValidationError(
+    CommandValidationError::throwf(
         "resolve_projpath: error computing root_files configuration value, "
-        "consult your log file at ",
-        logging::log_name,
-        " for more details");
+        "consult your log file at {} for more details",
+        logging::log_name);
   }
 
   // See if we're requesting something in a pre-existing watch
@@ -249,19 +247,16 @@ static w_string resolve_projpath(
   // Convert root files to comma delimited string for error message
   auto root_files_list = cfg_pretty_print_root_files(*root_files);
 
-  throw CommandValidationError(
+  CommandValidationError::throwf(
       "resolve_projpath:  None of the files listed in global config "
-      "root_files are present in path `",
-      path,
-      "` or any of its "
+      "root_files are present in path `{}` or any of its "
       "parent directories.  root_files is defined by the "
-      "`",
-      cfg_get_global_config_file_path().view(),
-      "` config file and includes ",
-      root_files_list,
-      ".  "
+      "`{}` config file and includes {}.  "
       "One or more of these files must be present in order to allow "
-      "a watch. Try pulling and checking out a newer version of the project?");
+      "a watch. Try pulling and checking out a newer version of the project?",
+      path,
+      cfg_get_global_config_file_path(),
+      root_files_list);
 }
 
 /* watch /root */

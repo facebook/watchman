@@ -65,10 +65,9 @@ doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
 
   const char* root_name = json_string_value(ele);
   if (!root_name) {
-    throw RootResolveError(
-        "invalid value for argument ",
-        root_index,
-        ", expected a string naming the root dir");
+    RootResolveError::throwf(
+        "invalid value for argument {}, expected a string naming the root dir",
+        root_index);
   }
 
   try {
@@ -89,10 +88,9 @@ doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
     return root;
 
   } catch (const std::exception& exc) {
-    throw RootResolveError(
-        "unable to resolve root ",
+    RootResolveError::throwf(
+        "unable to resolve root {}: {}{}",
         root_name,
-        ": ",
         exc.what(),
         client->client_is_owner
             ? ""

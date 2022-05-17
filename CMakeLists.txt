@@ -674,6 +674,7 @@ watchman/saved_state/SavedStateInterface.cpp
 watchman/scm/Git.cpp
 watchman/scm/Mercurial.cpp
 watchman/scm/SCM.cpp
+watchman/thirdparty/getopt/GetOpt.cpp
 watchman/watcher/Watcher.cpp
 watchman/watcher/WatcherRegistry.cpp
 watchman/watcher/fsevents.cpp
@@ -691,7 +692,6 @@ endif()
 if (WIN32)
   list(APPEND watchman_sources
 watchman/watcher/win32.cpp
-watchman/winbuild/getopt_long.cpp
   )
 endif()
 

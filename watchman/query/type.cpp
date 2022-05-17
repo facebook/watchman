@@ -94,7 +94,7 @@ class TypeExpr : public QueryExpr {
 
     found = strpbrk(typestr, "bcdfplsD");
     if (!found || strlen(typestr) > 1) {
-      throw QueryParseError("invalid type string '", typestr, "'");
+      QueryParseError::throwf("invalid type string '{}'", typestr);
     }
 
     arg = *found;

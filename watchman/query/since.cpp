@@ -138,8 +138,8 @@ class SinceExpr : public QueryExpr {
       }
 
       if (!valid) {
-        throw QueryParseError(
-            "invalid field name \"", fieldname, "\" for \"since\" term");
+        QueryParseError::throwf(
+            "invalid field name \"{}\" for \"since\" term", fieldname);
       }
     }
 
@@ -147,10 +147,9 @@ class SinceExpr : public QueryExpr {
       case since_what::SINCE_CTIME:
       case since_what::SINCE_MTIME:
         if (!std::holds_alternative<ClockSpec::Timestamp>(spec->spec)) {
-          throw QueryParseError(
-              "field \"",
-              fieldname,
-              "\" requires a timestamp value for comparison in \"since\" term");
+          QueryParseError::throwf(
+              "field \"{}\" requires a timestamp value for comparison in \"since\" term",
+              fieldname);
         }
         break;
       case since_what::SINCE_OCLOCK:

@@ -38,20 +38,21 @@ void parse_redirection(
   auto& ele = *maybe;
 
   if (!ele.isString()) {
-    throw CommandValidationError(label, " must be a string");
+    CommandValidationError::throwf("{} must be a string", label);
   }
 
   name = json_string_value(ele);
   if (name.empty() || name[0] != '>') {
-    throw CommandValidationError(
-        label, ": must be prefixed with either > or >>, got ", name);
+    CommandValidationError::throwf(
+        "{}: must be prefixed with either > or >>, got {}", label, name);
   }
 
   *flags = O_CREAT | O_WRONLY;
 
   if (name[1] == '>') {
 #ifdef _WIN32
-    throw CommandValidationError(label, ": Windows does not support O_APPEND");
+    CommandValidationError::throwf(
+        "{}: Windows does not support O_APPEND", label);
 #else
     *flags |= O_APPEND;
     name.erase(0, 2);
@@ -362,7 +363,7 @@ TriggerCommand::TriggerCommand(
       parse_field_list(
           json_array({typed_string_to_json("name")}), &query->fieldList);
     } else {
-      throw CommandValidationError("invalid stdin value ", str);
+      CommandValidationError::throwf("invalid stdin value {}", str);
     }
   } else {
     throw CommandValidationError("invalid value for stdin");

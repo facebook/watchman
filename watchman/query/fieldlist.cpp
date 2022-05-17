@@ -312,7 +312,7 @@ void QueryFieldList::add(const w_string& name) {
   auto& defs = field_defs();
   auto it = defs.find(name);
   if (it == defs.end()) {
-    throw QueryParseError("unknown field name '", name.view(), "'");
+    QueryParseError::throwf("unknown field name '{}'", name);
   }
   this->push_back(&it->second);
 }

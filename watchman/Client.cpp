@@ -105,11 +105,11 @@ bool Client::dispatchCommand(const Command& command, CommandFlags mode) {
   try {
     auto* def = command.getCommandDefinition();
     if (!def) {
-      throw CommandValidationError("unknown command ", command.name());
+      CommandValidationError::throwf("unknown command {}", command.name());
     }
     if (def->flags.containsNoneOf(mode)) {
-      throw CommandValidationError(
-          "command ", command.name(), " not available in this mode");
+      CommandValidationError::throwf(
+          "command {} not available in this mode", command.name());
     }
 
     if (!poisoned_reason.rlock()->empty() &&

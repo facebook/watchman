@@ -4,8 +4,8 @@
  *
  * Portions Copyright (c) 2003-2010, PostgreSQL Global Development Group
  */
-#ifndef GETOPT_LONG_H
-#define GETOPT_LONG_H
+
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,5 +38,3 @@ int getopt(int nargc, char* const nargv[], const char* ostr);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* GETOPT_LONG_H */

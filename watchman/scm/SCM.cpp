@@ -32,7 +32,8 @@ const w_string& SCM::getSCMRoot() const {
 w_string findFileInDirTree(
     w_string_piece rootPath,
     std::initializer_list<w_string_piece> candidates) {
-  w_check(rootPath.pathIsAbsolute(), "rootPath must be absolute");
+  w_check(
+      rootPath.pathIsAbsolute(), "rootPath must be absolute: ", rootPath, "\n");
 
   while (true) {
     for (auto& candidate : candidates) {

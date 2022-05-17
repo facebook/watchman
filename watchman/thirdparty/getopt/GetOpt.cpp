@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  */
 
-#include "getopt.h"
+#include "watchman/thirdparty/getopt/GetOpt.h"
 
 #include <stdio.h>
 #include <string.h>

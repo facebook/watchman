@@ -6,12 +6,12 @@
  */
 
 #include "watchman/Options.h"
-#include <getopt.h>
 #include <string.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
 #include "watchman/WatchmanConfig.h"
+#include "watchman/portability/GetOpt.h"
 
 #define IS_REQUIRED(x) (x) == REQ_STRING
 

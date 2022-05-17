@@ -888,11 +888,9 @@ void InMemoryView::globGenerator(const Query* query, QueryContext* ctx) const {
 
   const auto dir = view->resolveDir(relative_root);
   if (!dir) {
-    throw QueryExecError(folly::to<std::string>(
-        "glob_generator could not resolve ",
-        relative_root.view(),
-        ", check your "
-        "relative_root parameter!"));
+    QueryExecError::throwf(
+        "glob_generator could not resolve {}, check your relative_root parameter!",
+        relative_root);
   }
 
   globGeneratorTree(ctx, query->glob_tree.get(), dir);

@@ -77,40 +77,38 @@ class DirNameExpr : public QueryExpr {
     struct w_query_int_compare depth_comp;
 
     if (!term.isArray()) {
-      throw QueryParseError("Expected array for '", which, "' term");
+      QueryParseError::throwf("Expected array for '{}' term", which);
     }
 
     if (json_array_size(term) < 2) {
-      throw QueryParseError(
-          "Invalid number of arguments for '", which, "' term");
+      QueryParseError::throwf(
+          "Invalid number of arguments for '{}' term", which);
     }
 
     if (json_array_size(term) > 3) {
-      throw QueryParseError(
-          "Invalid number of arguments for '", which, "' term");
+      QueryParseError::throwf(
+          "Invalid number of arguments for '{}' term", which);
     }
 
     const auto& name = term.at(1);
     if (!name.isString()) {
-      throw QueryParseError("Argument 2 to '", which, "' must be a string");
+      QueryParseError::throwf("Argument 2 to '{}' must be a string", which);
     }
 
     if (json_array_size(term) == 3) {
       const auto& depth = term.at(2);
       if (!depth.isArray()) {
-        throw QueryParseError(
-            "Invalid number of arguments for '", which, "' term");
+        QueryParseError::throwf(
+            "Invalid number of arguments for '{}' term", which);
       }
 
       const auto& depth_array = depth.array();
 
       parse_int_compare(depth, &depth_comp);
 
-      if (strcmp("depth", json_string_value(depth_array[0]))) {
-        throw QueryParseError(
-            "Third parameter to '",
-            which,
-            "' should be a relational depth term");
+      if (strcmp("depth", json_string_value(depth_array.at(0)))) {
+        QueryParseError::throwf(
+            "Third parameter to '{}' should be a relational depth term", which);
       }
     } else {
       depth_comp.operand = 0;

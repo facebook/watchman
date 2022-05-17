@@ -388,10 +388,10 @@ QueryResult w_query_execute(
     try {
       std::move(future).get(query->settle_timeouts->settle_timeout);
     } catch (const folly::FutureTimeout&) {
-      throw QueryExecError(fmt::format(
+      QueryExecError::throwf(
           "waitForSettle: timed out waiting for settle {} in {}",
           query->settle_timeouts->settle_period,
-          query->settle_timeouts->settle_timeout));
+          query->settle_timeouts->settle_timeout);
     }
   }
   if (query->sync_timeout.count()) {
@@ -401,7 +401,7 @@ QueryResult w_query_execute(
       auto result = root->syncToNow(query->sync_timeout);
       res.debugInfo.cookieFileNames = std::move(result.cookieFileNames);
     } catch (const std::exception& exc) {
-      throw QueryExecError("synchronization failed: ", exc.what());
+      QueryExecError::throwf("synchronization failed: {}", exc.what());
     }
     ctx.cookieSyncDuration = ctx.stopWatch.lap();
   }
