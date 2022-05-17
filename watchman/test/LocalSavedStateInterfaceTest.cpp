@@ -9,6 +9,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 #include "watchman/Errors.h"
+#include "watchman/test/lib/FakeFileSystem.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 
 using namespace watchman;
@@ -23,7 +24,8 @@ void expect_query_parse_error(
 }
 
 TEST(LocalSavedStateInterfaceTest, max_commits) {
-  auto localStoragePath = w_string_to_json(w_string("/absolute/path"));
+  auto localStoragePath =
+      w_string_to_json(w_string(FAKEFS_ROOT "absolute/path"));
   auto project = w_string_to_json("foo");
   expect_query_parse_error(
       json_object(
@@ -69,13 +71,14 @@ TEST(LocalSavedStateInterfaceTest, localStoragePath) {
   LocalSavedStateInterface interface(
       json_object(
           {{"project", project},
-           {"local-storage-path", w_string_to_json("/absolute/path")}}),
+           {"local-storage-path",
+            w_string_to_json(FAKEFS_ROOT "absolute/path")}}),
       nullptr);
   EXPECT_TRUE(true) << "expected constructor to succeed";
 }
 
 TEST(LocalSavedStateInterfaceTest, project) {
-  auto localStoragePath = w_string_to_json("/absolute/path");
+  auto localStoragePath = w_string_to_json(FAKEFS_ROOT "absolute/path");
   expect_query_parse_error(
       json_object({{"local-storage-path", localStoragePath}}),
       "failed to parse query: 'project' must be present in saved state config");
@@ -87,7 +90,7 @@ TEST(LocalSavedStateInterfaceTest, project) {
   expect_query_parse_error(
       json_object(
           {{"local-storage-path", localStoragePath},
-           {"project", w_string_to_json("/absolute/path")}}),
+           {"project", w_string_to_json(FAKEFS_ROOT "absolute/path")}}),
       "failed to parse query: 'project' must be a relative path");
   LocalSavedStateInterface interface(
       json_object(
@@ -98,7 +101,7 @@ TEST(LocalSavedStateInterfaceTest, project) {
 }
 
 TEST(LocalSavedStateInterfaceTest, project_metadata) {
-  auto localStoragePath = w_string_to_json("/absolute/path");
+  auto localStoragePath = w_string_to_json(FAKEFS_ROOT "absolute/path");
   expect_query_parse_error(
       json_object(
           {{"local-storage-path", localStoragePath},
@@ -115,14 +118,14 @@ TEST(LocalSavedStateInterfaceTest, project_metadata) {
 }
 
 TEST(LocalSavedStateInterfaceTest, path) {
-  auto localStoragePath = w_string_to_json("/absolute/path");
+  auto localStoragePath = w_string_to_json(FAKEFS_ROOT "absolute/path");
   LocalSavedStateInterface interface(
       json_object(
           {{"local-storage-path", localStoragePath},
            {"project", w_string_to_json("foo")}}),
       nullptr);
   auto path = interface.getLocalPath("hash");
-  auto expectedPath = "/absolute/path/foo/hash";
+  auto expectedPath = FAKEFS_ROOT "absolute/path/foo/hash";
   EXPECT_EQ(path, expectedPath);
   interface = LocalSavedStateInterface(
       json_object(
@@ -131,6 +134,6 @@ TEST(LocalSavedStateInterfaceTest, path) {
            {"project-metadata", w_string_to_json("meta")}}),
       nullptr);
   path = interface.getLocalPath("hash");
-  expectedPath = "/absolute/path/foo/hash_meta";
+  expectedPath = FAKEFS_ROOT "absolute/path/foo/hash_meta";
   EXPECT_EQ(path, expectedPath);
 }

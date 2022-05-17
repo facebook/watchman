@@ -23,17 +23,11 @@ namespace {
 
 using namespace watchman;
 
-#ifdef _WIN32
-#define ROOT "Z:\\"
-#else
-#define ROOT "/"
-#endif
-
 class InMemoryViewTest : public testing::Test {
  public:
   using Continue = InMemoryView::Continue;
 
-  const w_string root_path{ROOT "root"};
+  const w_string root_path{FAKEFS_ROOT "root"};
 
   FakeFileSystem fs;
   Configuration config;
@@ -50,7 +44,7 @@ class InMemoryViewTest : public testing::Test {
 
 TEST_F(InMemoryViewTest, can_construct) {
   fs.defineContents({
-      ROOT "root",
+      FAKEFS_ROOT "root",
   });
 
   Root root{
@@ -58,7 +52,7 @@ TEST_F(InMemoryViewTest, can_construct) {
 }
 
 TEST_F(InMemoryViewTest, drive_initial_crawl) {
-  fs.defineContents({ROOT "root/dir/file.txt"});
+  fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -84,7 +78,7 @@ TEST_F(InMemoryViewTest, drive_initial_crawl) {
 TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   getLog().setStdErrLoggingLevel(DBG);
 
-  fs.defineContents({ROOT "root/dir/file.txt"});
+  fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -112,8 +106,9 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
 
   // Update filesystem and ensure the query results don't update.
 
-  fs.updateMetadata(
-      ROOT "root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+  fs.updateMetadata(FAKEFS_ROOT "root/dir/file.txt", [&](FileInformation& fi) {
+    fi.size = 100;
+  });
   pending.lock()->ping();
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
@@ -129,7 +124,8 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
 
   // Now notify the iothread of the change, process events, and assert the view
   // updates.
-  pending.lock()->add(ROOT "root/dir/file.txt", {}, W_PENDING_VIA_NOTIFY);
+  pending.lock()->add(
+      FAKEFS_ROOT "root/dir/file.txt", {}, W_PENDING_VIA_NOTIFY);
   pending.lock()->ping();
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
@@ -147,7 +143,7 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
 TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
   getLog().setStdErrLoggingLevel(DBG);
 
-  fs.defineContents({ROOT "root/dir/file.txt"});
+  fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -175,8 +171,9 @@ TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
 
   // Update filesystem and ensure the query results don't update.
 
-  fs.updateMetadata(
-      ROOT "root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+  fs.updateMetadata(FAKEFS_ROOT "root/dir/file.txt", [&](FileInformation& fi) {
+    fi.size = 100;
+  });
   pending.lock()->ping();
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
@@ -192,7 +189,8 @@ TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
 
   // Now notify the iothread of the change, process events, and assert the view
   // updates.
-  pending.lock()->add(ROOT "root/dir/file.txt", {}, W_PENDING_VIA_NOTIFY);
+  pending.lock()->add(
+      FAKEFS_ROOT "root/dir/file.txt", {}, W_PENDING_VIA_NOTIFY);
   pending.lock()->ping();
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
 
@@ -218,7 +216,7 @@ TEST_F(
   query.paths.emplace();
   query.paths->emplace_back(QueryPath{"file.txt", 1});
 
-  fs.defineContents({ROOT "root/file.txt"});
+  fs.defineContents({FAKEFS_ROOT "root/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -231,7 +229,7 @@ TEST_F(
   // Somebody has updated a file.
 
   fs.updateMetadata(
-      ROOT "root/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+      FAKEFS_ROOT "root/file.txt", [&](FileInformation& fi) { fi.size = 100; });
 
   // We have not seen the new size, so the size should be zero.
 
@@ -263,7 +261,7 @@ TEST_F(
     // single-threaded.
 
     const auto& viewdb = view->unsafeAccessViewDatabase();
-    auto* dir = viewdb.resolveDir(ROOT "root");
+    auto* dir = viewdb.resolveDir(FAKEFS_ROOT "root");
     auto* file = dir->getChildFile("file.txt");
     return file->stat.size;
   });
@@ -272,7 +270,9 @@ TEST_F(
   // per-file notifications.
 
   pending.lock()->add(
-      ROOT "root", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+      FAKEFS_ROOT "root",
+      {},
+      W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
 
   executor.drain();
 
@@ -296,7 +296,7 @@ TEST_F(
   query.paths.emplace();
   query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
 
-  fs.defineContents({ROOT "root/dir/file.txt"});
+  fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -308,8 +308,9 @@ TEST_F(
 
   // Somebody has updated a file.
 
-  fs.updateMetadata(
-      ROOT "root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+  fs.updateMetadata(FAKEFS_ROOT "root/dir/file.txt", [&](FileInformation& fi) {
+    fi.size = 100;
+  });
 
   // We have not seen the new size, so the size should be zero.
 
@@ -341,7 +342,7 @@ TEST_F(
     // single-threaded.
 
     const auto& viewdb = view->unsafeAccessViewDatabase();
-    auto* dir = viewdb.resolveDir(ROOT "root/dir");
+    auto* dir = viewdb.resolveDir(FAKEFS_ROOT "root/dir");
     auto* file = dir->getChildFile("file.txt");
     return file->stat.size;
   });
@@ -352,11 +353,15 @@ TEST_F(
   // The Watcher event from the modified file, which was sequenced before the
   // cookie write.
   pending.lock()->add(
-      ROOT "root/dir", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+      FAKEFS_ROOT "root/dir",
+      {},
+      W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
 
   // The Watcher event from the cookie.
   pending.lock()->add(
-      ROOT "root", {}, W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
+      FAKEFS_ROOT "root",
+      {},
+      W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
 
   // This will notice the cookie and unblock.
   EXPECT_EQ(Continue::Continue, view->stepIoThread(root, state, pending));
@@ -378,11 +383,12 @@ TEST_F(
   query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
 
   fs.defineContents({
-      ROOT "root/dir/file.txt",
+      FAKEFS_ROOT "root/dir/file.txt",
   });
   // TODO: add a mode for defining FileInformation with the hierarchy
-  fs.updateMetadata(
-      ROOT "root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+  fs.updateMetadata(FAKEFS_ROOT "root/dir/file.txt", [&](FileInformation& fi) {
+    fi.size = 100;
+  });
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -402,7 +408,7 @@ TEST_F(
     // single-threaded.
 
     const auto& viewdb = view->unsafeAccessViewDatabase();
-    auto* dir = viewdb.resolveDir(ROOT "root/dir");
+    auto* dir = viewdb.resolveDir(FAKEFS_ROOT "root/dir");
     auto* file = dir->getChildFile("file.txt");
     EXPECT_EQ(100, file->stat.size);
   });
@@ -433,11 +439,12 @@ TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   query.paths->emplace_back(QueryPath{"dir/file.txt", 1});
 
   fs.defineContents({
-      ROOT "root/dir/file.txt",
+      FAKEFS_ROOT "root/dir/file.txt",
   });
   // TODO: add a mode for defining FileInformation with the hierarchy
-  fs.updateMetadata(
-      ROOT "root/dir/file.txt", [&](FileInformation& fi) { fi.size = 100; });
+  fs.updateMetadata(FAKEFS_ROOT "root/dir/file.txt", [&](FileInformation& fi) {
+    fi.size = 100;
+  });
 
   auto root = std::make_shared<Root>(
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {});
@@ -458,7 +465,7 @@ TEST_F(InMemoryViewTest, directory_removal_does_not_report_parent) {
   getLog().setStdErrLoggingLevel(DBG);
 
   fs.defineContents({
-      ROOT "root/dir/foo/file.txt",
+      FAKEFS_ROOT "root/dir/foo/file.txt",
   });
 
   auto root = std::make_shared<Root>(
@@ -490,9 +497,9 @@ TEST_F(InMemoryViewTest, directory_removal_does_not_report_parent) {
 
   // Now remove all of foo/ and notify the iothread of the change as if we are
   // the FSEvents watcher.
-  fs.removeRecursively(ROOT "root/dir/foo");
+  fs.removeRecursively(FAKEFS_ROOT "root/dir/foo");
   pending.lock()->add(
-      ROOT "root/dir/foo",
+      FAKEFS_ROOT "root/dir/foo",
       {},
       W_PENDING_VIA_NOTIFY | W_PENDING_NONRECURSIVE_SCAN);
   pending.lock()->ping();

@@ -12,6 +12,12 @@
 #include <map>
 #include "watchman/fs/FileSystem.h"
 
+#ifdef _WIN32
+#define FAKEFS_ROOT "Z:\\"
+#else
+#define FAKEFS_ROOT "/"
+#endif
+
 namespace watchman {
 
 struct FakeInode {
