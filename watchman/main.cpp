@@ -41,7 +41,7 @@
 #ifdef _WIN32
 #include <Lmcons.h> // @manual
 #include <Shlobj.h> // @manual
-#include <deelevate.h> // @manual
+#include "watchman/thirdparty/deelevate_binding/include/deelevate.h" // @manual
 #endif
 
 using namespace watchman;
