@@ -682,17 +682,12 @@ watchman/watcher/inotify.cpp
 watchman/watcher/kqueue.cpp
 watchman/watcher/portfs.cpp
 watchman/watcher/kqueue_and_fsevents.cpp
+watchman/watcher/win32.cpp
 )
 
 if (ENABLE_EDEN_SUPPORT)
   # We currently only support talking to eden on posix systems
   list(APPEND watchman_sources watchman/watcher/eden.cpp)
-endif()
-
-if (WIN32)
-  list(APPEND watchman_sources
-watchman/watcher/win32.cpp
-  )
 endif()
 
 add_executable(watchman ${watchman_sources})
