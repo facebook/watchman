@@ -48,6 +48,15 @@ macro_rules! define_field {(
         }
 
         impl $tyname {
+            /// Fields should only be consumed when constructed via a QueryResult.
+            /// This constructor is provided for users to easily mock out
+            /// QueryResult objects in tests.
+            pub fn new(val: $ty) -> Self {
+                $tyname {
+                    val,
+                }
+            }
+
             /// Consumes the field and returns the underlying
             /// value storage
             pub fn into_inner(self) -> $ty {
