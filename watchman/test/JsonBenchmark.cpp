@@ -9,7 +9,6 @@
 #include "watchman/thirdparty/jansson/jansson.h"
 
 namespace {
-using namespace watchman;
 
 void encode_doubles(benchmark::State& state) {
   // 3.7 ^ 500 still fits in a double.
