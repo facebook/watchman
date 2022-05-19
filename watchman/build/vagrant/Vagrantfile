@@ -111,11 +111,23 @@ def provider_freebsd(config)
   end
 end
 
+def sync_fuse(config)
+  if WATCHMAN_SOURCE.nil?
+    return
+  end
+  config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman"
+end
+
+def sync_nfs(config)
+  if WATCHMAN_SOURCE.nil?
+    return
+  end
+  config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman", type: "nfs", nfs_version: 4, nfs_udp: false
+end
+
 Vagrant.configure("2") do |config|
   if WATCHMAN_SOURCE.nil?
     STDERR.puts "Please set WATCHMAN_SOURCE to the directory containing Watchman's source code"
-  else
-    config.vm.synced_folder WATCHMAN_SOURCE, "/home/vagrant/watchman", type: "nfs"
   end
 
   # TODO: autogen.sh will put its built artifacts in /tmp by
@@ -128,6 +140,7 @@ Vagrant.configure("2") do |config|
 
     provision_ubuntu ubuntu18
     provider_linux ubuntu18
+    sync_fuse ubuntu18
   end
 
   config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu20|
@@ -136,16 +149,18 @@ Vagrant.configure("2") do |config|
 
     provision_ubuntu ubuntu20
     provider_linux ubuntu20
+    sync_fuse ubuntu20
   end
 
   # TODO: Fedora 35's gcc has a bug that breaks Folly:
   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=104008
-  config.vm.define "watchman-fedora-33", autostart: false do |fedora33|
-    fedora33.vm.box = "generic/fedora33"
-    fedora33.vm.hostname = "watchman-fedora-33"
+  config.vm.define "watchman-fedora-34", autostart: false do |fedora34|
+    fedora34.vm.box = "generic/fedora34"
+    fedora34.vm.hostname = "watchman-fedora-34"
 
-    provision_fedora fedora33
-    provider_linux fedora33
+    provision_fedora fedora34
+    provider_linux fedora34
+    sync_fuse fedora34
   end
 
   config.vm.define "watchman-freebsd" do |freebsd|
@@ -154,6 +169,7 @@ Vagrant.configure("2") do |config|
 
     provision_freebsd freebsd
     provider_freebsd freebsd
+    sync_nfs freebsd
   end
 
 end
