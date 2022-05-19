@@ -93,21 +93,25 @@ def provision_freebsd(config)
 end
 
 def provider_linux(config)
-  config.vm.provider "vmware_fusion" do |vmware, override|
-    # gcc uses 1.5 GB per process with Facebook style C++ :|
-    cpu_count = Etc.nprocessors / 2
-    vmware.cpus = cpu_count
-    vmware.memory = 1536 * cpu_count
+  ["vmware_fusion", "vmware_workstation"].each do |provider|
+    config.vm.provider provider do |vmware, override|
+      # gcc uses 1.5 GB per process with Facebook style C++ :|
+      cpu_count = Etc.nprocessors / 2
+      vmware.cpus = cpu_count
+      vmware.memory = 1536 * cpu_count
+    end
   end
 end
 
 def provider_freebsd(config)
-  config.vm.provider "vmware_fusion" do |vmware, override|
-    # FreeBSD and clang are quite memory-efficient relative to Linux
-    # and gcc.
-    cpu_count = Etc.nprocessors - 2
-    vmware.cpus = cpu_count
-    vmware.memory = 768 * cpu_count
+  ["vmware_fusion", "vmware_workstation"].each do |provider|
+    config.vm.provider provider do |vmware, override|
+      # FreeBSD and clang are quite memory-efficient relative to Linux
+      # and gcc.
+      cpu_count = Etc.nprocessors - 2
+      vmware.cpus = cpu_count
+      vmware.memory = 768 * cpu_count
+    end
   end
 end
 
