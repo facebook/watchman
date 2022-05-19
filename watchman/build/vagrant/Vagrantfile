@@ -135,7 +135,7 @@ Vagrant.configure("2") do |config|
   # make sense to consider a different scratch path.
 
   config.vm.define "watchman-ubuntu-18", autostart: false do |ubuntu18|
-    ubuntu18.vm.box = "generic/ubuntu1804"
+    ubuntu18.vm.box = "bento/ubuntu-18.04"
     ubuntu18.vm.hostname = "watchman-ubuntu-18"
 
     provision_ubuntu ubuntu18
@@ -144,7 +144,7 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu20|
-    ubuntu20.vm.box = "generic/ubuntu2004"
+    ubuntu20.vm.box = "bento/ubuntu-20.04"
     ubuntu20.vm.hostname = "watchman-ubuntu-20"
 
     provision_ubuntu ubuntu20
