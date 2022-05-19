@@ -7,11 +7,16 @@
 
 set -x
 PREFIX=${PREFIX:-/usr/local}
-python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman \
-  "--project-install-prefix=watchman:$PREFIX"
+python3 build/fbcode_builder/getdeps.py build \
+        --allow-system-packages \
+        --src-dir=. \
+        "--project-install-prefix=watchman:$PREFIX" \
+        watchman
 python3 build/fbcode_builder/getdeps.py fixup-dyn-deps \
-  --src-dir=. watchman  built \
-  "--project-install-prefix=watchman:$PREFIX" \
-  --final-install-prefix "$PREFIX"
+        --allow-system-packages \
+        --src-dir=. \
+        "--project-install-prefix=watchman:$PREFIX" \
+        --final-install-prefix "$PREFIX" \
+        watchman built
 
 find built -ls
