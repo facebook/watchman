@@ -37,6 +37,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WIN32
+
 #define BADCH '?'
 #define BADARG ':'
 #define EMSG ""
@@ -173,3 +175,5 @@ int getopt_long(
   }
   return optopt;
 }
+
+#endif

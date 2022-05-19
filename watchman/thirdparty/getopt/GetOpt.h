@@ -7,6 +7,8 @@
 
 #pragma once
 
+#ifdef _WIN32
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,4 +39,6 @@ int getopt(int nargc, char* const nargv[], const char* ostr);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
