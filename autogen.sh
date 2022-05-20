@@ -5,6 +5,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+cd "$(dirname "$0")"
+
 set -x
 PREFIX=${PREFIX:-/usr/local}
 python3 build/fbcode_builder/getdeps.py build \
