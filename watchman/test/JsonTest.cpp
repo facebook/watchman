@@ -8,8 +8,6 @@
 #include <gtest/gtest.h>
 #include "watchman/thirdparty/jansson/jansson_private.h"
 
-using namespace ::testing;
-
 namespace {
 
 std::string json_dtostr(double value) {
