@@ -20,7 +20,7 @@ def get_linux_type():
         with open("/etc/os-release") as f:
             data = f.read()
     except EnvironmentError:
-        return (None, None)
+        return (None, None, None)
 
     os_vars = {}
     for line in data.splitlines():
