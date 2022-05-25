@@ -488,26 +488,23 @@ static SpawnResult spawn_via_launchd() {
       "    <false/>\n"
       "    <key>ProgramArguments</key>\n"
       "    <array>\n"
+      "        <string>/bin/sh</string>\n"
+      "        <string>-c</string>\n"
       "        <string>",
       watchman_path,
-      "</string>\n"
-      "        <string>--foreground</string>\n"
-      "        <string>--logfile=",
+      " --foreground",
+      " --logfile=",
       logging::log_name,
-      "</string>\n"
-      "        <string>--log-level=",
+      " --log-level=",
       logging::log_level,
-      "</string>\n"
       // TODO: switch from `--sockname` to `--unix-listener-path`
       // after a grace period to allow for sane results if we
       // roll back to an earlier version
-      "        <string>--sockname=",
+      " --sockname=",
       get_unix_sock_name(),
-      "</string>\n"
-      "        <string>--statefile=",
+      " --statefile=",
       flags.watchman_state_file,
-      "</string>\n"
-      "        <string>--pidfile=",
+      " --pidfile=",
       flags.pid_file,
       "</string>\n"
       "    </array>\n"
