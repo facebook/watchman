@@ -739,6 +739,7 @@ pub enum FileType {
     Symlink,
     Socket,
     SolarisDoor,
+    Unknown,
 }
 
 impl std::string::ToString for FileType {
@@ -758,6 +759,7 @@ impl From<String> for FileType {
             "l" => Self::Symlink,
             "s" => Self::Socket,
             "D" => Self::SolarisDoor,
+            "?" => Self::Unknown,
             unknown => panic!("Watchman Server returned impossible file type {}", unknown),
         }
     }
@@ -774,6 +776,7 @@ impl Into<String> for FileType {
             Self::Symlink => "l",
             Self::Socket => "s",
             Self::SolarisDoor => "D",
+            Self::Unknown => "?",
         }
         .to_string()
     }
