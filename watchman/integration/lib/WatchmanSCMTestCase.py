@@ -63,8 +63,6 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
                 # we have to reach in and force their hardcoded sockpath here.
                 "--config",
                 "fsmonitor.sockpath=%s" % sockpath.legacy_sockpath(),
-                "--config",
-                "devel.lockmode=python",
             ]
             + args,
             env=env,
