@@ -262,6 +262,7 @@ enum FileAttributes {
   NONE = 0,
   SHA1_HASH = 1,
   FILE_SIZE = 2,
+  SOURCE_CONTROL_TYPE = 4,
 /* NEXT_ATTR = 2^x */
 } (cpp2.enum_type = 'uint64_t')
 
@@ -271,6 +272,7 @@ enum FileAttributes {
 struct FileAttributeData {
   1: optional BinaryHash sha1;
   2: optional i64 fileSize;
+  3: optional SourceControlType type;
 }
 
 /**
@@ -826,6 +828,13 @@ struct GetStatInfoParams {
  */
 typedef i16 OsDtype
 
+enum SourceControlType {
+  TREE = 0,
+  REGULAR_FILE = 1,
+  EXECUTABLE_FILE = 2,
+  SYMLINK = 3,
+}
+
 /**
  * These numbers match up with Linux and macOS.
  * Windows doesn't have dtype_t, but a subset of these map to and from
@@ -1301,6 +1310,10 @@ service EdenService extends fb303_core.BaseService {
    * Returns the requested file attributes for the provided list of files.
    * The result maps the files to attribute results which may be an EdenError
    * or a FileAttributeData struct.
+   *
+   * Currently, this API assumes all the given paths corespond to regular files.
+   * We return EdenErrors instead of attributes for paths that correspond to
+   * directories or symlinks.
    *
    * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
    * the SyncBehavior specify a 0 timeout. see the documentation for both of
