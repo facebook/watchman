@@ -990,7 +990,10 @@ class EdenView final : public QueryableView {
 
   void clearWatcherDebugInfo() override {}
 
-  std::unique_ptr<StreamingEdenServiceAsyncClient> rocketSubscribe(
+  using EdenFSSubcription =
+      apache::thrift::ClientBufferedStream<JournalPosition>::Subscription;
+
+  EdenFSSubcription rocketSubscribe(
       std::shared_ptr<Root> root,
       SettleCallback& settleCallback,
       GetJournalPositionCallback& getJournalPositionCallback,
@@ -998,55 +1001,52 @@ class EdenView final : public QueryableView {
     auto client = getEdenClient(thriftChannel_);
     auto stream = client->sync_subscribeStreamTemporary(
         std::string(root->root_path.data(), root->root_path.size()));
-    std::move(stream)
-        .subscribeExTry(
-            &subscriberEventBase_,
-            [&settleCallback,
-             &getJournalPositionCallback,
-             this,
-             root,
-             settleTimeout](folly::Try<JournalPosition>&& t) {
-              if (t.hasValue()) {
-                try {
-                  log(DBG, "Got subscription push from eden\n");
-                  if (settleCallback.isScheduled()) {
-                    log(DBG, "reschedule settle timeout\n");
-                    settleCallback.cancelTimeout();
-                  }
-                  subscriberEventBase_.timer().scheduleTimeout(
-                      &settleCallback, settleTimeout);
-
-                  // For bursty writes to the working copy, let's limit the
-                  // amount of notification that Watchman receives by
-                  // scheduling a getCurrentJournalPosition call in the future.
-                  //
-                  // Thus, we're guarantee to only receive one notification per
-                  // settleTimeout/2 and no more, regardless of how much
-                  // writing is done in the repository.
-                  subscriberEventBase_.timer().scheduleTimeout(
-                      &getJournalPositionCallback, settleTimeout / 2);
-                } catch (const std::exception& exc) {
-                  log(ERR,
-                      "Exception while processing eden subscription: ",
-                      exc.what(),
-                      ": cancel watch\n");
-                  subscriberEventBase_.terminateLoopSoon();
-                }
-              } else {
-                auto reason = t.hasException()
-                    ? folly::exceptionStr(std::move(t.exception()))
-                    : "controlled shutdown";
-                log(ERR,
-                    "subscription stream ended: ",
-                    w_string_piece(reason.data(), reason.size()),
-                    ", cancel watch\n");
-                // We won't be called again, but we terminate the loop
-                // just to make sure.
-                subscriberEventBase_.terminateLoopSoon();
+    return std::move(stream).subscribeExTry(
+        &subscriberEventBase_,
+        [&settleCallback,
+         &getJournalPositionCallback,
+         this,
+         root,
+         settleTimeout](folly::Try<JournalPosition>&& t) {
+          if (t.hasValue()) {
+            try {
+              log(DBG, "Got subscription push from eden\n");
+              if (settleCallback.isScheduled()) {
+                log(DBG, "reschedule settle timeout\n");
+                settleCallback.cancelTimeout();
               }
-            })
-        .detach();
-    return client;
+              subscriberEventBase_.timer().scheduleTimeout(
+                  &settleCallback, settleTimeout);
+
+              // For bursty writes to the working copy, let's limit the
+              // amount of notification that Watchman receives by
+              // scheduling a getCurrentJournalPosition call in the future.
+              //
+              // Thus, we're guarantee to only receive one notification per
+              // settleTimeout/2 and no more, regardless of how much
+              // writing is done in the repository.
+              subscriberEventBase_.timer().scheduleTimeout(
+                  &getJournalPositionCallback, settleTimeout / 2);
+            } catch (const std::exception& exc) {
+              log(ERR,
+                  "Exception while processing eden subscription: ",
+                  exc.what(),
+                  ": cancel watch\n");
+              subscriberEventBase_.terminateLoopSoon();
+            }
+          } else {
+            auto reason = t.hasException()
+                ? folly::exceptionStr(std::move(t.exception()))
+                : "controlled shutdown";
+            log(ERR,
+                "subscription stream ended: ",
+                w_string_piece(reason.data(), reason.size()),
+                ", cancel watch\n");
+            // We won't be called again, but we terminate the loop
+            // just to make sure.
+            subscriberEventBase_.terminateLoopSoon();
+          }
+        });
   }
 
   // This is the thread that we use to listen to the stream of
@@ -1061,6 +1061,14 @@ class EdenView final : public QueryableView {
     w_set_thread_name("edensub ", root->root_path.view());
     log(DBG, "Started subscription thread\n");
 
+    std::optional<EdenFSSubcription> subscription;
+    SCOPE_EXIT {
+      if (subscription.has_value()) {
+        subscription->cancel();
+        std::move(*subscription).join();
+      }
+    };
+
     try {
       // Prepare the callback
       SettleCallback settleCallback{&subscriberEventBase_, root};
@@ -1068,9 +1076,8 @@ class EdenView final : public QueryableView {
           &subscriberEventBase_, thriftChannel_, mountPoint_};
       // Figure out the correct value for settling
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
-      std::unique_ptr<StreamingEdenServiceAsyncClient> client;
 
-      client = rocketSubscribe(
+      subscription = rocketSubscribe(
           root, settleCallback, getJournalPositionCallback, settleTimeout);
 
       // This will run until the stream ends
