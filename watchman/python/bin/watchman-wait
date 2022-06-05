@@ -69,6 +69,14 @@ parser.add_argument(
     help="String to use as field separator for event output.",
 )
 parser.add_argument(
+    "-0",
+    "--null",
+    action="store_true",
+    help="""
+Use a NUL byte as a field separator, takes precedence over --separator.
+""",
+)
+parser.add_argument(
     "-m",
     "--max-events",
     type=int,
@@ -117,6 +125,8 @@ value is 100 seconds.
 """,
 )
 args = parser.parse_args()
+if args.null:
+    args.separator = "\0"
 
 
 # We parse the list of paths into a set of subscriptions
