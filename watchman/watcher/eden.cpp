@@ -1320,8 +1320,8 @@ class EdenView final : public QueryableView {
         std::get<QuerySince::Clock>(ctx->since.since).ticks;
 
     StreamChangesSinceParams params;
-    params.mountPoint_ref() = mountPoint_;
-    params.fromPosition_ref() = position;
+    params.mountPoint() = mountPoint_;
+    params.fromPosition() = position;
     auto [resultChangesSince, stream] = client->sync_streamChangesSince(params);
 
     GetAllChangesSinceResult result;
