@@ -719,8 +719,9 @@ class EdenView final : public QueryableView {
         mountPoint_(root_path.string()),
         splitGlobPattern_(config.getBool("eden_split_glob_pattern", false)),
         useStreamingSince_(config.getBool("eden_use_streaming_since", false)),
-        thresholdForFreshInstance_(
-            config.getInt("eden_file_count_threshold_for_fresh_instance", 0)),
+        thresholdForFreshInstance_(config.getInt(
+            "eden_file_count_threshold_for_fresh_instance",
+            10000)),
         filesChangedBetweenCommits_(
             Configuration(),
             "scm_hg_files_between_commits",

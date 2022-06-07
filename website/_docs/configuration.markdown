@@ -362,5 +362,5 @@ files may have changed forcing both Watchman and EdenFS to fetch a significant
 amount of metadata to answer these queries.
 
 This behavior is only enabled if the query specifies the
-`empty_on_fresh_instance` option. The default value of 0 disables this
-behavior.
+`empty_on_fresh_instance` option or when this config is set to `0`. Default to
+`10000`.
