@@ -809,6 +809,14 @@ struct PrjfsCall {
   3: PrjfsTraceCallType callType;
 }
 
+/**
+ * Metadata about an in-progress Thrift request.
+ */
+struct ThriftRequestMetadata {
+  1: i64 requestId;
+  2: string method;
+}
+
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
@@ -1542,6 +1550,11 @@ service EdenService extends fb303_core.BaseService {
    * the PRJ_CALLBACK_DATA.
    */
   list<PrjfsCall> debugOutstandingPrjfsCalls(1: PathString mountPoint);
+
+  /**
+   * Get the list of outstanding Thrift requests
+   */
+  list<ThriftRequestMetadata> debugOutstandingThriftRequests();
 
   /**
    * Start recording performance metrics such as files read
