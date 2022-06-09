@@ -6,7 +6,7 @@
  */
 
 #include "watchman/Serde.h"
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 using namespace watchman;
