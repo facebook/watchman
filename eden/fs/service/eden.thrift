@@ -262,6 +262,7 @@ enum FileAttributes {
   NONE = 0,
   SHA1_HASH = 1,
   FILE_SIZE = 2,
+  SOURCE_CONTROL_TYPE = 4,
 /* NEXT_ATTR = 2^x */
 } (cpp2.enum_type = 'uint64_t')
 
@@ -271,6 +272,7 @@ enum FileAttributes {
 struct FileAttributeData {
   1: optional BinaryHash sha1;
   2: optional i64 fileSize;
+  3: optional SourceControlType type;
 }
 
 /**
@@ -807,6 +809,14 @@ struct PrjfsCall {
   3: PrjfsTraceCallType callType;
 }
 
+/**
+ * Metadata about an in-progress Thrift request.
+ */
+struct ThriftRequestMetadata {
+  1: i64 requestId;
+  2: string method;
+}
+
 struct GetConfigParams {
   // Whether to reload the config from disk to make sure it is up-to-date
   1: eden_config.ConfigReloadBehavior reload = eden_config.ConfigReloadBehavior.AutoReload;
@@ -825,6 +835,13 @@ struct GetStatInfoParams {
  * numbers
  */
 typedef i16 OsDtype
+
+enum SourceControlType {
+  TREE = 0,
+  REGULAR_FILE = 1,
+  EXECUTABLE_FILE = 2,
+  SYMLINK = 3,
+}
 
 /**
  * These numbers match up with Linux and macOS.
@@ -1302,6 +1319,10 @@ service EdenService extends fb303_core.BaseService {
    * The result maps the files to attribute results which may be an EdenError
    * or a FileAttributeData struct.
    *
+   * Currently, this API assumes all the given paths corespond to regular files.
+   * We return EdenErrors instead of attributes for paths that correspond to
+   * directories or symlinks.
+   *
    * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
    * the SyncBehavior specify a 0 timeout. see the documentation for both of
    * these for more details.
@@ -1529,6 +1550,11 @@ service EdenService extends fb303_core.BaseService {
    * the PRJ_CALLBACK_DATA.
    */
   list<PrjfsCall> debugOutstandingPrjfsCalls(1: PathString mountPoint);
+
+  /**
+   * Get the list of outstanding Thrift requests
+   */
+  list<ThriftRequestMetadata> debugOutstandingThriftRequests();
 
   /**
    * Start recording performance metrics such as files read
