@@ -285,6 +285,61 @@ union FileAttributeDataOrError {
 }
 
 /**
+ * Some attributes are not available for certain types of files. For example,
+ * sha1 and size are not available for directories or symlinks. We use a value
+ * or error type for each of those attributes, so that when we can not provide
+ * an attribute we can give an explanation for why not.
+ */
+union Sha1OrError {
+  1: BinaryHash sha1;
+  2: EdenError error;
+}
+
+union SizeOrError {
+  1: i64 size;
+  2: EdenError error;
+}
+
+union SourceControlTypeOrError {
+  1: SourceControlType sourceControlType;
+  2: EdenError error;
+}
+
+/**
+ * Subset of attributes for a single file returned by getAttributesFromFiles()
+ *
+ * When an attribute was not requested the field will be a null optional value.
+ * If the attribute was requested, but there was an error computing that
+ * specific attribute we will return an Error type for that attribute.
+ */
+struct FileAttributeDataV2 {
+  1: optional Sha1OrError sha1;
+  2: optional SizeOrError size;
+  3: optional SourceControlTypeOrError sourceControlType;
+}
+
+/**
+ * Attributes for a file or information about error encountered when accessing
+ * file attributes.
+ * If there were errors fetching particular attributes those will be encapsulated
+ * in the AttributeOrError type. If there was a general error accessing a file
+ * there will be an error here.
+ */
+union FileAttributeDataOrErrorV2 {
+  1: FileAttributeDataV2 fileAttributeData;
+  2: EdenError error;
+}
+
+/**
+ * Mapping from entry name to requested attributes for each of the entries
+ * in a certain directory.
+ */
+union DirListAttributeDataOrError {
+  1: map<PathString, FileAttributeDataOrErrorV2> dirListAttributeData;
+  2: EdenError error;
+}
+
+/**
  *
  * Ensure that all inflight working copy modification have completed.
  *
@@ -329,6 +384,22 @@ struct GetAttributesFromFilesParams {
  */
 struct GetAttributesFromFilesResult {
   1: list<FileAttributeDataOrError> res;
+}
+
+struct ReaddirParams {
+  1: PathString mountPoint;
+  2: list<PathString> directoryPaths;
+  3: unsigned64 requestedAttributes;
+  4: SyncBehavior sync;
+}
+
+/**
+ * List of attributes for the entries in the directories specified in
+ * directoryPaths. The ordering of the responses corresponds to the ordering
+ * the directoryPaths.
+ */
+struct ReaddirResult {
+  1: list<DirListAttributeDataOrError> dirLists;
 }
 
 /** reference a point in time in the journal.
@@ -1330,6 +1401,19 @@ service EdenService extends fb303_core.BaseService {
   GetAttributesFromFilesResult getAttributesFromFiles(
     1: GetAttributesFromFilesParams params,
   ) throws (1: EdenError ex);
+
+  /**
+   * Returns the requested file attributes for each of the entries in the
+   * specified directories. . and .. are not included in the entry list.
+   *
+   * sha1 and size are not available for directories and symlinks, error values
+   * will be returned for those attributes for entries of those types.
+   *
+   * Note: may return stale data if synchronizeWorkingCopy isn't called, and if
+   * the SyncBehavior specify a 0 timeout. see the documentation for both of
+   * these for more details.
+   */
+  ReaddirResult readdir(1: ReaddirParams params) throws (1: EdenError ex);
 
   /**
    * DEPRECATED: Use globFiles().
