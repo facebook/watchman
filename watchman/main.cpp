@@ -11,8 +11,11 @@
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/system/Shell.h>
 
 #include <stdio.h>
+
+#include <fmt/format.h>
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Client.h"
@@ -406,6 +409,30 @@ static SpawnResult spawn_site_specific(
 #endif
 
 #ifdef __APPLE__
+
+std::vector<std::string> escape_args_for_sh(
+    const std::vector<std::string>& args) {
+  std::vector<std::string> transformedArgs{};
+  transformedArgs.reserve(args.size());
+
+  for (auto& arg : args) {
+    transformedArgs.push_back(folly::shellQuote(arg));
+  }
+  return transformedArgs;
+}
+
+std::string prep_args_for_plist(
+    const std::vector<std::string>& args,
+    size_t indentation) {
+  std::vector<std::string> transformedArgs{};
+  transformedArgs.reserve(args.size());
+  for (auto& arg : args) {
+    transformedArgs.push_back(
+        fmt::format("{:>{}}<string>{}</string>\n", "", indentation, arg));
+  }
+  return folly::join("", transformedArgs);
+}
+
 static SpawnResult spawn_via_launchd() {
   char watchman_path[WATCHMAN_NAME_MAX];
   uint32_t size = sizeof(watchman_path);
@@ -476,6 +503,22 @@ static SpawnResult spawn_via_launchd() {
     path_env = "";
   }
 
+  std::vector<std::string> watchman_args{
+      watchman_path,
+      "--foreground",
+      fmt::format("--logfile={}", logging::log_name),
+      fmt::format("--log-level={}", logging::log_level),
+      fmt::format("--sockname={}", get_unix_sock_name()),
+      fmt::format("--statefile={}", flags.watchman_state_file),
+      fmt::format("--pidfile={}", flags.pid_file)};
+  std::string watchman_spawning_command;
+
+  auto spawn_with_sh = Configuration().getBool("macos_spawn_with_sh", false);
+  if (spawn_with_sh) {
+    watchman_args = escape_args_for_sh(std::move(watchman_args));
+    watchman_args = {"/bin/sh", "-c", folly::join(" ", watchman_args)};
+  }
+
   auto plist_content = folly::to<std::string>(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
@@ -487,29 +530,8 @@ static SpawnResult spawn_via_launchd() {
       "    <key>Disabled</key>\n"
       "    <false/>\n"
       "    <key>ProgramArguments</key>\n"
-      "    <array>\n"
-      "        <string>",
-      watchman_path,
-      "</string>\n"
-      "        <string>--foreground</string>\n"
-      "        <string>--logfile=",
-      logging::log_name,
-      "</string>\n"
-      "        <string>--log-level=",
-      logging::log_level,
-      "</string>\n"
-      // TODO: switch from `--sockname` to `--unix-listener-path`
-      // after a grace period to allow for sane results if we
-      // roll back to an earlier version
-      "        <string>--sockname=",
-      get_unix_sock_name(),
-      "</string>\n"
-      "        <string>--statefile=",
-      flags.watchman_state_file,
-      "</string>\n"
-      "        <string>--pidfile=",
-      flags.pid_file,
-      "</string>\n"
+      "    <array>\n",
+      prep_args_for_plist(watchman_args, 8),
       "    </array>\n"
       "    <key>KeepAlive</key>\n"
       "    <dict>\n"
