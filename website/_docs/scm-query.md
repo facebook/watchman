@@ -7,14 +7,18 @@ permalink: docs/scm-query.html
 redirect_from: docs/scm-query/
 ---
 
+*Since 2021.08.30*
+
+[Git support](https://github.com/facebook/watchman/pull/934) has been added 🎊
+
 *Since 4.9.*
 
 *The [capability](/watchman/docs/capabilities.html) name associated with this
 enhanced functionality is `scm-since`.*
 
-At the time of writing, only Mercurial is supported.  The capability name for
-this is `scm-hg`.  The internal architecture allows supporting other source
-control systems quite easily; it just needs someone to implement and test them!
+The capability name for this is `scm-hg`.  The internal architecture allows
+supporting other source control systems quite easily; it just needs someone to
+implement and test them!
 
 A common pattern for tools that consume watchman is wanting to reason about
 the changes in a version controlled repository.  For most repos it is fine
@@ -233,8 +237,7 @@ is basically the same procedure as making queries above, but there are some
 preconditions and things to note:
 
 * Watchman needs the cooperation of the source control system to know when
-  it should defer events.  At the time of writing this is only possible when
-  using Mercurial with the `fsmonitor` extension enabled.
+  it should defer events.
 * Source control aware subscriptions implicitly enable `defer_vcs` and
   `defer:["hg.update"]`.  As with the point above, this is to ensure that
   you don't get notified about files changing during the working copy update
