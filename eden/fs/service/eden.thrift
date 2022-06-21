@@ -1175,6 +1175,16 @@ struct SynchronizeWorkingCopyParams {
   1: SyncBehavior sync;
 }
 
+struct EnsureMaterializedParams {
+  1: PathString mountPoint;
+  2: list<PathString> paths;
+  // Materialize on the background and do not block.
+  3: bool background = false;
+  // Also materialize symlink target if the target is also in the same mount
+  4: bool followSymlink = false;
+  5: SyncBehavior sync;
+}
+
 service EdenService extends fb303_core.BaseService {
   list<MountInfo> listMounts() throws (1: EdenError ex);
   void mount(1: MountArgument info) throws (1: EdenError ex);
@@ -1831,6 +1841,19 @@ service EdenService extends fb303_core.BaseService {
    * load every subtree before unlinking it.
    */
   void removeRecursively(1: RemoveRecursivelyParams params) throws (
+    1: EdenError ex,
+  );
+
+  /**
+   * Eagerly materialize a list of paths, which can improve the latency of random reads.
+   * If the path is a file, materialize the file.
+   * If the path is a directory, recursively materialize its children.
+   * If the path is a symlink, materialize its target if followSymlink option is set.
+   *
+   * This method should be used carefully, as EdenFS will copy the file contents into the overlay,
+   * consuming disk space. Also, materialized files slow down checkout and status operations.
+   */
+  void ensureMaterialized(1: EnsureMaterializedParams params) throws (
     1: EdenError ex,
   );
 }
