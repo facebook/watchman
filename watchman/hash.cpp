@@ -65,22 +65,22 @@
 
 #define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
 
-#define final(a, b, c) \
-  {                    \
-    c ^= b;            \
-    c -= rot(b, 14);   \
-    a ^= c;            \
-    a -= rot(c, 11);   \
-    b ^= a;            \
-    b -= rot(a, 25);   \
-    c ^= b;            \
-    c -= rot(b, 16);   \
-    a ^= c;            \
-    a -= rot(c, 4);    \
-    b ^= a;            \
-    b -= rot(a, 14);   \
-    c ^= b;            \
-    c -= rot(b, 24);   \
+#define final_(a, b, c) \
+  {                     \
+    c ^= b;             \
+    c -= rot(b, 14);    \
+    a ^= c;             \
+    a -= rot(c, 11);    \
+    b ^= a;             \
+    b -= rot(a, 25);    \
+    c ^= b;             \
+    c -= rot(b, 16);    \
+    a ^= c;             \
+    a -= rot(c, 4);     \
+    b ^= a;             \
+    b -= rot(a, 14);    \
+    c ^= b;             \
+    c -= rot(b, 24);    \
   }
 
 #if HAVE_VALGRIND_VALGRIND_H
@@ -342,7 +342,7 @@ uint32_t w_hash_bytes(const void* key, size_t length, uint32_t initval) {
     }
   }
 
-  final(a, b, c);
+  final_(a, b, c);
   return c;
 }
 

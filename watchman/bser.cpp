@@ -474,7 +474,7 @@ static std::optional<json_ref> bunser_array(
           sizeof(jerr->text),
           "invalid integer encoding 0x%02x for array length. buf=%p\n",
           (int)buf[0],
-          buf);
+          static_cast<const void*>(buf));
       return std::nullopt;
     }
     *used = needed + total;
