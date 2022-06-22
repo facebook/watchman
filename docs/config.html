@@ -17,9 +17,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2022-03-04T16:52:58-08:00" />
+<meta property="article:published_time" content="2022-06-22T14:04:30-05:00" />
 <script type="application/ld+json">
-{"url":"https://facebook.github.io/watchman/docs/config.html","description":"Watchman looks for configuration files in two places:","@type":"BlogPosting","headline":"Configuration Files","dateModified":"2022-03-04T16:52:58-08:00","datePublished":"2022-03-04T16:52:58-08:00","image":"https://facebook.github.io/watchman/static/og_image.png","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"@context":"https://schema.org"}</script>
+{"description":"Watchman looks for configuration files in two places:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"@type":"BlogPosting","url":"https://facebook.github.io/watchman/docs/config.html","headline":"Configuration Files","dateModified":"2022-06-22T14:04:30-05:00","datePublished":"2022-06-22T14:04:30-05:00","image":"https://facebook.github.io/watchman/static/og_image.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -1124,6 +1124,20 @@ manage the configuration and workload.  Some sites employ an alternative
 mechanism for sampling and reporting this to the right set of people and wish
 to disable the warning so that it doesn’t appear in front of users that are
 unable to make the appropriate configuration changes for themselves.</p>
+
+<h3 id="eden_file_count_threshold_for_fresh_instance">eden_file_count_threshold_for_fresh_instance</h3>
+
+<p>This is specific to the EdenFS watcher</p>
+
+<p>When set to a non-zero value, Watchman will return a <em>fresh instance</em> to since
+queries/subscriptions if the number of changed files exceeds the configured
+value. In particular, during large updates of the working copies, a lot of
+files may have changed forcing both Watchman and EdenFS to fetch a significant
+amount of metadata to answer these queries.</p>
+
+<p>This behavior is only enabled if the query specifies the
+<code class="language-plaintext highlighter-rouge">empty_on_fresh_instance</code> option or when this config is set to <code class="language-plaintext highlighter-rouge">0</code>. Default to
+<code class="language-plaintext highlighter-rouge">10000</code>.</p>
 
     
   </article>
