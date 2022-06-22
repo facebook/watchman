@@ -825,6 +825,40 @@ struct InternalStats {
   9: optional CacheStats treeCacheStats;
 }
 
+enum InodeType {
+  TREE = 0,
+  FILE = 1,
+}
+
+enum InodeEventType {
+  Unknown = 0,
+  Materialize = 1,
+}
+
+struct InodeEvent {
+  // Holds nanoseconds since the epoch
+  1: i64 timestamp;
+  2: i64 ino;
+  3: InodeType inodeType;
+  4: InodeEventType eventType;
+  // Duration is in microseconds (μs)
+  5: i64 duration;
+}
+
+/**
+ * Parameters for the getRetroactiveInodeEvents() function.
+ */
+struct GetRetroactiveInodeEventsParams {
+  1: PathString mountPoint;
+}
+
+/**
+ * Return value for the getRetroactiveInodeEvents() function.
+ */
+struct GetRetroactiveInodeEventsResult {
+  1: list<InodeEvent> events;
+}
+
 struct FuseCall {
   // This field is deprecated because its use is not worth the TraceBus
   // storage. It may be brought back in some other form.
@@ -1802,6 +1836,16 @@ service EdenService extends fb303_core.BaseService {
   void enableTracing();
   void disableTracing();
   list<TracePoint> getTracePoints();
+
+  /**
+   * Gets a list of inode events stored in a specified EdenMount's
+   * ActivityBuffer. Used for retroactive debugging by the `eden trace inode
+   * --retroactive` command. Currently only supports inode materialize events
+   * but we intend to generalize this to more inode event types later.
+   */
+  GetRetroactiveInodeEventsResult getRetroactiveInodeEvents(
+    1: GetRetroactiveInodeEventsParams params,
+  ) throws (1: EdenError ex);
 
   /**
    * Configure a new fault in Eden's fault injection framework.
