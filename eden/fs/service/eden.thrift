@@ -335,7 +335,9 @@ union FileAttributeDataOrErrorV2 {
  * in a certain directory.
  */
 union DirListAttributeDataOrError {
-  1: map<PathString, FileAttributeDataOrErrorV2> dirListAttributeData;
+  1: map<PathString, FileAttributeDataOrErrorV2> (
+    rust.type = "sorted_vector_map::SortedVectorMap",
+  ) dirListAttributeData;
   2: EdenError error;
 }
 
