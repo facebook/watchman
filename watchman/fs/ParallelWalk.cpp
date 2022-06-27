@@ -193,7 +193,7 @@ void readDirTask(
   }
 
   // Enqueue ReadDirResult before reading subdirs.
-  ReadDirResult result{std::move(dirFullPath), std::move(entries)};
+  ReadDirResult result{std::move(dirFullPath), std::move(entries), subdirCount};
   context->resultQueue.enqueue(result);
 
   // Spawn tasks to read subdirs.

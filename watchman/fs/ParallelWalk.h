@@ -33,6 +33,9 @@ struct ReadDirResult {
 
   // Entries and their stats.
   std::vector<DirEntryOwned> entries;
+
+  // Count of subdir entries. Useful for pre-allocation.
+  size_t subdirCount = 0;
 };
 
 /** Error message with a path associated */
