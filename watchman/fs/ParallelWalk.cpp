@@ -16,7 +16,7 @@ using Queue = folly::UMPMCQueue<std::optional<T>, true /* MayBlock */>;
 
 struct ParallelWalkerContext {
   // Input.
-  FileSystem& fileSystem;
+  std::shared_ptr<FileSystem> fileSystem;
 
   // Task tracking. Other task states live in the Executor.
   std::atomic<size_t> readDirTaskCount{0};
@@ -26,7 +26,8 @@ struct ParallelWalkerContext {
   Queue<ReadDirResult> resultQueue{};
   Queue<IoErrorWithPath> errorQueue{};
 
-  ParallelWalkerContext(FileSystem& fileSystem) : fileSystem{fileSystem} {}
+  explicit ParallelWalkerContext(std::shared_ptr<FileSystem> fileSystem)
+      : fileSystem{std::move(fileSystem)} {}
 
   // Helper for (resultQueue or errorQueue).dequeue.
   // If no tasks are running, return nullopt.
@@ -131,10 +132,15 @@ void readDirTask(
 
   std::unique_ptr<DirHandle> dir;
   try {
-    dir = context->fileSystem.openDir(dirFullPath.c_str());
+    dir = context->fileSystem->openDir(dirFullPath.c_str());
   } catch (const std::system_error& err) {
     IoErrorWithPath error{std::move(dirFullPath), err};
     context->errorQueue.enqueue(error);
+    return;
+  }
+
+  // openDir() returns nullptr. It is used to ignore a directory.
+  if (!dir) {
     return;
   }
 
@@ -157,7 +163,7 @@ void readDirTask(
     } else {
       auto fileFullPath = pathJoin(dirFullPath, name);
       try {
-        st = context->fileSystem.getFileInformation(fileFullPath.c_str());
+        st = context->fileSystem->getFileInformation(fileFullPath.c_str());
       } catch (const std::system_error& err) {
         IoErrorWithPath error{std::move(fileFullPath), err};
         context->errorQueue.enqueue(error);
@@ -207,8 +213,10 @@ void readDirTask(
 
 } // namespace
 
-ParallelWalker::ParallelWalker(FileSystem& fileSystem, AbsolutePath rootPath) {
-  context_ = std::make_shared<ParallelWalkerContext>(fileSystem);
+ParallelWalker::ParallelWalker(
+    std::shared_ptr<FileSystem> fileSystem,
+    AbsolutePath rootPath) {
+  context_ = std::make_shared<ParallelWalkerContext>(std::move(fileSystem));
   auto task = [context = context_,
                path = std::move(rootPath),
                counter = ReadDirTaskCounter(context_)]() mutable {

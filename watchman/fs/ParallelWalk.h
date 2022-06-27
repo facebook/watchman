@@ -54,7 +54,9 @@ class ParallelWalker final {
    * Use nextResult() to obtain ReadDirResults.
    * Use nextError() to obtain IoErrorWithPaths.
    */
-  explicit ParallelWalker(FileSystem& fileSystem, AbsolutePath rootPath);
+  explicit ParallelWalker(
+      std::shared_ptr<FileSystem> fileSystem,
+      AbsolutePath rootPath);
 
   /**
    * Obtain the next ReadDirResult. Might block.
