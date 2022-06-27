@@ -12,7 +12,8 @@
 struct watchman_file;
 
 struct watchman_dir {
-  /* the name of this dir, relative to its parent */
+  /* the name of this dir, relative to its parent
+   * for root (parent == nullptr), name is usually an absolute path */
   w_string name;
   /* the parent dir */
   watchman_dir* parent;
@@ -43,7 +44,13 @@ struct watchman_dir {
 
   /**
    * Walk up to the chain of dirs via ->parent to and then produce the full path
-   * to this dir relative to the root of the watch.
+   * to this dir.
+   *
+   * Practically, the root watchman_dir's name is often set to an absolute path
+   * of the root, so this function returns an absolute path of the dir.
+   *
+   * If the root watchman_dir has an empty name, then this function returns
+   * a path relative to the root of the watch.
    */
   w_string getFullPath() const;
 
