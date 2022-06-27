@@ -94,7 +94,6 @@ class KQueueAndFSEventsWatcher : public Watcher {
 
   std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
-      struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
@@ -186,31 +185,32 @@ folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
 
 std::unique_ptr<DirHandle> KQueueAndFSEventsWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
-    struct watchman_dir* dir,
     const char* path) {
-  if (!dir->parent) {
+  if (root->root_path == path) {
     logf(DBG, "Watching root directory with kqueue\n");
     // This is the root, let's watch it with kqueue.
-    kqueueWatcher_->startWatchDir(root, dir, path);
-  } else if (dir->parent->getFullPath() == root->root_path) {
-    auto fullPath = dir->getFullPath();
-    auto wlock = fseventWatchers_.wlock();
-    if (wlock->find(fullPath) == wlock->end()) {
-      logf(
-          DBG,
-          "Creating a new FSEventsWatcher for top-level directory {}\n",
-          dir->name);
-      root->cookies.addCookieDir(fullPath);
-      auto [it, _] = wlock->emplace(
-          fullPath,
-          std::make_shared<FSEventsWatcher>(
-              false, root->config, std::optional(fullPath)));
-      const auto& watcher = it->second;
-      if (!watcher->start(root)) {
-        throw std::runtime_error("couldn't start fsEvent");
-      }
-      if (!startThread(root, watcher, pendingCondition_)) {
-        throw std::runtime_error("couldn't start fsEvent");
+    kqueueWatcher_->startWatchDir(root, path);
+  } else {
+    w_string fullPath{path};
+    if (root->root_path == fullPath.dirName()) {
+      auto wlock = fseventWatchers_.wlock();
+      if (wlock->find(fullPath) == wlock->end()) {
+        logf(
+            DBG,
+            "Creating a new FSEventsWatcher for top-level directory {}\n",
+            fullPath);
+        root->cookies.addCookieDir(fullPath);
+        auto [it, _] = wlock->emplace(
+            fullPath,
+            std::make_shared<FSEventsWatcher>(
+                false, root->config, std::optional(fullPath)));
+        const auto& watcher = it->second;
+        if (!watcher->start(root)) {
+          throw std::runtime_error("couldn't start fsEvent");
+        }
+        if (!startThread(root, watcher, pendingCondition_)) {
+          throw std::runtime_error("couldn't start fsEvent");
+        }
       }
     }
   }

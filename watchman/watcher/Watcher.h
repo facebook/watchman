@@ -76,9 +76,10 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or throw on error.
+  //
+  // path should be absolute.
   virtual std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
-      struct watchman_dir* dir,
       const char* path) = 0;
 
   /**

@@ -47,7 +47,6 @@ struct PortFSWatcher : public Watcher {
 
   std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
@@ -185,14 +184,14 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
 
 std::unique_ptr<DirHandle> PortFSWatcher::startWatchDir(
     const std::shared_ptr<watchman_root>& root,
-    struct watchman_dir* dir,
     const char* path) {
   struct stat st;
 
   auto osdir = w_dir_open(path);
 
+  w_string fullPath{path};
   if (fstat(osdir->getFd(), &st) == -1) {
-    if (dir->getFullPath() == root->root_path) {
+    if (fullPath == root->root_path) {
       root->cancel();
     } else {
       // whaaa?
@@ -204,7 +203,7 @@ std::unique_ptr<DirHandle> PortFSWatcher::startWatchDir(
         std::string("fstat failed for dir ") + path);
   }
 
-  do_watch(dir->getFullPath(), watchman::FileInformation(st), true);
+  do_watch(fullPath, watchman::FileInformation(st), true);
 
   return osdir;
 }

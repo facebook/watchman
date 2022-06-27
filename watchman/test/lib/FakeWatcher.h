@@ -19,7 +19,6 @@ class FakeWatcher : public Watcher {
 
   std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
-      struct watchman_dir* dir,
       const char* path) override;
 
   bool waitNotify(int timeoutms) override;

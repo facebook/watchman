@@ -807,7 +807,6 @@ void FSEventsWatcher::stopThreads() {
 
 std::unique_ptr<DirHandle> FSEventsWatcher::startWatchDir(
     const std::shared_ptr<Root>&,
-    watchman_dir*,
     const char* path) {
   return openDir(path);
 }

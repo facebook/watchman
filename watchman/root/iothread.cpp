@@ -474,7 +474,7 @@ void InMemoryView::crawler(
   std::unique_ptr<DirHandle> osdir;
 
   try {
-    osdir = watcher_->startWatchDir(root, dir, path.c_str());
+    osdir = watcher_->startWatchDir(root, path.c_str());
   } catch (const std::system_error& err) {
     logf(DBG, "startWatchDir({}) threw {}\n", path, err.what());
     handle_open_errno(*root, dir, pending.now, "opendir", err.code());

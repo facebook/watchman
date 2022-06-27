@@ -158,7 +158,6 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 
 std::unique_ptr<DirHandle> KQueueWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
-    struct watchman_dir* dir,
     const char* path) {
   struct stat st, osdirst;
   struct kevent k;
@@ -193,7 +192,7 @@ std::unique_ptr<DirHandle> KQueueWatcher::startWatchDir(
   }
 
   memset(&k, 0, sizeof(k));
-  auto dir_name = dir->getFullPath();
+  w_string dir_name{path};
   EV_SET(
       &k,
       rawFd,

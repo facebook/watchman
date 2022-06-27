@@ -15,10 +15,8 @@ FakeWatcher::FakeWatcher(FileSystem& fileSystem)
 
 std::unique_ptr<DirHandle> FakeWatcher::startWatchDir(
     const std::shared_ptr<Root>& root,
-    struct watchman_dir* dir,
     const char* path) {
   (void)root;
-  (void)dir;
   return fileSystem_.openDir(path);
 }
 
