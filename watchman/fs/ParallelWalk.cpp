@@ -134,7 +134,7 @@ void readDirTask(
   try {
     dir = context->fileSystem->openDir(dirFullPath.c_str());
   } catch (const std::system_error& err) {
-    IoErrorWithPath error{std::move(dirFullPath), err};
+    IoErrorWithPath error{std::move(dirFullPath), err, "opendir"};
     context->errorQueue.enqueue(error);
     return;
   }
@@ -165,7 +165,8 @@ void readDirTask(
       try {
         st = context->fileSystem->getFileInformation(fileFullPath.c_str());
       } catch (const std::system_error& err) {
-        IoErrorWithPath error{std::move(fileFullPath), err};
+        IoErrorWithPath error{
+            std::move(fileFullPath), err, "getFileInformation"};
         context->errorQueue.enqueue(error);
         // Contine checking other entries.
         continue;

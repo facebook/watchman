@@ -45,6 +45,9 @@ struct IoErrorWithPath {
 
   // Actual error.
   folly::exception_wrapper error;
+
+  // Name of the operation. Useful for error messages.
+  const char* operationName;
 };
 
 struct ParallelWalkerContext;
