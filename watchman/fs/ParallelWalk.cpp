@@ -17,7 +17,6 @@ using Queue = folly::UMPMCQueue<std::optional<T>, true /* MayBlock */>;
 struct ParallelWalkerContext {
   // Input.
   FileSystem& fileSystem;
-  AbsolutePath rootPath;
 
   // Task tracking. Other task states live in the Executor.
   std::atomic<size_t> readDirTaskCount{0};
@@ -27,8 +26,7 @@ struct ParallelWalkerContext {
   Queue<ReadDirResult> resultQueue{};
   Queue<IoErrorWithPath> errorQueue{};
 
-  ParallelWalkerContext(FileSystem& fileSystem, AbsolutePath rootPath)
-      : fileSystem{fileSystem}, rootPath{std::move(rootPath)} {}
+  ParallelWalkerContext(FileSystem& fileSystem) : fileSystem{fileSystem} {}
 
   // Helper for (resultQueue or errorQueue).dequeue.
   // If no tasks are running, return nullopt.
@@ -124,14 +122,13 @@ const size_t kApproximateSizePerEntry = 32;
  */
 void readDirTask(
     std::shared_ptr<ParallelWalkerContext> context,
-    RelativePath dirPath,
+    AbsolutePath dirFullPath,
     ReadDirTaskCounter&& counter,
     size_t dirSizeHint = 0) {
   if (context->stopped.load(std::memory_order_acquire)) {
     return;
   }
 
-  auto dirFullPath = pathJoin(context->rootPath, dirPath);
   std::unique_ptr<DirHandle> dir;
   try {
     dir = context->fileSystem.openDir(dirFullPath.c_str());
@@ -179,18 +176,18 @@ void readDirTask(
   }
 
   // Figure out subdirs to read before losing ownership of entries.
-  std::vector<std::pair<RelativePath, size_t>> subdirsToRead;
+  std::vector<std::pair<AbsolutePath, size_t>> subdirsToRead;
   subdirsToRead.reserve(subdirCount);
   for (const auto& entry : entries) {
     if (entry.stat.isDir()) {
-      RelativePath subdirPath = pathJoin(dirPath, entry.name);
+      AbsolutePath subdirPath = pathJoin(dirFullPath, entry.name);
       size_t sizeHint = entry.stat.size / kApproximateSizePerEntry;
       subdirsToRead.push_back(std::make_pair(subdirPath, sizeHint));
     }
   }
 
   // Enqueue ReadDirResult before reading subdirs.
-  ReadDirResult result{std::move(dirPath), std::move(entries)};
+  ReadDirResult result{std::move(dirFullPath), std::move(entries)};
   context->resultQueue.enqueue(result);
 
   // Spawn tasks to read subdirs.
@@ -210,14 +207,10 @@ void readDirTask(
 
 } // namespace
 
-ParallelWalker::ParallelWalker(
-    FileSystem& fileSystem,
-    AbsolutePath rootPath,
-    RelativePath startPath) {
-  context_ =
-      std::make_shared<ParallelWalkerContext>(fileSystem, std::move(rootPath));
+ParallelWalker::ParallelWalker(FileSystem& fileSystem, AbsolutePath rootPath) {
+  context_ = std::make_shared<ParallelWalkerContext>(fileSystem);
   auto task = [context = context_,
-               path = std::move(startPath),
+               path = std::move(rootPath),
                counter = ReadDirTaskCounter(context_)]() mutable {
     readDirTask(std::move(context), std::move(path), std::move(counter));
   };

@@ -15,9 +15,7 @@ void walk(watchman::AbsolutePath path) {
   std::cout << path << std::endl;
 
   auto start_time = std::chrono::steady_clock::now();
-  watchman::RelativePath startPath{""};
-  auto walker =
-      watchman::ParallelWalker(watchman::realFileSystem, path, startPath);
+  auto walker = watchman::ParallelWalker(watchman::realFileSystem, path);
   size_t directory_count = 0;
   size_t path_count = 0;
   off_t size = 0;

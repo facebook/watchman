@@ -18,7 +18,6 @@ namespace watchman {
 
 // Consider eden/fs/utils/PathFuncs.h, if builds.
 using PathComponent = folly::fbstring;
-using RelativePath = folly::fbstring;
 using AbsolutePath = folly::fbstring;
 
 /** Similar to `DirEntry` but always contains stat and owns the strings. */
@@ -29,8 +28,8 @@ struct DirEntryOwned {
 
 /** ReadDir result: names and stats of direct children of a directory. */
 struct ReadDirResult {
-  // Directory path relative to the root.
-  RelativePath dirPath;
+  // Full directory path.
+  AbsolutePath dirFullPath;
 
   // Entries and their stats.
   std::vector<DirEntryOwned> entries;
@@ -50,15 +49,12 @@ struct ParallelWalkerContext;
 class ParallelWalker final {
  public:
   /**
-   * Start reading rootPath + startPath recursively. Does not block.
+   * Start reading rootPath recursively. Does not block.
    *
    * Use nextResult() to obtain ReadDirResults.
    * Use nextError() to obtain IoErrorWithPaths.
    */
-  explicit ParallelWalker(
-      FileSystem& fileSystem,
-      AbsolutePath rootPath,
-      RelativePath startPath);
+  explicit ParallelWalker(FileSystem& fileSystem, AbsolutePath rootPath);
 
   /**
    * Obtain the next ReadDirResult. Might block.
