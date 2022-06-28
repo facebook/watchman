@@ -266,6 +266,7 @@ RootDebugStatus Root::getStatus() const {
   obj.done_initial = inner.done_initial;
   obj.cancelled = inner.cancelled;
   obj.crawl_status = w_string{crawl_status.data(), crawl_status.size()};
+  obj.enable_parallel_crawl = enable_parallel_crawl;
   return obj;
 }
 

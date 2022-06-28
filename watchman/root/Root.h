@@ -171,6 +171,7 @@ struct RootDebugStatus : serde::Object {
   std::vector<RootQueryInfo> queries;
   bool done_initial;
   bool cancelled;
+  bool enable_parallel_crawl;
   w_string crawl_status;
 
   template <typename X>
@@ -188,6 +189,7 @@ struct RootDebugStatus : serde::Object {
     x("done_initial", done_initial);
     x("cancelled", cancelled);
     x("crawl-status", crawl_status);
+    x("enable_parallel_crawl", enable_parallel_crawl);
   }
 };
 
