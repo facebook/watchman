@@ -69,17 +69,21 @@ doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
         "invalid value for argument {}, expected a string naming the root dir",
         root_index);
   }
+  return resolveRootByName(client, root_name, create);
+}
 
+std::shared_ptr<Root>
+resolveRootByName(Client* client, const char* rootName, bool create) {
   try {
     std::shared_ptr<Root> root;
     if (client->client_mode) {
-      root = w_root_resolve_for_client_mode(root_name);
+      root = w_root_resolve_for_client_mode(rootName);
     } else {
       if (!client->client_is_owner) {
         // Only the owner is allowed to create watches
         create = false;
       }
-      root = w_root_resolve(root_name, create);
+      root = w_root_resolve(rootName, create);
     }
 
     if (client->perf_sample) {
@@ -90,7 +94,7 @@ doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
   } catch (const std::exception& exc) {
     RootResolveError::throwf(
         "unable to resolve root {}: {}{}",
-        root_name,
+        rootName,
         exc.what(),
         client->client_is_owner
             ? ""

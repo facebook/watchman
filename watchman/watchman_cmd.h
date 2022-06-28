@@ -48,6 +48,13 @@ std::shared_ptr<watchman::Root> resolveOrCreateRoot(
     watchman::Client* client,
     const json_ref& args);
 
+// Similar to resolveRoot() or resolveOrCreateRoot() but takes a root
+// string instead of json_ref.
+std::shared_ptr<watchman::Root> resolveRootByName(
+    watchman::Client* client,
+    const char* rootName,
+    bool create = false);
+
 void add_root_warnings_to_response(
     watchman::UntypedResponse& response,
     const std::shared_ptr<watchman::Root>& root);
