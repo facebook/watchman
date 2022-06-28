@@ -113,12 +113,20 @@ struct RootRecrawlInfo : serde::Object {
   int64_t count;
   bool should_recrawl;
   std::optional<w_string> warning;
+  w_string reason;
+  std::optional<int64_t> started_at;
+  std::optional<int64_t> completed_at;
+  std::optional<int64_t> stat_count;
 
   template <typename X>
   void map(X& x) {
     x("count", count);
     x("should-recrawl", should_recrawl);
     x("warning", warning);
+    x("reason", reason);
+    x("started", started_at);
+    x("completed", completed_at);
+    x("stats", stat_count);
   }
 };
 

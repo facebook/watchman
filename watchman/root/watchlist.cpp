@@ -150,37 +150,41 @@ RootDebugStatus Root::getStatus() const {
     auto info = recrawlInfo.rlock();
     recrawl_info.count = info->recrawlCount;
     recrawl_info.should_recrawl = info->shouldRecrawl;
+    recrawl_info.reason = info->reason;
     if (info->warning) {
       recrawl_info.warning = info->warning;
     }
+    std::shared_ptr<std::atomic<size_t>> stat_count = info->statCount;
+    if (stat_count) {
+      recrawl_info.stat_count = stat_count->load(std::memory_order_acquire);
+    }
 
+    int64_t finish_ago = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             now - info->crawlFinish)
+                             .count();
+    int64_t start_ago = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now - info->crawlStart)
+                            .count();
     if (!inner.done_initial) {
+      recrawl_info.started_at = -start_ago;
       crawl_status = folly::to<std::string>(
-          info->recrawlCount ? "re-" : "",
-          "crawling for ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlStart)
-              .count(),
-          "ms");
+          info->recrawlCount ? "re-" : "", "crawling for ", start_ago, "ms");
     } else if (info->shouldRecrawl) {
+      recrawl_info.completed_at = -finish_ago;
       crawl_status = folly::to<std::string>(
           "needs recrawl: ",
           info->warning.view(),
           ". Last crawl was ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlFinish)
-              .count(),
+          finish_ago,
           "ms ago");
     } else {
+      recrawl_info.started_at = -start_ago;
+      recrawl_info.completed_at = -finish_ago;
       crawl_status = folly::to<std::string>(
           "crawl completed ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlFinish)
-              .count(),
+          finish_ago,
           "ms ago, and took ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              info->crawlFinish - info->crawlStart)
-              .count(),
+          start_ago - finish_ago,
           "ms");
     }
   }
