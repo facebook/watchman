@@ -70,6 +70,9 @@ folly::fbstring pathJoin(
 class ReadDirTaskCounter {
  public:
   ~ReadDirTaskCounter() {
+    if (!context_) {
+      return;
+    }
     size_t count =
         context_->readDirTaskCount.fetch_sub(1, std::memory_order_acq_rel);
     if (count == 1) {
@@ -90,7 +93,13 @@ class ReadDirTaskCounter {
   }
 
   ReadDirTaskCounter() = delete;
+#if defined(_MSC_VER)
+  // MSVC (tested with cl 19.32.31332 from VS 2022) does not do
+  // copy/move-elision for lambda capture.
+  ReadDirTaskCounter(ReadDirTaskCounter&&) = default;
+#else
   ReadDirTaskCounter(ReadDirTaskCounter&&) = delete;
+#endif
   ReadDirTaskCounter& operator=(const ReadDirTaskCounter&) = delete;
   ReadDirTaskCounter& operator=(ReadDirTaskCounter&&) = delete;
 

@@ -299,6 +299,18 @@ class InMemoryView final : public QueryableView {
       std::vector<w_string>& pendingCookies);
 
   /**
+   * Crawl the given directory recursively using ParallelWalker.
+   *
+   * W_PENDING_RECURSIVE must be set.
+   */
+  void crawlerParallel(
+      const std::shared_ptr<Root>& root,
+      ViewDatabase& view,
+      PendingChanges& coll,
+      const PendingChange& pending,
+      std::vector<w_string>& pendingCookies);
+
+  /**
    * Called on the IO thread. If `pending` is not in the ignored directory list,
    * lstat() the file and update the InMemoryView. This may insert work into
    * `coll` if a directory needs to be rescanned.

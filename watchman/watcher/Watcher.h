@@ -78,6 +78,8 @@ class Watcher : public std::enable_shared_from_this<Watcher> {
   // handle, or throw on error.
   //
   // path should be absolute.
+  //
+  // Should be thread-safe.
   virtual std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<Root>& root,
       const char* path) = 0;

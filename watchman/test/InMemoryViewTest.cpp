@@ -23,14 +23,20 @@ namespace {
 
 using namespace watchman;
 
-class InMemoryViewTest : public testing::Test {
+Configuration getConfiguration(bool usePwalk) {
+  json_ref json = json_object();
+  json_object_set(json, "enable_parallel_crawl", json_boolean(usePwalk));
+  return Configuration{std::move(json)};
+}
+
+class InMemoryViewTest : public testing::TestWithParam<bool /* pwalk */> {
  public:
   using Continue = InMemoryView::Continue;
 
   const w_string root_path{FAKEFS_ROOT "root"};
 
   FakeFileSystem fs;
-  Configuration config;
+  Configuration config = getConfiguration(GetParam());
   std::shared_ptr<FakeWatcher> watcher = std::make_shared<FakeWatcher>(fs);
 
   std::shared_ptr<InMemoryView> view =
@@ -42,7 +48,7 @@ class InMemoryViewTest : public testing::Test {
   }
 };
 
-TEST_F(InMemoryViewTest, can_construct) {
+TEST_P(InMemoryViewTest, can_construct) {
   fs.defineContents({
       FAKEFS_ROOT "root",
   });
@@ -51,7 +57,7 @@ TEST_F(InMemoryViewTest, can_construct) {
       fs, root_path, "fs_type", w_string_to_json("{}"), config, view, [] {}};
 }
 
-TEST_F(InMemoryViewTest, drive_initial_crawl) {
+TEST_P(InMemoryViewTest, drive_initial_crawl) {
   fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
 
   auto root = std::make_shared<Root>(
@@ -75,7 +81,7 @@ TEST_F(InMemoryViewTest, drive_initial_crawl) {
   EXPECT_STREQ("dir/file.txt", ctx.resultsArray.at(1).asCString());
 }
 
-TEST_F(InMemoryViewTest, respond_to_watcher_events) {
+TEST_P(InMemoryViewTest, respond_to_watcher_events) {
   getLog().setStdErrLoggingLevel(DBG);
 
   fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
@@ -140,7 +146,7 @@ TEST_F(InMemoryViewTest, respond_to_watcher_events) {
   EXPECT_EQ(100, two.get("size").asInt());
 }
 
-TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
+TEST_P(InMemoryViewTest, wait_for_respond_to_watcher_events) {
   getLog().setStdErrLoggingLevel(DBG);
 
   fs.defineContents({FAKEFS_ROOT "root/dir/file.txt"});
@@ -205,7 +211,7 @@ TEST_F(InMemoryViewTest, wait_for_respond_to_watcher_events) {
   EXPECT_EQ(100, two.get("size").asInt());
 }
 
-TEST_F(
+TEST_P(
     InMemoryViewTest,
     syncToNow_does_not_return_until_cookie_dir_is_crawled) {
   getLog().setStdErrLoggingLevel(DBG);
@@ -285,7 +291,7 @@ TEST_F(
   EXPECT_EQ(100, std::move(syncFuture).get());
 }
 
-TEST_F(
+TEST_P(
     InMemoryViewTest,
     syncToNow_does_not_return_until_all_pending_events_are_processed) {
   getLog().setStdErrLoggingLevel(DBG);
@@ -371,7 +377,7 @@ TEST_F(
   EXPECT_EQ(100, std::move(syncFuture).get());
 }
 
-TEST_F(
+TEST_P(
     InMemoryViewTest,
     syncToNow_does_not_return_until_initial_crawl_completes) {
   getLog().setStdErrLoggingLevel(DBG);
@@ -429,7 +435,7 @@ TEST_F(
   std::move(syncFuture).get();
 }
 
-TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
+TEST_P(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   getLog().setStdErrLoggingLevel(DBG);
 
   Query query;
@@ -461,7 +467,7 @@ TEST_F(InMemoryViewTest, waitUntilReadyToQuery_waits_for_initial_crawl) {
   std::move(syncFuture).get();
 }
 
-TEST_F(InMemoryViewTest, directory_removal_does_not_report_parent) {
+TEST_P(InMemoryViewTest, directory_removal_does_not_report_parent) {
   getLog().setStdErrLoggingLevel(DBG);
 
   fs.defineContents({
@@ -517,5 +523,10 @@ TEST_F(InMemoryViewTest, directory_removal_does_not_report_parent) {
   // iothread will not update the view for dir/ until it sees an actual
   // notification from the watcher for that directory.
 }
+
+INSTANTIATE_TEST_CASE_P(
+    InMemoryViewTests,
+    InMemoryViewTest,
+    testing::Values(false, true));
 
 } // namespace

@@ -593,6 +593,7 @@ watchman/Options.cpp
 watchman/PDU.cpp
 watchman/PendingCollection.cpp
 watchman/PerfSample.cpp
+watchman/fs/ParallelWalk.cpp
 watchman/fs/Pipe.cpp
 watchman/ProcessLock.cpp
 # PubSub.cpp  (in liblog)

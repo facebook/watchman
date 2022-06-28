@@ -76,6 +76,13 @@ constexpr inline auto W_PENDING_CRAWL_ONLY = PendingFlags::raw(8);
 constexpr inline auto W_PENDING_IS_DESYNCED = PendingFlags::raw(16);
 
 /**
+ * Set when the processPath() is triggered by recursive parallel walk.
+ * processPath() -> statPath() should avoid appending to PendingChanges.
+ * Missing pre_stat can be treated as deletion without extra stat().
+ */
+constexpr inline auto W_PENDING_VIA_PWALK = PendingFlags::raw(32);
+
+/**
  * Represents a change notification from the Watcher.
  */
 struct PendingChange {
