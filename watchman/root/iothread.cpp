@@ -457,7 +457,11 @@ void InMemoryView::crawler(
       }
     } catch (const std::system_error& err) {
       handle_open_errno(
-          *root, dir, pending.now, "getFileInformation", err.code());
+          *root,
+          dir->getFullPath(),
+          pending.now,
+          "getFileInformation",
+          err.code());
       view.markDirDeleted(*watcher_, dir, getClock(pending.now), true);
       return;
     }
@@ -477,7 +481,8 @@ void InMemoryView::crawler(
     osdir = watcher_->startWatchDir(root, path.c_str());
   } catch (const std::system_error& err) {
     logf(DBG, "startWatchDir({}) threw {}\n", path, err.what());
-    handle_open_errno(*root, dir, pending.now, "opendir", err.code());
+    handle_open_errno(
+        *root, dir->getFullPath(), pending.now, "opendir", err.code());
     view.markDirDeleted(*watcher_, dir, getClock(pending.now), true);
     return;
   }

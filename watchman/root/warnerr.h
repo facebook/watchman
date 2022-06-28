@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <system_error>
+#include "watchman/watchman_string.h"
 
 struct watchman_dir;
 
@@ -18,7 +19,7 @@ class Root;
 
 void handle_open_errno(
     Root& root,
-    watchman_dir* dir,
+    w_string_piece dirName,
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err);

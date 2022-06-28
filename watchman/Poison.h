@@ -23,7 +23,7 @@ namespace watchman {
 extern folly::Synchronized<std::string> poisoned_reason;
 
 void set_poison_state(
-    const w_string& dir,
+    w_string_piece dir,
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err);

@@ -16,11 +16,10 @@ namespace watchman {
 
 void handle_open_errno(
     Root& root,
-    watchman_dir* dir,
+    w_string_piece dirPath,
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err) {
-  auto dir_name = dir->getFullPath();
   bool log_warning = true;
 
   if (err == error_code::no_such_file_or_directory ||
@@ -30,7 +29,7 @@ void handle_open_errno(
   } else if (err == error_code::permission_denied) {
     log_warning = true;
   } else if (err == error_code::system_limits_exceeded) {
-    set_poison_state(dir_name, now, syscall, err);
+    set_poison_state(dirPath, now, syscall, err);
     if (!root.failure_reason) {
       root.failure_reason = w_string::build(*poisoned_reason.rlock());
     }
@@ -39,11 +38,11 @@ void handle_open_errno(
     log_warning = true;
   }
 
-  if (w_string_equal(dir_name, root.root_path)) {
+  if (dirPath == root.root_path) {
     auto warn = w_string::build(
         syscall,
         "(",
-        dir_name,
+        dirPath,
         ") -> ",
         err.message(),
         ". Root is inaccessible; cancelling watch\n");
@@ -58,7 +57,7 @@ void handle_open_errno(
   auto warn = w_string::build(
       syscall,
       "(",
-      dir_name,
+      dirPath,
       ") -> ",
       err.message(),
       ". Marking this portion of the tree deleted");
