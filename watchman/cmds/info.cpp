@@ -58,7 +58,7 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
     }
   };
 
-  static Response handle(const Request& request) {
+  static Response handle(Client*, const Request& request) {
     Response response;
 
 #ifdef WATCHMAN_BUILD_INFO

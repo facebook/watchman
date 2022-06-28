@@ -246,7 +246,7 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
     }
   };
 
-  static Response handle(const Request&) {
+  static Response handle(Client*, const Request&) {
     Response res;
     res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
     res.roots = Root::getStatusForAllRoots();

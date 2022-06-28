@@ -178,7 +178,7 @@ class TypedCommand : public CommandDefinition {
             T::validate,
             resultPrinter} {}
 
-  static UntypedResponse handleRaw(Client*, const json_ref& args) {
+  static UntypedResponse handleRaw(Client* client, const json_ref& args) {
     // In advance of having individual handlers take a Command struct directly,
     // let's shift off the first entry `args`, since we know it's the command
     // name.
@@ -190,7 +190,7 @@ class TypedCommand : public CommandDefinition {
 
     using Request = typename T::Request;
     auto encodedResponse = serde::encode(T::handle(
-        serde::decode<Request>(json_array(std::move(adjusted_args)))));
+        client, serde::decode<Request>(json_array(std::move(adjusted_args)))));
     return UntypedResponse{encodedResponse.object()};
   }
 };
