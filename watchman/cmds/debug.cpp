@@ -279,6 +279,32 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
 };
 WATCHMAN_COMMAND(debug_status, DebugStatusCommand);
 
+struct DebugRootStatusCommand : TypedCommand<DebugRootStatusCommand> {
+  static constexpr std::string_view name = "debug-root-status";
+  static constexpr CommandFlags flags = CMD_DAEMON;
+
+  using Request = serde::Array<1, w_string>;
+
+  struct Response : BaseResponse {
+    RootDebugStatus status;
+
+    template <typename X>
+    void map(X& x) {
+      BaseResponse::map(x);
+      x("root_status", status);
+    }
+  };
+
+  static Response handle(Client* client, const Request& req) {
+    Response res;
+    res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
+    auto root = resolveRootByName(client, std::get<0>(req).c_str());
+    res.status = root->getStatus();
+    return res;
+  }
+};
+WATCHMAN_COMMAND(debug_root_status, DebugRootStatusCommand);
+
 static UntypedResponse cmd_debug_watcher_info(
     Client* clientbase,
     const json_ref& args) {
