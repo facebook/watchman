@@ -278,7 +278,7 @@ class InMemoryView final : public QueryableView {
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const DirEntry* pre_stat,
+      const FileInformation* pre_stat,
       std::vector<w_string>& pendingCookies);
 
   /**
@@ -309,7 +309,7 @@ class InMemoryView final : public QueryableView {
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const DirEntry* pre_stat);
+      const FileInformation* pre_stat);
 
   // END IOTHREAD
 

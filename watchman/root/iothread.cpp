@@ -344,7 +344,7 @@ void InMemoryView::processPath(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
-    const DirEntry* pre_stat,
+    const FileInformation* pre_stat,
     std::vector<w_string>& pendingCookies) {
   w_check(
       pending.path.size() >= rootPath_.size(),
@@ -549,7 +549,13 @@ void InMemoryView::crawler(
             newFlags.asRaw());
 
         PendingChange full_pending{std::move(full_path), pending.now, newFlags};
-        processPath(root, view, coll, full_pending, dirent, pendingCookies);
+        processPath(
+            root,
+            view,
+            coll,
+            full_pending,
+            dirent->has_stat ? &dirent->stat : nullptr,
+            pendingCookies);
       }
     }
   } catch (const std::system_error& exc) {
@@ -628,7 +634,7 @@ void InMemoryView::statPath(
     ViewDatabase& view,
     PendingChanges& coll,
     const PendingChange& pending,
-    const DirEntry* pre_stat) {
+    const FileInformation* pre_stat) {
   bool recursive = pending.flags.contains(W_PENDING_RECURSIVE);
   const bool via_notify = pending.flags.contains(W_PENDING_VIA_NOTIFY);
   const PendingFlags desynced_flag = pending.flags & W_PENDING_IS_DESYNCED;
@@ -651,8 +657,8 @@ void InMemoryView::statPath(
 
   FileInformation st;
   std::error_code errcode;
-  if (pre_stat && pre_stat->has_stat) {
-    st = pre_stat->stat;
+  if (pre_stat) {
+    st = *pre_stat;
   } else {
     try {
       st = fileSystem_.getFileInformation(path.c_str(), root.case_sensitive);
