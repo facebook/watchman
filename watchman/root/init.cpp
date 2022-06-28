@@ -248,6 +248,7 @@ Root::Root(
       cookies(
           fileSystem,
           computeCookieDir(root_path, config_, case_sensitive, ignore)),
+      enable_parallel_crawl{config_.getBool("enable_parallel_crawl", false)},
       config_file(std::move(config_file)),
       config(std::move(config_)),
       trigger_settle(int(config.getInt("settle", kDefaultSettlePeriod))),

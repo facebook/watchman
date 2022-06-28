@@ -215,6 +215,9 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
 
   CookieSync cookies;
 
+  /* mutable config items */
+  std::atomic<bool> enable_parallel_crawl;
+
   /* config options loaded via json file */
   std::optional<json_ref> config_file;
   Configuration config;

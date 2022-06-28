@@ -473,7 +473,8 @@ void InMemoryView::crawler(
     }
   }
 
-  if (recursive && config_.getBool("enable_parallel_crawl", false)) {
+  if (recursive &&
+      root->enable_parallel_crawl.load(std::memory_order_acquire)) {
     return crawlerParallel(root, view, coll, pending, pendingCookies);
   }
 
