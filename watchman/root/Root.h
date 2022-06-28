@@ -233,10 +233,14 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
     bool shouldRecrawl = true;
+    // Last recrawl reason
+    w_string reason{"startup"};
     // Last ad-hoc warning message
     w_string warning;
     std::chrono::steady_clock::time_point crawlStart;
     std::chrono::steady_clock::time_point crawlFinish;
+    // Number of statPath() called during recrawl
+    std::shared_ptr<std::atomic<size_t>> statCount;
   };
   folly::Synchronized<RecrawlInfo> recrawlInfo;
 

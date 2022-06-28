@@ -40,6 +40,9 @@ void InMemoryView::fullCrawl(
   // can get stuck with an empty view until another change is observed
   mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
+  fullCrawlStatCount_ = std::make_unique<std::atomic<size_t>>(0);
+  root->recrawlInfo.wlock()->statCount = fullCrawlStatCount_;
+
   auto start = std::chrono::system_clock::now();
   pendingFromWatcher.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
   while (true) {
@@ -64,6 +67,8 @@ void InMemoryView::fullCrawl(
   auto recrawlInfo = root->recrawlInfo.wlock();
   recrawlInfo->shouldRecrawl = false;
   recrawlInfo->crawlFinish = std::chrono::steady_clock::now();
+  recrawlInfo->statCount = nullptr;
+  fullCrawlStatCount_ = nullptr;
   root->inner.done_initial.store(true, std::memory_order_release);
 
   // There is no need to hold locks while logging, and abortAllCookies resolves
@@ -870,6 +875,10 @@ void InMemoryView::statPath(
 
   if (processedPaths_) {
     processedPaths_->write(PendingChangeLogEntry{pending, errcode, st});
+  }
+  if (fullCrawlStatCount_) {
+    // Not using loaded value - load can be relaxed - no need for acq_rel
+    fullCrawlStatCount_->fetch_add(1, std::memory_order_release);
   }
 
   if (errcode == error_code::no_such_file_or_directory ||

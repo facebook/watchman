@@ -455,6 +455,9 @@ class InMemoryView final : public QueryableView {
 
   // If set, paths processed by processPending are logged here.
   std::unique_ptr<RingBuffer<PendingChangeLogEntry>> processedPaths_;
+
+  // Track statPath() count during fullCrawl(). Used to report progress.
+  std::shared_ptr<std::atomic<size_t>> fullCrawlStatCount_;
 };
 
 } // namespace watchman

@@ -23,6 +23,7 @@ void Root::scheduleRecrawl(const char* why) {
 
     if (!info->shouldRecrawl) {
       info->recrawlCount++;
+      info->reason = why;
       if (!config.getBool("suppress_recrawl_warnings", false)) {
         info->warning = w_string::build(
             "Recrawled this watch ",
