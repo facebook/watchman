@@ -202,6 +202,13 @@ https://facebook.github.io/watchman/docs/cmd/query.html#available-fields.""",
         help="String to use as field separator for event output.",
     )
     parser.add_argument(
+        "-0",
+        "--null",
+        action="store_true",
+        help="""
+Use a NUL byte as a field separator, takes precedence over --separator.""",
+    )
+    parser.add_argument(
         "-m",
         "--max-events",
         type=int,
@@ -252,7 +259,7 @@ def main():
             args.path,
             args.pattern,
             args.fields,
-            args.separator,
+            "\0" if args.null else args.separator,
             args.relative,
             args.max_events,
         )
