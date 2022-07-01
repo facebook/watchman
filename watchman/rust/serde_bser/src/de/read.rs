@@ -8,8 +8,10 @@
 use std::io;
 use std::result;
 
-use anyhow::{bail, Context as _};
-use byteorder::{ByteOrder, NativeEndian};
+use anyhow::bail;
+use anyhow::Context as _;
+use byteorder::ByteOrder;
+use byteorder::NativeEndian;
 
 #[cfg(feature = "debug_bytes")]
 use std::fmt;

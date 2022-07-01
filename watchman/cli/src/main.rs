@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use structopt::{clap::AppSettings, StructOpt};
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 mod audit;
 

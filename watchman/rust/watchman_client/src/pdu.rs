@@ -9,7 +9,8 @@
 //! watchman protocol.
 
 use crate::expr::Expr;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_bser::value::Value;
 use std::path::PathBuf;
 

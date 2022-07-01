@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use std::io::{self, Write};
+use std::io::Write;
+use std::io::{self};
 
 /// A writer that counts how many bytes were written.
 pub struct CountWrite {

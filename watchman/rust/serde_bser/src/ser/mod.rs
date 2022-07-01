@@ -12,7 +12,8 @@ mod test;
 use std::io;
 
 use bytes::BufMut;
-use serde::ser::{self, Serialize};
+use serde::ser::Serialize;
+use serde::ser::{self};
 
 use crate::errors::*;
 use crate::header::*;

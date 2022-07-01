@@ -6,7 +6,10 @@
  */
 
 use crate::bytestring::ByteString;
-use serde::de::{Deserialize, MapAccess, SeqAccess, Visitor};
+use serde::de::Deserialize;
+use serde::de::MapAccess;
+use serde::de::SeqAccess;
+use serde::de::Visitor;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;

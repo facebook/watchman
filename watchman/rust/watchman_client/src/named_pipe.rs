@@ -12,12 +12,17 @@ use std::io::Error as IoError;
 use std::os::windows::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::task::{Context, Poll};
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use std::task::Context;
+use std::task::Poll;
+use tokio::io::AsyncRead;
+use tokio::io::AsyncWrite;
+use tokio::io::ReadBuf;
 use tokio::net::windows::named_pipe::NamedPipeClient;
-use winapi::um::fileapi::{CreateFileW, OPEN_EXISTING};
+use winapi::um::fileapi::CreateFileW;
+use winapi::um::fileapi::OPEN_EXISTING;
 use winapi::um::winbase::FILE_FLAG_OVERLAPPED;
-use winapi::um::winnt::{GENERIC_READ, GENERIC_WRITE};
+use winapi::um::winnt::GENERIC_READ;
+use winapi::um::winnt::GENERIC_WRITE;
 
 /// Wrapper around a tokio [`NamedPipeClient`]
 pub struct NamedPipe {

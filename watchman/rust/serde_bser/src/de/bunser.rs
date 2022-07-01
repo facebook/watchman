@@ -8,9 +8,11 @@
 //! Internal stateless code for handling BSER deserialization.
 
 use anyhow::Context as _;
-use byteorder::{ByteOrder, NativeEndian};
+use byteorder::ByteOrder;
+use byteorder::NativeEndian;
 
-use crate::de::read::{DeRead, Reference};
+use crate::de::read::DeRead;
+use crate::de::read::Reference;
 use crate::errors::*;
 use crate::header::*;
 

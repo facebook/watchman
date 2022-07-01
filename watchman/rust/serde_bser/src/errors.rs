@@ -7,7 +7,8 @@
 
 use std::fmt;
 
-use serde::{de, ser};
+use serde::de;
+use serde::ser;
 use thiserror::Error;
 
 use crate::header::header_byte_desc;
