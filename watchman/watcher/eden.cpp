@@ -347,9 +347,9 @@ class EdenFileResult : public FileResult {
       // Thrift error occured
       case SHA1Result::Type::error: {
         auto& err = sha1_->get_error();
-        XCHECK(err.errorCode_ref());
+        XCHECK(err.errorCode());
         throw std::system_error(
-            *err.errorCode_ref(), std::generic_category(), *err.message_ref());
+            *err.errorCode(), std::generic_category(), *err.message());
       }
 
       // Something is wrong with type union
@@ -1434,8 +1434,8 @@ class EdenView final : public QueryableView {
       // ERANGE: mountGeneration differs
       // EDOM: journal was truncated.
       // For other situations we let the error propagate.
-      XCHECK(err.errorCode_ref());
-      if (*err.errorCode_ref() != ERANGE && *err.errorCode_ref() != EDOM) {
+      XCHECK(err.errorCode());
+      if (*err.errorCode() != ERANGE && *err.errorCode() != EDOM) {
         throw;
       }
       // mountGeneration differs, or journal was truncated,
