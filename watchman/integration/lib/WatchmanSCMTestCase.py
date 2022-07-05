@@ -16,6 +16,41 @@ from . import WatchmanInstance, WatchmanTestCase
 STRING_TYPES = (str, bytes)
 
 
+def hg(args, cwd=None):
+    env = dict(os.environ)
+    env["HGPLAIN"] = "1"
+    env["HGUSER"] = "John Smith <smith@example.com>"
+    env["NOSCMLOG"] = "1"  # disable some instrumentation at FB
+    sockpath = WatchmanInstance.getSharedInstance().getSockPath()
+    env["WATCHMAN_SOCK"] = sockpath.legacy_sockpath()
+    p = subprocess.Popen(
+        [
+            env.get("EDEN_HG_BINARY", "hg"),
+            # we force the extension on.  This is a soft error for
+            # mercurial if it is not available, so we also employ
+            # the skipIfNoFSMonitor() test above to make sure the
+            # environment is sane.
+            "--config",
+            "extensions.fsmonitor=",
+            # Deployed versions of mercurial regressed and stopped
+            # respecting the WATCHMAN_SOCK environment override, so
+            # we have to reach in and force their hardcoded sockpath here.
+            "--config",
+            "fsmonitor.sockpath=%s" % sockpath.legacy_sockpath(),
+        ]
+        + args,
+        env=env,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = p.communicate()
+    if p.returncode != 0:
+        raise Exception("hg %r failed: %s, %s" % (args, out, err))
+
+    return out, err
+
+
 class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
     def __init__(self, methodName: str = "run") -> None:
         super(WatchmanSCMTestCase, self).__init__(methodName)
@@ -28,7 +63,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         We don't call this via unittest.skip because we want
         to have the skip message show the context"""
         try:
-            out, err = self.hg(["help", "--extension", "fsmonitor"])
+            out, err = hg(["help", "--extension", "fsmonitor"])
         except Exception as e:
             self.skipTest("fsmonitor is not available: %s" % str(e))
         else:
@@ -42,42 +77,8 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         if os.name == "nt":
             self.skipTest("The order of events on Windows is funky")
 
-    def hg(self, args, cwd=None):
-        env = dict(os.environ)
-        env["HGPLAIN"] = "1"
-        env["HGUSER"] = "John Smith <smith@example.com>"
-        env["NOSCMLOG"] = "1"  # disable some instrumentation at FB
-        sockpath = WatchmanInstance.getSharedInstance().getSockPath()
-        env["WATCHMAN_SOCK"] = sockpath.legacy_sockpath()
-        p = subprocess.Popen(
-            [
-                env.get("EDEN_HG_BINARY", "hg"),
-                # we force the extension on.  This is a soft error for
-                # mercurial if it is not available, so we also employ
-                # the skipIfNoFSMonitor() test above to make sure the
-                # environment is sane.
-                "--config",
-                "extensions.fsmonitor=",
-                # Deployed versions of mercurial regressed and stopped
-                # respecting the WATCHMAN_SOCK environment override, so
-                # we have to reach in and force their hardcoded sockpath here.
-                "--config",
-                "fsmonitor.sockpath=%s" % sockpath.legacy_sockpath(),
-            ]
-            + args,
-            env=env,
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        out, err = p.communicate()
-        if p.returncode != 0:
-            raise Exception("hg %r failed: %s, %s" % (args, out, err))
-
-        return out, err
-
-    def resolveCommitHash(self, revset, cwd=None):
-        return self.hg(args=["log", "-T", "{node}", "-r", revset], cwd=cwd)[0].decode(
+    def resolveCommitHash(self, revset, cwd=None) -> str:
+        return hg(args=["log", "-T", "{node}", "-r", revset], cwd=cwd)[0].decode(
             "utf-8"
         )
 
