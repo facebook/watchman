@@ -1149,10 +1149,7 @@ class EdenView final : public QueryableView {
     GetAllChangesSinceResult result;
 
     ctx->since.set_fresh_instance();
-    JournalPosition position;
-    getEdenClient(thriftChannel_)
-        ->sync_getCurrentJournalPosition(position, mountPoint_);
-    result.ticks = *position.sequenceNumber();
+    result.ticks = ctx->clockAtStartOfQuery.position().ticks;
     result.fileInfo = getAllFilesForFreshInstance(ctx);
 
     return result;
@@ -1313,18 +1310,17 @@ class EdenView final : public QueryableView {
 
   GetAllChangesSinceResult getAllChangesSinceStreaming(
       QueryContext* ctx) const {
-    auto client = getEdenClient(thriftChannel_);
-
-    // Query eden to fill in the mountGeneration field.
-    auto position =
-        client->semifuture_getCurrentJournalPosition(mountPoint_).get();
+    JournalPosition position;
+    position.mountGeneration() = ctx->clockAtStartOfQuery.position().rootNumber;
     // dial back to the sequence number from the query
-    *position.sequenceNumber() =
+    position.sequenceNumber() =
         std::get<QuerySince::Clock>(ctx->since.since).ticks;
 
     StreamChangesSinceParams params;
     params.mountPoint() = mountPoint_;
     params.fromPosition() = position;
+
+    auto client = getEdenClient(thriftChannel_);
     auto [resultChangesSince, stream] = client->sync_streamChangesSince(params);
 
     GetAllChangesSinceResult result;
