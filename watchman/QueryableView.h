@@ -48,7 +48,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
 
   virtual ClockPosition getMostRecentRootNumberAndTickValue() const = 0;
   virtual w_string getCurrentClockString() const = 0;
-  virtual uint32_t getLastAgeOutTickValue() const;
+  virtual ClockTicks getLastAgeOutTickValue() const;
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
   virtual void ageOut(PerfSample& sample, std::chrono::seconds minAge);
 

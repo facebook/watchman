@@ -36,7 +36,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
     // Parse a >= 2.8.2 version clock string
     if (sscanf(
             str,
-            "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
+            "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu64,
             &start_time,
             &pid,
             &root_number,
@@ -45,7 +45,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
       return true;
     }
 
-    if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+    if (sscanf(str, "c:%d:%" PRIu64, &pid, &ticks) == 2) {
       // old-style clock value (<= 2.8.2) -- by setting clock time and root
       // number to 0 we guarantee that this is treated as a fresh instance
       spec = Clock{0, pid, ClockPosition{root_number, ticks}};
@@ -203,7 +203,7 @@ bool clock_id_string(
   int res = snprintf(
       buf,
       bufsize,
-      "c:%" PRIu64 ":%d:%u:%" PRIu32,
+      "c:%" PRIu64 ":%d:%u:%" PRIu64,
       proc_start_time,
       proc_pid,
       root_number,

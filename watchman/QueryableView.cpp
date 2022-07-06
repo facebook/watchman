@@ -35,7 +35,7 @@ void QueryableView::allFilesGenerator(const Query*, QueryContext*) const {
   throw QueryExecError("allFilesGenerator not implemented");
 }
 
-uint32_t QueryableView::getLastAgeOutTickValue() const {
+ClockTicks QueryableView::getLastAgeOutTickValue() const {
   return 0;
 }
 

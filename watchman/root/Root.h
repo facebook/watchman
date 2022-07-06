@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include "watchman/Clock.h"
 #include "watchman/CookieSync.h"
 #include "watchman/IgnoreSet.h"
 #include "watchman/PendingCollection.h"
@@ -281,7 +282,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
     std::atomic<bool> cancelled{false};
 
     /* map of cursor name => last observed tick value */
-    folly::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
+    folly::Synchronized<std::unordered_map<w_string, ClockTicks>> cursors;
 
     /// Set by connection threads and read on the iothread.
     std::atomic<std::chrono::steady_clock::time_point> last_cmd_timestamp{

@@ -926,7 +926,7 @@ w_string InMemoryView::getCurrentClockString() const {
   return w_string(clockbuf, W_STRING_UNICODE);
 }
 
-uint32_t InMemoryView::getLastAgeOutTickValue() const {
+ClockTicks InMemoryView::getLastAgeOutTickValue() const {
   return lastAgeOutTick_;
 }
 

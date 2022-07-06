@@ -158,7 +158,7 @@ class InMemoryView final : public QueryableView {
   InMemoryView& operator=(InMemoryView&&) = delete;
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override;
-  uint32_t getLastAgeOutTickValue() const override;
+  ClockTicks getLastAgeOutTickValue() const override;
   std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
 
@@ -380,11 +380,11 @@ class InMemoryView final : public QueryableView {
   folly::Synchronized<ViewDatabase> view_;
   // The most recently observed tick value of an item in the view
   // Only incremented by the iothread, but may be read by other threads.
-  std::atomic<uint32_t> mostRecentTick_{1};
+  std::atomic<ClockTicks> mostRecentTick_{1};
   const uint32_t rootNumber_{0};
   const w_string rootPath_;
 
-  uint32_t lastAgeOutTick_{0};
+  ClockTicks lastAgeOutTick_{0};
   // This is system_clock instead of steady_clock because it's compared with a
   // file's otime.
   std::chrono::system_clock::time_point lastAgeOutTimestamp_{};

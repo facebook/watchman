@@ -14,7 +14,7 @@
 
 namespace watchman {
 
-using ClockTicks = uint32_t;
+using ClockTicks = uint64_t;
 
 struct ClockStamp {
   ClockTicks ticks;
