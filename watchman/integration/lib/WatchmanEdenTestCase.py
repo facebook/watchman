@@ -76,8 +76,7 @@ else:
 
             self.system_hgrc = None
 
-            self.eden_watchman = WatchmanInstance.Instance()
-            self.eden_watchman.start()
+            self.eden_watchman = WatchmanInstance.getSharedInstance()
             self.addCleanup(self.cleanUpWatchman)
 
             self.client = self.getClient(self.eden_watchman)
