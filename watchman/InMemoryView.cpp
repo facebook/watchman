@@ -24,7 +24,7 @@
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
-static std::atomic<long> next_root_number{1};
+static std::atomic<watchman::ClockRoot> next_root_number{1};
 
 namespace watchman {
 

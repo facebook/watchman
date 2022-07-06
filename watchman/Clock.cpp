@@ -31,12 +31,12 @@ ClockSpec::ClockSpec(const json_ref& value) {
   auto parseClockString = [=](const char* str) {
     uint64_t start_time;
     int pid;
-    uint32_t root_number;
+    ClockRoot root_number;
     ClockTicks ticks;
     // Parse a >= 2.8.2 version clock string
     if (sscanf(
             str,
-            "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu64,
+            "c:%" PRIu64 ":%d:%" PRIu64 ":%" PRIu64,
             &start_time,
             &pid,
             &root_number,
@@ -196,14 +196,14 @@ QuerySince ClockSpec::evaluate(
 }
 
 bool clock_id_string(
-    uint32_t root_number,
+    ClockRoot root_number,
     ClockTicks ticks,
     char* buf,
     size_t bufsize) {
   int res = snprintf(
       buf,
       bufsize,
-      "c:%" PRIu64 ":%d:%u:%" PRIu64,
+      "c:%" PRIu64 ":%d:%" PRIu64 ":%" PRIu64,
       proc_start_time,
       proc_pid,
       root_number,

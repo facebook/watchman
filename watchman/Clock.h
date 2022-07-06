@@ -15,6 +15,7 @@
 namespace watchman {
 
 using ClockTicks = uint64_t;
+using ClockRoot = uint64_t;
 
 struct ClockStamp {
   ClockTicks ticks;
@@ -57,11 +58,11 @@ struct QuerySince {
 };
 
 struct ClockPosition {
-  uint32_t rootNumber{0};
+  ClockRoot rootNumber{0};
   ClockTicks ticks{0};
 
   ClockPosition() = default;
-  ClockPosition(uint32_t rootNumber, ClockTicks ticks)
+  ClockPosition(ClockRoot rootNumber, ClockTicks ticks)
       : rootNumber(rootNumber), ticks(ticks) {}
 
   w_string toClockString() const;
@@ -135,7 +136,7 @@ struct ClockSpec {
 } // namespace watchman
 
 bool clock_id_string(
-    uint32_t root_number,
+    watchman::ClockRoot root_number,
     watchman::ClockTicks ticks,
     char* buf,
     size_t bufsize);

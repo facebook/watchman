@@ -381,7 +381,7 @@ class InMemoryView final : public QueryableView {
   // The most recently observed tick value of an item in the view
   // Only incremented by the iothread, but may be read by other threads.
   std::atomic<ClockTicks> mostRecentTick_{1};
-  const uint32_t rootNumber_{0};
+  const ClockRoot rootNumber_{0};
   const w_string rootPath_;
 
   ClockTicks lastAgeOutTick_{0};
