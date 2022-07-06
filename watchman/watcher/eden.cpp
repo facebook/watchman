@@ -204,7 +204,7 @@ class EdenFileResult : public FileResult {
       const w_string& rootPath,
       std::shared_ptr<apache::thrift::RequestChannel> thriftChannel,
       const w_string& fullName,
-      JournalPosition* position = nullptr,
+      ClockTicks* ticks = nullptr,
       bool isNew = false,
       DType dtype = DType::Unknown)
       : rootPath_(rootPath),
@@ -213,8 +213,8 @@ class EdenFileResult : public FileResult {
         dtype_(dtype) {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
-    if (position) {
-      otime_.ticks = *position->sequenceNumber();
+    if (ticks) {
+      otime_.ticks = *ticks;
       if (isNew) {
         // the "ctime" in the context of FileResult represents the point
         // in time that we saw the file transition !exists -> exists.
@@ -737,7 +737,7 @@ class EdenView final : public QueryableView {
     }
 
     auto allFilesResult = getAllChangesSince(ctx);
-    auto& resultPosition = allFilesResult.resultPosition;
+    auto resultTicks = allFilesResult.ticks;
     auto& fileInfo = allFilesResult.fileInfo;
     // We use the list of created files to synthesize the "new" field
     // in the file results
@@ -756,7 +756,7 @@ class EdenView final : public QueryableView {
           rootPath_,
           thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
-          &resultPosition,
+          &resultTicks,
           isNew,
           item.dtype);
 
@@ -846,7 +846,7 @@ class EdenView final : public QueryableView {
           rootPath_,
           thriftChannel_,
           w_string::pathCat({mountPoint_, item.name}),
-          /* position=*/nullptr,
+          /*ticks=*/nullptr,
           /*isNew=*/false,
           item.dtype);
 
@@ -1137,7 +1137,7 @@ class EdenView final : public QueryableView {
   }
 
   struct GetAllChangesSinceResult {
-    JournalPosition resultPosition;
+    ClockTicks ticks;
     std::vector<NameAndDType> fileInfo;
     std::unordered_set<std::string> createdFileNames;
   };
@@ -1149,8 +1149,10 @@ class EdenView final : public QueryableView {
     GetAllChangesSinceResult result;
 
     ctx->since.set_fresh_instance();
+    JournalPosition position;
     getEdenClient(thriftChannel_)
-        ->sync_getCurrentJournalPosition(result.resultPosition, mountPoint_);
+        ->sync_getCurrentJournalPosition(position, mountPoint_);
+    result.ticks = *position.sequenceNumber();
     result.fileInfo = getAllFilesForFreshInstance(ctx);
 
     return result;
@@ -1295,7 +1297,7 @@ class EdenView final : public QueryableView {
       }
     }
 
-    result.resultPosition = *delta.toPosition();
+    result.ticks = *delta.toPosition()->sequenceNumber();
     log(DBG,
         "wanted from ",
         *position.sequenceNumber(),
@@ -1326,7 +1328,7 @@ class EdenView final : public QueryableView {
     auto [resultChangesSince, stream] = client->sync_streamChangesSince(params);
 
     GetAllChangesSinceResult result;
-    result.resultPosition = *resultChangesSince.toPosition();
+    result.ticks = *resultChangesSince.toPosition()->sequenceNumber();
 
     // -1 = removed
     // 0 = changed
