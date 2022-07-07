@@ -138,22 +138,31 @@ Vagrant.configure("2") do |config|
   # default. The VMs automatically clear /tmp on boot, so it might
   # make sense to consider a different scratch path.
 
-  config.vm.define "watchman-ubuntu-18", autostart: false do |ubuntu18|
-    ubuntu18.vm.box = "bento/ubuntu-18.04"
-    ubuntu18.vm.hostname = "watchman-ubuntu-18"
+  config.vm.define "watchman-ubuntu-18", autostart: false do |ubuntu|
+    ubuntu.vm.box = "bento/ubuntu-18.04"
+    ubuntu.vm.hostname = "watchman-ubuntu-18"
 
-    provision_ubuntu ubuntu18
-    provider_linux ubuntu18
-    sync_fuse ubuntu18
+    provision_ubuntu ubuntu
+    provider_linux ubuntu
+    sync_fuse ubuntu
   end
 
-  config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu20|
-    ubuntu20.vm.box = "bento/ubuntu-20.04"
-    ubuntu20.vm.hostname = "watchman-ubuntu-20"
+  config.vm.define "watchman-ubuntu-20", autostart: false do |ubuntu|
+    ubuntu.vm.box = "bento/ubuntu-20.04"
+    ubuntu.vm.hostname = "watchman-ubuntu-20"
 
-    provision_ubuntu ubuntu20
-    provider_linux ubuntu20
-    sync_fuse ubuntu20
+    provision_ubuntu ubuntu
+    provider_linux ubuntu
+    sync_fuse ubuntu
+  end
+
+  config.vm.define "watchman-ubuntu-22", autostart: false do |ubuntu|
+    ubuntu.vm.box = "bento/ubuntu-22.04"
+    ubuntu.vm.hostname = "watchman-ubuntu-22"
+
+    provision_ubuntu ubuntu
+    provider_linux ubuntu
+    sync_fuse ubuntu
   end
 
   config.vm.define "watchman-fedora-35", autostart: false do |fedora35|
