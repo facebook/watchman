@@ -827,14 +827,31 @@ struct InternalStats {
   9: optional CacheStats treeCacheStats;
 }
 
+/**
+ * Common timestamps for every trace event, used to measure durations and
+ * display wall clock time.
+ */
+struct TraceEventTimes {
+  // Nanoseconds since epoch.
+  1: i64 timestamp;
+  // Nanoseconds since arbitrary clock base, used for computing request
+  // durations between start and finish.
+  2: i64 monotonic_time_ns;
+}
+
 enum InodeType {
   TREE = 0,
   FILE = 1,
 }
 
 enum InodeEventType {
-  Unknown = 0,
-  Materialize = 1,
+  UNKNOWN = 0,
+  MATERIALIZE = 1,
+}
+
+enum InodeEventProgress {
+  START = 0,
+  END = 1,
 }
 
 struct InodeEvent {
@@ -845,6 +862,8 @@ struct InodeEvent {
   4: InodeEventType eventType;
   // Duration is in microseconds (μs)
   5: i64 duration;
+  6: InodeEventProgress progress;
+  7: TraceEventTimes times;
 }
 
 /**

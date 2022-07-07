@@ -15,18 +15,6 @@ enum FsEventType {
   FINISH = 2,
 }
 
-/**
- * Common timestamps for every trace event, used to measure durations and
- * display wall clock time.
- */
-struct TraceEventTimes {
-  // Nanoseconds since epoch.
-  1: i64 timestamp;
-  // Nanoseconds since arbitrary clock base, used for computing request
-  // durations between start and finish.
-  2: i64 monotonic_time_ns;
-}
-
 struct RequestInfo {
   // The pid that originated this request.
   1: optional eden.pid_t pid;
@@ -41,7 +29,7 @@ struct FsEvent {
   // durations between start and finish.
   2: i64 monotonic_time_ns;
 
-  7: TraceEventTimes times;
+  7: eden.TraceEventTimes times;
 
   3: FsEventType type;
 
@@ -108,7 +96,7 @@ enum HgImportCause {
 }
 
 struct HgEvent {
-  1: TraceEventTimes times;
+  1: eden.TraceEventTimes times;
 
   2: HgEventType eventType;
   3: HgResourceType resourceType;
@@ -201,6 +189,14 @@ service StreamingEdenService extends eden.EdenService {
    * started, and finished.
    */
   stream<HgEvent> traceHgEvents(1: eden.PathString mountPoint);
+
+  /**
+   * Returns, in order, a stream of inode events for the given mount.
+   *
+   * Currently this includes only start and end events for Inode materializations,
+   * though we intend to generalize this to Inode loads as well soon.
+   */
+  stream<eden.InodeEvent> traceInodeEvents(1: eden.PathString mountPoint);
 
   /**
    * Returns a stream of changes since the given JournalPosition.
