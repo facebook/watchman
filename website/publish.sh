@@ -17,10 +17,10 @@ git checkout -- .
 git clean -dfx
 git fetch
 git rebase origin/gh-pages
-cd $WATCHMAN/oss/website
-bundle exec jekyll build -d /tmp/watchman-gh-pages
-cd /tmp/watchman-gh-pages
+cd "$WATCHMAN/oss/website"
+docker run --volume "$PWD:/srv/jekyll" --volume "/tmp/watchman-gh-pages:/tmp/jekyll-out" --rm jekyll/jekyll:3 jekyll build -d /tmp/jekyll-out
 
+cd /tmp/watchman-gh-pages
 git add --all
 git commit -m "update website"
 git push origin gh-pages
