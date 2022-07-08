@@ -855,8 +855,6 @@ enum InodeEventProgress {
 }
 
 struct InodeEvent {
-  // Holds nanoseconds since the epoch
-  1: i64 timestamp;
   2: i64 ino;
   3: InodeType inodeType;
   4: InodeEventType eventType;
