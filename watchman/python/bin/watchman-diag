@@ -429,7 +429,7 @@ if os.name != "posix" or (os.getuid() != 0 or not os.environ.get("SUDO_UID")):
     watchman = pywatchman.client(timeout=600)
     print(watchman.query("version"))
     print("\nStatus:\n")
-    passthru(["watchman", "debug-status"])
+    passthru(["watchman", "--pretty", "debug-status"])
 
     watches = watchman.query("watch-list")["roots"]
     print("Watches:\n%s\n" % watches)
