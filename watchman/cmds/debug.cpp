@@ -5,7 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <fmt/chrono.h>
+#include <folly/String.h>
 #include <folly/chrono/Conv.h>
+#include <folly/system/Shell.h>
 #include <unordered_map>
 #include "watchman/Client.h"
 #include "watchman/InMemoryView.h"
@@ -227,6 +230,28 @@ W_CMD_REG(
     CMD_DAEMON,
     w_cmd_realpath_root);
 
+namespace {
+
+std::string shellQuoteCommand(std::string_view command) {
+  std::vector<std::string> argv;
+  folly::split('\0', command, argv);
+
+  // Every argument in a command line is null-terminated. Remove the last, empty
+  // argument.
+  if (argv.size() && argv.back().empty()) {
+    argv.pop_back();
+  }
+
+  for (auto& arg : argv) {
+    // TODO: shellQuote is not particularly good. It always brackets with ' and
+    // does not handle non-printable characters. We should write our own.
+    arg = folly::shellQuote(arg);
+  }
+  return folly::join(' ', argv);
+}
+
+} // namespace
+
 struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
   static constexpr std::string_view name = "debug-status";
 
@@ -273,7 +298,19 @@ struct DebugStatusCommand : PrettyCommand<DebugStatusCommand> {
 
     fmt::print("CLIENTS\n-------\n");
     for (auto& client : response.clients) {
+      if (client.peer) {
+        fmt::print(
+            "{}: {}\n", client.peer->pid, shellQuoteCommand(client.peer->name));
+      } else {
+        fmt::print("unknown peer\n");
+      }
+      if (client.since) {
+        fmt::print(
+            "  - since: {}\n",
+            std::chrono::system_clock::from_time_t(client.since.value()));
+      }
       fmt::print("  - state: {}\n", client.state);
+      fmt::print("\n");
     }
   }
 };

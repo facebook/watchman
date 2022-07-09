@@ -23,6 +23,17 @@ namespace watchman {
 
 namespace {
 
+using namespace facebook::eden;
+
+ProcessNameCache& getProcessNameCache() {
+  static auto* pnc = new ProcessNameCache;
+  return *pnc;
+}
+
+ProcessNameHandle lookupProcessName(pid_t pid) {
+  return getProcessNameCache().lookup(pid);
+}
+
 constexpr size_t kResponseLogLimit = 0;
 
 folly::Synchronized<std::unordered_set<UserClient*>> clients;
@@ -209,7 +220,10 @@ void UserClient::create(std::unique_ptr<watchman_stream> stm) {
 }
 
 UserClient::UserClient(PrivateBadge, std::unique_ptr<watchman_stream> stm)
-    : Client(std::move(stm)) {
+    : Client{std::move(stm)},
+      since_{std::chrono::system_clock::now()},
+      peerPid_{this->stm->getPeerProcessID()},
+      peerName_{lookupProcessName(peerPid_)} {
   clients.wlock()->insert(this);
 }
 
@@ -246,6 +260,13 @@ std::vector<ClientDebugStatus> UserClient::getStatusForAllClients() {
 ClientDebugStatus UserClient::getDebugStatus() const {
   ClientDebugStatus rv;
   rv.state = status_.getName();
+  if (peerPid_) {
+    rv.peer.emplace();
+    rv.peer->pid = peerPid_;
+    // May briefly, once, block on the ProcessNameCache thread.
+    rv.peer->name = peerName_.get();
+  }
+  rv.since = std::chrono::system_clock::to_time_t(since_);
   return rv;
 }
 

@@ -6,9 +6,14 @@
  */
 
 #pragma once
+
+#include <eden/common/utils/ProcessNameCache.h>
 #include <fmt/format.h>
+
+#include <chrono>
 #include <deque>
 #include <unordered_map>
+
 #include "watchman/Clock.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
@@ -154,12 +159,27 @@ class ClientStatus {
   std::atomic<State> state_{THREAD_STARTING};
 };
 
+struct PeerInfo : serde::Object {
+  int32_t pid;
+  std::string name;
+
+  template <typename X>
+  void map(X& x) {
+    x("pid", pid);
+    x("name", name);
+  }
+};
+
 struct ClientDebugStatus : serde::Object {
   std::string state;
+  std::optional<PeerInfo> peer;
+  std::optional<int64_t> since;
 
   template <typename X>
   void map(X& x) {
     x("state", state);
+    x("peer", peer);
+    x("since", since);
   }
 };
 
@@ -213,6 +233,10 @@ class UserClient final : public Client {
   void vacateStates();
 
   void clientThread() noexcept;
+
+  const std::chrono::system_clock::time_point since_;
+  const pid_t peerPid_;
+  const facebook::eden::ProcessNameHandle peerName_;
 
   ClientStatus status_;
 };

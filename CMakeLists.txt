@@ -342,9 +342,9 @@ find_package(
 find_package(LibEvent REQUIRED)
 get_filename_component(LIBEVENT_LIBDIR "${LIBEVENT_LIB}" DIRECTORY)
 link_directories(${LIBEVENT_LIBDIR})
+find_package(edencommon CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(folly CONFIG REQUIRED)
-
 
 if (ENABLE_EDEN_SUPPORT)
   find_package(fizz CONFIG REQUIRED)
@@ -704,6 +704,7 @@ target_link_libraries(
   jansson
   wildmatch
   third_party_deps
+  edencommon::utils
 )
 
 if (WIN32)
