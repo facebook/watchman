@@ -827,7 +827,12 @@ static ResultErrno<folly::Unit> try_command(
   auto stream = std::move(stmResult).value();
 
   return command.run(
-      *stream, flags.persistent, server_format, output_format, flags.no_pretty);
+      *stream,
+      flags.persistent,
+      server_format,
+      output_format,
+      flags.yes_pretty ? Pretty::Yes
+                       : (flags.no_pretty ? Pretty::No : Pretty::IfTty));
 }
 
 static bool try_client_mode_command(const Command& command, bool pretty) {

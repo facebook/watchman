@@ -17,6 +17,12 @@ namespace watchman {
 struct CommandDefinition;
 class Stream;
 
+enum class Pretty {
+  Yes,
+  IfTty,
+  No,
+};
+
 class Command {
  public:
   /**
@@ -85,7 +91,7 @@ class Command {
       bool persistent,
       PduFormat server_format,
       PduFormat output_format,
-      bool no_pretty) const;
+      Pretty pretty) const;
 
  private:
   /**
@@ -97,7 +103,7 @@ class Command {
       PduBuffer& input_buffer,
       PduFormat output_format,
       PduBuffer& output_pdu_buf,
-      bool no_pretty) const;
+      Pretty pretty) const;
 
   w_string name_;
   json_ref args_;

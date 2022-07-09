@@ -7,6 +7,7 @@
 
 #include "watchman/Command.h"
 #include <folly/String.h>
+#include <watchman/fs/FileDescriptor.h>
 #include "watchman/CommandRegistry.h"
 #include "watchman/Errors.h"
 #include "watchman/Logging.h"
@@ -80,7 +81,7 @@ ResultErrno<folly::Unit> Command::run(
     bool persistent,
     PduFormat server_format,
     PduFormat output_format,
-    bool no_pretty) const {
+    Pretty pretty) const {
   // Start in a well-defined non-blocking state as we can't tell
   // what mode we're in on windows until we've set it to something
   // explicitly at least once before!
@@ -102,23 +103,37 @@ ResultErrno<folly::Unit> Command::run(
   if (persistent) {
     for (;;) {
       auto res = passPduToStdout(
-          stream, buffer, output_format, output_pdu_buffer, no_pretty);
+          stream, buffer, output_format, output_pdu_buffer, pretty);
       if (res.hasError()) {
         return res;
       }
     }
   } else {
     return passPduToStdout(
-        stream, buffer, output_format, output_pdu_buffer, no_pretty);
+        stream, buffer, output_format, output_pdu_buffer, pretty);
   }
 }
+
+namespace {
+bool is_pretty(Pretty pretty, const FileDescriptor& stdOut) {
+  switch (pretty) {
+    case Pretty::Yes:
+      return true;
+    case Pretty::IfTty:
+      return stdOut.isatty();
+    case Pretty::No:
+      return false;
+  }
+  return false;
+}
+} // namespace
 
 ResultErrno<folly::Unit> Command::passPduToStdout(
     Stream& stream,
     PduBuffer& input_buffer,
     PduFormat output_format,
     PduBuffer& output_pdu_buf,
-    bool no_pretty) const {
+    Pretty pretty) const {
   json_error_t jerr;
 
   stream.setNonBlock(false);
@@ -128,10 +143,7 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
     return err;
   }
 
-  auto* def = commandDefinition_;
-  bool pretty_output = def && def->result_printer && !no_pretty &&
-      FileDescriptor::stdOut().isatty();
-
+  const bool pretty_output = is_pretty(pretty, FileDescriptor::stdOut());
   if (!pretty_output && output_pdu_buf.format.type == output_format.type) {
     // We can stream it through
     if (!input_buffer.streamPdu(&stream, &jerr)) {
@@ -149,7 +161,8 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
     return err;
   }
 
-  if (pretty_output) {
+  auto* def = commandDefinition_;
+  if (pretty_output && def->result_printer) {
     def->result_printer(*response);
     // TODO: Can result_printer return an error?
     return folly::unit;

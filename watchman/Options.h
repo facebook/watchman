@@ -30,6 +30,7 @@ struct Flags {
   std::string output_encoding;
   std::string server_encoding;
   int foreground = 0;
+  int yes_pretty = 0;
   int no_pretty = 0;
   int no_spawn = 0;
   int no_local = 0;
