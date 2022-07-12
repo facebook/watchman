@@ -1595,34 +1595,35 @@ bool isEdenStopped(w_string root) {
   return false;
 }
 
-constexpr ULONG REPARSE_TAG_GVFS = 0x9000001c;
+bool isProjfs(const w_string& path) {
+  try {
+    auto fd =
+        openFileHandle(path.c_str(), OpenFileHandleOptions::queryFileInfo());
+    return fd.getReparseTag() == IO_REPARSE_TAG_PROJFS;
+  } catch (const std::exception&) {
+    return false;
+  }
+}
 
 w_string findEdenFSRoot(w_string_piece root_path) {
-  w_string_piece path = root_path;
-  w_string_piece result = nullptr;
+  w_string path = root_path.asWString();
+  w_string result = nullptr;
   while (true) {
-    auto fd =
-        openFileHandle(path.data(), OpenFileHandleOptions::queryFileInfo());
-
-    // projected fs reparse tag
-    if (fd.getReparseTag() == REPARSE_TAG_GVFS) {
+    if (isProjfs(path)) {
       result = path;
     } else {
-      // Otherwise we are out of reparse tree, exit.
       break;
     }
 
     auto next = path.dirName();
     if (next == path) {
-      // We can't go any higher, so we couldn't find the
-      // requested path(s)
-      break;
+      return "";
     }
 
     path = next;
   }
 
-  return result.asWString();
+  return result;
 }
 #endif
 
@@ -1631,7 +1632,9 @@ std::shared_ptr<QueryableView> detectEden(
     const w_string& fstype,
     const Configuration& config) {
 #ifdef _WIN32
+  (void)fstype;
   auto edenRoot = findEdenFSRoot(root_path);
+  log(DBG, "detected eden root: ", edenRoot, "\n");
   if (edenRoot) {
     if (isEdenStopped(root_path)) {
       throw TerminalWatcherError(to<std::string>(
@@ -1694,7 +1697,7 @@ std::shared_ptr<QueryableView> detectEden(
     throw TerminalWatcherError(to<std::string>(
         "you may only watch from the root of an eden mount point. "
         "Try again using ",
-        edenRoot.view()));
+        edenRoot));
   }
 #endif
   // Given that the readlink() succeeded, assume this is an Eden mount.
