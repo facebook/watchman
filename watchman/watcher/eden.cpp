@@ -1635,27 +1635,18 @@ std::shared_ptr<QueryableView> detectEden(
   (void)fstype;
   auto edenRoot = findEdenFSRoot(root_path);
   log(DBG, "detected eden root: ", edenRoot, "\n");
-  if (edenRoot) {
-    if (isEdenStopped(root_path)) {
-      throw TerminalWatcherError(to<std::string>(
-          root_path.view(),
-          " appears to be an offline EdenFS mount. "
-          "Try running `edenfsctl start` to bring it back online and "
-          "then retry your watch"));
-    }
-
-    try {
-      return std::make_shared<EdenView>(root_path, config);
-    } catch (const std::exception& exc) {
-      throw TerminalWatcherError(to<std::string>(
-          "Failed to initialize eden watcher, and since this is an Eden "
-          "repo, will not allow falling back to another watcher.  Error was: ",
-          exc.what()));
-    }
+  if (!edenRoot) {
+    throw std::runtime_error(
+        to<std::string>("Not an Eden clone: ", root_path.view()));
   }
 
-  throw std::runtime_error(
-      to<std::string>("Not an Eden clone: ", root_path.view()));
+  if (isEdenStopped(root_path)) {
+    throw TerminalWatcherError(to<std::string>(
+        root_path.view(),
+        " appears to be an offline EdenFS mount. "
+        "Try running `edenfsctl start` to bring it back online and "
+        "then retry your watch"));
+  }
 
 #else
   if (!is_edenfs_fs_type(fstype) && fstype != "fuse" &&
@@ -1687,8 +1678,11 @@ std::shared_ptr<QueryableView> detectEden(
         "then retry your watch"));
   }
 
+  // Given that the readlink() succeeded, assume this is an Eden mount.
   auto edenRoot = readSymbolicLink(
       to<std::string>(root_path.view(), "/.eden/root").c_str());
+
+#endif
   if (edenRoot != root_path) {
     // We aren't at the root of the eden mount.
     // Throw a TerminalWatcherError to indicate that the Eden watcher is the
@@ -1699,9 +1693,15 @@ std::shared_ptr<QueryableView> detectEden(
         "Try again using ",
         edenRoot));
   }
-#endif
-  // Given that the readlink() succeeded, assume this is an Eden mount.
-  return std::make_shared<EdenView>(root_path, config);
+
+  try {
+    return std::make_shared<EdenView>(root_path, config);
+  } catch (const std::exception& exc) {
+    throw TerminalWatcherError(to<std::string>(
+        "Failed to initialize eden watcher, and since this is an Eden "
+        "repo, will not allow falling back to another watcher.  Error was: ",
+        exc.what()));
+  }
 }
 
 } // namespace
