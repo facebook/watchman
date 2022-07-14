@@ -1117,6 +1117,9 @@ struct FaultDefinition {
   5: i64 delayMilliseconds;
   6: optional string errorType;
   7: optional string errorMessage;
+  // If kill is true the fault will exit the process ungracefully.
+  // block, delay, and errorMessage will be ignored if kill is true.
+  8: bool kill;
 }
 
 struct RemoveFaultArg {
