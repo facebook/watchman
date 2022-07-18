@@ -122,15 +122,18 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
 
         def cachePopulate():
             stats = self.watchmanCommand("debug-contenthash", root)
-            return stats["size"] == 2 and stats["cacheStore"] == 2
+            return stats["size"] >= 2 and stats["cacheStore"] >= 2
 
         self.waitFor(cachePopulate)
         stats = self.watchmanCommand("debug-contenthash", root)
-        self.assertEqual(stats["size"], 2)
+
+        # .watchmanconfig might be rewritten. size could be 2 or 3.
+        size = stats["size"]
+        self.assertAlmostEqual(size, 2, delta=1)
         self.assertEqual(stats["cacheHit"], 0)
-        self.assertEqual(stats["cacheMiss"], 2)
-        self.assertEqual(stats["cacheStore"], 2)
-        self.assertEqual(stats["cacheLoad"], 2)
+        self.assertEqual(stats["cacheMiss"], size)
+        self.assertEqual(stats["cacheStore"], size)
+        self.assertEqual(stats["cacheLoad"], size)
 
         res = self.watchmanCommand(
             "query",

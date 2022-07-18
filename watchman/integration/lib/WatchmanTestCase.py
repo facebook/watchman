@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
+import contextlib
 import errno
 import functools
 import inspect
@@ -83,6 +84,7 @@ class TempDirPerTestMixin(unittest.TestCase):
 class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     transport: str
     encoding: str
+    parallelCrawl: bool
 
     def __init__(self, methodName: str = "run") -> None:
         super(WatchmanTestCase, self).__init__(methodName)
@@ -167,7 +169,8 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return name
 
     def _getLongTestID(self) -> str:
-        return "%s.%s.%s" % (self.id(), self.transport, self.encoding)
+        parallel = "sp"[int(self.parallelCrawl)]
+        return "%s.%s.%s.%s" % (self.id(), self.transport, self.encoding, parallel)
 
     def run(self, result):
         if result is None:
@@ -218,9 +221,10 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         """
         return WatchmanInstance.getSharedInstance().getServerLogContents().split("\n")
 
-    def setConfiguration(self, transport, encoding) -> None:
+    def setConfiguration(self, transport, encoding, parallelCrawl) -> None:
         self.transport = transport
         self.encoding = encoding
+        self.parallelCrawl = parallelCrawl
 
     def removeRelative(self, base, *fname) -> None:
         fname = os.path.join(base, *fname)
@@ -253,7 +257,70 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.__clearWatches()
 
     def watchmanCommand(self, *args):
-        return self.getClient().query(*args)
+        client = self.getClient()
+        if len(args) == 2 and args[0] == "watch":
+            root = args[1]
+            with self.scopedRootWatchmanConfig(root):
+                result = client.query(*args)
+        else:
+            result = client.query(*args)
+        return result
+
+    @contextlib.contextmanager
+    def scopedRootWatchmanConfig(self, root):
+        """Write a .watchmanconfig at the root temporarily with the
+        desired config (esp. enable_parallel_crawl).
+
+        This is a context manager. Exiting the scope restores the
+        .watchmanconfig file to its original state.
+        """
+        # Ignore malformed (non-absolute) root.
+        if not os.path.isabs(root):
+            yield
+            return
+
+        # Backup the root/.watchmanconfig state.
+        original_config_bytes = None
+        root_config_path = os.path.join(root, ".watchmanconfig")
+        client = self.getClient()
+        try:
+            with open(root_config_path, "rb") as f:
+                original_config_bytes = f.read()
+        except FileNotFoundError:
+            pass
+        except IOError:
+            # Give up on permission error, etc.
+            yield
+            return
+
+        # Rewrite root/.watchmanconfig temporarily.
+        if original_config_bytes is None:
+            new_config = {}
+        else:
+            try:
+                new_config = json.loads(original_config_bytes.decode())
+            except json.JSONDecodeError:
+                # Give up changing the config if it's already malformed.
+                yield
+                return
+        new_config["enable_parallel_crawl"] = self.parallelCrawl
+        try:
+            with open(root_config_path, "wb") as f:
+                f.write(json.dumps(new_config).encode())
+        except IOError:
+            # Give up on permission error, etc.
+            yield
+            return
+
+        try:
+            yield
+        finally:
+            # Restore the original root/.watchmanconfig.
+            if original_config_bytes is None:
+                os.unlink(root_config_path)
+            else:
+                with open(root_config_path, "wb") as f:
+                    f.write(original_config_bytes)
 
     def _waitForCheck(self, cond, res_check, timeout: float):
         deadline = time.time() + timeout
@@ -490,13 +557,13 @@ def expand_matrix(test_class) -> None:
     """
 
     matrix = [
-        ("unix", "bser", "UnixBser2"),
-        ("unix", "json", "UnixJson"),
-        ("cli", "json", "CliJson"),
+        ("unix", "bser", "parallel", "UnixBser2"),
+        ("unix", "json", "serial", "UnixJson"),
+        ("cli", "json", "parallel", "CliJson"),
     ]
 
     if os.name == "nt":
-        matrix += [("namedpipe", "bser", "NamedPipeBser2")]
+        matrix += [("namedpipe", "bser", "serial", "NamedPipeBser2")]
 
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader
@@ -504,31 +571,30 @@ def expand_matrix(test_class) -> None:
     # pyre-fixme[16]: Optional type has no attribute `f_back`.
     caller_scope = inspect.currentframe().f_back.f_locals
 
-    for (transport, encoding, suffix) in matrix:
+    def make_class(transport, encoding, suffix, parallel):
+        subclass_name = test_class.__name__ + suffix
 
-        def make_class(transport, encoding, suffix):
-            subclass_name = test_class.__name__ + suffix
+        # Define a new class that derives from the input class
+        class MatrixTest(test_class):
+            def setDefaultConfiguration(self):
+                self.setConfiguration(transport, encoding, parallel)
 
-            # Define a new class that derives from the input class
-            class MatrixTest(test_class):
-                def setDefaultConfiguration(self):
-                    self.setConfiguration(transport, encoding)
+        # Set the name and module information on our new subclass
+        MatrixTest.__name__ = subclass_name
+        MatrixTest.__qualname__ = subclass_name
+        MatrixTest.__module__ = test_class.__module__
 
-            # Set the name and module information on our new subclass
-            MatrixTest.__name__ = subclass_name
-            MatrixTest.__qualname__ = subclass_name
-            MatrixTest.__module__ = test_class.__module__
+        # Before we publish the test, check whether that generated
+        # configuration would always skip
+        try:
+            t = MatrixTest()
+            t.checkPersistentSession()
+            t.checkOSApplicability()
+            caller_scope[subclass_name] = MatrixTest
+        except unittest.SkipTest:
+            pass
 
-            # Before we publish the test, check whether that generated
-            # configuration would always skip
-            try:
-                t = MatrixTest()
-                t.checkPersistentSession()
-                t.checkOSApplicability()
-                caller_scope[subclass_name] = MatrixTest
-            except unittest.SkipTest:
-                pass
-
-        make_class(transport, encoding, suffix)
+    for (transport, encoding, parallel, suffix) in matrix:
+        make_class(transport, encoding, suffix, parallel == "parallel")
 
     return None

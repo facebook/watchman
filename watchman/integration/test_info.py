@@ -23,8 +23,7 @@ class TestInfo(WatchmanTestCase.WatchmanTestCase):
     def test_get_config_empty(self) -> None:
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)
-        resp = self.watchmanCommand("get-config", root)
-        self.assertEqual(resp["config"], {})
+        self.assertEqual(self.get_config(root), {})
 
     def test_get_config(self) -> None:
         config = {"test-key": "test-value"}
@@ -32,5 +31,11 @@ class TestInfo(WatchmanTestCase.WatchmanTestCase):
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:
             json.dump(config, f)
         self.watchmanCommand("watch", root)
+        self.assertEqual(self.get_config(root), config)
+
+    def get_config(self, root):
         resp = self.watchmanCommand("get-config", root)
-        self.assertEqual(resp["config"], config)
+        config = resp["config"]
+        # Drop enable_parallel_crawl, set internally by the test.
+        config.pop("enable_parallel_crawl", None)
+        return config

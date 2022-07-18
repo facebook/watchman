@@ -137,4 +137,4 @@ else:
             return hgrepo.HgRepository(path, system_hgrc=self.system_hgrc)
 
         def setDefaultConfiguration(self):
-            self.setConfiguration("local", "bser")
+            self.setConfiguration("local", "bser", False)
