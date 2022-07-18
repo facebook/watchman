@@ -111,6 +111,7 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
             "cmd-debug-poison",
             "cmd-debug-recrawl",
             "cmd-debug-root-status",
+            "cmd-debug-set-parallel-crawl",
             "cmd-debug-set-subscriptions-paused",
             "cmd-debug-show-cursors",
             "cmd-debug-status",

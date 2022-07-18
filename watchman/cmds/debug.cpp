@@ -116,6 +116,36 @@ static UntypedResponse cmd_debug_drop_privs(Client* client, const json_ref&) {
 }
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
 
+struct DebugSetParallelCrawlCommand
+    : TypedCommand<DebugSetParallelCrawlCommand> {
+  static constexpr std::string_view name = "debug-set-parallel-crawl";
+  static constexpr CommandFlags flags = CMD_DAEMON;
+
+  using Request = serde::Array<2, w_string, bool>;
+
+  struct Response : BaseResponse {
+    bool enabled;
+
+    template <typename X>
+    void map(X& x) {
+      BaseResponse::map(x);
+      x("enable_parallel_crawl", enabled);
+    }
+  };
+
+  static Response handle(Client* client, const Request& req) {
+    Response res;
+    res.version = w_string{PACKAGE_VERSION, W_STRING_UNICODE};
+    bool create = true;
+    auto root = resolveRootByName(client, std::get<0>(req).c_str(), create);
+    bool enabled = std::get<1>(req);
+    root->enable_parallel_crawl.store(enabled, std::memory_order_release);
+    res.enabled = enabled;
+    return res;
+  }
+};
+WATCHMAN_COMMAND(debug_set_parallel_command, DebugSetParallelCrawlCommand);
+
 static UntypedResponse cmd_debug_set_subscriptions_paused(
     Client* clientbase,
     const json_ref& args) {
