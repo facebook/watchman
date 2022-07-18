@@ -676,7 +676,8 @@ void InMemoryView::crawlerParallel(
 
   std::shared_ptr<CrawlerFileSystem> fs =
       std::make_shared<CrawlerFileSystem>(fileSystem_, root, watcher_);
-  ParallelWalker walker{std::move(fs), path};
+  size_t threadCountHint = config_.getInt("parallel_crawl_thread_count", 0);
+  ParallelWalker walker{std::move(fs), path, threadCountHint};
 
   // Step 1: Process readDir results.
   while (true) {

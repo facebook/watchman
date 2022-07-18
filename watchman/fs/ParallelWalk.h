@@ -57,12 +57,18 @@ class ParallelWalker final {
   /**
    * Start reading rootPath recursively. Does not block.
    *
+   * threadCountHint specifies the desired thread count to initialize the
+   * global thread pool. It is ignored if the thread pool was initialized.
+   * threadCountHint can be 0, which means the hardware concurrency.
+   * threadCountHint caps at hardware concurrency.
+   *
    * Use nextResult() to obtain ReadDirResults.
    * Use nextError() to obtain IoErrorWithPaths.
    */
   explicit ParallelWalker(
       std::shared_ptr<FileSystem> fileSystem,
-      AbsolutePath rootPath);
+      AbsolutePath rootPath,
+      size_t threadCountHint = 0);
 
   /**
    * Obtain the next ReadDirResult. Might block.

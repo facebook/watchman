@@ -7,7 +7,8 @@
 
 #include "watchman/fs/ParallelWalk.h"
 #include <folly/concurrency/UnboundedQueue.h>
-#include <folly/executors/GlobalExecutor.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/system/HardwareConcurrency.h>
 
 namespace watchman {
 
@@ -17,6 +18,7 @@ using Queue = folly::UMPMCQueue<std::optional<T>, true /* MayBlock */>;
 struct ParallelWalkerContext {
   // Input.
   std::shared_ptr<FileSystem> fileSystem;
+  folly::Executor* executor;
 
   // Task tracking. Other task states live in the Executor.
   std::atomic<size_t> readDirTaskCount{0};
@@ -26,8 +28,10 @@ struct ParallelWalkerContext {
   Queue<ReadDirResult> resultQueue{};
   Queue<IoErrorWithPath> errorQueue{};
 
-  explicit ParallelWalkerContext(std::shared_ptr<FileSystem> fileSystem)
-      : fileSystem{std::move(fileSystem)} {}
+  ParallelWalkerContext(
+      std::shared_ptr<FileSystem> fileSystem,
+      folly::Executor* executor)
+      : fileSystem{std::move(fileSystem)}, executor{executor} {}
 
   // Helper for (resultQueue or errorQueue).dequeue.
   // If no tasks are running, return nullopt.
@@ -49,9 +53,21 @@ struct ParallelWalkerContext {
 };
 
 namespace {
-// Global executor used by the readDir tasks.
-folly::Executor::KeepAlive<> getExecutor() {
-  return folly::getGlobalCPUExecutor();
+
+folly::Executor::KeepAlive<> createExecutor(size_t threadCountHint) {
+  size_t hwThreadCount = folly::hardware_concurrency();
+  size_t threadCount = threadCountHint
+      ? std::min(threadCountHint, hwThreadCount)
+      : hwThreadCount;
+  return new folly::CPUThreadPoolExecutor(
+      threadCount, std::make_unique<folly::NamedThreadFactory>("pwalk"));
+}
+
+// Executor used by the readDir tasks. The executor is global to avoid spawning
+// too many threads walking multiple roots.
+folly::Executor* getExecutor(size_t threadCountHint) {
+  static folly::Executor::KeepAlive<> e = createExecutor(threadCountHint);
+  return e.get();
 }
 
 folly::fbstring pathJoin(
@@ -217,7 +233,7 @@ void readDirTask(
       readDirTask(
           std::move(context), std::move(path), std::move(counter), sizeHint);
     };
-    getExecutor()->add(std::move(task));
+    context->executor->add(std::move(task));
   }
 }
 
@@ -225,14 +241,17 @@ void readDirTask(
 
 ParallelWalker::ParallelWalker(
     std::shared_ptr<FileSystem> fileSystem,
-    AbsolutePath rootPath) {
-  context_ = std::make_shared<ParallelWalkerContext>(std::move(fileSystem));
+    AbsolutePath rootPath,
+    size_t threadCountHint) {
+  auto executor = getExecutor(threadCountHint);
+  context_ =
+      std::make_shared<ParallelWalkerContext>(std::move(fileSystem), executor);
   auto task = [context = context_,
                path = std::move(rootPath),
                counter = ReadDirTaskCounter(context_)]() mutable {
     readDirTask(std::move(context), std::move(path), std::move(counter));
   };
-  getExecutor()->add(std::move(task));
+  context_->executor->add(std::move(task));
 }
 
 ParallelWalker::~ParallelWalker() {

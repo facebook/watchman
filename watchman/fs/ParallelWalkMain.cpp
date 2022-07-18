@@ -7,17 +7,18 @@
 
 #include <folly/init/Init.h>
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include "watchman/fs/FileSystem.h"
 #include "watchman/fs/ParallelWalk.h"
 
-void walk(watchman::AbsolutePath path) {
+void walk(watchman::AbsolutePath path, size_t threadCountHint) {
   std::cout << path << std::endl;
 
   auto start_time = std::chrono::steady_clock::now();
   std::shared_ptr<watchman::FileSystem> fileSystem(
       std::shared_ptr<watchman::FileSystem>{}, &watchman::realFileSystem);
-  auto walker = watchman::ParallelWalker(fileSystem, path);
+  auto walker = watchman::ParallelWalker(fileSystem, path, threadCountHint);
   size_t directory_count = 0;
   size_t path_count = 0;
   off_t size = 0;
@@ -60,8 +61,17 @@ int main(int argc, char* argv[]) {
   if (argc == 1) {
     std::cerr << "Provide at least a root path to walk" << std::endl;
   } else {
+    size_t thread_count_hint = 0;
+    const char* env = std::getenv("PWALK_THREAD");
+    if (env) {
+      thread_count_hint = atoi(env);
+      if (thread_count_hint) {
+        std::cerr << "Using min(" << thread_count_hint << ", nproc) threads"
+                  << std::endl;
+      }
+    }
     for (int i = 1; i < argc; ++i) {
-      walk(watchman::AbsolutePath(argv[i]));
+      walk(watchman::AbsolutePath(argv[i]), thread_count_hint);
     }
   }
   return 0;
