@@ -40,7 +40,7 @@ void InMemoryView::fullCrawl(
   // can get stuck with an empty view until another change is observed
   mostRecentTick_.fetch_add(1, std::memory_order_acq_rel);
 
-  fullCrawlStatCount_ = std::make_unique<std::atomic<size_t>>(0);
+  fullCrawlStatCount_ = std::make_shared<std::atomic<size_t>>(0);
   root->recrawlInfo.wlock()->statCount = fullCrawlStatCount_;
 
   auto start = std::chrono::system_clock::now();
