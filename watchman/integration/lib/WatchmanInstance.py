@@ -54,6 +54,12 @@ def hasSharedInstance() -> bool:
     return hasattr(tls, "instance")
 
 
+def mergeTestConfig(config):
+    """Merge local config with test config specified via WATCHMAN_TEST_CONFIG"""
+    test_config = json.loads(os.getenv("WATCHMAN_TEST_CONFIG") or "{}")
+    return {**test_config, **(config or {})}
+
+
 class InitWithFilesMixin(object):
     def _init_state(self) -> None:
         # pyre-fixme[16]: `InitWithFilesMixin` has no attribute `base_dir`.
@@ -139,7 +145,7 @@ class _Instance(object):
         self.debug_watchman = debug_watchman
         # pyre-fixme[16]: `_Instance` has no attribute `cfg_file`.
         with open(self.cfg_file, "w") as f:
-            f.write(json.dumps(config or {}))
+            f.write(json.dumps(mergeTestConfig(config)))
 
     def __del__(self) -> None:
         self.stop()
