@@ -862,6 +862,7 @@ struct InodeEvent {
   5: i64 duration;
   6: InodeEventProgress progress;
   7: TraceEventTimes times;
+  8: PathString path;
 }
 
 /**
