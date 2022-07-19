@@ -230,10 +230,9 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
+    w_string_piece clock,
     w_string requestId) const {
-  auto mtime = getDirStateMtime();
-  auto key = folly::to<std::string>(
-      commitId.view(), ":", mtime.tv_sec, ":", mtime.tv_nsec);
+  auto key = folly::to<std::string>(commitId.view(), ":", clock.view());
   auto commitCopy = std::string{commitId.view()};
 
   // This is not going to include changes to directories across commits because

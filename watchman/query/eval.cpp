@@ -328,12 +328,12 @@ QueryResult w_query_execute(
                         const Query* q,
                         const std::shared_ptr<Root>& r,
                         QueryContext* c) {
+          auto position = c->clockAtStartOfQuery.position();
           auto changedFiles =
               root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
-                  modifiedMergebase, requestId);
+                  modifiedMergebase, position.toClockString(), requestId);
 
-          auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-          ClockStamp clock{spec.ticks, ::time(nullptr)};
+          ClockStamp clock{position.ticks, ::time(nullptr)};
           for (const auto& path : changedFiles) {
             auto fullPath = w_string::pathCat({r->root_path, path});
             if (!c->fileMatchesRelativeRoot(fullPath)) {

@@ -36,6 +36,7 @@ class Git : public SCM {
       const override;
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId,
+      w_string_piece clock,
       w_string requestId = nullptr) const override;
 
   // Note: does not support includeDirectories. git does not report directory

@@ -70,6 +70,7 @@ class SCM {
   // but NOT those that are ignored.
   virtual std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId,
+      w_string_piece clock,
       w_string requestId = nullptr) const = 0;
 
   struct StatusResult {
