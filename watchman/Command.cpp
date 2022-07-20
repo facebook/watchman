@@ -162,7 +162,7 @@ ResultErrno<folly::Unit> Command::passPduToStdout(
   }
 
   auto* def = commandDefinition_;
-  if (pretty_output && def->result_printer) {
+  if (pretty_output && def && def->result_printer) {
     def->result_printer(*response);
     // TODO: Can result_printer return an error?
     return folly::unit;
