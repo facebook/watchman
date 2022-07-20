@@ -940,6 +940,7 @@ struct PrjfsCall {
 struct ThriftRequestMetadata {
   1: i64 requestId;
   2: string method;
+  3: pid_t clientPid;
 }
 
 struct GetConfigParams {

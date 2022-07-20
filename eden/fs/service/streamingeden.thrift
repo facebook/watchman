@@ -57,6 +57,18 @@ struct FsEvent {
   9: optional i64 result;
 }
 
+enum ThriftRequestEventType {
+  UNKNOWN = 0,
+  START = 1,
+  FINISH = 2,
+}
+
+struct ThriftRequestEvent {
+  1: eden.TraceEventTimes times;
+  2: ThriftRequestEventType eventType;
+  3: eden.ThriftRequestMetadata requestMetadata;
+}
+
 /*
  * Bits that control the events traced from traceFsEvents.
  *
@@ -181,6 +193,8 @@ service StreamingEdenService extends eden.EdenService {
     1: eden.PathString mountPoint,
     2: i64 eventCategoryMask,
   );
+
+  stream<ThriftRequestEvent> traceThriftRequestEvents();
 
   /**
    * Returns, in order, a stream of hg import requests for the given mount.
