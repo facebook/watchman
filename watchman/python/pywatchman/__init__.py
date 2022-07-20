@@ -931,9 +931,6 @@ class client(object):
                 '"bser" or omit the sendEncoding and recvEncoding '
                 "arguments"
             )
-            if self.useImmutableBser:
-                return self._makeBSERCodec(ImmutableBserCodec)
-            return self._makeBSERCodec(BserCodec)
         elif enc == "json":
             return JsonCodec
         else:
