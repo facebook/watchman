@@ -12,7 +12,7 @@
 
 // TODO: We could avoid the Client dependency fi CommandHandler returned a
 // json_ref response or error rather than taking a Client.
-#include "watchman/OptionSet.h"
+#include "eden/common/utils/OptionSet.h"
 #include "watchman/Serde.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_preprocessor.h"
@@ -101,7 +101,7 @@ using CommandHandler =
  */
 using ResultPrinter = void (*)(const json_ref& result);
 
-struct CommandFlags : OptionSet<CommandFlags, uint8_t> {};
+struct CommandFlags : facebook::eden::OptionSet<CommandFlags, uint8_t> {};
 
 inline constexpr auto CMD_DAEMON = CommandFlags::raw(1);
 inline constexpr auto CMD_CLIENT = CommandFlags::raw(2);

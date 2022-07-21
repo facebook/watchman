@@ -450,6 +450,7 @@ target_link_libraries(third_party_deps INTERFACE
   gflags
   ${Boost_LIBRARIES}
   fmt::fmt
+  edencommon::utils
 )
 target_include_directories(third_party_deps INTERFACE
   ${FOLLY_INCLUDE_DIR}
@@ -704,7 +705,6 @@ target_link_libraries(
   jansson
   wildmatch
   third_party_deps
-  edencommon::utils
 )
 
 if (WIN32)
@@ -772,7 +772,6 @@ t_test(ignore watchman/test/BserTest.cpp)
 #t_test(inmemoryview watchman/test/InMemoryViewTest.cpp)
 t_test(log watchman/test/LogTest.cpp)
 t_test(maputil watchman/test/MapUtilTest.cpp)
-t_test(optionset watchman/test/OptionSetTest.cpp)
 t_test(pendingcollection watchman/test/PendingCollectionTest.cpp)
 # Linking this test needs the targets graph to be cleaned up.
 #t_test(perfsample watchman/test/PerfSampleTest.cpp)
