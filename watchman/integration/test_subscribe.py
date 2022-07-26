@@ -182,7 +182,9 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertNotEqual(None, self.waitForSub("drop", root=root))
 
         self.watchmanCommand("state-enter", root, "foo")
-        begin = self.waitForSub("drop", root)[0]
+        subResult = self.waitForSub("drop", root)
+        print(subResult)
+        begin = subResult[0]
         self.assertEqual("foo", begin["state-enter"])
 
         self.touchRelative(root, "in-foo")
