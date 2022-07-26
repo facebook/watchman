@@ -118,9 +118,6 @@ char* realpath(const char* filename, char* target);
 #include <poll.h>
 #include <sys/wait.h>
 #endif
-#ifdef HAVE_PCRE_H
-#include <pcre.h> // @manual
-#endif
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
 #endif

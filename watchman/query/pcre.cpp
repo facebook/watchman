@@ -16,25 +16,25 @@
 
 #ifdef HAVE_PCRE_H
 
-#include <pcre.h> // @manual
+#include <pcre2.h> // @manual=fbsource//third-party/pcre2:pcre2-8
 
 using namespace watchman;
 
 class PcreExpr : public QueryExpr {
-  pcre* re;
-  pcre_extra* extra;
+  pcre2_code* re;
+  pcre2_match_data* matchData;
   bool wholename;
 
  public:
-  explicit PcreExpr(pcre* re, pcre_extra* extra, bool wholename)
-      : re(re), extra(extra), wholename(wholename) {}
+  explicit PcreExpr(pcre2_code* re, pcre2_match_data* matchData, bool wholename)
+      : re(re), matchData(matchData), wholename(wholename) {}
 
   ~PcreExpr() override {
     if (re) {
-      pcre_free(re);
+      pcre2_code_free(re);
     }
-    if (extra) {
-      pcre_free(extra);
+    if (matchData) {
+      pcre2_match_data_free(matchData);
     }
   }
 
@@ -48,16 +48,20 @@ class PcreExpr : public QueryExpr {
       str = file->baseName();
     }
 
-    rc = pcre_exec(re, extra, str.data(), str.size(), 0, 0, nullptr, 0);
+    logf(ERR, "NAME: {}\n", str);
 
-    if (rc == PCRE_ERROR_NOMATCH) {
-      return false;
-    }
-    if (rc >= 0) {
-      return true;
-    }
-    // An error.  It's not actionable here
-    return false;
+    rc = pcre2_match(
+        re,
+        reinterpret_cast<const unsigned char*>(str.data()),
+        str.size(),
+        0,
+        0,
+        matchData,
+        nullptr);
+    logf(ERR, "RC: {}\n", rc);
+    // Errors are either PCRE2_ERROR_NOMATCH or non actionable. Thus only match
+    // when we get a positive return value.
+    return rc >= 0;
   }
 
   static std::unique_ptr<QueryExpr>
@@ -65,9 +69,7 @@ class PcreExpr : public QueryExpr {
     const char *pattern, *scope = "basename";
     const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "ipcre" : "pcre";
-    pcre* re;
-    const char* errptr = nullptr;
-    int erroff = 0;
+    size_t erroff = 0;
     int errcode = 0;
 
     if (term.array().size() > 1 && term.at(1).isString()) {
@@ -93,29 +95,44 @@ class PcreExpr : public QueryExpr {
           "Invalid scope '", scope, "' for ", which, " expression"));
     }
 
-    re = pcre_compile2(
-        pattern,
-        caseSensitive == CaseSensitivity::CaseInSensitive ? PCRE_CASELESS : 0,
+    logf(ERR, "PATTERN: {}\n", pattern);
+
+    auto re = pcre2_compile(
+        reinterpret_cast<const unsigned char*>(pattern),
+        PCRE2_ZERO_TERMINATED,
+        caseSensitive == CaseSensitivity::CaseInSensitive ? PCRE2_CASELESS : 0,
         &errcode,
-        &errptr,
         &erroff,
         nullptr);
     if (!re) {
+      // From PCRE2 documentation:
+      // https://www.pcre.org/current/doc/html/pcre2api.html#SEC32: "None of the
+      // messages are very long; a buffer size of 120 code units is ample"
+      PCRE2_UCHAR buffer[120];
+      static_assert(
+          sizeof(char) == sizeof(PCRE2_UCHAR),
+          "Watchman uses the 8-bit PCRE2 library");
+      pcre2_get_error_message(errcode, buffer, 120);
       throw QueryParseError(folly::to<std::string>(
           "invalid ",
           which,
           ": code ",
           errcode,
           " ",
-          errptr,
+          reinterpret_cast<const char*>(&buffer),
           " at offset ",
           erroff,
           " in ",
           pattern));
     }
 
+    auto matchData = pcre2_match_data_create_from_pattern(re, nullptr);
+    if (!matchData) {
+      throw std::bad_alloc();
+    }
+
     return std::make_unique<PcreExpr>(
-        re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename"));
+        re, matchData, !strcmp(scope, "wholename"));
   }
   static std::unique_ptr<QueryExpr> parsePcre(
       Query* query,
