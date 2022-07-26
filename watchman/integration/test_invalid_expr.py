@@ -51,6 +51,6 @@ class TestInvalidExpr(WatchmanTestCase.WatchmanTestCase):
         )
 
         res = self.watchmanCommand(
-            "query", root, {"expression": ["exists"], "sync_timeout": 200}
+            "query", root, {"expression": ["exists"], "sync_timeout": 2000}
         )
         self.assertEqual(res["files"], [])
