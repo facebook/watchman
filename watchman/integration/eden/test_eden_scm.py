@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from watchman.integration.lib import WatchmanEdenTestCase
-from watchman.integration.lib.WatchmanSCMTestCase import hg
+from watchman.integration.lib.WatchmanSCMTestCase import HgMixin
 
 
 def populate(repo) -> None:
@@ -16,13 +16,13 @@ def populate(repo) -> None:
     repo.commit("initial commit.")
 
 
-class TestEdenScm(WatchmanEdenTestCase.WatchmanEdenTestCase):
+class TestEdenScm(WatchmanEdenTestCase.WatchmanEdenTestCase, HgMixin):
     def test_eden_cachedScm(self) -> None:
         root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
 
-        hg(["book", "initial"], root)
+        self.hg(["book", "initial"], root)
 
         def run_scm_query():
             res = self.watchmanCommand(

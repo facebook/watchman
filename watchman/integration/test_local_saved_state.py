@@ -9,7 +9,6 @@ import os
 
 import pywatchman
 from watchman.integration.lib import WatchmanSCMTestCase, WatchmanTestCase
-from watchman.integration.lib.WatchmanSCMTestCase import hg
 
 
 def is_ubuntu() -> bool:
@@ -65,37 +64,37 @@ o  changeset:
    bookmark:    initial
    summary:     add foo
         """
-        hg(["init"], cwd=self.root)
+        self.hg(["init"], cwd=self.root)
         self.touchRelative(self.root, "foo")
-        hg(["book", "initial"], cwd=self.root)
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "initial"], cwd=self.root)
-        hg(["book", "feature0"], cwd=self.root)
+        self.hg(["book", "initial"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "initial"], cwd=self.root)
+        self.hg(["book", "feature0"], cwd=self.root)
         self.touchRelative(self.root, "p1")
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "add p1"], cwd=self.root)
-        hg(["book", "feature1"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add p1"], cwd=self.root)
+        self.hg(["book", "feature1"], cwd=self.root)
         self.touchRelative(self.root, "m1")
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "add m1"], cwd=self.root)
-        hg(["co", "feature0"], cwd=self.root)
-        hg(["book", "feature3"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add m1"], cwd=self.root)
+        self.hg(["co", "feature0"], cwd=self.root)
+        self.hg(["book", "feature3"], cwd=self.root)
         self.touchRelative(self.root, "m2")
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "add m2"], cwd=self.root)
-        hg(["book", "main"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add m2"], cwd=self.root)
+        self.hg(["book", "main"], cwd=self.root)
         self.touchRelative(self.root, "bar")
         self.touchRelative(self.root, "car")
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "add bar and car"], cwd=self.root)
-        hg(["book", "feature2"], cwd=self.root)
-        hg(["rm", "car"], cwd=self.root)
-        hg(["commit", "-m", "remove car"], cwd=self.root)
-        hg(["co", "main"], cwd=self.root)
-        hg(["book", "feature4"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add bar and car"], cwd=self.root)
+        self.hg(["book", "feature2"], cwd=self.root)
+        self.hg(["rm", "car"], cwd=self.root)
+        self.hg(["commit", "-m", "remove car"], cwd=self.root)
+        self.hg(["co", "main"], cwd=self.root)
+        self.hg(["book", "feature4"], cwd=self.root)
         self.touchRelative(self.root, "f1")
-        hg(["addremove"], cwd=self.root)
-        hg(["commit", "-m", "add f1"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add f1"], cwd=self.root)
         self.watchmanCommand("watch", self.root)
 
     def getQuery(self, config):
@@ -402,7 +401,7 @@ o  changeset:
         )
         # Check out a rev with the same merge base and confirm saved state
         # commit id is unchanged, info is not present, and file list is updated
-        hg(["co", "-C", "feature2"], cwd=self.root)
+        self.hg(["co", "-C", "feature2"], cwd=self.root)
         self.waitForStatesToVacate(self.root)
         self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
         dat = self.getSubFatClocksOnly("scmsub", root=self.root)
@@ -416,7 +415,7 @@ o  changeset:
         # Check out rev with a different mergebase and confirm mergebase
         # changes, new saved state info is returned, and file list is relative
         # to the new mergebase
-        hg(["co", "-C", "feature1"], cwd=self.root)
+        self.hg(["co", "-C", "feature1"], cwd=self.root)
         self.waitForStatesToVacate(self.root)
         self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
         dat = self.getSubFatClocksOnly("scmsub", root=self.root)
@@ -431,7 +430,7 @@ o  changeset:
         self.assertCommitIDEquals(last_res, saved_state_rev_feature0)
         # Switch to a commit with saved state for that actual commit and ensure
         # file list is empty
-        hg(["co", "-C", "feature3"], cwd=self.root)
+        self.hg(["co", "-C", "feature3"], cwd=self.root)
         self.waitForStatesToVacate(self.root)
         self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
         dat = self.getSubFatClocksOnly("scmsub", root=self.root)
@@ -447,7 +446,7 @@ o  changeset:
         # Make sure that without any saved state available we get a saved state
         # error message, no commit ID is specified, but the subscription
         # otherwise succeeds, and we get all changes since the prior clock
-        hg(["co", "-C", "initial"], cwd=self.root)
+        self.hg(["co", "-C", "initial"], cwd=self.root)
         self.waitForStatesToVacate(self.root)
         self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
         dat = self.getSubFatClocksOnly("scmsub", root=self.root)

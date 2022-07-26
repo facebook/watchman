@@ -10,7 +10,6 @@ import unittest
 
 import pywatchman
 from watchman.integration.lib import WatchmanSCMTestCase, WatchmanTestCase
-from watchman.integration.lib.WatchmanSCMTestCase import hg
 
 
 def is_ubuntu() -> bool:
@@ -73,33 +72,33 @@ o  changeset:   0:b08db10380dd
    summary:     initial
         """
 
-        hg(["init"], cwd=root)
+        self.hg(["init"], cwd=root)
         self.touchRelative(root, "foo")
-        hg(["book", "initial"], cwd=root)
-        hg(["addremove"], cwd=root)
-        hg(["commit", "-m", "initial"], cwd=root)
-        hg(["book", "main"], cwd=root)
+        self.hg(["book", "initial"], cwd=root)
+        self.hg(["addremove"], cwd=root)
+        self.hg(["commit", "-m", "initial"], cwd=root)
+        self.hg(["book", "main"], cwd=root)
         self.touchRelative(root, "bar")
         self.touchRelative(root, "car")
-        hg(["addremove"], cwd=root)
-        hg(["commit", "-m", "add bar and car"], cwd=root)
-        hg(["book", "feature1"], cwd=root)
+        self.hg(["addremove"], cwd=root)
+        self.hg(["commit", "-m", "add bar and car"], cwd=root)
+        self.hg(["book", "feature1"], cwd=root)
         os.makedirs(os.path.join(root, "a", "b", "c"))
         self.touchRelative(root, "a", "b", "c", "f1")
-        hg(["addremove"], cwd=root)
-        hg(["commit", "-m", "add f1"], cwd=root)
-        hg(["co", "main"], cwd=root)
-        hg(["book", "feature3"], cwd=root)
-        hg(["rm", "car"], cwd=root)
-        hg(["commit", "-m", "remove car"], cwd=root)
-        hg(["co", "main"], cwd=root)
+        self.hg(["addremove"], cwd=root)
+        self.hg(["commit", "-m", "add f1"], cwd=root)
+        self.hg(["co", "main"], cwd=root)
+        self.hg(["book", "feature3"], cwd=root)
+        self.hg(["rm", "car"], cwd=root)
+        self.hg(["commit", "-m", "remove car"], cwd=root)
+        self.hg(["co", "main"], cwd=root)
         self.touchRelative(root, "m1")
-        hg(["addremove"], cwd=root)
-        hg(["commit", "-m", "add m1"], cwd=root)
-        hg(["book", "feature2"], cwd=root)
+        self.hg(["addremove"], cwd=root)
+        self.hg(["commit", "-m", "add m1"], cwd=root)
+        self.hg(["book", "feature2"], cwd=root)
         self.touchRelative(root, "m2")
-        hg(["addremove"], cwd=root)
-        hg(["commit", "-m", "add m2"], cwd=root)
+        self.hg(["addremove"], cwd=root)
+        self.hg(["commit", "-m", "add m2"], cwd=root)
 
         watch = self.watchmanCommand("watch", root)
 
@@ -242,7 +241,7 @@ o  changeset:   0:b08db10380dd
         dat = self.getSubFatClocksOnly("scmsub", root=root)
         self.assertFileListsEqual(["w00t"], self.getConsolidatedFileList(dat))
 
-        hg(["co", "-C", "main"], cwd=root)
+        self.hg(["co", "-C", "main"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -272,7 +271,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(["m2"], self.getConsolidatedFileList(dat))
 
         # Now we're going to move to another branch with a different mergebase.
-        hg(["co", "-C", "feature1"], cwd=root)
+        self.hg(["co", "-C", "feature1"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -335,7 +334,7 @@ o  changeset:   0:b08db10380dd
         # no need to provide information on deleted files). # In contrast, SCM
         # aware queries must contain the deleted files in the result list. Check
         # that the deleted file is part of the result set for feature3.
-        hg(["co", "-C", "feature3"], cwd=root)
+        self.hg(["co", "-C", "feature3"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -392,7 +391,7 @@ o  changeset:   0:b08db10380dd
         self.assertEqual(res["files"][0]["content.sha1hex"], None)
 
         # Check again with a file that exists
-        hg(["co", "-C", "feature2"], cwd=root)
+        self.hg(["co", "-C", "feature2"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -411,7 +410,7 @@ o  changeset:   0:b08db10380dd
 
         # Go to the 'initial' bookmark, and query for changes since 'initial'
         # We should ideally not see any changes ...
-        hg(["co", "-C", "initial"], cwd=root)
+        self.hg(["co", "-C", "initial"], cwd=root)
         res = self.watchmanCommand(
             "query",
             root,
@@ -428,12 +427,12 @@ o  changeset:   0:b08db10380dd
         mergeBaseInitial = self.resolveCommitHash("initial", cwd=root)
 
         # Checkout initial
-        hg(["co", "-C", "initial"], cwd=root)
+        self.hg(["co", "-C", "initial"], cwd=root)
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
         dat = self.getSubFatClocksOnly("scmsub", root=root)
 
         # Checkout main - verify merge base change and empty file list
-        hg(["co", "-C", "main"], cwd=root)
+        self.hg(["co", "-C", "main"], cwd=root)
 
         self.waitForStatesToVacate(root)
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
@@ -442,7 +441,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
 
         # Checkout initial - verify merge base change and empty file list
-        hg(["co", "-C", "initial"], cwd=root)
+        self.hg(["co", "-C", "initial"], cwd=root)
 
         self.waitForStatesToVacate(root)
         self.watchmanCommand("flush-subscriptions", root, {"sync_timeout": 1000})
@@ -454,7 +453,7 @@ o  changeset:   0:b08db10380dd
         # if we've never seen the files before.  To do this, we're
         # going to cancel the watch and restart it, so this is broken
         # out separately from the earlier tests against feature3
-        hg(["co", "-C", "feature3"], cwd=root)
+        self.hg(["co", "-C", "feature3"], cwd=root)
         self.watchmanCommand("watch-del", root)
         self.watchmanCommand("watch", root)
         res = self.watchmanCommand(
@@ -480,7 +479,7 @@ o  changeset:   0:b08db10380dd
         )
         self.assertFileListsEqual(res["files"], ["car"])
 
-        hg(["co", "-C", "feature1"], cwd=root)
+        self.hg(["co", "-C", "feature1"], cwd=root)
         self.watchmanCommand("watch-del", root)
         self.watchmanCommand("watch", root)
         res = self.watchmanCommand(
