@@ -100,7 +100,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.touchRelative(root, "a")
-        self.assertNotEqual(None, self.waitForSub("defer", root=root))
+        self.assertNotEqual(None, self.waitForSubFileList("defer", root, ["a"]))
 
         def isStateEnterFoo(sub):
             for item in sub:
@@ -167,7 +167,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual("leavemeta", end["metadata"])
 
         # and now we should observe the file change
-        self.assertNotEqual(None, self.waitForSub("defer", root))
+        self.assertNotEqual(None, self.waitForSubFileList("defer", root, ["in-foo-3"]))
 
     def test_drop_state(self) -> None:
         root = self.mkdtemp()
@@ -179,7 +179,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertNotEqual(None, self.waitForSub("drop", root=root))
 
         self.touchRelative(root, "a")
-        self.assertNotEqual(None, self.waitForSub("drop", root=root))
+        subResult = self.waitForSubFileList("drop", root, ["a"])
+        self.assertNotEqual(None, subResult)
 
         self.watchmanCommand("state-enter", root, "foo")
         subResult = self.waitForSub("drop", root)
@@ -221,7 +222,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(root, "out-foo")
 
         self.assertFileList(root, files=["a", "in-foo", "in-foo-2", "out-foo"])
-        self.assertNotEqual(None, self.waitForSub("drop", root))
+        self.assertNotEqual(None, self.waitForSubFileList("drop", root, ["out-foo"]))
 
     def test_defer_vcs(self) -> None:
         root = self.mkdtemp()

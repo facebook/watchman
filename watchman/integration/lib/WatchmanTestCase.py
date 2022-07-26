@@ -15,6 +15,7 @@ import os.path
 import tempfile
 import time
 import unittest
+from typing import Any, Dict, List
 
 import pywatchman
 
@@ -477,6 +478,21 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             client.receive()
 
         return None
+
+    def waitForSubFileList(self, name, root, fileList: List[str], timeout=None):
+        def accept(subResults: List[Dict[str, Any]]) -> bool:
+            if subResults is None:
+                return False
+
+            normalizedResult = self.normalizeFiles(subResults[-1])
+
+            for file in fileList:
+                if file not in normalizedResult["files"]:
+                    return False
+
+            return True
+
+        return self.waitForSub(name, root, accept=accept, timeout=timeout)
 
     def getSubscription(self, name, root, remove: bool = True, normalize: bool = True):
         data = self.getClient().getSubscription(name, root=root, remove=remove)
