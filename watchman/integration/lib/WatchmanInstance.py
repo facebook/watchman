@@ -6,6 +6,7 @@
 
 
 import atexit
+import hashlib
 import json
 import os
 import signal
@@ -30,28 +31,19 @@ except ImportError:
 tls = threading.local()
 
 
-def setSharedInstance(inst) -> None:
+def getSharedInstance(config=None):
+    config_hash = hashlib.sha1(json.dumps(config).encode()).hexdigest()
+    attr = f"instance_{config_hash}"
     global tls
-    # pyre-fixme[16]: `local` has no attribute `instance`.
-    tls.instance = inst
-    atexit.register(lambda: inst.stop())
-
-
-def getSharedInstance():
-    global tls
-    if hasattr(tls, "instance"):
-        return tls.instance
-    # Ensure that the temporary dir is configured
-    TempDir.get_temp_dir().get_dir()
-    inst = Instance()
-    inst.start()
-    setSharedInstance(inst)
-    return tls.instance
-
-
-def hasSharedInstance() -> bool:
-    global tls
-    return hasattr(tls, "instance")
+    inst = getattr(tls, attr, None)
+    if inst is None:
+        # Ensure that the temporary dir is configured
+        TempDir.get_temp_dir().get_dir()
+        inst = Instance(config=config)
+        inst.start()
+        setattr(tls, attr, inst)
+        atexit.register(lambda inst=inst: inst.stop())
+    return inst
 
 
 def mergeTestConfig(config):
