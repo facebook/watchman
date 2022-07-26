@@ -48,8 +48,8 @@ use serde_bser::de::SliceRead;
 use serde_bser::value::Value;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::io;
 use std::io::Write;
-use std::io::{self};
 use std::marker::PhantomData;
 use std::path::Path;
 use std::path::PathBuf;
@@ -1144,8 +1144,8 @@ impl Client {
 mod tests {
     use super::*;
 
+    use futures::stream;
     use futures::stream::TryStreamExt;
-    use futures::stream::{self};
     use serde::Deserialize;
     use serde::Serialize;
     use std::io;
