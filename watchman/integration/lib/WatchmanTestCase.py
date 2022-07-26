@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 
-import contextlib
 import errno
 import functools
 import inspect
@@ -259,72 +258,15 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
 
     def watchmanCommand(self, *args):
         client = self.getClient()
-        if len(args) == 2 and args[0] == "watch":
-            root = args[1]
-            with self.scopedRootWatchmanConfig(root):
-                result = client.query(*args)
-        else:
-            result = client.query(*args)
-        return result
+        return client.query(*args)
 
     def watchmanInstance(self):
-        return WatchmanInstance.getSharedInstance()
+        return WatchmanInstance.getSharedInstance(self.watchmanConfig())
 
-    @contextlib.contextmanager
-    def scopedRootWatchmanConfig(self, root):
-        """Write a .watchmanconfig at the root temporarily with the
-        desired config (esp. enable_parallel_crawl).
-
-        This is a context manager. Exiting the scope restores the
-        .watchmanconfig file to its original state.
-        """
-        # Ignore malformed (non-absolute) root.
-        if not os.path.isabs(root):
-            yield
-            return
-
-        # Backup the root/.watchmanconfig state.
-        original_config_bytes = None
-        root_config_path = os.path.join(root, ".watchmanconfig")
-        client = self.getClient()
-        try:
-            with open(root_config_path, "rb") as f:
-                original_config_bytes = f.read()
-        except FileNotFoundError:
-            pass
-        except IOError:
-            # Give up on permission error, etc.
-            yield
-            return
-
-        # Rewrite root/.watchmanconfig temporarily.
-        if original_config_bytes is None:
-            new_config = {}
-        else:
-            try:
-                new_config = json.loads(original_config_bytes.decode())
-            except json.JSONDecodeError:
-                # Give up changing the config if it's already malformed.
-                yield
-                return
-        new_config["enable_parallel_crawl"] = self.parallelCrawl
-        try:
-            with open(root_config_path, "wb") as f:
-                f.write(json.dumps(new_config).encode())
-        except IOError:
-            # Give up on permission error, etc.
-            yield
-            return
-
-        try:
-            yield
-        finally:
-            # Restore the original root/.watchmanconfig.
-            if original_config_bytes is None:
-                os.unlink(root_config_path)
-            else:
-                with open(root_config_path, "wb") as f:
-                    f.write(original_config_bytes)
+    def watchmanConfig(self):
+        """Watchman config for this test case"""
+        config = {"enable_parallel_crawl": self.parallelCrawl}
+        return config
 
     def _waitForCheck(self, cond, res_check, timeout: float):
         deadline = time.time() + timeout

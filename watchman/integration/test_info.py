@@ -36,6 +36,4 @@ class TestInfo(WatchmanTestCase.WatchmanTestCase):
     def get_config(self, root):
         resp = self.watchmanCommand("get-config", root)
         config = resp["config"]
-        # Drop enable_parallel_crawl, set internally by the test.
-        config.pop("enable_parallel_crawl", None)
         return config
