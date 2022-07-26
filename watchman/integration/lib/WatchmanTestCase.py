@@ -138,7 +138,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
-                sockpath=(inst or WatchmanInstance.getSharedInstance()).getSockPath(),
+                sockpath=(inst or self.watchmanInstance()).getSockPath(),
             )
             if (not inst or replace_cached) and not no_cache:
                 # only cache the client if it points to the shared instance
@@ -200,7 +200,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
 
     def getLogSample(self) -> str:
         """used in CI to show the hopefully relevant log snippets"""
-        inst = WatchmanInstance.getSharedInstance()
+        inst = self.watchmanInstance()
 
         def tail(logstr, n):
             lines = logstr.split("\n")[-n:]
@@ -220,7 +220,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         Returns the contents of the server log file as an array
         that has already been split by line.
         """
-        return WatchmanInstance.getSharedInstance().getServerLogContents().split("\n")
+        return self.watchmanInstance().getServerLogContents().split("\n")
 
     def setConfiguration(self, transport, encoding, parallelCrawl) -> None:
         self.transport = transport
@@ -266,6 +266,9 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         else:
             result = client.query(*args)
         return result
+
+    def watchmanInstance(self):
+        return WatchmanInstance.getSharedInstance()
 
     @contextlib.contextmanager
     def scopedRootWatchmanConfig(self, root):
@@ -526,10 +529,10 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         return self._case_insensitive
 
     def suspendWatchman(self) -> None:
-        WatchmanInstance.getSharedInstance().suspend()
+        self.watchmanInstance().suspend()
 
     def resumeWatchman(self) -> None:
-        WatchmanInstance.getSharedInstance().resume()
+        self.watchmanInstance().resume()
 
     def rootIsWatched(self, r) -> bool:
         r = norm_absolute_path(r)

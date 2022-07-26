@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 
-from watchman.integration.lib import WatchmanInstance, WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix
@@ -28,7 +28,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         args.extend(cmdArgs)
 
         env = os.environ.copy()
-        sock_path = WatchmanInstance.getSharedInstance().getSockPath()
+        sock_path = self.watchmanInstance().getSockPath()
         env["WATCHMAN_SOCK"] = sock_path.legacy_sockpath()
         pywatchman_path = env.get("PYWATCHMAN_PATH")
         if pywatchman_path:

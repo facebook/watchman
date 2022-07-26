@@ -9,7 +9,7 @@
 import os
 from typing import Optional
 
-from . import WatchmanInstance, WatchmanTestCase
+from . import WatchmanTestCase
 
 
 TestParent = object
@@ -76,7 +76,7 @@ else:
 
             self.system_hgrc = None
 
-            self.eden_watchman = WatchmanInstance.getSharedInstance()
+            self.eden_watchman = self.watchmanInstance()
             self.addCleanup(self.cleanUpWatchman)
 
             self.client = self.getClient(self.eden_watchman)

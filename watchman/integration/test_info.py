@@ -8,7 +8,7 @@
 import json
 import os
 
-from watchman.integration.lib import WatchmanInstance, WatchmanTestCase
+from watchman.integration.lib import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix
@@ -17,7 +17,7 @@ class TestInfo(WatchmanTestCase.WatchmanTestCase):
         resp = self.watchmanCommand("get-sockname")
         self.assertEqual(
             resp["sockname"],
-            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath(),
+            self.watchmanInstance().getSockPath().legacy_sockpath(),
         )
 
     def test_get_config_empty(self) -> None:
