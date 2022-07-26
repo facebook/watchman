@@ -847,11 +847,13 @@ enum InodeType {
 enum InodeEventType {
   UNKNOWN = 0,
   MATERIALIZE = 1,
+  LOAD = 2,
 }
 
 enum InodeEventProgress {
   START = 0,
   END = 1,
+  FAIL = 2,
 }
 
 struct InodeEvent {
