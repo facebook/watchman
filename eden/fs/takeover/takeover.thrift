@@ -7,10 +7,15 @@
 
 namespace cpp2 facebook.eden
 
+typedef i64 (cpp2.type = "uint64_t") ui64
+
 // A list of takeover data serialization versions that the client supports
 struct TakeoverVersionQuery {
-  // The set of versions supported by the client
+  // The set of versions supported by the client. This is on the way out.
   1: set<i32> versions;
+  // The set of capabilities supported by the client. This will be the longer
+  // term scheme that we use.
+  2: ui64 capabilities;
 }
 
 struct SerializedInodeMapEntry {
