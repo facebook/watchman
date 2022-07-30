@@ -82,8 +82,13 @@ class _bser_buffer(object):
             self.wpos = len(EMPTY_HEADER_V2)
 
     def ensure_size(self, size):
-        while ctypes.sizeof(self.buf) - self.wpos < size:
-            ctypes.resize(self.buf, ctypes.sizeof(self.buf) * 2)
+        buf = self.buf
+        old_size = ctypes.sizeof(buf)
+        new_size = old_size
+        while new_size - self.wpos < size:
+            new_size *= 2
+        if old_size != new_size:
+            ctypes.resize(buf, new_size)
 
     def append_long(self, val):
         size = _int_size(val)
@@ -244,7 +249,11 @@ def dumps(obj, version: int = 1, capabilities: int = 0):
     # Now fill in the overall length
     if version == 1:
         obj_len = bser_buf.wpos - len(EMPTY_HEADER)
-        struct.pack_into(b"=i", bser_buf.buf, 3, obj_len)
+        try:
+            struct.pack_into(b"=i", bser_buf.buf, 3, obj_len)
+        except struct.error:
+            # The C implementation treats overflow as MemoryError. Do the same here.
+            raise MemoryError
     else:
         obj_len = bser_buf.wpos - len(EMPTY_HEADER_V2)
         struct.pack_into(b"=i", bser_buf.buf, 2, capabilities)

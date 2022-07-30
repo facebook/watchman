@@ -400,6 +400,33 @@ class TestBSERDump(unittest.TestCase):
 
         self.assertRaises(ValueError, self.bser_mod.pdu_info, b"\x00\x02")
 
+    def test_string_lengths(self):
+        self.roundtrip(b"")
+
+        self.roundtrip(b"a" * ((1 << 8) - 2))
+        self.roundtrip(b"a" * ((1 << 8) - 1))
+        self.roundtrip(b"a" * ((1 << 8) + 0))
+        self.roundtrip(b"a" * ((1 << 8) + 1))
+
+        self.roundtrip(b"a" * ((1 << 16) - 2))
+        self.roundtrip(b"a" * ((1 << 16) - 1))
+        self.roundtrip(b"a" * ((1 << 16) + 0))
+        self.roundtrip(b"a" * ((1 << 16) + 1))
+
+        self.roundtrip(b"a" * ((1 << 24) - 2))
+        self.roundtrip(b"a" * ((1 << 24) - 1))
+        self.roundtrip(b"a" * ((1 << 24) + 0))
+        self.roundtrip(b"a" * ((1 << 24) + 1))
+
+    def test_big_string_lengths(self):
+        # These tests take a couple dozen seconds with the Python
+        # implementation of bser. Keep them in a separate test so we can run
+        # them conditionally.
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) - 2))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) - 1))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) + 0))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) + 1))
+
 
 if __name__ == "__main__":
     unittest.main()

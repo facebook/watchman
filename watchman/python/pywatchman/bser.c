@@ -252,14 +252,28 @@ static inline uint32_t next_power_2(uint32_t n) {
 // A buffer we use for building up the serialized result
 struct bser_buffer {
   char* buf;
-  int wpos, allocd;
+  uint32_t wpos;
+  uint32_t allocd;
   uint32_t bser_version;
   uint32_t capabilities;
 };
 typedef struct bser_buffer bser_t;
 
 static int bser_append(bser_t* bser, const char* data, uint32_t len) {
-  int newlen = next_power_2(bser->wpos + len);
+  if (bser->wpos >= UINT32_MAX - len) {
+    // 4 GiB overflow
+    errno = ENOMEM;
+    return 0;
+  }
+
+  uint32_t newlen = next_power_2(bser->wpos + len);
+  if (newlen == 0) {
+    // We wrapped around - can't store 4G in allocd, so give up. This limits
+    // total output to 2 GiB.
+    errno = ENOMEM;
+    return 0;
+  }
+
   if (newlen > bser->allocd) {
     char* nbuf = realloc(bser->buf, newlen);
     if (!nbuf) {
