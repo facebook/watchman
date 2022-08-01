@@ -18,7 +18,7 @@ class TestCommand(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(b"", stderr)
         self.assertNotEqual(b"", stdout)
         error = json.loads(stdout)
-        self.assertEqual(
-            "watchman::CommandValidationError: failed to validate command: unknown command unknown-command",
+        self.assertRegex(
             error["error"],
+            ".*watchman::CommandValidationError: failed to validate command: unknown command unknown-command",
         )
