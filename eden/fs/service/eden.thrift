@@ -1866,8 +1866,7 @@ service EdenService extends fb303_core.BaseService {
   /**
    * Gets a list of inode events stored in a specified EdenMount's
    * ActivityBuffer. Used for retroactive debugging by the `eden trace inode
-   * --retroactive` command. Currently only supports inode materialize events
-   * but we intend to generalize this to more inode event types later.
+   * --retroactive` command. Supports inode load and materialization events.
    */
   GetRetroactiveInodeEventsResult getRetroactiveInodeEvents(
     1: GetRetroactiveInodeEventsParams params,
