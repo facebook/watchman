@@ -222,8 +222,13 @@ impl Connector {
                 .map(|p| p.as_ref())
                 .unwrap_or_else(|| Path::new("watchman"));
 
-            let output = Command::new(watchman_path)
-                .args(&["--output-encoding", "bser-v2", "get-sockname"])
+            let mut cmd = Command::new(watchman_path);
+            cmd.args(&["--output-encoding", "bser-v2", "get-sockname"]);
+
+            #[cfg(windows)]
+            cmd.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+
+            let output = cmd
                 .output()
                 .await
                 .map_err(|source| Error::ConnectionDiscovery {
