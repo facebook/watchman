@@ -5,14 +5,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use crate::bytestring::ByteString;
+use std::collections::HashMap;
+use std::path::PathBuf;
+
 use serde::de::Deserialize;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
 use serde::Serialize;
-use std::collections::HashMap;
-use std::path::PathBuf;
+
+use crate::bytestring::ByteString;
 
 /// The Value type is used in cases where the schema is not known statically.
 /// As used in Watchman's protocol, this allows encoding arbitrary metadata

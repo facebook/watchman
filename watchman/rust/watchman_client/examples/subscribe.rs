@@ -8,6 +8,7 @@
 //! This example shows how to initiate a subscription and print out
 //! file changes as they are reported
 use std::path::PathBuf;
+
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 

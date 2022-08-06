@@ -8,11 +8,13 @@
 //! This module defines the request and response PDU types used by the
 //! watchman protocol.
 
-use crate::expr::Expr;
+use std::path::PathBuf;
+
 use serde::Deserialize;
 use serde::Serialize;
 use serde_bser::value::Value;
-use std::path::PathBuf;
+
+use crate::expr::Expr;
 
 /// The `get-sockname` command response
 #[derive(Deserialize, Debug)]
@@ -785,10 +787,12 @@ impl Into<String> for FileType {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use serde_bser::value::Value;
+
     use super::*;
     use crate::bunser;
-    use serde_bser::value::Value;
-    use std::collections::HashMap;
 
     fn convert_bser_value<T>(input: Value) -> T
     where

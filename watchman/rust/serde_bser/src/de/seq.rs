@@ -7,11 +7,10 @@
 
 use serde::de;
 
-use crate::errors::*;
-
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
 use super::Deserializer;
+use crate::errors::*;
 
 pub struct SeqAccess<'a, R> {
     de: &'a mut Deserializer<R>,

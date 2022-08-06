@@ -6,11 +6,13 @@
  */
 
 //! Working with the watchman expression term syntax
-use crate::pdu::*;
+use std::path::PathBuf;
+
 use maplit::hashmap;
 use serde::Serialize;
 use serde_bser::value::Value;
-use std::path::PathBuf;
+
+use crate::pdu::*;
 
 /// An expression term used to filter candidate files from query results.
 #[derive(Serialize, Debug, Clone)]

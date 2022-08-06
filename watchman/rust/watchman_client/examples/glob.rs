@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use serde::Deserialize;
 use std::path::PathBuf;
+
+use serde::Deserialize;
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 

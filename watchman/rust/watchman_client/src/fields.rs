@@ -10,9 +10,11 @@
 // don't show deprecation warnings about NewField when we build this file
 #![allow(deprecated)]
 
-use crate::prelude::*;
-use serde::Deserialize;
 use std::path::PathBuf;
+
+use serde::Deserialize;
+
+use crate::prelude::*;
 
 /// This trait is used to furnish the caller with the watchman
 /// field name for an entry in the file results

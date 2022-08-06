@@ -12,12 +12,11 @@ use serde::de;
 use serde::forward_to_deserialize_any;
 use serde::Deserialize;
 
-use crate::errors::*;
-use crate::header::*;
-
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
 use super::Deserializer;
+use crate::errors::*;
+use crate::header::*;
 
 // This is ugly because #[serde(borrow)] can't be used with collections directly
 // at the moment. See

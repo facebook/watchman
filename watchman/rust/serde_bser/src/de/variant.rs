@@ -7,11 +7,10 @@
 
 use serde::de;
 
-use crate::errors::*;
-
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
 use super::Deserializer;
+use crate::errors::*;
 
 macro_rules! impl_enum_access {
     ($type:ident) => {

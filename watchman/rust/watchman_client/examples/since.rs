@@ -9,6 +9,7 @@
 //! changed since the given timestamp.
 
 use std::path::PathBuf;
+
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 

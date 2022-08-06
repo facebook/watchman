@@ -39,13 +39,6 @@ pub mod expr;
 pub mod fields;
 mod named_pipe;
 pub mod pdu;
-use bytes::Bytes;
-use bytes::BytesMut;
-use futures::future::FutureExt;
-use futures::stream::StreamExt;
-use serde_bser::de::Bunser;
-use serde_bser::de::SliceRead;
-use serde_bser::value::Value;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::io;
@@ -56,6 +49,14 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+use bytes::Bytes;
+use bytes::BytesMut;
+use futures::future::FutureExt;
+use futures::stream::StreamExt;
+use serde_bser::de::Bunser;
+use serde_bser::de::SliceRead;
+use serde_bser::value::Value;
 use thiserror::Error;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncWrite;
@@ -1147,14 +1148,15 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::io;
 
     use futures::stream;
     use futures::stream::TryStreamExt;
     use serde::Deserialize;
     use serde::Serialize;
-    use std::io;
     use tokio_util::io::StreamReader;
+
+    use super::*;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct TestStruct {

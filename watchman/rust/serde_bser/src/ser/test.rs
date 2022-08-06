@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use serde::Serialize;
 use std::f64::consts;
+
+use serde::Serialize;
 
 use super::serialize;
 

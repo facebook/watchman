@@ -6,6 +6,7 @@
  */
 
 use std::path::PathBuf;
+
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 

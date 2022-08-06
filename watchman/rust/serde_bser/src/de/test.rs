@@ -5,11 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use maplit::hashmap;
-use serde::Deserialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Cursor;
+
+use maplit::hashmap;
+use serde::Deserialize;
 
 use crate::from_reader;
 use crate::from_slice;

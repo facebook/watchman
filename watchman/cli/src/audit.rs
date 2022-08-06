@@ -5,9 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-use ahash::AHashMap;
-use jwalk::WalkDir;
-use serde::Deserialize;
 use std::io::ErrorKind;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -20,6 +17,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
+
+use ahash::AHashMap;
+use jwalk::WalkDir;
+use serde::Deserialize;
 use structopt::StructOpt;
 use watchman_client::prelude::*;
 

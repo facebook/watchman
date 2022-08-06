@@ -7,13 +7,13 @@
 
 #![cfg(windows)]
 
-use crate::Error;
 use std::io::Error as IoError;
 use std::os::windows::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
+
 use tokio::io::AsyncRead;
 use tokio::io::AsyncWrite;
 use tokio::io::ReadBuf;
@@ -23,6 +23,8 @@ use winapi::um::fileapi::OPEN_EXISTING;
 use winapi::um::winbase::FILE_FLAG_OVERLAPPED;
 use winapi::um::winnt::GENERIC_READ;
 use winapi::um::winnt::GENERIC_WRITE;
+
+use crate::Error;
 
 /// Wrapper around a tokio [`NamedPipeClient`]
 pub struct NamedPipe {

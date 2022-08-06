@@ -15,10 +15,9 @@ use bytes::BufMut;
 use serde::ser;
 use serde::ser::Serialize;
 
+use self::count_write::CountWrite;
 use crate::errors::*;
 use crate::header::*;
-
-use self::count_write::CountWrite;
 
 // How full must the buffer get before we start flushing it?
 const HIGHWATER: usize = 4096;

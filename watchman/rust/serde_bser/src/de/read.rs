@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#[cfg(feature = "debug_bytes")]
+use std::fmt;
 use std::io;
 use std::result;
 
@@ -12,9 +14,6 @@ use anyhow::bail;
 use anyhow::Context as _;
 use byteorder::ByteOrder;
 use byteorder::NativeEndian;
-
-#[cfg(feature = "debug_bytes")]
-use std::fmt;
 
 #[cfg(feature = "debug_bytes")]
 macro_rules! debug_bytes {
