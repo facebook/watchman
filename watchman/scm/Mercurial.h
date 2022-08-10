@@ -8,28 +8,12 @@
 #pragma once
 #include "watchman/watchman_system.h"
 
-#include <folly/Synchronized.h>
 #include <string>
-#include <unordered_map>
 #include "watchman/ChildProcess.h"
 #include "watchman/LRUCache.h"
-#include "watchman/fs/FileInformation.h"
 #include "watchman/scm/SCM.h"
 
 namespace watchman {
-
-class StatusAccumulator {
- public:
-  void add(w_string_piece status);
-
-  SCM::StatusResult finalize() const;
-
- private:
-  // -1 = removed
-  // 0 = changed
-  // 1 = added
-  std::unordered_map<w_string, int> byFile_;
-};
 
 class Mercurial : public SCM {
  public:
@@ -40,10 +24,6 @@ class Mercurial : public SCM {
       w_string_piece commitId,
       w_string_piece clock,
       w_string requestId = nullptr) const override;
-  StatusResult getFilesChangedBetweenCommits(
-      std::vector<std::string> commits,
-      w_string requestId,
-      bool includeDirectories) const override;
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
       w_string_piece commitId,
       w_string requestId = nullptr) const override;
@@ -59,7 +39,6 @@ class Mercurial : public SCM {
   std::string dirStatePath_;
   mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
   mutable LRUCache<std::string, w_string> mergeBases_;
-  mutable LRUCache<std::string, w_string> filesChangedBetweenCommits_;
   mutable LRUCache<std::string, std::vector<w_string>>
       filesChangedSinceMergeBaseWith_;
 

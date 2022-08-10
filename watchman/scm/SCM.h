@@ -73,30 +73,6 @@ class SCM {
       w_string_piece clock,
       w_string requestId = nullptr) const = 0;
 
-  struct StatusResult {
-    std::vector<w_string> changedFiles;
-    std::vector<w_string> addedFiles;
-    std::vector<w_string> removedFiles;
-  };
-
-  // Compute the set of paths that have changed across all of the transitions
-  // between the list of given commits.
-  //
-  // For example, if commits is [A, B, C], then this accumulates the changes
-  // between [A, B] and [B, C] into one StatusResult.
-  //
-  // This is purely a history operation and does not consider the working
-  // copy status.
-  // includeDirectories controls if directory changes are reported here.
-  // Generally, Watchman wants to know about both the changes to files and
-  // directories. But it can be expensive to get directory information as well.
-  // So if a client does not care for directory information no need to report
-  // this.
-  virtual StatusResult getFilesChangedBetweenCommits(
-      std::vector<std::string> commits,
-      w_string requestId,
-      bool includeDirectories) const = 0;
-
   // Compute the source control date associated with the specified
   // commit.
   virtual std::chrono::time_point<std::chrono::system_clock> getCommitDate(

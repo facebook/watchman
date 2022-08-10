@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <folly/String.h>
 #include <chrono>
 #include <vector>
 #include "watchman/ChildProcess.h"
@@ -15,19 +14,6 @@
 #include "watchman/scm/SCM.h"
 
 namespace watchman {
-
-class GitStatusAccumulator {
- public:
-  void add(w_string_piece status);
-
-  SCM::StatusResult finalize() const;
-
- private:
-  // -1 = removed
-  // 0 = changed
-  // 1 = added
-  std::unordered_map<w_string, int> byFile_;
-};
 
 class Git : public SCM {
  public:
@@ -39,13 +25,6 @@ class Git : public SCM {
       w_string_piece clock,
       w_string requestId = nullptr) const override;
 
-  // Note: does not support includeDirectories. git does not report directory
-  // changes, though it does introduce them when the first file is introduced
-  // inside them and does prune them when the last file is deleted.
-  StatusResult getFilesChangedBetweenCommits(
-      std::vector<std::string> commits,
-      w_string requestId,
-      bool includeDirectories) const override;
   std::chrono::time_point<std::chrono::system_clock> getCommitDate(
       w_string_piece commitId,
       w_string requestId = nullptr) const override;
@@ -58,7 +37,6 @@ class Git : public SCM {
   std::string indexPath_;
   mutable LRUCache<std::string, std::vector<w_string>> commitsPrior_;
   mutable LRUCache<std::string, w_string> mergeBases_;
-  mutable LRUCache<std::string, w_string> filesChangedBetweenCommits_;
   mutable LRUCache<std::string, std::vector<w_string>>
       filesChangedSinceMergeBaseWith_;
 

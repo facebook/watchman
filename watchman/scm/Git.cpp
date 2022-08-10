@@ -62,56 +62,11 @@ GitResult runGit(
 
 namespace watchman {
 
-void GitStatusAccumulator::add(w_string_piece status) {
-  std::vector<w_string_piece> lines;
-  status.split(lines, '\0');
-
-  log(DBG, "processing ", lines.size(), " status lines\n");
-
-  for (auto& line : lines) {
-    if (line.size() < 4) {
-      continue;
-    }
-
-    w_string name{line.data() + 3, line.size() - 3};
-    switch (line.data()[1]) {
-      case 'A':
-        // Should remove + add be considered new? Treat it as changed for now.
-        byFile_[name] += 1;
-        break;
-      case 'D':
-        byFile_[name] += -1;
-        break;
-      default:
-        byFile_[name]; // just insert an entry
-    }
-  }
-}
-
-SCM::StatusResult GitStatusAccumulator::finalize() const {
-  SCM::StatusResult combined;
-  for (auto& [name, count] : byFile_) {
-    if (count == 0) {
-      combined.changedFiles.push_back(name);
-    } else if (count < 0) {
-      combined.removedFiles.push_back(name);
-    } else if (count > 0) {
-      combined.addedFiles.push_back(name);
-    }
-  }
-  return combined;
-}
-
 Git::Git(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
       indexPath_(to<std::string>(getSCMRoot().view(), "/.git/index")),
       commitsPrior_(Configuration(), "scm_git_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_git_mergebase", 32, 10),
-      filesChangedBetweenCommits_(
-          Configuration(),
-          "scm_git_files_between_commits",
-          32,
-          10),
       filesChangedSinceMergeBaseWith_(
           Configuration(),
           "scm_git_files_since_mergebase",
@@ -199,40 +154,6 @@ std::vector<w_string> Git::getFilesChangedSinceMergeBaseWith(
           })
       .get()
       ->value();
-}
-
-SCM::StatusResult Git::getFilesChangedBetweenCommits(
-    std::vector<std::string> commits,
-    w_string requestId,
-    bool /*includeDirectories*/) const {
-  GitStatusAccumulator result;
-  for (size_t i = 0; i + 1 < commits.size(); ++i) {
-    auto mtime = getIndexMtime();
-    auto& commitA = commits[i];
-    auto& commitB = commits[i + 1];
-    auto key = folly::to<std::string>(
-        commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-
-    result.add(filesChangedBetweenCommits_
-                   .get(
-                       key,
-                       [&](const std::string&) {
-                         auto gitresult = runGit(
-                             {gitExecutablePath(),
-                              "diff",
-                              "--name-status",
-                              "-z",
-                              commitA,
-                              commitB},
-                             makeGitOptions(requestId),
-                             "get files changed between commits");
-
-                         return folly::makeFuture(gitresult.output);
-                       })
-                   .get()
-                   ->value());
-  }
-  return result.finalize();
 }
 
 std::chrono::time_point<std::chrono::system_clock> Git::getCommitDate(

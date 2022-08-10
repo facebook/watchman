@@ -8,6 +8,7 @@
 #include "watchman/scm/SCM.h"
 #include <memory>
 #include "watchman/Logging.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/scm/Git.h"
 #include "watchman/scm/Mercurial.h"
 

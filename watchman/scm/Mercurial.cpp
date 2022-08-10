@@ -29,10 +29,6 @@ void replaceEmbeddedNulls(std::string& str) {
   std::replace(str.begin(), str.end(), '\0', '\n');
 }
 
-void replaceEmbeddedNewLines(std::string& str) {
-  std::replace(str.begin(), str.end(), '\n', '\0');
-}
-
 std::string hgExecutablePath() {
   auto hg = getenv("EDEN_HG_BINARY");
   if (hg && strlen(hg) > 0) {
@@ -71,46 +67,6 @@ MercurialResult runMercurial(
 } // namespace
 
 namespace watchman {
-
-void StatusAccumulator::add(w_string_piece status) {
-  std::vector<w_string_piece> lines;
-  status.split(lines, '\0');
-
-  log(DBG, "processing ", lines.size(), " status lines\n");
-
-  for (auto& line : lines) {
-    if (line.size() < 3) {
-      continue;
-    }
-
-    w_string name{line.data() + 2, line.size() - 2};
-    switch (line.data()[0]) {
-      case 'A':
-        // Should remove + add be considered new? Treat it as changed for now.
-        byFile_[name] += 1;
-        break;
-      case 'R':
-        byFile_[name] += -1;
-        break;
-      default:
-        byFile_[name]; // just insert an entry
-    }
-  }
-}
-
-SCM::StatusResult StatusAccumulator::finalize() const {
-  SCM::StatusResult combined;
-  for (auto& [name, count] : byFile_) {
-    if (count == 0) {
-      combined.changedFiles.push_back(name);
-    } else if (count < 0) {
-      combined.removedFiles.push_back(name);
-    } else if (count > 0) {
-      combined.addedFiles.push_back(name);
-    }
-  }
-  return combined;
-}
 
 ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   ChildProcess::Options opt;
@@ -166,11 +122,6 @@ Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
       dirStatePath_(to<std::string>(getSCMRoot().view(), "/.hg/dirstate")),
       commitsPrior_(Configuration(), "scm_hg_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
-      filesChangedBetweenCommits_(
-          Configuration(),
-          "scm_hg_files_between_commits",
-          32,
-          10),
       filesChangedSinceMergeBaseWith_(
           Configuration(),
           "scm_hg_files_since_mergebase",
@@ -264,90 +215,6 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
           })
       .get()
       ->value();
-}
-
-SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
-    std::vector<std::string> commits,
-    w_string requestId,
-    bool includeDirectories) const {
-  StatusAccumulator result;
-  for (size_t i = 0; i + 1 < commits.size(); ++i) {
-    auto mtime = getDirStateMtime();
-    auto& commitA = commits[i];
-    auto& commitB = commits[i + 1];
-    if (commitA == commitB) {
-      // Older versions of EdenFS could report "commit transitions" from A to A,
-      // in which case we shouldn't ask Mercurial for the difference.
-      continue;
-    }
-    auto key = folly::to<std::string>(
-        commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-    auto dirkey = folly::to<std::string>(
-        "dirs:", commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-
-    // This loop runs `hg status` commands sequentially. There's an opportunity
-    // to run them concurrently, but:
-    // 1. In practice since each transition in `commits` corresponds to an
-    //    `hg update` call, the list is almost always short.
-    // 2. For debugging Watchman performance issues, it's nice to have the
-    //    subprocess call on the same stack.
-    // 3. If `hg status` acquires a lock on the backing storage, there may not
-    //    be much actual concurrency.
-    // 4. This codepath is most frequently executed under very fast checkout
-    //    operations between close commits, where the cost isn't that high.
-
-    result.add(
-        filesChangedBetweenCommits_
-            .get(
-                key,
-                [&](const std::string&) {
-                  auto hgresult = runMercurial(
-                      {hgExecutablePath(),
-                       "--traceback",
-                       "status",
-                       "--print0",
-                       "--rev",
-                       commitA,
-                       "--rev",
-                       commitB,
-                       // The "" argument at the end causes paths to be printed
-                       // out relative to the cwd (set to root path above).
-                       ""},
-                      makeHgOptions(requestId),
-                      "get files changed between commits");
-
-                  return folly::makeFuture(hgresult.output);
-                })
-            .get()
-            ->value());
-    if (includeDirectories) {
-      result.add(filesChangedBetweenCommits_
-                     .get(
-                         dirkey,
-                         [&](const std::string&) {
-                           auto hgresult = runMercurial(
-                               {hgExecutablePath(),
-                                "--traceback",
-                                "debugdiffdirs",
-                                "--rev",
-                                commitA,
-                                "--rev",
-                                commitB,
-                                // The "" argument at the end causes paths to be
-                                // printed out relative to the cwd (set to root
-                                // path above).
-                                ""},
-                               makeHgOptions(requestId),
-                               "get dirs changed between commits");
-                           auto output = std::string{hgresult.output.view()};
-                           replaceEmbeddedNewLines(output);
-                           return folly::makeFuture(w_string{output});
-                         })
-                     .get()
-                     ->value());
-    }
-  }
-  return result.finalize();
 }
 
 time_point<system_clock> Mercurial::getCommitDate(
