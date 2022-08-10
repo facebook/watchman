@@ -15,13 +15,6 @@ enum FsEventType {
   FINISH = 2,
 }
 
-struct RequestInfo {
-  // The pid that originated this request.
-  1: optional eden.pid_t pid;
-  // If available, the binary name corresponding to `pid`.
-  2: optional string processName;
-}
-
 struct FsEvent {
   // Nanoseconds since epoch.
   1: i64 timestamp;
@@ -41,7 +34,7 @@ struct FsEvent {
   10: optional eden.NfsCall nfsRequest;
   11: optional eden.PrjfsCall prjfsRequest;
 
-  8: RequestInfo requestInfo;
+  8: eden.RequestInfo requestInfo;
 
   /**
    * The result code sent back to the kernel.
@@ -80,49 +73,6 @@ struct ThriftRequestEvent {
 const i64 FS_EVENT_READ = 1;
 const i64 FS_EVENT_WRITE = 2;
 const i64 FS_EVENT_OTHER = 4;
-
-enum HgEventType {
-  UNKNOWN = 0,
-  QUEUE = 1,
-  START = 2,
-  FINISH = 3,
-}
-
-enum HgResourceType {
-  UNKNOWN = 0,
-  BLOB = 1,
-  TREE = 2,
-}
-
-enum HgImportPriority {
-  LOW = 0,
-  NORMAL = 1,
-  HIGH = 2,
-}
-
-enum HgImportCause {
-  UNKNOWN = 0,
-  FS = 1,
-  THRIFT = 2,
-  PREFETCH = 3,
-}
-
-struct HgEvent {
-  1: eden.TraceEventTimes times;
-
-  2: HgEventType eventType;
-  3: HgResourceType resourceType;
-
-  4: i64 unique;
-
-  // HG manifest node ID as 40-character hex string.
-  5: string manifestNodeId;
-  6: binary path;
-
-  7: optional RequestInfo requestInfo;
-  8: HgImportPriority importPriority;
-  9: HgImportCause importCause;
-}
 
 /**
  * The value of a stream item.
@@ -202,7 +152,7 @@ service StreamingEdenService extends eden.EdenService {
    * Each request has a unique ID and transitions through three states: queued,
    * started, and finished.
    */
-  stream<HgEvent> traceHgEvents(1: eden.PathString mountPoint);
+  stream<eden.HgEvent> traceHgEvents(1: eden.PathString mountPoint);
 
   /**
    * Returns, in order, a stream of inode events for the given mount.

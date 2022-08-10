@@ -839,6 +839,70 @@ struct TraceEventTimes {
   2: i64 monotonic_time_ns;
 }
 
+struct RequestInfo {
+  // The pid that originated this request.
+  1: optional pid_t pid;
+  // If available, the binary name corresponding to `pid`.
+  2: optional string processName;
+}
+
+enum HgEventType {
+  UNKNOWN = 0,
+  QUEUE = 1,
+  START = 2,
+  FINISH = 3,
+}
+
+enum HgResourceType {
+  UNKNOWN = 0,
+  BLOB = 1,
+  TREE = 2,
+}
+
+enum HgImportPriority {
+  LOW = 0,
+  NORMAL = 1,
+  HIGH = 2,
+}
+
+enum HgImportCause {
+  UNKNOWN = 0,
+  FS = 1,
+  THRIFT = 2,
+  PREFETCH = 3,
+}
+
+struct HgEvent {
+  1: TraceEventTimes times;
+
+  2: HgEventType eventType;
+  3: HgResourceType resourceType;
+
+  4: i64 unique;
+
+  // HG manifest node ID as 40-character hex string.
+  5: string manifestNodeId;
+  6: binary path;
+
+  7: optional RequestInfo requestInfo;
+  8: HgImportPriority importPriority;
+  9: HgImportCause importCause;
+}
+
+/**
+ * Parameters for the getRetroactiveHgEvents() function.
+ */
+struct GetRetroactiveHgEventsParams {
+  1: PathString mountPoint;
+}
+
+/**
+ * Return value for the getRetroactiveHgEvents() function.
+ */
+struct GetRetroactiveHgEventsResult {
+  1: list<HgEvent> events;
+}
+
 enum InodeType {
   TREE = 0,
   FILE = 1,
@@ -1862,6 +1926,14 @@ service EdenService extends fb303_core.BaseService {
   void enableTracing();
   void disableTracing();
   list<TracePoint> getTracePoints();
+
+  /**
+   * Gets a list of hg events stored in Eden's Hg ActivityBuffer. Used for
+   * retroactive debugging by the `eden trace hg --retroactive` command.
+   */
+  GetRetroactiveHgEventsResult getRetroactiveHgEvents(
+    1: GetRetroactiveHgEventsParams params,
+  ) throws (1: EdenError ex);
 
   /**
    * Gets a list of inode events stored in a specified EdenMount's
