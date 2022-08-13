@@ -118,6 +118,14 @@ PS C:\> choco install watchman
 
 The package is maintained by the community rather than by Facebook, Inc., so if you experience issues with installation/uninstallation, you should [contact the package maintainers](https://chocolatey.org/packages/watchman/ContactOwners) for assistance.
 
+### Installing on Debian/Ubuntu Linux
+
+To install the package on [Debian](https://www.debian.org) or [Ubuntu](https://www.ubuntu.com):
+
+```bash
+$ sudo apt-get install watchman
+```
+
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
