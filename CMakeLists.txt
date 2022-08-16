@@ -450,7 +450,7 @@ target_link_libraries(third_party_deps INTERFACE
   gflags
   ${Boost_LIBRARIES}
   fmt::fmt
-  edencommon::utils
+  edencommon::edencommon_utils
 )
 target_include_directories(third_party_deps INTERFACE
   ${FOLLY_INCLUDE_DIR}
