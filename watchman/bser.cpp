@@ -49,6 +49,9 @@ static const char bser_template_hdr = BSER_TEMPLATE;
 static const char bser_utf8string_hdr = BSER_UTF8STRING;
 static const char bser_skip = BSER_SKIP;
 
+static constexpr size_t kMaximumContainerSize =
+    std::numeric_limits<uint32_t>::max();
+
 static bool is_bser_version_supported(const bser_ctx_t* ctx) {
   return ctx->bser_version == 1 || ctx->bser_version == 2;
 }
@@ -72,6 +75,10 @@ bool bunser_generic_string(
     const char** start,
     json_int_t* len) {
   json_int_t ineed;
+
+  if (avail == 0) {
+    return false;
+  }
 
   if (!bunser_int(buf + 1, avail - 1, &ineed, len)) {
     *needed = ineed;
@@ -103,6 +110,10 @@ bool bunser_int(
   int16_t i16;
   int32_t i32;
   int64_t i64;
+
+  if (avail == 0) {
+    return false;
+  }
 
   switch (buf[0]) {
     case BSER_INT8:
@@ -462,11 +473,15 @@ static std::optional<json_ref> bunser_array(
     json_error_t* jerr) {
   json_int_t needed;
   json_int_t total = 0;
-  json_int_t i, nelems;
 
   buf++;
   total++;
 
+  if (buf >= end) {
+    return std::nullopt;
+  }
+
+  json_int_t nelems;
   if (!bunser_int(buf, end - buf, &needed, &nelems)) {
     if (needed == -1) {
       snprintf(
@@ -488,11 +503,18 @@ static std::optional<json_ref> bunser_array(
     return std::nullopt;
   }
 
+  size_t count = static_cast<size_t>(nelems);
+  if (count > kMaximumContainerSize) {
+    snprintf(jerr->text, sizeof(jerr->text), "array has too many elements");
+    return std::nullopt;
+  }
+
   total += needed;
   buf += needed;
 
   std::vector<json_ref> arrval;
-  for (i = 0; i < nelems; i++) {
+  arrval.reserve(nelems);
+  for (size_t i = 0; i < count; i++) {
     needed = 0;
     auto item = bunser(buf, end, &needed, jerr);
 
@@ -522,6 +544,10 @@ static std::optional<json_ref> bunser_template(
 
   buf++;
   total++;
+
+  if (buf >= end) {
+    return std::nullopt;
+  }
 
   if (*buf != BSER_ARRAY) {
     snprintf(
@@ -562,11 +588,21 @@ static std::optional<json_ref> bunser_template(
 
   // Now load up the array with object values
   std::vector<json_ref> arrval;
+
+  if ((size_t)nelems > kMaximumContainerSize) {
+    snprintf(jerr->text, sizeof(jerr->text), "template has too many elements");
+    return std::nullopt;
+  }
+
   arrval.reserve((size_t)nelems);
   for (i = 0; i < nelems; i++) {
     std::unordered_map<w_string, json_ref> item;
     item.reserve(np);
     for (size_t ip = 0; ip < np; ip++) {
+      if (buf >= end) {
+        *used = needed + total;
+        return std::nullopt;
+      }
       if (*buf == BSER_SKIP) {
         buf++;
         total++;
@@ -581,6 +617,15 @@ static std::optional<json_ref> bunser_template(
       }
       buf += needed;
       total += needed;
+
+      if (!templ_arr[ip].isString()) {
+        snprintf(
+            jerr->text,
+            sizeof(jerr->text),
+            "template value must be string, was %d",
+            (int)templ_arr[ip].type());
+        return std::nullopt;
+      }
 
       item.insert_or_assign(json_string_value(templ_arr[ip]), std::move(*val));
     }
@@ -606,7 +651,6 @@ static std::optional<json_ref> bunser_object(
   buf++;
 
   if (!bunser_int(buf, end - buf, &needed, &nelems)) {
-    *used = needed + total;
     snprintf(
         jerr->text,
         sizeof(jerr->text),
@@ -624,13 +668,17 @@ static std::optional<json_ref> bunser_object(
 
     // Read key
     if (!bunser_generic_string(buf, end - buf, &needed, &start, &slen)) {
-      *used = total + needed;
       snprintf(
           jerr->text, sizeof(jerr->text), "invalid bytestring for object key");
       return std::nullopt;
     }
     total += needed;
     buf += needed;
+
+    if (slen < 0) {
+      snprintf(jerr->text, sizeof(jerr->text), "negative slen");
+      return std::nullopt;
+    }
 
     // Saves us allocating a string when the library is going to
     // do that anyway
@@ -667,18 +715,22 @@ std::optional<json_ref> bunser(
     const char* end,
     json_int_t* needed,
     json_error_t* jerr) {
-  json_int_t ival;
+  if (buf >= end) {
+    return std::nullopt;
+  }
 
   switch (buf[0]) {
     case BSER_INT8:
     case BSER_INT16:
     case BSER_INT32:
-    case BSER_INT64:
+    case BSER_INT64: {
+      json_int_t ival;
       if (!bunser_int(buf, end - buf, needed, &ival)) {
         snprintf(jerr->text, sizeof(jerr->text), "invalid integer encoding");
         return std::nullopt;
       }
       return json_integer(ival);
+    }
 
     case BSER_BYTESTRING:
     case BSER_UTF8STRING: {
@@ -697,9 +749,14 @@ std::optional<json_ref> bunser(
     }
 
     case BSER_REAL: {
-      double dval;
       *needed = sizeof(double) + 1;
-      memcpy(&dval, buf + 1, sizeof(dval));
+      ++buf;
+      if (static_cast<size_t>(end - buf) < sizeof(double)) {
+        return std::nullopt;
+      }
+
+      double dval;
+      memcpy(&dval, buf, sizeof(dval));
       return json_real(dval);
     }
 
