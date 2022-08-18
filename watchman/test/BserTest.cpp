@@ -11,6 +11,15 @@
 #include <folly/portability/GTest.h>
 #include "watchman/thirdparty/jansson/jansson_private.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+// TODO: The portability header is not desired here: it injects
+// symbols into the platform namespace and we don't want fake unix
+// semantics on Windows. But I don't know how to shut up the linter.
+#include <folly/portability/SysMman.h>
+#endif
+
 #define UTF8_PILE_OF_POO "\xf0\x9f\x92\xa9"
 
 // Construct a std::string from a literal that may have embedded NUL bytes.
@@ -293,6 +302,134 @@ TEST(Bser, bser_tests) {
   }
 
   check_bser_typed_strings();
+}
+
+namespace {
+
+// NOTE: The returned pointer may not be aligned.
+using Alloc = std::unique_ptr<char[], std::function<void(void*)>>;
+
+Alloc normal_malloc(size_t size) {
+  void* p = malloc(size);
+  if (!p) {
+    throw std::bad_alloc{};
+  }
+
+  return {reinterpret_cast<char*>(p), &free};
+}
+
+#ifdef _WIN32
+
+size_t get_page_size() {
+  SYSTEM_INFO si{};
+  GetSystemInfo(&si);
+  return si.dwAllocationGranularity;
+}
+
+std::tuple<void*, size_t> allocate_pages(size_t size) {
+  static size_t page_size = get_page_size();
+  size_t actual_size = (size + (page_size - 1)) / page_size * page_size;
+
+  // TODO: We should explicitly allocate guard pages at either side.
+  void* p = VirtualAlloc(nullptr, actual_size, MEM_COMMIT, PAGE_READWRITE);
+  if (!p) {
+    throw std::bad_alloc{};
+  }
+
+  return {p, actual_size};
+}
+
+void deallocate_pages(void* p, size_t actual_size) {
+  VirtualFree(p, actual_size, MEM_RELEASE);
+}
+
+#else
+
+std::tuple<void*, size_t> allocate_pages(size_t size) {
+  static size_t page_size = sysconf(_SC_PAGE_SIZE);
+  size_t actual_size = (size + (page_size - 1)) / page_size * page_size;
+
+  // TODO: We should explicitly allocate guard pages at either side.
+  // But, so far, ASAN does a pretty good job of catching overflows.
+  void* p = mmap(
+      nullptr,
+      actual_size,
+      PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS,
+      -1,
+      0);
+  if (p == MAP_FAILED) {
+    perror("mmap failed");
+    throw std::bad_alloc{};
+  }
+  return {p, actual_size};
+}
+
+void deallocate_pages(void* p, size_t actual_size) {
+  munmap(p, actual_size);
+}
+
+#endif
+
+Alloc page_head(size_t size) {
+  auto [p, actual_size] = allocate_pages(size);
+  return {
+      reinterpret_cast<char*>(p), [p = p, actual_size = actual_size](void*) {
+        deallocate_pages(p, actual_size);
+      }};
+}
+
+Alloc page_tail(size_t size) {
+  auto [p, actual_size] = allocate_pages(size);
+  return {
+      reinterpret_cast<char*>(p) + (actual_size - size),
+      [p = p, actual_size = actual_size](void*) {
+        deallocate_pages(p, actual_size);
+      }};
+}
+
+using AllocFn = Alloc (*)(size_t);
+
+// In local testing, I observed ASAN occasionally missing an overflow. To
+// provide an additional chance of catching them, allocate the test data at the
+// head and at the tail of a page.
+constexpr AllocFn allAllocators[] = {
+    page_tail,
+    page_head,
+    normal_malloc,
+};
+
+// Work around the fact that std::string_view{"\0"} has size() of 0.
+template <size_t N>
+std::string_view literal(const char (&p)[N]) {
+  static_assert(N > 0);
+  return std::string_view{p, N - 1};
+}
+
+} // namespace
+
+TEST(Bser, fuzz_examples) {
+  std::string_view corpus[] = {
+      literal("\x08"),
+      // literal("\x00"),
+      // literal("\x00\x00"),
+      // literal("\x02"),
+      // literal("\x0b"),
+  };
+  for (std::string_view input : corpus) {
+    for (auto allocator : allAllocators) {
+      CHECK_NE(0, input.size());
+
+      // Make a non-null-terminated, heap-allocated input. This helps ASAN catch
+      // any overflows.
+      auto data = allocator(input.size());
+      memcpy(data.get(), input.data(), input.size());
+
+      json_int_t needed;
+      json_error_t jerr{};
+      bunser(data.get(), data.get() + input.size(), &needed, &jerr);
+    }
+  }
 }
 
 /* vim:ts=2:sw=2:et:
