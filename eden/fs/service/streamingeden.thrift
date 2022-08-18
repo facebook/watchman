@@ -50,18 +50,6 @@ struct FsEvent {
   9: optional i64 result;
 }
 
-enum ThriftRequestEventType {
-  UNKNOWN = 0,
-  START = 1,
-  FINISH = 2,
-}
-
-struct ThriftRequestEvent {
-  1: eden.TraceEventTimes times;
-  2: ThriftRequestEventType eventType;
-  3: eden.ThriftRequestMetadata requestMetadata;
-}
-
 /*
  * Bits that control the events traced from traceFsEvents.
  *
@@ -144,7 +132,13 @@ service StreamingEdenService extends eden.EdenService {
     2: i64 eventCategoryMask,
   );
 
-  stream<ThriftRequestEvent> traceThriftRequestEvents();
+  /**
+   * Returns, in order, a stream of Thrift requests for the given mount.
+   *
+   * Each request has a unique ID and metadata including the thrift method
+   * and calling process PID. Events are streamed for start and end events.
+   */
+  stream<eden.ThriftRequestEvent> traceThriftRequestEvents();
 
   /**
    * Returns, in order, a stream of hg import requests for the given mount.
@@ -157,8 +151,7 @@ service StreamingEdenService extends eden.EdenService {
   /**
    * Returns, in order, a stream of inode events for the given mount.
    *
-   * Currently this includes only start and end events for Inode materializations,
-   * though we intend to generalize this to Inode loads as well soon.
+   * This includes start and end events for Inode Materializations and Loads
    */
   stream<eden.InodeEvent> traceInodeEvents(1: eden.PathString mountPoint);
 

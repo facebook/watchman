@@ -839,6 +839,25 @@ struct TraceEventTimes {
   2: i64 monotonic_time_ns;
 }
 
+enum ThriftRequestEventType {
+  UNKNOWN = 0,
+  START = 1,
+  FINISH = 2,
+}
+
+struct ThriftRequestEvent {
+  1: TraceEventTimes times;
+  2: ThriftRequestEventType eventType;
+  3: ThriftRequestMetadata requestMetadata;
+}
+
+/**
+ * Return value for the getRetroactiveThriftRequestEvents() function.
+ */
+struct GetRetroactiveThriftRequestEventsResult {
+  1: list<ThriftRequestEvent> events;
+}
+
 struct RequestInfo {
   // The pid that originated this request.
   1: optional pid_t pid;
@@ -1926,6 +1945,14 @@ service EdenService extends fb303_core.BaseService {
   void enableTracing();
   void disableTracing();
   list<TracePoint> getTracePoints();
+
+  /**
+   * Gets a list of thrift request events stored on the thrift server's ActivityBuffer.
+   * Used for retroactive debugging by the `eden trace thrift --retroactive` command.
+   */
+  GetRetroactiveThriftRequestEventsResult getRetroactiveThriftRequestEvents() throws (
+    1: EdenError ex,
+  );
 
   /**
    * Gets a list of hg events stored in Eden's Hg ActivityBuffer. Used for
