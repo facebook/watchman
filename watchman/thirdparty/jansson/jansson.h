@@ -238,11 +238,21 @@ json_ref json_null();
 #define JSON_ERROR_SOURCE_LENGTH 80
 
 struct json_error_t {
-  int line;
-  int column;
-  int position;
+  int line = 0;
+  int column = 0;
+  int position = 0;
   char source[JSON_ERROR_SOURCE_LENGTH];
   char text[JSON_ERROR_TEXT_LENGTH];
+
+  json_error_t() {
+    source[0] = 0;
+    text[0] = 0;
+  }
+
+  explicit json_error_t(const char* t) {
+    source[0] = 0;
+    snprintf(text, sizeof(text), "%s", t);
+  }
 };
 
 /* getters, setters, manipulation */

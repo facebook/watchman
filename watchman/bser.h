@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include "watchman/thirdparty/jansson/jansson.h"
 
 typedef struct bser_ctx {
@@ -14,6 +15,30 @@ typedef struct bser_ctx {
   uint32_t bser_capabilities;
   json_dump_callback_t dump;
 } bser_ctx_t;
+
+class BserParseError : public std::exception {
+ public:
+  const json_error_t detail;
+
+  explicit BserParseError(const char* what) : detail{what} {}
+
+  template <typename... T>
+  explicit BserParseError(fmt::format_string<T...> fmt, T&&... args)
+      : detail{fmt::format(fmt, std::forward<T>(args)...).c_str()} {
+    // TODO: this constructor could use fmt::format_to_n to avoid an extra copy
+    // Or perhaps json_error_t should use std::string instead of fixed-size
+    // arrays.
+  }
+
+  explicit BserParseError(const json_error_t& d) : detail{d} {}
+
+  const char* what() const noexcept override {
+    return detail.text;
+  }
+
+ private:
+  mutable std::string what_;
+};
 
 #define BSER_MAGIC "\x00\x01"
 #define BSER_V2_MAGIC "\x00\x02"
@@ -34,8 +59,4 @@ bool bunser_int(
     json_int_t avail,
     json_int_t* needed,
     json_int_t* val);
-std::optional<json_ref> bunser(
-    const char* buf,
-    const char* end,
-    json_int_t* needed,
-    json_error_t* jerr);
+json_ref bunser(const char* buf, const char* end, json_int_t* needed);

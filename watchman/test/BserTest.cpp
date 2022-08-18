@@ -145,12 +145,10 @@ static void check_roundtrip(
   const char* end = dump_buf->data() + dump_buf->size();
   hexdump(dump_buf->data(), end);
 
-  jerr = json_error_t();
-  auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
-  EXPECT_TRUE(decoded) << "decoded something err = " << jerr.text;
+  auto decoded = bunser(dump_buf->data(), end, &needed);
 
-  auto jdump = json_dumps(decoded.value(), JSON_SORT_KEYS);
-  EXPECT_TRUE(json_equal(expected.value(), decoded.value()))
+  auto jdump = json_dumps(decoded, JSON_SORT_KEYS);
+  EXPECT_TRUE(json_equal(expected.value(), decoded))
       << "round-tripped json_equal";
   EXPECT_EQ(jdump, input) << "round-tripped";
 }
@@ -435,8 +433,10 @@ TEST(Bser, fuzz_examples) {
       memcpy(data.get(), input.data(), input.size());
 
       json_int_t needed;
-      json_error_t jerr{};
-      bunser(data.get(), data.get() + input.size(), &needed, &jerr);
+      try {
+        bunser(data.get(), data.get() + input.size(), &needed);
+      } catch (const BserParseError&) {
+      }
     }
   }
 }

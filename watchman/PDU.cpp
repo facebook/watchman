@@ -243,16 +243,19 @@ std::optional<json_ref> PduBuffer::readBserPdu(
     wpos += r;
   }
 
-  std::optional<json_ref> obj = bunser(buf + rpos, buf + wpos, &needed, jerr);
-  if (!obj) {
-    // obj is a nullptr because deserialization failed. Log the message that
-    // failed to deserialize to stderr
+  std::optional<json_ref> obj;
+  try {
+    obj = bunser(buf + rpos, buf + wpos, &needed);
+  } catch (const BserParseError& e) {
+    // Deserialization failed. Log the message that failed to deserialize to
+    // stderr.
     logf(
         ERR,
         "decoding BSER failed. The first KB of the hex representation of "
         "message follows:\n{:.1024}\n",
         folly::hexlify(folly::ByteRange{
             reinterpret_cast<const unsigned char*>(buf + rpos), wpos - rpos}));
+    *jerr = e.detail;
   }
 
   // Ensure that we move the read position to the wpos; we consumed it all
