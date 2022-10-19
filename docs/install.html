@@ -17,12 +17,12 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2022-10-14T16:23:36-05:00" />
+<meta property="article:published_time" content="2022-10-19T17:58:27-05:00" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta property="twitter:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="twitter:title" content="Installation" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-10-14T16:23:36-05:00","datePublished":"2022-10-14T16:23:36-05:00","description":"System Requirements","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-10-19T17:58:27-05:00","datePublished":"2022-10-19T17:58:27-05:00","description":"System Requirements","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -849,6 +849,9 @@ you can install the latest build from GitHub:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="rougeHighlight"><code><span class="nv">$ </span><span class="nb">cd </span>watchman
 
+<span class="c"># Ensure Cargo is installed. Either through your OS's package manager or https://rustup.rs/</span>
+<span class="nv">$ </span>cargo version
+
 <span class="c"># Optionally, to save time, you can ask Watchman's build process to install system dependencies</span>
 <span class="nv">$ </span><span class="nb">sudo</span> ./install-system-packages.sh
 
@@ -920,7 +923,7 @@ started watching the dir.</li>
 notification, but instead will get spurious notifications for files that
 haven’t actually changed.</p>
 
-<h3 id="mac-os-file-descriptor-limits">Mac OS File Descriptor Limits</h3>
+<h3 id="macos-file-descriptor-limits">macOS File Descriptor Limits</h3>
 
 <p><em>Only applicable on macOS 10.6 and earlier</em></p>
 

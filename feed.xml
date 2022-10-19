@@ -2,11 +2,11 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Watchman</title>
-    <description></description>
+    <description>Watches files and records, or triggers actions, when they change. </description>
     <link>https://facebook.github.io/watchman/</link>
     <atom:link href="https://facebook.github.io/watchman/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Fri, 14 Oct 2022 16:23:36 -0500</pubDate>
-    <lastBuildDate>Fri, 14 Oct 2022 16:23:36 -0500</lastBuildDate>
+    <pubDate>Wed, 19 Oct 2022 17:58:27 -0500</pubDate>
+    <lastBuildDate>Wed, 19 Oct 2022 17:58:27 -0500</lastBuildDate>
     <generator>Jekyll v3.9.2</generator>
     
   </channel>
