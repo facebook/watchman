@@ -35,8 +35,8 @@ buck-cache
 /config.sub
 /config.guess
 /configure.lineno
-/python/build
-/python/dist/
+watchman/python/build
+watchman/python/dist/
 /watchman/python/pywatchman.egg-info/
 *.pyc
 *.pyd
