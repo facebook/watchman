@@ -38,6 +38,7 @@ buck-cache
 watchman/python/build
 watchman/python/dist/
 /watchman/python/pywatchman.egg-info/
+**/*.egg-info
 *.pyc
 *.pyd
 *.so
@@ -98,3 +99,4 @@ cppclient/watchmanclient.pc
 /external
 /common
 /eden
+wheelhouse

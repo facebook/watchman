@@ -5,6 +5,19 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# Build/Upload Notes:
+# - The build would not run from a personal clone, only from a direct clone of the
+#   facebook repo. All changes were made to that checkout and then pushed to my
+#   clone.
+# - cibuildwheel was used to generate the distributions that were published, from
+#   the top level directory:
+#        cibuildwheel --platform macos watchman/python
+#        cibuildwheel --platform linux watchman/python
+#        pipx run build --sdist watchman/python
+# - twine was used to publish the artefacts:
+#        twine upload wheelhouse/* watchman/python/dist/*
+
+
 
 import os
 
