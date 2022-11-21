@@ -15,7 +15,7 @@ except ImportError:
 
 watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
 if watchman_src_dir is None:
-    watchman_src_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+    watchman_src_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..")
 
 # Setuptools is very picky about the path on Windows. They have to be relative
 # paths, and on Windows that means we have to be on the same drive as the source
