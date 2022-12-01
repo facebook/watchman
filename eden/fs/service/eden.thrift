@@ -13,6 +13,26 @@ namespace java com.facebook.eden.thrift
 namespace py facebook.eden
 namespace py3 eden.fs.service
 
+/**
+ * API style guide.
+ * ----------------
+ *
+ * These guides are to ensure we use consitent pratices to make
+ * our interface easy to use.
+ * 1. Wrap the endpoint arguments in a struct. The name of this argument
+ * struct should be the endpointname + "Request". This is Thrift's recommended
+ * practice for arguments and ensures that we can safely evolve the arguments
+ * of a method.
+ * 2. Wrap the return value from the endpoint in a struct, even if it is just
+ * a single value. This allows evolving return types without having to create a
+ * whole new endpoint. The name of this return value struct should be
+ * endpointname + "Response".
+ * 3. If your endpoint operates on a mount(s), make the mount identifier
+ * the first value in your arguments struct. Use the MountId struct as the type.
+ * This allows us to evolve the identifiers we use for mountpoints in the future
+ * without rewriting your new endpoint.
+ */
+
 /** Thrift doesn't really do unsigned numbers, but we can sort of fake it.
  * This type is serialized as an integer value that is 64-bits wide and
  * should round-trip with full fidelity for C++ client/server, but for
@@ -103,6 +123,10 @@ exception EdenError {
 
 exception NoValueForKeyError {
   1: string key;
+}
+
+struct MountId {
+  1: PathString mountPoint;
 }
 
 /**
@@ -719,6 +743,43 @@ struct InodePathDebugInfo {
   3: bool linked;
 }
 
+/**
+ * Where debug methods should fetch data from.
+ */
+enum DataFetchOrigin {
+  NOWHERE = 0,
+  ANYWHERE = 1,
+  MEMORY_CACHE = 2,
+  DISK_CACHE = 4,
+  LOCAL_BACKING_STORE = 8,
+  REMOTE_BACKING_STORE = 16,
+/* NEXT_WHERE = 2^x */
+} (cpp2.enum_type = 'uint64_t')
+
+struct DebugGetScmBlobRequest {
+  1: MountId mountId;
+  # id of the blob we would like to fetch
+  2: ThriftObjectId id;
+  # where we should fetch the blob from
+  3: unsigned64 origins; # DataFetchOrigin
+}
+
+union ScmBlobOrError {
+  1: binary blob;
+  2: EdenError error;
+}
+
+struct ScmBlobWithOrigin {
+  # the blob data
+  1: ScmBlobOrError blob;
+  # where the blob was fetched from
+  2: DataFetchOrigin origin;
+}
+
+struct DebugGetScmBlobResponse {
+  1: list<ScmBlobWithOrigin> blobs;
+}
+
 struct ActivityRecorderResult {
   // 0 if the operation has failed. For example,
   // fail to start recording due to file permission issue
@@ -1039,6 +1100,20 @@ struct GetConfigParams {
 struct GetStatInfoParams {
   // a bitset that indicates the requested stats. 0 indicates all stats are requested.
   1: i64 statsMask;
+}
+
+struct DebugInvalidateRequest {
+  1: MountId mount;
+  // Relative path in the repo to recursively invalidate
+  2: PathString path;
+  // Files last accessed before now-age will be invalidated. A zero age means
+  // all inodes.
+  3: TimeSpec age;
+  4: SyncBehavior sync;
+}
+
+struct DebugInvalidateResponse {
+  1: unsigned64 numInvalidated;
 }
 
 /**
@@ -1459,13 +1534,6 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
-   * Returns a list of paths relative to the mountPoint. DEPRECATED!
-   */
-  list<PathString> getBindMounts(1: PathString mountPoint) throws (
-    1: EdenError ex,
-  );
-
-  /**
    * On systems that support bind mounts, establish a bind mount within the
    * repo such that `mountPoint / repoPath` is redirected to `targetPath`.
    * If `repoPath` is already a bind mount managed by eden, this function
@@ -1772,6 +1840,9 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex);
 
   /**
+   * DEPRECATED -- use debugGetBlob instead.
+   * TODO: Remove January 2023.
+   *
    * Get the contents of a source control Blob.
    *
    * This can be used to confirm if eden's LocalStore contains information
@@ -1781,6 +1852,17 @@ service EdenService extends fb303_core.BaseService {
     1: PathString mountPoint,
     2: ThriftObjectId id,
     3: bool localStoreOnly,
+  ) throws (1: EdenError ex);
+
+  /**
+   * Get the contents of a source control Blob.
+   *
+   * The origins field can control where to check for the blob. This will
+   * attempt to fetch the blob from all locations and return the blob contents
+   * from each of the locations.
+   */
+  DebugGetScmBlobResponse debugGetBlob(
+    1: DebugGetScmBlobRequest request,
   ) throws (1: EdenError ex);
 
   /**
@@ -1976,6 +2058,16 @@ service EdenService extends fb303_core.BaseService {
     1: PathString mountPoint,
     2: PathString path,
     3: TimeSpec age,
+  ) throws (1: EdenError ex);
+
+  /**
+   * Garbage collect the repository by invalidating all the files/directories
+   * below the passed in path who haven't been accessed since the given age.
+   *
+   * TODO: Rewrite as a streaming API once eden doctor is in Rust.
+   */
+  DebugInvalidateResponse debugInvalidateNonMaterialized(
+    1: DebugInvalidateRequest params,
   ) throws (1: EdenError ex);
 
   /**

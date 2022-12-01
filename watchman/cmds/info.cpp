@@ -5,10 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <folly/String.h>
 #include <map>
 #include <optional>
 #include <set>
+
+#include <folly/String.h>
+
 #include "watchman/Client.h"
 #include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
@@ -101,6 +103,12 @@ class VersionCommand : public PrettyCommand<VersionCommand> {
     if (response.buildinfo) {
       fmt::print("buildinfo: {}\n", response.buildinfo.value());
     }
+    // fmt does not flush, so when the stream is not line buffered the stream
+    // needs to be manually flushed (or else nothing is written to stdout).
+    // eventually this can be fmt::flush instead:
+    // https://github.com/vgc/vgc/issues/519
+    // TODO(T136788014): why doesn't macOS do this for us.
+    fflush(stdout);
   }
 };
 
