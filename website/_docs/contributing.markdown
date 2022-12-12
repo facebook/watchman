@@ -29,7 +29,7 @@ Please [read the full text](https://code.facebook.com/codeofconduct) so that you
 You need to be able to build watchman from source and run its test suite.
 You will need:
 
-* python
+* python (>=3.9.2 to build on Apple silicon - M1, etc)
 * automake
 * autoconf
 * cmake
