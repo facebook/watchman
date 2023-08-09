@@ -124,6 +124,9 @@ missing security, bug, and performance fixes.
 
 ### Ubuntu (Prebuilt Debs)
 
+#### Via apt
+`sudo apt install watchman`
+
 **Warning**: Do not install the Ubuntu-supplied Watchman package. It is old and
 missing security, bug, and performance fixes.
 
