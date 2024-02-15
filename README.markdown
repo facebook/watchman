@@ -13,6 +13,34 @@ also trigger actions (such as rebuilding assets) when matching files change.
 
 Head on over to https://facebook.github.io/watchman/
 
+## installation
+ System Requirements:
+
+* Linux systems with `inotify`
+* macOS (uses `FSEvents` on 10.7+, `kqueue(2)` on earlier versions)
+* Windows 10 (64-bit) and up. Windows 7 support is provided by community patches.
+
+
+Prebuilt Binaries: 
+
+* Download and extract the windows release from the latest release here: https://github.com/facebook/watchman/releases/tag/v2024.02.12.00
+* It will be named something like watchman-vYYYY.MM.DD.00-windows.zip
+* It contains a bin folder. Move that somewhere appropriate and update your PATH environment to reference that location.
+
+Installing via Chocolatey:
+
+Watchman is available via the Chocolatey Windows package manager. Installation is as simple as:
+
+PS C:\> choco install watchman
+
+for more information about Chocolatey:
+
+here: https://chocolatey.org/install
+
+for linux and MacOS goes to the next link.
+
+link: https://facebook.github.io/watchman/docs/install.
+
 ## License
 
 Watchman is made available under the terms of the MIT License. See the
