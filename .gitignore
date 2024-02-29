@@ -35,9 +35,10 @@ buck-cache
 /config.sub
 /config.guess
 /configure.lineno
-/python/build
-/python/dist/
+watchman/python/build
+watchman/python/dist/
 /watchman/python/pywatchman.egg-info/
+**/*.egg-info
 *.pyc
 *.pyd
 *.so
@@ -98,3 +99,4 @@ cppclient/watchmanclient.pc
 /external
 /common
 /eden
+wheelhouse
