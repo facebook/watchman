@@ -39,10 +39,10 @@ Review our **[Code of Conduct](https://github.com/facebook/watchman/blob/main/CO
 * Please adhere to the project's coding style guide (if available). 
 * Use consistent formatting throughout your code.
 
-**Licensing**
+## :exclamation: Licensing
 
 Contributions to Watchman are typically licensed under the [Project License (e.g., MIT, Apache License 2.0)]. Make sure you understand the license before submitting your contribution.
 
-## Thank You! :love:
+## :blue_heart: Thank You!
 
 We appreciate your interest in contributing to Watchman. Your contributions make the project better!
