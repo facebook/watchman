@@ -37,6 +37,10 @@ struct QueryResult {
   uint32_t stateTransCountAtStartOfQuery;
   std::optional<json_ref> savedStateInfo;
   QueryDebugInfo debugInfo;
+  /**
+   * True if the result has been truncated due to the `maximum_results` query option.
+   */
+  bool exceededMaximumResults = false;
 };
 
 } // namespace watchman

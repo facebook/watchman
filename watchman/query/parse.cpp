@@ -229,6 +229,13 @@ void parse_empty_on_fresh_instance(Query* res, const json_ref& query) {
       parse_bool_param(query, "empty_on_fresh_instance", false);
 }
 
+void parse_maximum_results(Query* res, const json_ref& query) {
+  auto maximum_results = query.get_optional("maximum_results");
+  if (maximum_results) {
+    res->maximum_results = parse_nonnegative_integer("maximum_results", maximum_results.value());
+  }
+}
+
 void parse_always_include_directories(Query* res, const json_ref& query) {
   res->alwaysIncludeDirectories =
       parse_bool_param(query, "always_include_directories", false);
@@ -274,6 +281,7 @@ std::shared_ptr<Query> parseQuery(
   parse_lock_timeout(res, query);
   parse_relative_root(root, res, query);
   parse_empty_on_fresh_instance(res, query);
+  parse_maximum_results(res, query);
   parse_fail_if_no_saved_state(res, query);
   parse_omit_changed_files(res, query);
   parse_always_include_directories(res, query);
@@ -333,6 +341,9 @@ void w_query_legacy_field_list(QueryFieldList* flist) {
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
+//
+// If the old format query has an object that object's fields are merged into the new style:
+// For example: `["since", "target", "spec", { "more_fields": "here" }]`
 std::shared_ptr<Query> parseQueryLegacy(
     const std::shared_ptr<Root>& root,
     const json_ref& args,
@@ -355,6 +366,14 @@ std::shared_ptr<Query> parseQueryLegacy(
   auto& args_array = args.array();
 
   for (i = start; i < args_array.size(); i++) {
+    if (args_array[i].isObject()) {
+      const auto& object = args_array[i];
+      for (const auto& entry : object.object()) {
+        query_obj.set(entry.first, json_ref(entry.second));
+      }
+      continue;
+    }
+
     const char* arg = json_string_value(args_array[i]);
     if (!arg) {
       /* not a string value! */
@@ -364,6 +383,10 @@ std::shared_ptr<Query> parseQueryLegacy(
   }
 
   for (i = start; i < json_array_size(args); i++) {
+    if (!args_array[i].isString()) {
+      continue;
+    }
+
     const char* arg = json_string_value(args_array[i]);
     if (!strcmp(arg, "--")) {
       i++;
