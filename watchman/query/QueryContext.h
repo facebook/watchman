@@ -69,6 +69,13 @@ struct QueryContext : QueryContextBase {
 
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
+  /**
+   * How many results were dropped due to `maximum_results` being exceeded.
+   *
+   * Note this may be at most 1 due to generators short-circuiting work once the limit
+   * is exceeded.
+   */
+  uint32_t num_results_over_maximum{0};
 
   // Disable fresh instance queries
   bool disableFreshInstance{false};

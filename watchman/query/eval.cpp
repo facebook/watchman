@@ -115,6 +115,13 @@ void w_query_process_file(
     }
   }
 
+  // Handle `Query::maximum_results` in order to avoid handling a huge list of results.
+  // Once this is exceeded, all work could stop.
+  if (ctx->query->maximum_results && ctx->resultsArray.size() >= ctx->query->maximum_results) {
+    ctx->num_results_over_maximum += 1;
+    return;
+  }
+
   ctx->maybeRender(std::move(ctx->file));
 }
 
@@ -225,6 +232,7 @@ static void execute_common(
     auto meta = json_object({
         {"fresh_instance", json_boolean(res->isFreshInstance)},
         {"num_deduped", json_integer(ctx->num_deduped)},
+        {"exceeded_maximum", json_boolean(ctx->num_results_over_maximum > 0)},
         {"num_results", json_integer(ctx->resultsArray.size())},
         {"num_walked", json_integer(ctx->getNumWalked())},
     });
@@ -237,6 +245,8 @@ static void execute_common(
 
   res->resultsArray = ctx->renderResults();
   res->dedupedFileNames = std::move(ctx->dedup);
+
+  res->exceededMaximumResults = ctx->num_results_over_maximum > 0;
 }
 
 // Capability indicating support for scm-aware since queries

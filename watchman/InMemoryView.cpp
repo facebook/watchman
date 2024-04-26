@@ -588,6 +588,10 @@ void InMemoryView::timeGenerator(const Query* query, QueryContext* ctx) const {
       continue;
     }
 
+    if (ctx->num_results_over_maximum > 0) {
+      continue;
+    }
+
     w_query_process_file(
         query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
   }
@@ -896,6 +900,10 @@ void InMemoryView::allFilesGenerator(const Query* query, QueryContext* ctx)
   for (f = view->getLatestFile(); f; f = f->next) {
     ctx->bumpNumWalked();
     if (!ctx->fileMatchesRelativeRoot(f)) {
+      continue;
+    }
+
+    if (ctx->num_results_over_maximum > 0) {
       continue;
     }
 

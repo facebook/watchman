@@ -45,6 +45,10 @@ static UntypedResponse cmd_since(Client* client, const json_ref& args) {
   if (res.savedStateInfo) {
     response.set("saved-state-info", std::move(*res.savedStateInfo));
   }
+  if (res.exceededMaximumResults) {
+    response.set("exceededMaximumResults", json_boolean(res.exceededMaximumResults));
+  }
+
 
   add_root_warnings_to_response(response, root);
   return response;

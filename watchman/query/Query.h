@@ -49,6 +49,16 @@ struct Query {
   uint32_t bench_iterations = 0;
 
   /**
+   * If provided, queries with more than `maximum_results` results will
+   * return an empty results list and a flag indicating the response
+   * has been truncated.
+   *
+   * This is similar to the `empty_on_fresh_instance` option, but for
+   * all back-ends and responses.
+   */
+  std::optional<uint32_t> maximum_results = std::nullopt;
+
+  /**
    * Optional full path to relative root, without and with trailing slash.
    */
   std::optional<w_string> relative_root;
