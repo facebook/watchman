@@ -5,15 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+use clap::Parser;
 use std::path::PathBuf;
-
-use structopt::StructOpt;
 use watchman_client::prelude::*;
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Exercise the state-enter and state-leave commands")]
-struct Opt {
-    #[structopt(default_value = ".")]
+/// Exercise the state-enter and state-leave commands
+#[derive(Debug, Parser)]
+struct Cli {
+    #[arg(default_value = ".")]
     path: PathBuf,
 }
 
@@ -28,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+    let opt = Cli::parse();
     let client = Connector::new().connect().await?;
     let resolved = client
         .resolve_root(CanonicalPath::canonicalize(opt.path)?)
