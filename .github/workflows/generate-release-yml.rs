@@ -26,6 +26,7 @@ use yaml_rust::Yaml;
 use yaml_rust::YamlEmitter;
 use yaml_rust::YamlLoader;
 
+
 type Pattern = Box<dyn Fn(&str, &str) -> String + 'static>;
 
 fn parse_pattern(pattern: &String) -> Option<(Pattern, Vec<&'static str>)> {
