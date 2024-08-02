@@ -136,6 +136,22 @@ const std::string& getTemporaryDirectory() {
   return tmpdir;
 }
 
+std::string computeXDGStateHomeDirectory() {
+    char* xdgStateHome = getenv("XDG_STATE_HOME");
+
+    if (!xdgStateHome || *xdgStateHome == 0) {
+        char* home = getenv("HOME");
+        return fmt::format("{}/.local/state", home);
+    }
+
+    return xdgStateHome;
+}
+
+const std::string& getXDGStateHomeDirectory() {
+    static std::string xdgStateHome = computeXDGStateHomeDirectory();
+    return xdgStateHome;
+}
+
 std::string computeWatchmanStateDirectory(const std::string& user) {
   if (!flags.test_state_dir.empty()) {
     return fmt::format("{}/{}-state", flags.test_state_dir, user);
@@ -145,7 +161,9 @@ std::string computeWatchmanStateDirectory(const std::string& user) {
   return getCachedWatchmanAppDataPath();
 #else
   auto state_parent =
-#ifdef WATCHMAN_STATE_DIR
+#if defined(WATCHMAN_USE_XDG_STATE_HOME)
+      fmt::format("{}/watchman", getXDGStateHomeDirectory())
+#elif defined(WATCHMAN_STATE_DIR)
       WATCHMAN_STATE_DIR
 #else
       getTemporaryDirectory().c_str()
