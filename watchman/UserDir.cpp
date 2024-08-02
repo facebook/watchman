@@ -9,6 +9,8 @@
 #include <eden/common/utils/StringConv.h>
 #include <fmt/core.h>
 #include <folly/String.h>
+#include <pwd.h>
+#include <unistd.h>
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
 #include "watchman/fs/FileSystem.h"
@@ -131,6 +133,32 @@ std::string computeUserName() {
   throw std::logic_error("unreachable");
 }
 
+std::string computeHomeDirectory() {
+    const char* homeDir = getenv("HOME");
+
+    if (!homeDir || *homeDir == 0) {
+        uid_t uid = getuid();
+        struct passwd* pw = getpwuid(uid);
+
+        if (!pw) {
+            log(FATAL,
+                "getpwuid(",
+                uid,
+                ") failed: ",
+                folly::errnoStr(errno),
+                ".  I don't know who you are\n");
+        }
+        homeDir = pw->pw_dir;
+    }
+
+    return homeDir;
+}
+
+const std::string& getHomeDirectory() {
+    static std::string homeDir = computeHomeDirectory();
+    return homeDir;
+}
+
 const std::string& getTemporaryDirectory() {
   static std::string tmpdir = computeTemporaryDirectory();
   return tmpdir;
@@ -140,8 +168,7 @@ std::string computeXDGStateHomeDirectory() {
     char* xdgStateHome = getenv("XDG_STATE_HOME");
 
     if (!xdgStateHome || *xdgStateHome == 0) {
-        char* home = getenv("HOME");
-        return fmt::format("{}/.local/state", home);
+        return fmt::format("{}/.local/state", getHomeDirectory());
     }
 
     return xdgStateHome;
