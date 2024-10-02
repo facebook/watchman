@@ -14,7 +14,7 @@ import java.util.Map;
 public interface Deserializer {
 
   /**
-   * Reads the next object from the InputSteram, blocking until it becomes available.
+   * Reads the next object from the InputStream, blocking until it becomes available.
    * @param stream the stream to read from
    * @return a deserialized object, read from the stream
    */

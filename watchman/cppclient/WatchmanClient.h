@@ -9,7 +9,7 @@
 
 /* A C++ client library for accessing Watchman. This builds on top of
  * WatchmanConnection to provide a C++ friendly subscription API and maybe
- * later other convienence functions. The entry point for this API is via
+ * later other convenience functions. The entry point for this API is via
  * the WatchmanClient type.
  *
  * Example usage:

@@ -74,13 +74,13 @@ class ParallelWalker final {
   /**
    * Obtain the next ReadDirResult. Might block.
    *
-   * Parent directory is guarnateed to be provided before child directories.
+   * Parent directory is guaranteed to be provided before child directories.
    * After completion, always return nullopt without blocking.
    */
   std::optional<ReadDirResult> nextResult();
 
   /**
-   * Obtain an occured error. Might block.
+   * Obtain an occurred error. Might block.
    *
    * After completion, always return nullopt without blocking.
    */
@@ -91,7 +91,7 @@ class ParallelWalker final {
    *
    * Existing tasks will still run to completion but new tasks will exit
    * immediately without spawning tasks for subdirectories.
-   * context_ will be dropped after completeing all tasks.
+   * context_ will be dropped after completing all tasks.
    */
   ~ParallelWalker();
 
