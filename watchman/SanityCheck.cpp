@@ -20,7 +20,7 @@
 namespace watchman {
 namespace {
 
-// Work-around decodeNext which implictly resets to non-blocking
+// Work-around decodeNext which implicitly resets to non-blocking
 std::optional<json_ref>
 decodeNext(watchman_stream* client, PduBuffer& buf, json_error_t& jerr) {
   client->setNonBlock(false);
