@@ -9,6 +9,8 @@
 #include <eden/common/utils/StringConv.h>
 #include <fmt/core.h>
 #include <folly/String.h>
+#include <pwd.h>
+#include <unistd.h>
 #include "watchman/Logging.h"
 #include "watchman/Options.h"
 #include "watchman/fs/FileSystem.h"
@@ -131,9 +133,50 @@ std::string computeUserName() {
   throw std::logic_error("unreachable");
 }
 
+std::string computeHomeDirectory() {
+    const char* homeDir = getenv("HOME");
+
+    if (!homeDir || *homeDir == 0) {
+        uid_t uid = getuid();
+        struct passwd* pw = getpwuid(uid);
+
+        if (!pw) {
+            log(FATAL,
+                "getpwuid(",
+                uid,
+                ") failed: ",
+                folly::errnoStr(errno),
+                ".  I don't know who you are\n");
+        }
+        homeDir = pw->pw_dir;
+    }
+
+    return homeDir;
+}
+
+const std::string& getHomeDirectory() {
+    static std::string homeDir = computeHomeDirectory();
+    return homeDir;
+}
+
 const std::string& getTemporaryDirectory() {
   static std::string tmpdir = computeTemporaryDirectory();
   return tmpdir;
+}
+
+std::string computeXDGStateHomeDirectory() {
+    char* xdgStateHome = getenv("XDG_STATE_HOME");
+
+    if (!xdgStateHome || *xdgStateHome == 0) {
+        return fmt::format("{}/.local/state", getHomeDirectory());
+    }
+
+    return xdgStateHome;
+}
+
+const std::string& getXDGStateHomeDirectory() {
+    static std::string xdgStateHome = computeXDGStateHomeDirectory();
+    return xdgStateHome;
 }
 
 std::string computeWatchmanStateDirectory(const std::string& user) {
@@ -145,7 +188,9 @@ std::string computeWatchmanStateDirectory(const std::string& user) {
   return getCachedWatchmanAppDataPath();
 #else
   auto state_parent =
-#ifdef WATCHMAN_STATE_DIR
+#if defined(WATCHMAN_USE_XDG_STATE_HOME)
+      fmt::format("{}/watchman", getXDGStateHomeDirectory())
+#elif defined(WATCHMAN_STATE_DIR)
       WATCHMAN_STATE_DIR
 #else
       getTemporaryDirectory().c_str()
