@@ -369,7 +369,7 @@ jobs:
   mac-build:
     continue-on-error: true
     needs: prepare
-    runs-on: macOS-10.15
+    runs-on: macOS-11
     steps:
       - uses: actions/checkout@v4
       - name: Build watchman
