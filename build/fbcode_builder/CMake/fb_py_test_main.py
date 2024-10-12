@@ -545,12 +545,12 @@ class MainProgram(object):
         op.add_option(
             "--coverage-include",
             default="*",
-            help='File globs to include in converage (split by ",")',
+            help='File globs to include in coverage (split by ",")',
         )
         op.add_option(
             "--coverage-omit",
             default="",
-            help='File globs to omit from converage (split by ",")',
+            help='File globs to omit from coverage (split by ",")',
         )
         op.add_option(
             "--logger",
