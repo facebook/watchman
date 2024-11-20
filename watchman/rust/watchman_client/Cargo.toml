@@ -12,7 +12,7 @@ exclude = ["examples/*"]
 [dependencies]
 anyhow = "1.0"
 bytes = { version = "1.0", features = ["serde"] }
-futures = { version = "0.3.13", features = ["async-await", "compat"] }
+futures = { version = "0.3.13", features = ["async-await"] }
 maplit = "1.0"
 serde = { version = "1.0.126", features = ["derive", "rc"] }
 serde_bser = { version = "0.4", path = "../serde_bser" }
