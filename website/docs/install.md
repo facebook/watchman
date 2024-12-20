@@ -41,6 +41,21 @@ If you encounter issues with the Windows version of watchman, please report them
 via GitHub!
 [You can find the list of known Windows issues here](https://github.com/facebook/watchman/issues?utf8=%E2%9C%93&q=is%3Aopen+Windows).
 
+### Installing via WinGet
+
+Watchman is available via the [Windows Package
+Manager](https://learn.microsoft.com/en-us/windows/package-manager/), also known
+as WinGet.
+
+```powershell
+PS C:\> winget install facebook.watchman
+```
+
+The package is maintained by the community rather than by Meta, so if you
+experience issues with installation or uninstallation, you should [contact the
+package maintainers](https://github.com/microsoft/winget-pkgs/issues) for
+assistance.
+
 ### Installing via Chocolatey
 
 Watchman is available via the
