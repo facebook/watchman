@@ -6,7 +6,9 @@ sidebar_position: 7
 
 Watchman looks for configuration files in two places:
 
-- The global configuration file `/etc/watchman.json`
+- The global configuration file
+  - Unix-like systems: `/etc/watchman.json`
+  - Windows: `%ProgramData%\facebook\watchman.json`
 - The root specific configuration file `.watchmanconfig`
 
 When watching a root, if a valid JSON file named `.watchmanconfig` is present in
