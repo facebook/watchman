@@ -20,6 +20,7 @@ folly
 pcre2
 googletest
 python-setuptools
+openssl
 
 [dependencies.fbsource=on]
 rust
