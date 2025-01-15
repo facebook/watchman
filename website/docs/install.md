@@ -7,9 +7,9 @@ category: Installation
 
 Watchman is known to compile and pass its test suite on:
 
-- <i class="fa fa-linux"></i> Linux systems with `inotify`
-- <i class="fa fa-apple"></i> macOS (uses `FSEvents` on 10.7+, `kqueue(2)` on
-  earlier versions)
+- <i class="fa fa-linux"></i> Linux systems with <code>inotify</code>
+- <i class="fa fa-apple"></i> macOS (uses <code>FSEvents</code> on 10.7+,
+  <code>kqueue(2)</code> on earlier versions)
 - <i class="fa fa-windows"></i> Windows 10 (64-bit) and up. Windows 7 support is
   provided by community patches
 
