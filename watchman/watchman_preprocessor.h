@@ -1,5 +1,10 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
 // Helpers for pasting __LINE__ for symbol generation
@@ -7,7 +12,14 @@
 #define w_paste1(pre, post) w_paste2(pre, post)
 #define w_gen_symbol(pre) w_paste1(pre, __LINE__)
 
-#ifndef WATCHMAN_FMT_STRING
+#if _MSC_VER >= 1400
+#include <sal.h> // @manual
+#if _MSC_VER > 1400
+#define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
+#else
+#define WATCHMAN_FMT_STRING(x) __format_string x
+#endif
+#else
 #define WATCHMAN_FMT_STRING(x) x
 #endif
 

@@ -1,16 +1,27 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include "watchman/state.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include "watchman/Errors.h"
 #include "watchman/Logging.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/Options.h"
+#include "watchman/PDU.h"
+#include "watchman/QueryableView.h"
+#include "watchman/Shutdown.h"
+#include "watchman/TriggerCommand.h"
+#include "watchman/root/Root.h"
+#include "watchman/root/resolve.h"
+#include "watchman/root/watchlist.h"
+#include "watchman/saved_state/SavedStateFactory.h"
+#include "watchman/watchman_stream.h"
 
 using namespace watchman;
-
-std::string watchman_state_file;
-int dont_save_state = 0;
 
 /** The state saving thread is responsible for writing out the
  * persistent information about the users watches.
@@ -55,7 +66,7 @@ static void state_saver() noexcept {
 }
 
 void w_state_shutdown() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return;
   }
 
@@ -64,15 +75,15 @@ void w_state_shutdown() {
 }
 
 bool w_state_load() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return true;
   }
 
   state_saver_thread = std::thread(state_saver);
 
-  json_ref state;
+  std::optional<json_ref> state;
   try {
-    state = json_load_file(watchman_state_file.c_str(), 0);
+    state = json_load_file(flags.watchman_state_file.c_str(), 0);
   } catch (const std::system_error& exc) {
     if (exc.code() == watchman::error_code::no_such_file_or_directory) {
       // No need to alarm anyone if we've never written a state file
@@ -81,81 +92,36 @@ bool w_state_load() {
     logf(
         ERR,
         "failed to load json from {}: {}\n",
-        watchman_state_file,
+        flags.watchman_state_file,
         folly::exceptionStr(exc).toStdString());
     return false;
   } catch (const std::exception& exc) {
     logf(
         ERR,
         "failed to parse json from {}: {}\n",
-        watchman_state_file,
+        flags.watchman_state_file,
         folly::exceptionStr(exc).toStdString());
     return false;
   }
 
-  if (!w_root_load_state(state)) {
+  if (!w_root_load_state(state.value())) {
     return false;
   }
 
   return true;
 }
 
-#if defined(HAVE_MKOSTEMP) && defined(sun)
-// Not guaranteed to be defined in stdlib.h
-extern int mkostemp(char*, int);
-#endif
-
-std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
-#if defined(_WIN32)
-  char* name = _mktemp(templ);
-  if (!name) {
-    return nullptr;
-  }
-  // Most annoying aspect of windows is the latency around
-  // file handle exclusivity.  We could avoid this dumb loop
-  // by implementing our own mkostemp, but this is the most
-  // expedient option for the moment.
-  for (size_t attempts = 0; attempts < 10; ++attempts) {
-    auto stm = w_stm_open(name, O_RDWR | O_CLOEXEC | O_CREAT | O_TRUNC, 0600);
-    if (stm) {
-      return stm;
-    }
-    if (errno == EACCES) {
-      /* sleep override */ std::this_thread::sleep_for(
-          std::chrono::microseconds(2000));
-      continue;
-    }
-    return nullptr;
-  }
-  return nullptr;
-#else
-  FileDescriptor fd;
-#ifdef HAVE_MKOSTEMP
-  fd = FileDescriptor(
-      mkostemp(templ, O_CLOEXEC), FileDescriptor::FDType::Generic);
-#else
-  fd = FileDescriptor(mkstemp(templ), FileDescriptor::FDType::Generic);
-#endif
-  if (!fd) {
-    return nullptr;
-  }
-  fd.setCloExec();
-
-  return w_stm_fdopen(std::move(fd));
-#endif
-}
-
 static bool do_state_save() {
-  w_jbuffer_t buffer;
+  PduBuffer buffer;
 
   auto state = json_object();
 
   auto file = w_stm_open(
-      watchman_state_file.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0600);
+      flags.watchman_state_file.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0600);
   if (!file) {
     log(ERR,
         "save_state: unable to open ",
-        watchman_state_file,
+        flags.watchman_state_file,
         " for write: ",
         folly::errnoStr(errno),
         "\n");
@@ -177,12 +143,119 @@ static bool do_state_save() {
 /** Arranges for the state to be saved.
  * Does not immediately save the state. */
 void w_state_save() {
-  if (dont_save_state) {
+  if (flags.dont_save_state) {
     return;
   }
 
   saveState.lock()->needsSave = true;
   stateCond.notify_one();
+}
+
+bool w_root_save_state(json_ref& state) {
+  bool result = true;
+
+  std::vector<json_ref> watched_dirs;
+
+  logf(DBG, "saving state\n");
+
+  {
+    auto map = watched_roots.rlock();
+    for (const auto& it : *map) {
+      auto root = it.second;
+
+      auto obj = json_object();
+
+      json_object_set_new(obj, "path", w_string_to_json(root->root_path));
+
+      auto triggers = root->triggerListToJson();
+      json_object_set_new(obj, "triggers", std::move(triggers));
+
+      watched_dirs.push_back(std::move(obj));
+    }
+  }
+
+  json_object_set_new(state, "watched", json_array(std::move(watched_dirs)));
+
+  return result;
+}
+
+bool w_root_load_state(const json_ref& state) {
+  size_t i;
+
+  auto watched = state.get_optional("watched");
+  if (!watched) {
+    return true;
+  }
+
+  if (!watched->isArray()) {
+    return false;
+  }
+
+  for (i = 0; i < json_array_size(*watched); i++) {
+    const auto& obj = watched->at(i);
+    bool created = false;
+    size_t j;
+
+    auto triggers = obj.get("triggers");
+    auto path = json_object_get(obj, "path");
+    const char* filename = path ? json_string_value(*path) : nullptr;
+
+    std::shared_ptr<Root> root;
+    try {
+      root = root_resolve(filename, true, &created);
+    } catch (const std::exception&) {
+      continue;
+    }
+
+    {
+      auto wlock = root->triggers.wlock();
+      auto& map = *wlock;
+
+      /* re-create the trigger configuration */
+      for (j = 0; j < json_array_size(triggers); j++) {
+        const auto& tobj = triggers.at(j);
+
+        // Legacy rules format
+        auto rarray = tobj.get_optional("rules");
+        if (rarray) {
+          continue;
+        }
+
+        try {
+          auto cmd = std::make_unique<TriggerCommand>(getInterface, root, tobj);
+          cmd->start(root);
+          auto& mapEntry = map[cmd->triggername];
+          mapEntry = std::move(cmd);
+        } catch (const std::exception& exc) {
+          watchman::log(
+              watchman::ERR,
+              "loading trigger for ",
+              root->root_path,
+              ": ",
+              exc.what(),
+              "\n");
+        }
+      }
+    }
+
+    if (created) {
+      try {
+        root->view()->startThreads(root);
+      } catch (const std::exception& e) {
+        watchman::log(
+            watchman::ERR,
+            "root_start(",
+            root->root_path,
+            ") failed: ",
+            e.what(),
+            "\n");
+        root->cancel(
+            fmt::format("Error starting threads for root: {}", e.what()));
+      }
+    }
+  }
+
+  return true;
 }
 
 /* vim:ts=2:sw=2:et:

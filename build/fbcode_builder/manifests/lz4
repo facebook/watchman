@@ -1,12 +1,20 @@
 [manifest]
 name = lz4
 
+[homebrew]
+lz4
+
 [rpms]
 lz4-devel
+# centos 8 and centos_stream 9 are missing this rpm
+[rpms.not(any(all(distro=centos,distro_vers=8),all(distro=centos_stream,distro_vers=9)))]
 lz4-static
 
 [debs]
 liblz4-dev
+
+[pps]
+lz4
 
 [download]
 url = https://github.com/lz4/lz4/archive/v1.8.3.tar.gz

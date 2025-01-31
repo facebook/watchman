@@ -1,30 +1,26 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
 
 import os
 import select
 import subprocess
 import sys
 
+from shlex import quote as shellquote
+
 from .envfuncs import Env
 from .platform import is_windows
-
-
-try:
-    from shlex import quote as shellquote
-except ImportError:
-    from pipes import quote as shellquote
 
 
 class RunCommandError(Exception):
     pass
 
 
-def _print_env_diff(env, log_fn):
+def _print_env_diff(env, log_fn) -> None:
     current_keys = set(os.environ.keys())
     wanted_env = set(env.keys())
 
@@ -46,7 +42,7 @@ def _print_env_diff(env, log_fn):
             log_fn("+ %s=%s \\\n" % (k, shellquote(env[k])))
 
 
-def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
+def run_cmd(cmd, env=None, cwd=None, allow_fail: bool = False, log_file=None) -> int:
     def log_to_stdout(msg):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
 
@@ -66,7 +62,7 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
         )
 
 
-def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
+def _run_cmd(cmd, env, cwd, allow_fail, log_fn) -> int:
     log_fn("---\n")
     try:
         cmd_str = " \\\n+      ".join(shellquote(arg) for arg in cmd)
@@ -147,7 +143,6 @@ if hasattr(select, "poll"):
             if not isinstance(data, str):
                 data = data.decode("utf-8", errors="surrogateescape")
             log_fn(data)
-
 
 else:
 

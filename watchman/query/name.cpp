@@ -1,8 +1,20 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
-using watchman::CaseSensitivity;
+#include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/GlobEscaping.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/QueryExpr.h"
+#include "watchman/query/TermRegistry.h"
+
+#include <unordered_set>
+
+using namespace watchman;
 
 class NameExpr : public QueryExpr {
   w_string name;
@@ -18,13 +30,13 @@ class NameExpr : public QueryExpr {
         wholename(wholename) {}
 
  public:
-  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     if (!set.empty()) {
       bool matched;
       w_string str;
 
       if (wholename) {
-        str = w_query_ctx_get_wholename(ctx);
+        str = ctx->getWholeName();
         if (caseSensitive == CaseSensitivity::CaseInSensitive) {
           str = str.piece().asLowerCase();
         }
@@ -42,7 +54,7 @@ class NameExpr : public QueryExpr {
     w_string_piece str;
 
     if (wholename) {
-      str = w_query_ctx_get_wholename(ctx);
+      str = ctx->getWholeName();
     } else {
       str = file->baseName();
     }
@@ -54,53 +66,51 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
+  parse(Query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *pattern = nullptr, *scope = "basename";
     const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "iname" : "name";
     std::unordered_set<w_string> set;
 
     if (!term.isArray()) {
-      throw QueryParseError("Expected array for '", which, "' term");
+      QueryParseError::throwf("Expected array for '{}' term", which);
     }
 
     if (json_array_size(term) > 3) {
-      throw QueryParseError(
-          "Invalid number of arguments for '", which, "' term");
+      QueryParseError::throwf(
+          "Invalid number of arguments for '{}' term", which);
     }
 
     if (json_array_size(term) == 3) {
       const auto& jscope = term.at(2);
       if (!jscope.isString()) {
-        throw QueryParseError("Argument 3 to '", which, "' must be a string");
+        QueryParseError::throwf("Argument 3 to '{}' must be a string", which);
       }
 
       scope = json_string_value(jscope);
 
       if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-        throw QueryParseError(
-            "Invalid scope '", scope, "' for ", which, " expression");
+        QueryParseError::throwf(
+            "Invalid scope '{}' for {} expression", scope, which);
       }
     }
 
     const auto& name = term.at(1);
 
     if (name.isArray()) {
-      uint32_t i;
+      const auto& name_array = name.array();
 
-      for (i = 0; i < json_array_size(name); i++) {
-        if (!json_array_get(name, i).isString()) {
-          throw QueryParseError(
-              "Argument 2 to '",
-              which,
-              "' must be either a string or an array of string");
+      for (const auto& ele : name_array) {
+        if (!ele.isString()) {
+          QueryParseError::throwf(
+              "Argument 2 to '{}' must be either a string or an array of string",
+              which);
         }
       }
 
-      set.reserve(json_array_size(name));
-      for (i = 0; i < json_array_size(name); i++) {
+      set.reserve(name_array.size());
+      for (const auto& jele : name_array) {
         w_string element;
-        const auto& jele = name.at(i);
         auto ele = json_to_w_string(jele);
 
         if (caseSensitive == CaseSensitivity::CaseInSensitive) {
@@ -115,10 +125,9 @@ class NameExpr : public QueryExpr {
     } else if (name.isString()) {
       pattern = json_string_value(name);
     } else {
-      throw QueryParseError(
-          "Argument 2 to '",
-          which,
-          "' must be either a string or an array of string");
+      QueryParseError::throwf(
+          "Argument 2 to '{}' must be either a string or an array of string",
+          which);
     }
 
     auto data = new NameExpr(
@@ -132,19 +141,63 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parseName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIName(
-      w_query* query,
+      Query* query,
       const json_ref& term) {
     return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
+
+  std::optional<std::vector<std::string>> computeGlobUpperBound(
+      CaseSensitivity outputCaseSensitive) const override {
+    if (caseSensitive == CaseSensitivity::CaseInSensitive &&
+        outputCaseSensitive != CaseSensitivity::CaseInSensitive) {
+      // The caller asked for a case-sensitive upper bound, so treat iname as
+      // unbounded.
+      return std::nullopt;
+    }
+    if (!wholename) {
+      // basename matches don't bound the prefix, so they're not very useful.
+      return std::nullopt;
+    }
+    std::unordered_set<std::string> globUpperBound;
+    if (!set.empty()) {
+      for (const auto& s : set) {
+        w_string outputPattern = convertLiteralPathToGlob(s);
+        if (outputCaseSensitive == CaseSensitivity::CaseInSensitive) {
+          outputPattern = outputPattern.piece().asLowerCase();
+        }
+        globUpperBound.insert(outputPattern.string());
+      }
+    } else {
+      w_string outputPattern = convertLiteralPathToGlob(name);
+      if (outputCaseSensitive == CaseSensitivity::CaseInSensitive) {
+        outputPattern = outputPattern.piece().asLowerCase();
+      }
+      globUpperBound.insert(outputPattern.string());
+    }
+    return std::vector<std::string>(
+        globUpperBound.begin(), globUpperBound.end());
+  }
+
+  ReturnOnlyFiles listOnlyFiles() const override {
+    return ReturnOnlyFiles::Unrelated;
+  }
+
+  SimpleSuffixType evaluateSimpleSuffix() const override {
+    return SimpleSuffixType::Excluded;
+  }
+
+  std::vector<std::string> getSuffixQueryGlobPatterns() const override {
+    return std::vector<std::string>{};
+  }
 };
 
-W_TERM_PARSER("name", NameExpr::parseName)
-W_TERM_PARSER("iname", NameExpr::parseIName)
+W_TERM_PARSER(name, NameExpr::parseName);
+W_TERM_PARSER(iname, NameExpr::parseIName);
 
 /* vim:ts=2:sw=2:et:
  */

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-present Facebook. All Rights Reserved.
+# Copyright (c) Meta Platforms, Inc. All Rights Reserved.
 
 require 'rubygems'
 require 'rake/clean'

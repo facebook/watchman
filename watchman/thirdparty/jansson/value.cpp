@@ -13,56 +13,78 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fmt/core.h>
 #include <string>
+#include <sstream>
 
-#include "watchman/watchman_string.h"
 #include "utf.h"
+#include "watchman/watchman_string.h"
 
-json_ref::json_ref() : ref_(nullptr) {}
-json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
+namespace {
 
-json_ref::json_ref(json_t* ref, bool addRef) : ref_(ref) {
-  if (addRef && ref_) {
-    incref(ref_);
+const char* getTypeName(json_type t) {
+  switch (t) {
+    case JSON_OBJECT:
+      return "object";
+    case JSON_ARRAY:
+      return "array";
+    case JSON_STRING:
+      return "string";
+    case JSON_INTEGER:
+      return "integer";
+    case JSON_REAL:
+      return "real";
+    case JSON_TRUE:
+      return "true";
+    case JSON_FALSE:
+      return "false";
+    case JSON_NULL:
+      return "null";
   }
+  return "<unknown>";
 }
+
+static json_t the_null{JSON_NULL, json_t::SingletonHack()};
+static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
+static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
+
+} // namespace
 
 json_ref::~json_ref() {
-  reset();
+  decref();
 }
 
-void json_ref::reset(json_t* ref) {
-  if (ref_ == ref) {
-    return;
-  }
+void json_ref::reset() {
+  decref();
 
-  if (ref_) {
-    decref(ref_);
-  }
+  ref_ = &the_null;
 
-  ref_ = ref;
-
-  if (ref_) {
-    incref(ref_);
-  }
+  // No-op, but leave in for clarity. Shouldn't matter.
+  incref();
 }
 
-json_ref::json_ref(const json_ref& other) : ref_(nullptr) {
-  reset(other.ref_);
+json_ref::json_ref(const json_ref& other) : ref_(other.ref_) {
+  incref();
 }
 
 json_ref& json_ref::operator=(const json_ref& other) {
-  reset(other.ref_);
+  if (ref_ != other.ref_) {
+    decref();
+    ref_ = other.ref_;
+    incref();
+  }
   return *this;
 }
 
 json_ref::json_ref(json_ref&& other) noexcept : ref_(other.ref_) {
-  other.ref_ = nullptr;
+  other.ref_ = &the_null;
 }
 
 json_ref& json_ref::operator=(json_ref&& other) noexcept {
-  reset();
-  std::swap(ref_, other.ref_);
+  if (ref_ != other.ref_) {
+    decref();
+    ref_ = std::exchange(other.ref_, &the_null);
+  }
   return *this;
 }
 
@@ -71,6 +93,72 @@ json_t::json_t(json_type type) : type(type), refcount(1) {}
 json_t::json_t(json_type type, json_t::SingletonHack&&)
     : type(type), refcount(-1) {}
 
+const w_string& json_ref::asString() const {
+  if (!isString()) {
+    throw std::domain_error(
+        fmt::format("json_ref expected string, got {}", getTypeName(type())));
+  }
+  return json_to_string(ref_)->value;
+}
+
+std::optional<w_string> json_ref::asOptionalString() const {
+  if (!isString()) {
+    return std::nullopt;
+  }
+  return json_to_string(ref_)->value;
+}
+
+std::string json_ref::toString() const {
+  switch (this->type()) {
+    case JSON_OBJECT:
+    {
+      std::stringstream ss;
+      const auto& obj = this->object();
+      ss << "{";
+      for (auto itr = obj.begin(); itr != obj.end(); itr++) {
+        ss << itr->first.c_str() << ":" << itr->second.toString() << ",";
+      }
+      if (obj.size() > 0) {
+        // remove last comma
+        ss.seekp(-1, std::ios_base::end);
+      }
+      ss << "}";
+      return ss.str();
+    }
+    case JSON_ARRAY:
+    {
+      std::stringstream ss;
+      const auto& arr = this->array();
+      ss << "[";
+      for (const auto& elem: arr) {
+        ss << elem.toString() << ",";
+      }
+      if (arr.size() > 0) {
+        // remove last comma
+        ss.seekp(-1, std::ios_base::end);
+      }
+      ss << "]";
+      return ss.str();
+    }
+    case JSON_STRING:
+      return fmt::format("\"{}\"", json_string_value(*this));
+    case JSON_INTEGER:
+    case JSON_REAL:
+      return std::to_string(json_number_value(*this));
+    case JSON_TRUE:
+      return "true";
+    case JSON_FALSE:
+      return "false";
+    case JSON_NULL:
+      return "null";
+  }
+  return std::string();
+}
+
+const char* json_ref::asCString() const {
+  return asString().c_str();
+}
+
 bool json_ref::asBool() const {
   switch (type()) {
     case JSON_TRUE:
@@ -78,58 +166,49 @@ bool json_ref::asBool() const {
     case JSON_FALSE:
       return false;
     default:
-      throw std::domain_error("asBool called on non-boolean");
+      throw std::domain_error(
+          fmt::format("asBool called on non-boolean: {}", getTypeName(type())));
   }
 }
 
 /*** object ***/
 
 const std::unordered_map<w_string, json_ref>& json_ref::object() const {
-  if (!json_is_object(ref_)) {
+  if (type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::object() called for non-object");
   }
   return json_to_object(ref_)->map;
 }
 
-std::unordered_map<w_string, json_ref>& json_ref::object() {
-  if (!json_is_object(ref_)) {
-    throw std::domain_error("json_ref::object() called for non-object");
-  }
-  return json_to_object(ref_)->map;
-}
+json_object_t::json_object_t(std::unordered_map<w_string, json_ref> values)
+    : json_t{JSON_OBJECT}, map{std::move(values)} {}
 
-json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT) {
-  map.reserve(sizeHint);
-}
-
-json_ref json_object_of_size(size_t size) {
-  auto object = new json_object_t(size);
-  return json_ref(&object->json, false);
+json_ref json_object(std::unordered_map<w_string, json_ref> values) {
+  return json_ref::takeOwnership(new json_object_t(std::move(values)));
 }
 
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values) {
-  auto object = json_object_of_size(values.size());
-  auto& map = json_to_object(object)->map;
+  std::unordered_map<w_string, json_ref> object;
+  object.reserve(values.size());
+
   for (auto& it : values) {
-    map.emplace(w_string(it.first, W_STRING_UNICODE), it.second);
+    object.emplace(w_string{it.first, W_STRING_UNICODE}, it.second);
   }
 
-  return object;
+  return json_object(std::move(object));
 }
 
-json_ref json_object(void) {
-  return json_object_of_size(0);
+json_ref json_object() {
+  return json_ref::takeOwnership(new json_object_t{{}});
 }
 
-size_t json_object_size(const json_t* json) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
+size_t json_object_size(const json_ref& json) {
+  if (!json.isObject()) {
     return 0;
+  }
 
-  object = json_to_object(json);
-  return object->map.size();
+  return json_to_object(json.get())->map.size();
 }
 
 typename std::unordered_map<w_string, json_ref>::iterator
@@ -138,8 +217,20 @@ json_object_t::findCString(const char* key) {
   return map.find(key_string);
 }
 
+json_ref json_ref::get_default(const char* key, json_ref defval) const {
+  if (type() != JSON_OBJECT) {
+    return defval;
+  }
+  auto object = json_to_object(ref_);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    return defval;
+  }
+  return it->second;
+}
+
 const json_ref& json_ref::get(const char* key) const {
-  if (!json_is_object(ref_)) {
+  if (type() != JSON_OBJECT) {
     throw std::domain_error("json_ref::get called on a non object type");
   }
   auto object = json_to_object(ref_);
@@ -151,53 +242,51 @@ const json_ref& json_ref::get(const char* key) const {
   return it->second;
 }
 
-json_ref json_ref::get_default(const char* key, json_ref defval) const {
-  if (!json_is_object(ref_)) {
-    return defval;
+std::optional<json_ref> json_ref::get_optional(const char* key) const {
+  if (type() != JSON_OBJECT) {
+    return std::nullopt;
   }
+
   auto object = json_to_object(ref_);
   auto it = object->findCString(key);
   if (it == object->map.end()) {
-    return defval;
+    return std::nullopt;
   }
   return it->second;
 }
 
-json_t* json_object_get(const json_t* json, const char* key) {
-  json_object_t* object;
+std::optional<json_ref> json_object_get(const json_ref& json, const char* key) {
+  if (!json.isObject()) {
+    return std::nullopt;
+  }
 
-  if (!json_is_object(json))
-    return NULL;
-
-  object = json_to_object(json);
+  auto* object = json_to_object(json.get());
   auto it = object->findCString(key);
   if (it == object->map.end()) {
-    return nullptr;
+    return std::nullopt;
   }
   return it->second;
 }
 
 int json_object_set_new_nocheck(
-    json_t* json,
+    const json_ref& json,
     const char* key,
     json_ref&& value) {
-  json_object_t* object;
-
-  if (!value)
-    return -1;
-
-  if (!key || !json_is_object(json) || json == value) {
+  if (!json.isObject()) {
     return -1;
   }
-  object = json_to_object(json);
 
-  w_string key_string(key);
-  object->map[key_string] = std::move(value);
+  if (!key || json.get() == value.get()) {
+    return -1;
+  }
+  auto* object = json_to_object(json.get());
+
+  object->map.insert_or_assign(w_string{key}, std::move(value));
   return 0;
 }
 
 void json_ref::set(const w_string& key, json_ref&& val) {
-  json_to_object(ref_)->map[key] = std::move(val);
+  json_to_object(ref_)->map.insert_or_assign(key, std::move(val));
 }
 
 void json_ref::set(const char* key, json_ref&& val) {
@@ -208,11 +297,13 @@ void json_ref::set(const char* key, json_ref&& val) {
   w_assert(json_is_object(ref_), "json_ref::set called for non object type");
 #endif
 
-  w_string key_string(key);
-  json_to_object(ref_)->map[key_string] = std::move(val);
+  json_to_object(ref_)->map.insert_or_assign(w_string{key}, std::move(val));
 }
 
-int json_object_set_new(json_t* json, const char* key, json_ref&& value) {
+int json_object_set_new(
+    const json_ref& json,
+    const char* key,
+    json_ref&& value) {
   if (!key || !utf8_check_string(key, -1)) {
     return -1;
   }
@@ -220,81 +311,12 @@ int json_object_set_new(json_t* json, const char* key, json_ref&& value) {
   return json_object_set_new_nocheck(json, key, std::move(value));
 }
 
-int json_object_del(json_t* json, const char* key) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
-    return -1;
-
-  object = json_to_object(json);
-  auto it = object->findCString(key);
-  if (it == object->map.end()) {
-    return -1;
-  }
-  object->map.erase(it);
-  return 0;
-}
-
-int json_object_clear(json_t* json) {
-  json_object_t* object;
-
-  if (!json_is_object(json))
-    return -1;
-
-  object = json_to_object(json);
-  object->map.clear();
-
-  return 0;
-}
-
-int json_object_update(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    target_obj->map[it.first] = it.second;
-  }
-
-  return 0;
-}
-
-int json_object_update_existing(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    auto find = target_obj->map.find(it.first);
-    if (find != target_obj->map.end()) {
-      target_obj->map[it.first] = it.second;
-    }
-  }
-
-  return 0;
-}
-
-int json_object_update_missing(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(target))
-    return -1;
-
-  auto target_obj = json_to_object(target);
-  for (auto& it : json_to_object(src)->map) {
-    auto find = target_obj->map.find(it.first);
-    if (find == target_obj->map.end()) {
-      target_obj->map[it.first] = it.second;
-    }
-  }
-
-  return 0;
-}
-
-static int json_object_equal(json_t* object1, json_t* object2) {
+static int json_object_equal(const json_ref& object1, const json_ref& object2) {
   if (json_object_size(object1) != json_object_size(object2))
     return 0;
 
-  auto target_obj = json_to_object(object2);
-  for (auto& it : json_to_object(object1)->map) {
+  auto target_obj = json_to_object(object2.get());
+  for (auto& it : json_to_object(object1.get())->map) {
     auto other_it = target_obj->map.find(it.first);
 
     if (other_it == target_obj->map.end()) {
@@ -309,26 +331,12 @@ static int json_object_equal(json_t* object1, json_t* object2) {
   return 1;
 }
 
-static json_ref json_object_copy(const json_t* object) {
-  auto result = json_object();
-  if (!result)
-    return nullptr;
+static json_ref json_object_deep_copy(const json_ref& object) {
+  json_ref result = json_object();
 
-  json_object_update(object, result);
-
-  return result;
-}
-
-static json_ref json_object_deep_copy(const json_t* object) {
-  json_t* result;
-
-  result = json_object();
-  if (!result)
-    return nullptr;
-
-  auto target_obj = json_to_object(result);
-  for (auto& it : json_to_object(object)->map) {
-    target_obj->map[it.first] = json_deep_copy(it.second);
+  auto target_obj = json_to_object(result.get());
+  for (auto& it : json_to_object(object.get())->map) {
+    target_obj->map.insert_or_assign(it.first, json_deep_copy(it.second));
   }
 
   return result;
@@ -336,340 +344,165 @@ static json_ref json_object_deep_copy(const json_t* object) {
 
 /*** array ***/
 
-json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY) {
-  table.reserve(std::max(sizeHint, size_t(8)));
-}
+json_array_t::json_array_t(std::vector<json_ref> values)
+    : json_t(JSON_ARRAY), table{std::move(values)} {}
 
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
-    : json(JSON_ARRAY), table(values) {}
+    : json_t(JSON_ARRAY), table(values) {}
 
 const std::vector<json_ref>& json_ref::array() const {
-  if (!json_is_array(ref_)) {
+  if (!isArray()) {
     throw std::domain_error("json_ref::array() called for non-array");
   }
   return json_to_array(ref_)->table;
 }
 
-std::vector<json_ref>& json_ref::array() {
-  if (!json_is_array(ref_)) {
-    throw std::domain_error("json_ref::array() called for non-array");
-  }
-  return json_to_array(ref_)->table;
-}
-
-json_ref json_array_of_size(size_t nelems) {
-  auto array = new json_array_t(nelems);
-  return json_ref(&array->json, false);
-}
-
-json_ref json_array(void) {
-  return json_array_of_size(8);
+json_ref json_array(std::vector<json_ref> values) {
+  return json_ref::takeOwnership(new json_array_t(std::move(values)));
 }
 
 json_ref json_array(std::initializer_list<json_ref> values) {
-  auto array = new json_array_t(std::move(values));
-  return json_ref(&array->json, false);
+  return json_ref::takeOwnership(new json_array_t(std::move(values)));
 }
 
-int json_array_set_template(json_t* json, json_t* templ) {
+int json_array_set_template(const json_ref& json, const json_ref& templ) {
   return json_array_set_template_new(json, json_ref(templ));
 }
 
-int json_array_set_template_new(json_t* json, json_ref&& templ) {
-  json_array_t* array;
-  if (!json_is_array(json))
+int json_array_set_template_new(const json_ref& json, json_ref&& templ) {
+  if (!json.isArray()) {
     return 0;
-  array = json_to_array(json);
-  array->templ = std::move(templ);
+  }
+  json_to_array(json.get())->templ = std::move(templ);
   return 1;
 }
 
-json_t* json_array_get_template(const json_t* array) {
-  if (!json_is_array(array))
+std::optional<json_ref> json_array_get_template(const json_ref& array) {
+  if (!array.isArray()) {
+    return std::nullopt;
+  }
+  return json_to_array(array.get())->templ;
+}
+
+size_t json_array_size(const json_ref& json) {
+  if (!json.isArray()) {
     return 0;
-  return json_to_array(array)->templ;
+  }
+
+  return json_to_array(json.get())->table.size();
 }
 
-size_t json_array_size(const json_t* json) {
-  if (!json_is_array(json))
+static int json_array_equal(const json_ref& array1, const json_ref& array2) {
+  auto& arr1 = array1.array();
+  auto& arr2 = array2.array();
+
+  if (arr1.size() != arr2.size()) {
     return 0;
-
-  return json_to_array(json)->table.size();
-}
-
-json_ref json_array_get(const json_t* json, size_t index) {
-  if (!json_is_array(json)) {
-    return nullptr;
-  }
-  auto array = json_to_array(json);
-
-  if (index >= array->table.size()) {
-    return nullptr;
   }
 
-  return array->table[index];
-}
-
-int json_array_set_new(json_t* json, size_t index, json_ref&& value) {
-  json_array_t* array;
-
-  if (!value)
-    return -1;
-
-  if (!json_is_array(json) || json == value) {
-    return -1;
-  }
-  array = json_to_array(json);
-
-  if (index >= array->table.size()) {
-    return -1;
-  }
-
-  array->table[index] = std::move(value);
-
-  return 0;
-}
-
-int json_array_append_new(json_t* json, json_ref&& value) {
-  json_array_t* array;
-
-  if (!value)
-    return -1;
-
-  if (!json_is_array(json) || json == value) {
-    return -1;
-  }
-  array = json_to_array(json);
-  array->table.emplace_back(std::move(value));
-  return 0;
-}
-
-int json_array_insert_new(json_t* json, size_t index, json_ref&& value) {
-  if (!value)
-    return -1;
-
-  if (!json_is_array(json) || json == value) {
-    return -1;
-  }
-  auto array = json_to_array(json);
-  if (index > array->table.size()) {
-    return -1;
-  }
-
-  auto it = array->table.begin();
-  std::advance(it, index);
-
-  array->table.insert(it, std::move(value));
-  return 0;
-}
-
-int json_array_remove(json_t* json, size_t index) {
-  json_array_t* array;
-
-  if (!json_is_array(json))
-    return -1;
-  array = json_to_array(json);
-
-  if (index > array->table.size()) {
-    return -1;
-  }
-
-  auto it = array->table.begin();
-  std::advance(it, index);
-
-  array->table.erase(it);
-  return 0;
-}
-
-int json_array_clear(json_t* json) {
-  if (!json_is_array(json))
-    return -1;
-  json_to_array(json)->table.clear();
-  return 0;
-}
-
-int json_array_extend(json_t* json, json_t* other_json) {
-  json_array_t *array, *other;
-
-  if (!json_is_array(json) || !json_is_array(other_json))
-    return -1;
-  array = json_to_array(json);
-  other = json_to_array(other_json);
-
-  array->table.insert(
-      array->table.end(), other->table.begin(), other->table.end());
-
-  return 0;
-}
-
-static int json_array_equal(json_t* array1, json_t* array2) {
-  size_t i, size;
-
-  size = json_array_size(array1);
-  if (size != json_array_size(array2))
-    return 0;
-
-  for (i = 0; i < size; i++) {
-    json_t *value1, *value2;
-
-    value1 = json_array_get(array1, i);
-    value2 = json_array_get(array2, i);
-
-    if (!json_equal(value1, value2))
+  for (size_t i = 0; i < arr1.size(); ++i) {
+    if (!json_equal(arr1[i], arr2[i])) {
       return 0;
+    }
   }
 
   return 1;
 }
 
-static json_ref json_array_copy(const json_t* array) {
-  auto result = json_array();
-  if (!result)
-    return nullptr;
+static json_ref json_array_deep_copy(const json_ref& array) {
+  std::vector<json_ref> result;
 
-  auto& target_vector = json_to_array(result)->table;
-  const auto& src_vector = json_to_array(array)->table;
+  for (auto& elem : array.array())
+    result.push_back(json_deep_copy(elem));
 
-  target_vector.insert(
-      target_vector.begin(), src_vector.begin(), src_vector.end());
-
-  return result;
-}
-
-static json_ref json_array_deep_copy(const json_t* array) {
-  size_t i;
-
-  auto result = json_array();
-  if (!result)
-    return nullptr;
-
-  for (i = 0; i < json_array_size(array); i++)
-    json_array_append_new(result, json_deep_copy(json_array_get(array, i)));
-
-  return result;
+  return json_array(std::move(result));
 }
 
 /*** string ***/
 
-json_string_t::json_string_t(const w_string& str)
-    : json(JSON_STRING), value(str) {}
+json_string_t::json_string_t(w_string str)
+    : json_t(JSON_STRING), value(std::move(str)) {}
 
-json_ref w_string_to_json(const w_string& str) {
-  if (!str) {
-    return json_null();
+json_ref w_string_to_json(w_string str) {
+  return json_ref::takeOwnership(new json_string_t(str));
+}
+
+const char* json_string_value(const json_ref& json) {
+  if (!json.isString()) {
+    return nullptr;
   }
 
-  auto string = new json_string_t(str);
-  return json_ref(&string->json, false);
+  return json_to_string(json.get())->value.c_str();
 }
 
-const char* json_string_value(const json_t* json) {
-  json_string_t* jstr;
-
-  if (!json_is_string(json))
-    return NULL;
-
-  jstr = json_to_string(json);
-  return jstr->value.c_str();
-}
-
-const w_string& json_to_w_string(const json_t* json) {
-  if (!json_is_string(json)) {
+const w_string& json_to_w_string(const json_ref& json) {
+  if (!json.isString()) {
     throw std::runtime_error("expected json string object");
   }
 
-  return json_to_string(json)->value;
+  return json_to_string(json.get())->value;
 }
 
-static int json_string_equal(json_t* string1, json_t* string2) {
-  return json_to_string(string1)->value == json_to_string(string2)->value;
-}
-
-static json_ref json_string_copy(const json_t* string) {
-  return w_string_to_json(json_to_w_string(string));
+static int json_string_equal(const json_ref& string1, const json_ref& string2) {
+  return json_to_string(string1.get())->value ==
+      json_to_string(string2.get())->value;
 }
 
 /*** integer ***/
 
 json_integer_t::json_integer_t(json_int_t value)
-    : json(JSON_INTEGER), value(value) {}
+    : json_t(JSON_INTEGER), value(value) {}
 
 json_ref json_integer(json_int_t value) {
-  auto integer = new json_integer_t(value);
-  return json_ref(&integer->json, false);
+  return json_ref::takeOwnership(new json_integer_t(value));
 }
 
-json_int_t json_integer_value(const json_t* json) {
-  if (!json_is_integer(json))
+json_int_t json_integer_value(const json_ref& json) {
+  if (!json.isInt()) {
     return 0;
-
-  return json_to_integer(json)->value;
+  }
+  return json_to_integer(json.get())->value;
 }
 
 json_int_t json_ref::asInt() const {
-  return json_integer_value(ref_);
+  return json_integer_value(*this);
 }
 
-int json_integer_set(json_t* json, json_int_t value) {
-  if (!json_is_integer(json))
-    return -1;
-
-  json_to_integer(json)->value = value;
-
-  return 0;
-}
-
-static int json_integer_equal(json_t* integer1, json_t* integer2) {
+static int json_integer_equal(
+    const json_ref& integer1,
+    const json_ref& integer2) {
   return json_integer_value(integer1) == json_integer_value(integer2);
-}
-
-static json_t* json_integer_copy(const json_t* integer) {
-  return json_integer(json_integer_value(integer));
 }
 
 /*** real ***/
 
-json_real_t::json_real_t(double value) : json(JSON_REAL), value(value) {}
+json_real_t::json_real_t(double value) : json_t(JSON_REAL), value(value) {}
 
 json_ref json_real(double value) {
-  if (std::isnan(value) || std::isinf(value)) {
-    return nullptr;
+  if (!std::isfinite(value)) {
+    throw std::domain_error("Numeric JSON values must be finite");
   }
-  auto real = new json_real_t(value);
-  return json_ref(&real->json, false);
+  return json_ref::takeOwnership(new json_real_t(value));
 }
 
-double json_real_value(const json_t* json) {
-  if (!json_is_real(json))
+double json_real_value(const json_ref& json) {
+  if (!json.isDouble()) {
     return 0;
-
-  return json_to_real(json)->value;
-}
-
-int json_real_set(json_t* json, double value) {
-  if (!json_is_real(json) || std::isnan(value) || std::isinf(value)) {
-    return -1;
   }
 
-  json_to_real(json)->value = value;
-
-  return 0;
+  return json_to_real(json.get())->value;
 }
 
-static int json_real_equal(json_t* real1, json_t* real2) {
+static int json_real_equal(const json_ref& real1, const json_ref& real2) {
   return json_real_value(real1) == json_real_value(real2);
-}
-
-static json_t* json_real_copy(const json_t* real) {
-  return json_real(json_real_value(real));
 }
 
 /*** number ***/
 
-double json_number_value(const json_t* json) {
-  if (json_is_integer(json))
+double json_number_value(const json_ref& json) {
+  if (json.isInt())
     return (double)json_integer_value(json);
-  else if (json_is_real(json))
+  else if (json.isDouble())
     return json_real_value(json);
   else
     return 0.0;
@@ -677,19 +510,16 @@ double json_number_value(const json_t* json) {
 
 /*** simple values ***/
 
-json_ref json_true(void) {
-  static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
-  return &the_true;
+json_ref json_true() {
+  return json_ref::takeOwnership(&the_true);
 }
 
-json_ref json_false(void) {
-  static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
-  return &the_false;
+json_ref json_false() {
+  return json_ref::takeOwnership(&the_false);
 }
 
-json_ref json_null(void) {
-  static json_t the_null{JSON_NULL, json_t::SingletonHack()};
-  return &the_null;
+json_ref json_null() {
+  return json_ref::takeOwnership(&the_null);
 }
 
 /*** deletion ***/
@@ -720,30 +550,27 @@ void json_ref::json_delete(json_t* json) {
 
 /*** equality ***/
 
-int json_equal(json_t* json1, json_t* json2) {
-  if (!json1 || !json2)
-    return 0;
-
-  if (json_typeof(json1) != json_typeof(json2))
+int json_equal(const json_ref& json1, const json_ref& json2) {
+  if (json1.type() != json2.type())
     return 0;
 
   /* this covers true, false and null as they are singletons */
-  if (json1 == json2)
+  if (json1.get() == json2.get())
     return 1;
 
-  if (json_is_object(json1))
+  if (json1.isObject())
     return json_object_equal(json1, json2);
 
-  if (json_is_array(json1))
+  if (json1.isArray())
     return json_array_equal(json1, json2);
 
-  if (json_is_string(json1))
+  if (json1.isString())
     return json_string_equal(json1, json2);
 
-  if (json_is_integer(json1))
+  if (json1.isInt())
     return json_integer_equal(json1, json2);
 
-  if (json_is_real(json1))
+  if (json1.isDouble())
     return json_real_equal(json1, json2);
 
   return 0;
@@ -751,57 +578,15 @@ int json_equal(json_t* json1, json_t* json2) {
 
 /*** copying ***/
 
-json_ref json_copy(const json_t* json) {
-  if (!json)
-    return nullptr;
-
-  if (json_is_object(json))
-    return json_object_copy(json);
-
-  if (json_is_array(json))
-    return json_array_copy(json);
-
-  if (json_is_string(json))
-    return json_string_copy(json);
-
-  if (json_is_integer(json))
-    return json_integer_copy(json);
-
-  if (json_is_real(json))
-    return json_real_copy(json);
-
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
-    return const_cast<json_t*>(json);
-  }
-
-  return nullptr;
-}
-
-json_ref json_deep_copy(const json_t* json) {
-  if (!json)
-    return nullptr;
-
-  if (json_is_object(json))
+json_ref json_deep_copy(const json_ref& json) {
+  if (json.isObject())
     return json_object_deep_copy(json);
 
-  if (json_is_array(json))
+  if (json.isArray())
     return json_array_deep_copy(json);
 
-  /* for the rest of the types, deep copying doesn't differ from
-     shallow copying */
+  // For the rest of the types, the values are immutable, so just increment the
+  // reference count.
 
-  if (json_is_string(json))
-    return json_string_copy(json);
-
-  if (json_is_integer(json))
-    return json_integer_copy(json);
-
-  if (json_is_real(json))
-    return json_real_copy(json);
-
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
-    return const_cast<json_t*>(json);
-  }
-
-  return nullptr;
+  return json;
 }

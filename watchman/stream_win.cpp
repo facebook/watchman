@@ -1,11 +1,19 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include <algorithm>
 #include <memory>
-#include "watchman/watchman.h"
+#include "watchman/Logging.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/watchman_stream.h"
 
-using watchman::FileDescriptor;
 using namespace watchman;
+
+#ifdef _WIN32
 
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
@@ -83,7 +91,7 @@ class win_handle : public watchman_stream {
   ~win_handle();
   int read(void* buf, int size) override;
   int write(const void* buf, int size) override;
-  w_evt_t getEvents() override;
+  watchman_event* getEvents() override;
   void setNonBlock(bool nonb) override;
   bool rewind() override;
   bool shutdown() override;
@@ -573,7 +581,7 @@ int win_handle::write(const void* buf, int size) {
   return size;
 }
 
-w_evt_t win_handle::getEvents() {
+watchman_event* win_handle::getEvents() {
   return &waitable;
 }
 
@@ -685,10 +693,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 }
 
-int w_poll_events_named_pipe(
-    struct watchman_event_poll* p,
-    int n,
-    int timeoutms) {
+int w_poll_events_named_pipe(EventPoll* p, int n, int timeoutms) {
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   int i;
   DWORD res;
@@ -790,3 +795,5 @@ FileDescriptor w_handle_open(const char* path, int flags) {
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
   return w_stm_fdopen(w_handle_open(path, flags));
 }
+
+#endif

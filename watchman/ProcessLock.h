@@ -1,6 +1,13 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
-#include "watchman/FileDescriptor.h"
+#include "watchman/fs/FileDescriptor.h"
 
 #include <chrono>
 #include <variant>
@@ -16,11 +23,11 @@ class ProcessLock {
    */
   class Handle {
    public:
+    Handle() = default;
     Handle(Handle&&) = default;
     Handle& operator=(Handle&&) = default;
 
    private:
-    Handle() = default;
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
   };

@@ -1,13 +1,20 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/FileDescriptor.h"
-#include "watchman/Pipe.h"
-#include "watchman/watchman.h"
+#include "watchman/Constants.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/watcher/Watcher.h"
 
 #ifdef HAVE_KQUEUE
 
 namespace watchman {
+
+class Configuration;
 
 struct KQueueWatcher : public Watcher {
   FileDescriptor kq_fd;
@@ -28,21 +35,23 @@ struct KQueueWatcher : public Watcher {
 
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 
-  explicit KQueueWatcher(watchman_root* root, bool recursive = true);
+  explicit KQueueWatcher(
+      const w_string& root_path,
+      const Configuration& config,
+      bool recursive = true);
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
+  void stopThreads() override;
 };
 
 } // namespace watchman

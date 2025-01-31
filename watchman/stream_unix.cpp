@@ -1,7 +1,20 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include <folly/SocketAddress.h>
+#include <folly/net/NetworkSocket.h>
+#include <memory>
+#include "watchman/Constants.h"
+#include "watchman/Logging.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/watchman_stream.h"
+
 #ifdef HAVE_UCRED_H
 #include <ucred.h> // @manual
 #endif
@@ -11,14 +24,7 @@
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h> // @manual
 #endif
-#include <folly/SocketAddress.h>
-#include <folly/net/NetworkSocket.h>
-#include <memory>
-#include "watchman/FileDescriptor.h"
-#include "watchman/Pipe.h"
 
-using watchman::FileDescriptor;
-using watchman::Pipe;
 using namespace watchman;
 
 static const int kWriteTimeout = 60000;
@@ -128,9 +134,15 @@ class UnixStream : public watchman_stream {
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
 #endif
     if (credvalid) {
+#if defined(__APPLE__)
       len = sizeof(epid);
       credvalid =
           getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEEREPID, &epid, &len) == 0;
+#elif defined(__FreeBSD__)
+      epid = cred.cr_pid;
+#else
+      credvalid = false;
+#endif
     }
 #elif defined(SO_RECVUCRED)
     ucred_t* peer_cred{nullptr};
@@ -212,7 +224,7 @@ class UnixStream : public watchman_stream {
     return x.value();
   }
 
-  w_evt_t getEvents() override {
+  watchman_event* getEvents() override {
     return &evt;
   }
 
@@ -299,7 +311,7 @@ std::unique_ptr<watchman_event> w_event_make_sockets() {
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win
-int w_poll_events_sockets(struct watchman_event_poll* p, int n, int timeoutms) {
+int w_poll_events_sockets(EventPoll* p, int n, int timeoutms) {
   struct pollfd pfds[MAX_POLL_EVENTS];
   int i;
   int res;
@@ -344,7 +356,7 @@ std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& fd) {
   return std::make_unique<UnixStream>(std::move(fd));
 }
 
-std::unique_ptr<watchman_stream> w_stm_connect_unix(
+ResultErrno<std::unique_ptr<watchman_stream>> w_stm_connect_unix(
     const char* path,
     int timeoutms) {
   struct sockaddr_un un {};
@@ -353,8 +365,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     logf(ERR, "w_stm_connect_unix({}) path is too long\n", path);
-    errno = E2BIG;
-    return NULL;
+    return E2BIG;
   }
 
   FileDescriptor fd(
@@ -367,7 +378,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
           0),
       FileDescriptor::FDType::Socket);
   if (!fd) {
-    return nullptr;
+    return errno;
   }
   fd.setCloExec();
 
@@ -392,8 +403,7 @@ retry_connect:
       }
     }
 
-    errno = err;
-    return nullptr;
+    return err;
   }
 
   int bufsize = WATCHMAN_IO_BUF_SIZE;
@@ -404,7 +414,7 @@ retry_connect:
       reinterpret_cast<const char*>(&bufsize),
       sizeof(bufsize));
 
-  return w_stm_fdopen(std::move(fd));
+  return ResultErrno<std::unique_ptr<Stream>>{w_stm_fdopen(std::move(fd))};
 }
 
 #ifndef _WIN32

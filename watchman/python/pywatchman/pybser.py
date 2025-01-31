@@ -1,43 +1,16 @@
-# Copyright 2015 Facebook, Inc.
-# All rights reserved.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#  * Redistributions of source code must retain the above copyright notice,
-#    this list of conditions and the following disclaimer.
-#
-#  * Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-#  * Neither the name Facebook nor the names of its contributors may be used to
-#    endorse or promote products derived from this software without specific
-#    prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
-# no unicode literals
-from __future__ import absolute_import, division, print_function
+# pyre-unsafe
+
 
 import binascii
+import collections.abc as collections_abc
 import ctypes
 import struct
 import sys
-
-from . import compat
-
-
-collections_abc = compat.collections_abc
 
 
 BSER_ARRAY = b"\x00"
@@ -55,17 +28,15 @@ BSER_TEMPLATE = b"\x0b"
 BSER_SKIP = b"\x0c"
 BSER_UTF8STRING = b"\x0d"
 
-if compat.PYTHON3:
-    STRING_TYPES = (str, bytes)
-    unicode = str
+STRING_TYPES = (str, bytes)
+unicode = str
 
-    def tobytes(i):
-        return str(i).encode("ascii")
 
-    long = int
-else:
-    STRING_TYPES = (unicode, str)
-    tobytes = bytes
+def tobytes(i):
+    return str(i).encode("ascii")
+
+
+long = int
 
 # Leave room for the serialization header, which includes
 # our overall length.  To make things simpler, we'll use an
@@ -74,7 +45,7 @@ EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
 EMPTY_HEADER_V2 = b"\x00\x02\x00\x00\x00\x00\x05\x00\x00\x00\x00"
 
 
-def _int_size(x):
+def _int_size(x) -> int:
     """Return the smallest size int that can store the value"""
     if -0x80 <= x <= 0x7F:
         return 1
@@ -88,15 +59,15 @@ def _int_size(x):
         raise RuntimeError("Cannot represent value: " + str(x))
 
 
-def _buf_pos(buf, pos):
+def _buf_pos(buf, pos) -> bytes:
     ret = buf[pos]
     # Normalize the return type to bytes
-    if compat.PYTHON3 and not isinstance(ret, bytes):
+    if not isinstance(ret, bytes):
         ret = bytes((ret,))
     return ret
 
 
-class _bser_buffer(object):
+class _bser_buffer:
     def __init__(self, version):
         self.bser_version = version
         self.buf = ctypes.create_string_buffer(8192)
@@ -113,8 +84,13 @@ class _bser_buffer(object):
             self.wpos = len(EMPTY_HEADER_V2)
 
     def ensure_size(self, size):
-        while ctypes.sizeof(self.buf) - self.wpos < size:
-            ctypes.resize(self.buf, ctypes.sizeof(self.buf) * 2)
+        buf = self.buf
+        old_size = ctypes.sizeof(buf)
+        new_size = old_size
+        while new_size - self.wpos < size:
+            new_size *= 2
+        if old_size != new_size:
+            ctypes.resize(buf, new_size)
 
     def append_long(self, val):
         size = _int_size(val)
@@ -233,10 +209,7 @@ class _bser_buffer(object):
             else:
                 raise RuntimeError("Cannot represent this mapping value")
             self.wpos += needed
-            if compat.PYTHON3:
-                iteritems = val.items()
-            else:
-                iteritems = val.iteritems()  # noqa: B301 Checked version above
+            iteritems = val.items()
             for k, v in iteritems:
                 self.append_string(k)
                 self.append_recursive(v)
@@ -272,13 +245,17 @@ class _bser_buffer(object):
             raise RuntimeError("Cannot represent unknown value type")
 
 
-def dumps(obj, version=1, capabilities=0):
+def dumps(obj, version: int = 1, capabilities: int = 0):
     bser_buf = _bser_buffer(version=version)
     bser_buf.append_recursive(obj)
     # Now fill in the overall length
     if version == 1:
         obj_len = bser_buf.wpos - len(EMPTY_HEADER)
-        struct.pack_into(b"=i", bser_buf.buf, 3, obj_len)
+        try:
+            struct.pack_into(b"=i", bser_buf.buf, 3, obj_len)
+        except struct.error:
+            # The C implementation treats overflow as MemoryError. Do the same here.
+            raise MemoryError
     else:
         obj_len = bser_buf.wpos - len(EMPTY_HEADER_V2)
         struct.pack_into(b"=i", bser_buf.buf, 2, capabilities)
@@ -289,7 +266,7 @@ def dumps(obj, version=1, capabilities=0):
 # This is a quack-alike with the bserObjectType in bser.c
 # It provides by getattr accessors and getitem for both index
 # and name.
-class _BunserDict(object):
+class _BunserDict:
     __slots__ = ("_keys", "_values")
 
     def __init__(self, keys, values):
@@ -315,7 +292,7 @@ class _BunserDict(object):
         return len(self._keys)
 
 
-class Bunser(object):
+class Bunser:
     def __init__(self, mutable=True, value_encoding=None, value_errors=None):
         self.mutable = mutable
         self.value_encoding = value_encoding
@@ -497,7 +474,7 @@ def pdu_len(buf):
     return info[2] + info[3]
 
 
-def loads(buf, mutable=True, value_encoding=None, value_errors=None):
+def loads(buf, mutable: bool = True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
 
     @param buf: The buffer to deserialize.
@@ -532,7 +509,7 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     return bunser.loads_recursive(buf, pos)[0]
 
 
-def load(fp, mutable=True, value_encoding=None, value_errors=None):
+def load(fp, mutable: bool = True, value_encoding=None, value_errors=None):
     from . import load
 
     return load.load(fp, mutable, value_encoding, value_errors)

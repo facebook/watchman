@@ -1,9 +1,25 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/QueryExpr.h"
+#include "watchman/query/TermRegistry.h"
+
+#include <folly/Overload.h>
 
 #include <memory>
+
+using namespace watchman;
+
+namespace watchman {
+class QueryContextBase;
+}
 
 enum since_what { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
 
@@ -25,7 +41,7 @@ class SinceExpr : public QueryExpr {
   explicit SinceExpr(std::unique_ptr<ClockSpec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
-  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase* ctx, FileResult* file) override {
     time_t tval = 0;
 
     auto since = spec->evaluate(
@@ -44,21 +60,25 @@ class SinceExpr : public QueryExpr {
         const auto clock =
             (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
         if (!clock.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
 
-        if (since.is_timestamp) {
-          return clock->timestamp >= since.timestamp;
-        }
-        if (since.clock.is_fresh_instance) {
-          return file->exists();
-        }
-        return clock->ticks > since.clock.ticks;
+        return folly::variant_match(
+            since.since,
+            [&](const QuerySince::Timestamp& since_ts) -> std::optional<bool> {
+              return clock->timestamp >= since_ts.time;
+            },
+            [&](const QuerySince::Clock& since_clock) -> std::optional<bool> {
+              if (since_clock.is_fresh_instance) {
+                return file->exists();
+              }
+              return clock->ticks > since_clock.ticks;
+            });
       }
       case since_what::SINCE_MTIME: {
         auto stat = file->stat();
         if (!stat.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
         tval = stat->mtime.tv_sec;
         break;
@@ -66,18 +86,19 @@ class SinceExpr : public QueryExpr {
       case since_what::SINCE_CTIME: {
         auto stat = file->stat();
         if (!stat.has_value()) {
-          return folly::none;
+          return std::nullopt;
         }
         tval = stat->ctime.tv_sec;
         break;
       }
     }
 
-    assert(since.is_timestamp);
-    return tval >= since.timestamp;
+    auto* since_ts = std::get_if<QuerySince::Timestamp>(&since.since);
+    w_check(since_ts, "expect a timestamp since");
+    return tval >= since_ts->time;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref& term) {
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
 
@@ -94,7 +115,7 @@ class SinceExpr : public QueryExpr {
     if (!spec) {
       throw QueryParseError("invalid clockspec for \"since\" term");
     }
-    if (spec->tag == w_cs_named_cursor) {
+    if (std::holds_alternative<ClockSpec::NamedCursor>(spec->spec)) {
       throw QueryParseError("named cursors are not allowed in \"since\" terms");
     }
 
@@ -117,19 +138,18 @@ class SinceExpr : public QueryExpr {
       }
 
       if (!valid) {
-        throw QueryParseError(
-            "invalid field name \"", fieldname, "\" for \"since\" term");
+        QueryParseError::throwf(
+            "invalid field name \"{}\" for \"since\" term", fieldname);
       }
     }
 
     switch (selected_field) {
       case since_what::SINCE_CTIME:
       case since_what::SINCE_MTIME:
-        if (spec->tag != w_cs_timestamp) {
-          throw QueryParseError(
-              "field \"",
-              fieldname,
-              "\" requires a timestamp value for comparison in \"since\" term");
+        if (!std::holds_alternative<ClockSpec::Timestamp>(spec->spec)) {
+          QueryParseError::throwf(
+              "field \"{}\" requires a timestamp value for comparison in \"since\" term",
+              fieldname);
         }
         break;
       case since_what::SINCE_OCLOCK:
@@ -140,8 +160,26 @@ class SinceExpr : public QueryExpr {
 
     return std::make_unique<SinceExpr>(std::move(spec), selected_field);
   }
+
+  std::optional<std::vector<std::string>> computeGlobUpperBound(
+      CaseSensitivity) const override {
+    // `since` doesn't constrain the path.
+    return std::nullopt;
+  }
+
+  ReturnOnlyFiles listOnlyFiles() const override {
+    return ReturnOnlyFiles::Unrelated;
+  }
+
+  SimpleSuffixType evaluateSimpleSuffix() const override {
+    return SimpleSuffixType::Excluded;
+  }
+
+  std::vector<std::string> getSuffixQueryGlobPatterns() const override {
+    return std::vector<std::string>{};
+  }
 };
-W_TERM_PARSER("since", SinceExpr::parse)
+W_TERM_PARSER(since, SinceExpr::parse);
 
 /* vim:ts=2:sw=2:et:
  */

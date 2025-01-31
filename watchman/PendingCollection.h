@@ -1,15 +1,28 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
 #include <folly/Synchronized.h>
 #include <folly/futures/Promise.h>
 #include <chrono>
 #include <condition_variable>
+#include "eden/common/utils/OptionSet.h"
 #include "watchman/thirdparty/libart/src/art.h"
 #include "watchman/watchman_string.h"
 
+struct watchman_dir;
+
 namespace watchman {
+
+struct PendingFlags : facebook::eden::OptionSet<PendingFlags, uint8_t> {
+  using OptionSet::OptionSet;
+  static const NameTable table;
+};
 
 /**
  * Set when this change requires a recursive scan of its children.
@@ -20,7 +33,18 @@ namespace watchman {
  * entry is already flagged as requiring a recursive scan, then children can be
  * pruned.
  */
-#define W_PENDING_RECURSIVE 1
+constexpr inline auto W_PENDING_RECURSIVE = PendingFlags::raw(1);
+
+/**
+ * Set when this change requires a non-recursive scan of its children.
+ *
+ * Some watchers, notably FSEvents in its default mode, only report changes to
+ * directories and expect Watchman to enumerate and stat their children.
+ *
+ * This flag indicates to the IO thread that it must do such a scan.
+ */
+constexpr inline auto W_PENDING_NONRECURSIVE_SCAN = PendingFlags::raw(2);
+
 /**
  * This change event came from a watcher.
  *
@@ -30,7 +54,8 @@ namespace watchman {
  * iothread uses this flag to detect whether cookie events were discovered via a
  * crawl or watcher.
  */
-#define W_PENDING_VIA_NOTIFY 2
+constexpr inline auto W_PENDING_VIA_NOTIFY = PendingFlags::raw(4);
+
 /**
  * Set by the IO thread when it adds new pending paths while crawling.
  *
@@ -39,14 +64,23 @@ namespace watchman {
  *
  * Sort of exclusive with VIA_NOTIFY...
  */
-#define W_PENDING_CRAWL_ONLY 4
+constexpr inline auto W_PENDING_CRAWL_ONLY = PendingFlags::raw(8);
+
 /**
- * Set this flag when the watcher is desynced and may have missed filesystem
- * events. The W_PENDING_RECURSIVE flag should also be set alongside it to
- * force an recrawl of the passed in directory. Cookies will not be considered
- * when this flag is set.
+ * Set when the watcher is desynced and may have missed filesystem events. The
+ * watcher is no longer guaranteed to report every file or directory, which
+ * could prevent cookies from being observed. W_PENDING_RECURSIVE flag should
+ * also be set alongside it to force an recrawl of the passed in directory.
+ * Cookies will not be considered when this flag is set.
  */
-#define W_PENDING_IS_DESYNCED 8
+constexpr inline auto W_PENDING_IS_DESYNCED = PendingFlags::raw(16);
+
+/**
+ * Set when the processPath() is triggered by recursive parallel walk.
+ * processPath() -> statPath() should avoid appending to PendingChanges.
+ * Missing pre_stat can be treated as deletion without extra stat().
+ */
+constexpr inline auto W_PENDING_VIA_PWALK = PendingFlags::raw(32);
 
 /**
  * Represents a change notification from the Watcher.
@@ -54,10 +88,8 @@ namespace watchman {
 struct PendingChange {
   w_string path;
   std::chrono::system_clock::time_point now;
-  int flags;
+  PendingFlags flags;
 };
-
-} // namespace watchman
 
 struct watchman_pending_fs : watchman::PendingChange {
   // We own the next entry and will destroy that chain when we
@@ -67,7 +99,7 @@ struct watchman_pending_fs : watchman::PendingChange {
   watchman_pending_fs(
       w_string path,
       std::chrono::system_clock::time_point now,
-      int flags)
+      PendingFlags flags)
       : PendingChange{std::move(path), now, flags} {}
 
  private:
@@ -79,6 +111,12 @@ struct watchman_pending_fs : watchman::PendingChange {
 /**
  * Holds a linked list of watchman_pending_fs instances and a trie that
  * efficiently prunes redundant changes.
+ *
+ * PendingChanges is only intended to be accessed by one thread at a time.
+ * If you would like to use a single pending changes object accross
+ * threads, you should use PendingCollection which puts a lock around
+ * accesses to the unerlying PendingChanges object. If you only intend to
+ * use the object on one thread, then you can use PendingChanges directly.
  */
 class PendingChanges {
  public:
@@ -100,12 +138,12 @@ class PendingChanges {
   void add(
       const w_string& path,
       std::chrono::system_clock::time_point now,
-      int flags);
+      PendingFlags flags);
   void add(
-      struct watchman_dir* dir,
+      watchman_dir* dir,
       const char* name,
       std::chrono::system_clock::time_point now,
-      int flags);
+      PendingFlags flags);
 
   /**
    * Add a sync request. The consumer of this sync should fulfill it after
@@ -138,16 +176,20 @@ class PendingChanges {
    * Returns the number of unique pending items in the collection. Does not
    * include sync requests.
    */
-  uint32_t size() const;
+  uint32_t getPendingItemCount() const;
+
+  void startRefusingSyncs(std::string_view reason);
 
  protected:
   art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
   std::shared_ptr<watchman_pending_fs> pending_;
   std::vector<folly::Promise<folly::Unit>> syncs_;
+  bool refuseSyncs_{false}; // true if we should refuse to add any more syncs
+  std::string refuseSyncsReason_{};
 
  private:
-  void maybePruneObsoletedChildren(w_string path, int flags);
-  inline void consolidateItem(watchman_pending_fs* p, int flags);
+  void maybePruneObsoletedChildren(w_string path, PendingFlags flags);
+  inline void consolidateItem(watchman_pending_fs* p, PendingFlags flags);
   bool isObsoletedByContainingDir(const w_string& path);
   inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
   inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
@@ -184,17 +226,14 @@ class PendingCollection
    * If previously pinged or non-empty, returns a locked PendingCollectionBase.
    * Otherwise, waits up to timeoutms (or indefinitely if -1 ms) for a ping().
    *
-   * pinged is set to true if pinged or non-empty. The internal pinged state is
-   * always false after this call.
+   * The internal pinged state is always false after this call.
    */
-  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
+  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms);
 
  private:
   // Notified on ping().
   std::condition_variable cond_;
 };
-
-namespace watchman {
 
 // Since the tree has no internal knowledge about path structures, when we
 // search for "foo/bar" it may return a prefix match for an existing node

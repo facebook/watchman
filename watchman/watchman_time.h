@@ -1,6 +1,12 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
+#include <folly/portability/SysTime.h>
 #include <chrono>
 #include "watchman/watchman_system.h"
 
@@ -31,8 +37,6 @@ inline timespec systemClockToTimeSpec(
    * since the epoch. */
   return durationToTimeSpecDuration(p.time_since_epoch());
 }
-
-void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec* deadline);
 
 /* compare two timevals and return -1 if a is < b, 0 if a == b,
  * or 1 if b > a */

@@ -1,13 +1,19 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
+
 #include <folly/futures/Future.h>
-#include <spawn.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "watchman/Pipe.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/portability/PosixSpawn.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
@@ -88,6 +94,12 @@ class ChildProcess {
     // Set up stdin with a null device
     void nullStdin();
 
+    // Set up stdout with a null device
+    void nullStdout();
+
+    // Set up stderr with a null device
+    void nullStderr();
+
     // Arrange to open(2) a file for the child process and make
     // it available as targetFd
     void open(int targetFd, const char* path, int flags, int mode);
@@ -96,6 +108,8 @@ class ChildProcess {
     void chdir(w_string_piece path);
 
    private:
+    void nullFd(int fd, int flags);
+
     struct Inner {
       // There is no defined way to copy or move either of
       // these things, so we separate them out into a container
@@ -114,7 +128,7 @@ class ChildProcess {
     friend class ChildProcess;
   };
 
-  ChildProcess(std::vector<w_string_piece> args, Options&& options);
+  ChildProcess(std::vector<std::string_view> args, Options&& options);
   ChildProcess(const json_ref& args, Options&& options);
   ~ChildProcess();
 
@@ -163,7 +177,7 @@ class ChildProcess {
    * The provided pipeWriteCallback allows sending data to the input stream.
    * communicate() will return with the pair of output and error streams once
    * they have been completely consumed. */
-  std::pair<w_string, w_string> communicate(
+  std::pair<std::optional<w_string>, std::optional<w_string>> communicate(
       pipeWriteCallback writeCallback = [](FileDescriptor&) {
         // If not provided by the caller, we're just going to close the input
         // stream
@@ -172,8 +186,10 @@ class ChildProcess {
 
   // these are public for the sake of testing.  You should use the
   // communicate() method instead of calling these directly.
-  std::pair<w_string, w_string> pollingCommunicate(pipeWriteCallback writable);
-  std::pair<w_string, w_string> threadedCommunicate(pipeWriteCallback writable);
+  std::pair<std::optional<w_string>, std::optional<w_string>>
+  pollingCommunicate(pipeWriteCallback writable);
+  std::pair<std::optional<w_string>, std::optional<w_string>>
+  threadedCommunicate(pipeWriteCallback writable);
 
   /**
    * Return the maximum number of platform characters allowed in the command
@@ -188,6 +204,6 @@ class ChildProcess {
   int status_;
   std::unordered_map<int, std::unique_ptr<Pipe>> pipes_;
 
-  folly::Future<w_string> readPipe(int fd);
+  folly::Future<std::optional<w_string>> readPipe(int fd);
 };
 } // namespace watchman

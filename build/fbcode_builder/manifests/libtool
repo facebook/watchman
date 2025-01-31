@@ -1,10 +1,16 @@
 [manifest]
 name = libtool
 
+[homebrew]
+libtool
+
 [rpms]
 libtool
 
 [debs]
+libtool
+
+[pps]
 libtool
 
 [download]

@@ -1,10 +1,16 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "LocalSavedStateInterface.h"
+#include "watchman/saved_state/LocalSavedStateInterface.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
+#include "watchman/Logging.h"
+#include "watchman/fs/FileInformation.h"
 #include "watchman/scm/SCM.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_cmd.h"
 
 static const int kDefaultMaxCommits{10};
 
@@ -17,12 +23,12 @@ LocalSavedStateInterface::LocalSavedStateInterface(
     const SCM* scm)
     : SavedStateInterface(savedStateConfig), scm_(scm) {
   // Max commits to search in source control history for a saved state
-  auto maxCommits = savedStateConfig.get_default("max-commits");
+  auto maxCommits = savedStateConfig.get_optional("max-commits");
   if (maxCommits) {
-    if (!maxCommits.isInt()) {
+    if (!maxCommits->isInt()) {
       throw QueryParseError("'max-commits' must be an integer");
     }
-    maxCommits_ = maxCommits.asInt();
+    maxCommits_ = maxCommits->asInt();
     if (maxCommits_ < 1) {
       throw QueryParseError("'max-commits' must be a positive integer");
     }
@@ -31,15 +37,15 @@ LocalSavedStateInterface::LocalSavedStateInterface(
   }
   // Local path to search for saved states. This path will only ever be read,
   // never written.
-  auto localStoragePath = savedStateConfig.get_default("local-storage-path");
+  auto localStoragePath = savedStateConfig.get_optional("local-storage-path");
   if (!localStoragePath) {
     throw QueryParseError(
         "'local-storage-path' must be present in saved state config");
   }
-  if (!localStoragePath.isString()) {
+  if (!localStoragePath->isString()) {
     throw QueryParseError("'local-storage-path' must be a string");
   }
-  localStoragePath_ = json_to_w_string(localStoragePath);
+  localStoragePath_ = json_to_w_string(*localStoragePath);
   if (!w_string_path_is_absolute(localStoragePath_)) {
     throw QueryParseError("'local-storage-path' must be an absolute path");
   }
@@ -85,7 +91,7 @@ w_string LocalSavedStateInterface::getLocalPath(w_string_piece commitId) const {
   if (!projectMetadata_) {
     filename = w_string::build(commitId);
   } else {
-    filename = w_string::build(commitId, w_string("_"), projectMetadata_);
+    filename = w_string::build(commitId, w_string("_"), *projectMetadata_);
   }
   return w_string::pathCat({localStoragePath_, project_, filename});
 }

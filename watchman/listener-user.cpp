@@ -1,26 +1,42 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <folly/ScopeGuard.h>
-#include "watchman/watchman.h"
+
+#include "watchman/Client.h"
+#include "watchman/Errors.h"
+#include "watchman/Logging.h"
+#include "watchman/PerfSample.h"
+#include "watchman/Shutdown.h"
+#include "watchman/root/Root.h"
+#include "watchman/root/resolve.h"
+#include "watchman/watchman_cmd.h"
 
 // Functions relating to the per-user service
 
 using namespace watchman;
 
-static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
+static UntypedResponse cmd_shutdown(Client*, const json_ref&) {
   logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set("shutdown-server", json_true());
-  send_and_dispose_response(client, std::move(resp));
+  return resp;
 }
-W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON | CMD_POISON_IMMUNE, NULL)
+W_CMD_REG(
+    "shutdown-server",
+    cmd_shutdown,
+    CMD_DAEMON | CMD_POISON_IMMUNE,
+    nullptr);
 
 void add_root_warnings_to_response(
-    json_ref& response,
-    const std::shared_ptr<watchman_root>& root) {
+    UntypedResponse& response,
+    const std::shared_ptr<Root>& root) {
   auto info = root->recrawlInfo.rlock();
 
   if (!info->warning) {
@@ -30,7 +46,7 @@ void add_root_warnings_to_response(
   response.set(
       "warning",
       w_string_to_json(w_string::build(
-          info->warning,
+          info->warning.value(),
           "\n",
           "To clear this warning, run:\n"
           "`watchman watch-del '",
@@ -40,12 +56,8 @@ void add_root_warnings_to_response(
           "'`\n")));
 }
 
-std::shared_ptr<watchman_root> doResolveOrCreateRoot(
-    struct watchman_client* client,
-    const json_ref& args,
-    bool create) {
-  const char* root_name;
-
+std::shared_ptr<Root>
+doResolveOrCreateRoot(Client* client, const json_ref& args, bool create) {
   // Assume root is first element
   size_t root_index = 1;
   if (args.array().size() <= root_index) {
@@ -53,36 +65,45 @@ std::shared_ptr<watchman_root> doResolveOrCreateRoot(
   }
   const auto& ele = args.at(root_index);
 
-  root_name = json_string_value(ele);
+  const char* root_name = json_string_value(ele);
   if (!root_name) {
-    throw RootResolveError(
-        "invalid value for argument ",
-        root_index,
-        ", expected a string naming the root dir");
+    RootResolveError::throwf(
+        "invalid value for argument {}, expected a string naming the root dir",
+        root_index);
   }
+  return resolveRootByName(client, root_name, create);
+}
 
+std::shared_ptr<Root>
+resolveRootByName(Client* client, const char* rootName, bool create) {
   try {
-    std::shared_ptr<watchman_root> root;
+    std::shared_ptr<Root> root;
     if (client->client_mode) {
-      root = w_root_resolve_for_client_mode(root_name);
+      root = w_root_resolve_for_client_mode(rootName);
     } else {
       if (!client->client_is_owner) {
         // Only the owner is allowed to create watches
         create = false;
       }
-      root = w_root_resolve(root_name, create);
+      root = w_root_resolve(rootName, create);
+    }
+
+    if (client->dispatch_command) {
+      addRootMetadataToEvent(
+          root->getRootMetadata(), *client->dispatch_command);
     }
 
     if (client->perf_sample) {
-      client->perf_sample->add_root_meta(root);
+      client->perf_sample->add_root_metadata(root->getRootMetadata());
     }
     return root;
-
+  } catch (const RootNotConnectedError&) {
+    // pass through RootNotConnectedError
+    throw;
   } catch (const std::exception& exc) {
-    throw RootResolveError(
-        "unable to resolve root ",
-        root_name,
-        ": ",
+    RootResolveError::throwf(
+        "unable to resolve root {}: {}{}",
+        rootName,
         exc.what(),
         client->client_is_owner
             ? ""
@@ -90,27 +111,14 @@ std::shared_ptr<watchman_root> doResolveOrCreateRoot(
   }
 }
 
-std::shared_ptr<watchman_root> resolveRoot(
-    struct watchman_client* client,
-    const json_ref& args) {
+std::shared_ptr<Root> resolveRoot(Client* client, const json_ref& args) {
   return doResolveOrCreateRoot(client, args, false);
 }
 
-std::shared_ptr<watchman_root> resolveOrCreateRoot(
-    struct watchman_client* client,
+std::shared_ptr<Root> resolveOrCreateRoot(
+    Client* client,
     const json_ref& args) {
   return doResolveOrCreateRoot(client, args, true);
-}
-
-watchman_user_client::watchman_user_client(
-    std::unique_ptr<watchman_stream>&& stm)
-    : watchman_client(std::move(stm)) {}
-
-watchman_user_client::~watchman_user_client() {
-  /* cancel subscriptions */
-  subscriptions.clear();
-
-  w_client_vacate_states(this);
 }
 
 /* vim:ts=2:sw=2:et:

@@ -1,19 +1,23 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
 #include <atomic>
 #include <deque>
 #include <memory>
+#include <optional>
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/Optional.h>
-#include <folly/dynamic.h>
 #include <folly/futures/Future.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/json/dynamic.h>
 
 namespace watchman {
 
@@ -46,8 +50,8 @@ class WatchmanConnection
 
   explicit WatchmanConnection(
       folly::EventBase* eventBase,
-      folly::Optional<std::string>&& sockPath = {},
-      folly::Optional<Callback>&& callback = {},
+      std::optional<std::string>&& sockPath = {},
+      std::optional<Callback>&& callback = {},
       // You really should provide an executor that runs in a different
       // thread to avoid blocking your event base for large responses
       folly::Executor* cpuExecutor = nullptr);
@@ -91,7 +95,7 @@ class WatchmanConnection
   };
 
   folly::Future<std::string> getSockPath();
-  void failQueuedCommands(const folly::exception_wrapper& ex);
+  void failQueuedCommands(folly::exception_wrapper&& ex);
   void sendCommand(bool pop = false);
   void popAndSendCommand();
   void decodeNextResponse();
@@ -115,8 +119,8 @@ class WatchmanConnection
   void readErr(const folly::AsyncSocketException& ex) noexcept override;
 
   folly::Executor::KeepAlive<folly::EventBase> eventBase_;
-  folly::Optional<std::string> sockPath_;
-  folly::Optional<Callback> callback_;
+  std::optional<std::string> sockPath_;
+  std::optional<Callback> callback_;
   folly::Executor::KeepAlive<folly::Executor> cpuExecutor_;
   folly::Promise<folly::dynamic> connectPromise_;
   folly::dynamic versionCmd_;

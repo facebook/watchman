@@ -1,30 +1,25 @@
-# How to run the website locally
+# Website
 
-First time setup:
+This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
 
-* You'll need ruby 2 or higher (available by default on Mac)
-
-Then:
-
-```bash
-sudo gem install bundler
-cd watchman/website
-sudo bundle install
-```
-
-## After performing the setup
-
-To build the docs and start a webserver to browse them, and auto-rebuild
-as you change content files:
+### Installation
 
 ```
-jekyll serve -w -t
+$ yarn
 ```
 
-If you've already got a built version of the site, you can save some time
-by skipping the initial build.  It will rebuild files when things change:
+### Local Development
 
 ```
-jekyll serve -w -t --skip-initial-build
+$ yarn start
 ```
 
+This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+
+### Build
+
+```
+$ yarn build
+```
+
+This command generates static content into the `build` directory and can be served using any static contents hosting service.

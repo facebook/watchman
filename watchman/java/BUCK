@@ -56,7 +56,7 @@ java_test(
         ":watchman-lib",
         "//third-party/guava:guava",
         "//third-party/hamcrest:hamcrest-2",
-        "//third-party/junit:junit",
+        "//third-party/java/junit:junit",
         "//third-party/mockito:mockito",
     ],
 )

@@ -1,6 +1,12 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #include "watchman/ChildProcess.h"
+#include <fmt/core.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <memory>
@@ -232,12 +238,24 @@ void ChildProcess::Options::pipeStderr() {
   pipe(STDERR_FILENO, false);
 }
 
-void ChildProcess::Options::nullStdin() {
+void ChildProcess::Options::nullFd(int fd, int flags) {
 #ifdef _WIN32
-  open(STDIN_FILENO, "NUL", O_RDONLY, 0);
+  open(fd, "NUL", flags, 0);
 #else
-  open(STDIN_FILENO, "/dev/null", O_RDONLY, 0);
+  open(fd, "/dev/null", flags, 0666);
 #endif
+}
+
+void ChildProcess::Options::nullStdin() {
+  nullFd(STDIN_FILENO, O_RDONLY);
+}
+
+void ChildProcess::Options::nullStdout() {
+  nullFd(STDOUT_FILENO, O_WRONLY);
+}
+
+void ChildProcess::Options::nullStderr() {
+  nullFd(STDERR_FILENO, O_WRONLY);
 }
 
 void ChildProcess::Options::chdir(w_string_piece path) {
@@ -247,12 +265,12 @@ void ChildProcess::Options::chdir(w_string_piece path) {
 #endif
 }
 
-static std::vector<w_string_piece> json_args_to_string_vec(
+static std::vector<std::string_view> json_args_to_string_vec(
     const json_ref& args) {
-  std::vector<w_string_piece> vec;
+  std::vector<std::string_view> vec;
 
   for (auto& arg : args.array()) {
-    vec.emplace_back(json_to_w_string(arg));
+    vec.emplace_back(json_to_w_string(arg).view());
   }
 
   return vec;
@@ -261,7 +279,9 @@ static std::vector<w_string_piece> json_args_to_string_vec(
 ChildProcess::ChildProcess(const json_ref& args, Options&& options)
     : ChildProcess(json_args_to_string_vec(args), std::move(options)) {}
 
-ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
+ChildProcess::ChildProcess(
+    std::vector<std::string_view> args,
+    Options&& options)
     : pipes_(std::move(options.pipes_)) {
   std::vector<char*> argv;
   std::vector<std::string> argStrings;
@@ -297,7 +317,7 @@ ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
       throw std::system_error(
           errno,
           std::generic_category(),
-          folly::to<std::string>("failed to chdir to ", options.cwd_));
+          fmt::format("failed to chdir to {}", options.cwd_));
     }
   }
 #endif
@@ -389,6 +409,9 @@ int ChildProcess::wait() {
     }
 
     if (errno != EINTR) {
+      // Pretend that we've successfully waited the child. Otherwise the
+      // destructor will abort the process due to waited_ not being set.
+      waited_ = true;
       throw std::system_error(errno, std::generic_category(), "waitpid");
     }
   }
@@ -413,8 +436,8 @@ std::unique_ptr<Pipe> ChildProcess::takeStdin() {
   return pipe;
 }
 
-std::pair<w_string, w_string> ChildProcess::communicate(
-    pipeWriteCallback writeCallback) {
+std::pair<std::optional<w_string>, std::optional<w_string>>
+ChildProcess::communicate(pipeWriteCallback writeCallback) {
 #ifdef _WIN32
   return threadedCommunicate(writeCallback);
 #else
@@ -423,8 +446,8 @@ std::pair<w_string, w_string> ChildProcess::communicate(
 }
 
 #ifndef _WIN32
-std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
-    pipeWriteCallback writeCallback) {
+std::pair<std::optional<w_string>, std::optional<w_string>>
+ChildProcess::pollingCommunicate(pipeWriteCallback writeCallback) {
   std::unordered_map<int, std::string> outputs;
 
   for (auto& it : pipes_) {
@@ -574,11 +597,11 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
     watchman::log(watchman::DBG, "remaining pipes ", pipes_.size(), "\n");
   }
 
-  auto optBuffer = [&](int fd) -> w_string {
+  auto optBuffer = [&](int fd) -> std::optional<w_string> {
     auto it = outputs.find(fd);
     if (it == outputs.end()) {
       watchman::log(watchman::DBG, "communicate fd ", fd, " nullptr\n");
-      return nullptr;
+      return std::nullopt;
     }
     watchman::log(
         watchman::DBG, "communicate fd ", fd, " gives ", it->second, "\n");
@@ -592,10 +615,10 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
 /** Spawn a thread to read from the pipe connected to the specified fd.
  * Returns a Future that will hold a string with the entire output from
  * that stream. */
-folly::Future<w_string> ChildProcess::readPipe(int fd) {
+folly::Future<std::optional<w_string>> ChildProcess::readPipe(int fd) {
   auto it = pipes_.find(fd);
   if (it == pipes_.end()) {
-    return folly::makeFuture(w_string(nullptr));
+    return std::nullopt;
   }
 
   auto p = std::make_shared<folly::Promise<w_string>>();
@@ -626,8 +649,8 @@ folly::Future<w_string> ChildProcess::readPipe(int fd) {
  * It is intended to be used on Windows where there is no reasonable
  * way to carry out a non-blocking read on a pipe.  We compile and
  * test it on all platforms to make it easier to avoid regressions. */
-std::pair<w_string, w_string> ChildProcess::threadedCommunicate(
-    pipeWriteCallback writeCallback) {
+std::pair<std::optional<w_string>, std::optional<w_string>>
+ChildProcess::threadedCommunicate(pipeWriteCallback writeCallback) {
   auto outFuture = readPipe(STDOUT_FILENO);
   auto errFuture = readPipe(STDERR_FILENO);
 

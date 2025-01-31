@@ -1,28 +1,39 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 #include <folly/Synchronized.h>
-#include <folly/experimental/LockFreeRingBuffer.h>
+#include <map>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include "ContentHash.h"
-#include "CookieSync.h"
-#include "PendingCollection.h"
-#include "QueryableView.h"
-#include "SymlinkTargets.h"
+#include "watchman/ContentHash.h"
+#include "watchman/CookieSync.h"
+#include "watchman/PendingCollection.h"
+#include "watchman/PerfSample.h"
+#include "watchman/QueryableView.h"
+#include "watchman/Result.h"
+#include "watchman/RingBuffer.h"
+#include "watchman/SymlinkTargets.h"
 #include "watchman/WatchmanConfig.h"
-#include "watchman/watchman_perf.h"
+#include "watchman/fs/DirHandle.h"
+#include "watchman/query/FileResult.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
-#include "watchman_opendir.h"
-#include "watchman_query.h"
 
-class Watcher;
-struct watchman_client;
+struct watchman_file;
 
 namespace watchman {
+
+class FileSystem;
+class RootConfig;
+struct GlobTree;
+class Watcher;
 
 // Helper struct to hold caches used by the InMemoryView
 struct InMemoryViewCaches {
@@ -36,29 +47,29 @@ struct InMemoryViewCaches {
       std::chrono::milliseconds errorTTL);
 };
 
-class InMemoryFileResult : public FileResult {
+class InMemoryFileResult final : public FileResult {
  public:
   InMemoryFileResult(const watchman_file* file, InMemoryViewCaches& caches);
-  folly::Optional<FileInformation> stat() override;
-  folly::Optional<struct timespec> accessedTime() override;
-  folly::Optional<struct timespec> modifiedTime() override;
-  folly::Optional<struct timespec> changedTime() override;
-  folly::Optional<size_t> size() override;
+  std::optional<FileInformation> stat() override;
+  std::optional<struct timespec> accessedTime() override;
+  std::optional<struct timespec> modifiedTime() override;
+  std::optional<struct timespec> changedTime() override;
+  std::optional<size_t> size() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
-  folly::Optional<bool> exists() override;
-  folly::Optional<w_string> readLink() override;
-  folly::Optional<w_clock_t> ctime() override;
-  folly::Optional<w_clock_t> otime() override;
-  folly::Optional<FileResult::ContentHash> getContentSha1() override;
+  std::optional<bool> exists() override;
+  std::optional<ResolvedSymlink> readLink() override;
+  std::optional<ClockStamp> ctime() override;
+  std::optional<ClockStamp> otime() override;
+  std::optional<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
 
  private:
   const watchman_file* file_;
-  w_string dirName_;
+  std::optional<w_string> dirName_;
   InMemoryViewCaches& caches_;
-  folly::Optional<w_string> symlinkTarget_;
+  std::optional<ResolvedSymlink> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };
 
@@ -92,27 +103,22 @@ class ViewDatabase {
    * that entry and returns it.
    */
   watchman_file* getOrCreateChildFile(
-      Watcher& watcher,
       watchman_dir* dir,
       const w_string& file_name,
-      w_clock_t ctime);
+      ClockStamp ctime);
 
   /**
    * Updates the otime for the file and bubbles it to the front of recency
    * index.
    */
-  void markFileChanged(Watcher& watcher, watchman_file* file, w_clock_t otime);
+  void markFileChanged(watchman_file* file, ClockStamp otime);
 
   /**
    * Mark a directory as being removed from the view. Marks the contained set of
    * files as deleted. If recursive is true, is recursively invoked on child
    * dirs.
    */
-  void markDirDeleted(
-      Watcher& watcher,
-      watchman_dir* dir,
-      w_clock_t otime,
-      bool recursive);
+  void markDirDeleted(watchman_dir* dir, ClockStamp otime, bool recursive);
 
  private:
   void insertAtHeadOfFileList(struct watchman_file* file);
@@ -134,74 +140,98 @@ class ViewDatabase {
  * Keeps track of the state of the filesystem in-memory and drives a notify
  * thread which consumes events from the watcher.
  */
-class InMemoryView : public QueryableView {
+class InMemoryView final : public QueryableView {
  public:
-  InMemoryView(watchman_root* root, std::shared_ptr<Watcher> watcher);
+  InMemoryView(
+      FileSystem& fileSystem,
+      const w_string& root_path,
+      Configuration config,
+      std::shared_ptr<Watcher> watcher);
   ~InMemoryView() override;
 
   InMemoryView(InMemoryView&&) = delete;
   InMemoryView& operator=(InMemoryView&&) = delete;
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override;
-  uint32_t getLastAgeOutTickValue() const override;
+  ClockTicks getLastAgeOutTickValue() const override;
   std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const override;
   w_string getCurrentClockString() const override;
 
-  w_clock_t getClock(std::chrono::system_clock::time_point now) const {
-    return w_clock_t{
+  ClockStamp getClock(std::chrono::system_clock::time_point now) const {
+    return ClockStamp{
         mostRecentTick_.load(std::memory_order_acquire),
         std::chrono::system_clock::to_time_t(now),
     };
   }
 
-  void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
-  void syncToNow(
-      const std::shared_ptr<watchman_root>& root,
+  void ageOut(
+      int64_t& walked,
+      int64_t& files,
+      int64_t& dirs,
+      std::chrono::seconds minAge) override;
+
+  folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds settle_period) override;
+  CookieSync::SyncResult syncToNow(
+      const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) override;
+
+  /**
+   * Write cookies to the working copy and wait to see them.
+   *
+   * The returned future will complete when all the cookies written to the
+   * working copy have been noticed by the underlying watcher.
+   */
+  folly::SemiFuture<CookieSync::SyncResult> sync(
+      const std::shared_ptr<Root>& root) override;
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;
 
-  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void timeGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void pathGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void globGenerator(w_query* query, struct w_query_ctx* ctx) const override;
+  void globGenerator(const Query* query, QueryContext* ctx) const override;
 
-  void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
-      const override;
+  void allFilesGenerator(const Query* query, QueryContext* ctx) const override;
 
-  std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<watchman_root>& root) override;
+  /**
+   * Returns a SemiFuture that completes when any pending recrawls are
+   * completed. The primary use of this is so that "watch-project" doesn't send
+   * its return PDU to the client until after the initial crawl is complete.
+   * Note that a recrawl can happen at any point, so this is a bit of a weak
+   * promise that a query can be immediately executed, but is good enough
+   * assuming that the system isn't in a perpetual state of recrawl.
+   */
+  folly::SemiFuture<folly::Unit> waitUntilReadyToQuery() override;
 
-  void startThreads(const std::shared_ptr<watchman_root>& root) override;
-  void signalThreads() override;
+  void startThreads(const std::shared_ptr<Root>& root) override;
+  void stopThreads(std::string_view reason) override;
   void wakeThreads() override;
-  void clientModeCrawl(const std::shared_ptr<watchman_root>& root);
+  void clientModeCrawl(const std::shared_ptr<Root>& root);
 
   const w_string& getName() const override;
   const std::shared_ptr<Watcher>& getWatcher() const;
   json_ref getWatcherDebugInfo() const override;
+  void clearWatcherDebugInfo() override;
   json_ref getViewDebugInfo() const;
+  void clearViewDebugInfo();
 
   // If content cache warming is configured, do the warm up now
   void warmContentCache();
-  static void debugContentHashCache(
-      struct watchman_client* client,
-      const json_ref& args);
-  static void debugSymlinkTargetCache(
-      struct watchman_client* client,
-      const json_ref& args);
 
-  SCM* getSCM() const override;
+  InMemoryViewCaches& debugAccessCaches() const {
+    return caches_;
+  }
 
  private:
-  void syncToNowCookies(
-      const std::shared_ptr<watchman_root>& root,
+  CookieSync::SyncResult syncToNowCookies(
+      const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout);
 
   // Returns the erased file's otime.
-  w_clock_t ageOutFile(
+  ClockStamp ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
 
@@ -211,57 +241,73 @@ class InMemoryView : public QueryableView {
   // caller will abort all pending cookies after processAllPending returns.
   enum class IsDesynced { Yes, No };
 
+  /** Recursively walks files under a specified dir */
+  void dirGenerator(
+      const Query* query,
+      QueryContext* ctx,
+      const watchman_dir* dir,
+      uint32_t depth) const;
+  void globGeneratorTree(
+      QueryContext* ctx,
+      const GlobTree* node,
+      const struct watchman_dir* dir) const;
+  void globGeneratorDoublestar(
+      QueryContext* ctx,
+      const struct watchman_dir* dir,
+      const GlobTree* node,
+      const char* dir_name,
+      uint32_t dir_name_len) const;
+
+  void notifyThread(const std::shared_ptr<Root>& root);
+
+  // BEGIN IOTHREAD
+
+  void ioThread(const std::shared_ptr<Root>& root);
+
   // Consume entries from `pending` and apply them to the InMemoryView. Any new
   // pending paths generated by processPath will be crawled before
   // processAllPending returns.
   IsDesynced processAllPending(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       ViewDatabase& view,
       PendingChanges& pending);
 
   void processPath(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const watchman_dir_ent* pre_stat);
+      const FileInformation* pre_stat,
+      std::vector<w_string>& pendingCookies);
 
-  /** Recursively walks files under a specified dir */
-  void dirGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      const watchman_dir* dir,
-      uint32_t depth) const;
-  void globGeneratorTree(
-      struct w_query_ctx* ctx,
-      const struct watchman_glob_tree* node,
-      const struct watchman_dir* dir) const;
-  void globGeneratorDoublestar(
-      struct w_query_ctx* ctx,
-      const struct watchman_dir* dir,
-      const struct watchman_glob_tree* node,
-      const char* dir_name,
-      uint32_t dir_name_len) const;
   /**
-   * Crawl the given directory.
+   * Crawl the given directory. Any cookies discovered during the crawl are
+   * appended to pendingCookies.
    *
    * Allowed flags:
    *  - W_PENDING_RECURSIVE: the directory will be recursively crawled,
    *  - W_PENDING_VIA_NOTIFY when the watcher only supports directory
-   *    notification (WATCHER_ONLY_DIRECTORY_NOTIFICATIONS), this will stat all
+   *    notification (W_PENDING_NONRECURSIVE_SCAN), this will stat all
    *    the files and directories contained in the passed in directory and stop.
    */
   void crawler(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       ViewDatabase& view,
       PendingChanges& coll,
-      const PendingChange& pending);
-  void notifyThread(const std::shared_ptr<watchman_root>& root);
-  void ioThread(const std::shared_ptr<watchman_root>& root);
-  bool handleShouldRecrawl(watchman_root& root);
-  void fullCrawl(
-      const std::shared_ptr<watchman_root>& root,
-      PendingChanges& pending);
+      const PendingChange& pending,
+      std::vector<w_string>& pendingCookies);
+
+  /**
+   * Crawl the given directory recursively using ParallelWalker.
+   *
+   * W_PENDING_RECURSIVE must be set.
+   */
+  void crawlerParallel(
+      const std::shared_ptr<Root>& root,
+      ViewDatabase& view,
+      PendingChanges& coll,
+      const PendingChange& pending,
+      std::vector<w_string>& pendingCookies);
 
   /**
    * Called on the IO thread. If `pending` is not in the ignored directory list,
@@ -269,56 +315,97 @@ class InMemoryView : public QueryableView {
    * `coll` if a directory needs to be rescanned.
    */
   void statPath(
-      watchman_root& root,
+      const Root& root,
+      const CookieSync& cookies,
       ViewDatabase& view,
       PendingChanges& coll,
       const PendingChange& pending,
-      const watchman_dir_ent* pre_stat);
+      const FileInformation* pre_stat);
 
-  bool propagateToParentDirIfAppropriate(
-      const watchman_root& root,
-      PendingChanges& coll,
-      std::chrono::system_clock::time_point now,
-      const FileInformation& entryStat,
-      const w_string& dirName,
-      const watchman_dir* parentDir,
-      bool isUnlink);
+  // END IOTHREAD
 
-  CookieSync& cookies_;
-  Configuration& config_;
+ public:
+  // This is public so the IO thread state machine can be driven from a test.
+  // TODO: Move this logic into a separate class with its own state.
+
+  enum class Continue {
+    Stop,
+    Continue,
+  };
+
+  struct IoThreadState {
+    explicit IoThreadState(std::chrono::milliseconds biggestTimeout)
+        : biggestTimeout{biggestTimeout} {}
+
+    const std::chrono::milliseconds biggestTimeout;
+
+    PendingChanges localPending;
+    std::chrono::milliseconds currentTimeout;
+
+    // When the iothread last processed a pending event from the Watcher.
+    std::optional<std::chrono::steady_clock::time_point> lastUnsettle;
+  };
+
+  // Returns a reference to the ViewDatabase without synchronizing on the mutex.
+  // DO NOT USE OUTSIDE OF SINGLE-THREADED TESTS.
+  ViewDatabase& unsafeAccessViewDatabase() {
+    return view_.unsafeGetUnlocked();
+  }
+
+  // Used by tests to inject events into the iothread.
+  PendingCollection& unsafeAccessPendingFromWatcher() {
+    return pendingFromWatcher_;
+  }
+
+  // Returns whether IO thread should stop.
+  Continue stepIoThread(
+      const std::shared_ptr<Root>& root,
+      IoThreadState& state,
+      PendingCollection& pendingFromWatcher);
+
+ private:
+  void fullCrawl(
+      const std::shared_ptr<Root>& root,
+      PendingCollection& pendingFromWatcher,
+      PendingChanges& localPending);
+
+  // Performs settle-time actions.
+  // Returns whether the root was reaped and the IO thread should terminate.
+  Continue doSettleThings(Root& root, IoThreadState& state);
+
+  FileSystem& fileSystem_;
+  const Configuration config_;
 
   folly::Synchronized<ViewDatabase> view_;
   // The most recently observed tick value of an item in the view
   // Only incremented by the iothread, but may be read by other threads.
-  std::atomic<uint32_t> mostRecentTick_{1};
-  const uint32_t rootNumber_{0};
+  std::atomic<ClockTicks> mostRecentTick_{1};
+  const ClockRoot rootNumber_{0};
   const w_string rootPath_;
 
-  // This allows a client to wait for a recrawl to complete.
-  // The primary use of this is so that "watch-project" doesn't
-  // send its return PDU to the client until after the initial
-  // crawl is complete.  Note that a recrawl can happen at any
-  // point, so this is a bit of a weak promise that a query can
-  // be immediately executed, but is good enough assuming that
-  // the system isn't in a perpetual state of recrawl.
-  struct CrawlState {
-    std::unique_ptr<std::promise<void>> promise;
-    std::shared_future<void> future;
-  };
-  folly::Synchronized<CrawlState> crawlState_;
-
-  uint32_t lastAgeOutTick_{0};
+  ClockTicks lastAgeOutTick_{0};
   // This is system_clock instead of steady_clock because it's compared with a
   // file's otime.
   std::chrono::system_clock::time_point lastAgeOutTimestamp_{};
 
+  using PendingSettles =
+      std::multimap<std::chrono::milliseconds, folly::Promise<folly::Unit>>;
+
+  /**
+   * Holds promises that are fulfilled when the IO thread has settled for the
+   * desired amount of time.
+   *
+   * Sorted by settle period.
+   */
+  folly::Synchronized<PendingSettles> pendingSettles_;
+
   /*
    * Queue of items that we need to stat/process.
    *
-   * Populated by both the IO thread (fullCrawl) and the notify thread (from the
-   * watcher).
+   * Populated by both the IO thread (fullCrawl), the notify thread (from the
+   * watcher), and anything that calls waitUntilReadyToQuery.
    */
-  PendingCollection pending_;
+  PendingCollection pendingFromWatcher_;
 
   std::atomic<bool> stopThreads_{false};
   std::shared_ptr<Watcher> watcher_;
@@ -331,14 +418,14 @@ class InMemoryView : public QueryableView {
   bool enableContentCacheWarming_{false};
   // How many of the most recent files to warm up when settling?
   size_t maxFilesToWarmInContentCache_{1024};
+  // Do not warm up files whose size is greater than this. A size of 0 is
+  // equivalent to unlimited.
+  int64_t maxFileSizeToWarmInContentCache_{10 * 1024 * 1024};
   // If true, we will wait for the items to be hashed before
   // dispatching the settle to watchman clients
   bool syncContentCacheWarming_{false};
   // Remember what we've already warmed up
   uint32_t lastWarmedTick_{0};
-
-  // The source control system that we detected during initialization
-  std::unique_ptr<SCM> scm_;
 
   struct PendingChangeLogEntry {
     PendingChangeLogEntry() noexcept {
@@ -356,7 +443,7 @@ class InMemoryView : public QueryableView {
 
     // fields from PendingChange
     std::chrono::system_clock::time_point now;
-    unsigned char pending_flags;
+    PendingFlags::UnderlyingType pending_flags;
     char path_tail[kPathLength];
 
     // results of calling getFileInformation
@@ -369,8 +456,10 @@ class InMemoryView : public QueryableView {
   static_assert(88 == sizeof(PendingChangeLogEntry));
 
   // If set, paths processed by processPending are logged here.
-  std::unique_ptr<folly::LockFreeRingBuffer<PendingChangeLogEntry>>
-      processedPaths_;
+  std::unique_ptr<RingBuffer<PendingChangeLogEntry>> processedPaths_;
+
+  // Track statPath() count during fullCrawl(). Used to report progress.
+  std::shared_ptr<std::atomic<size_t>> fullCrawlStatCount_;
 };
 
 } // namespace watchman

@@ -1,7 +1,16 @@
-use std::convert::TryInto;
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 use std::ffi::OsString;
 use std::fmt::Write;
 use std::path::PathBuf;
+
+use serde::Deserialize;
+use serde::Serialize;
 
 /// The ByteString type represents values encoded using BSER_BYTESTRING.
 /// The purpose of this encoding is to represent bytestrings with an arbitrary
@@ -22,18 +31,19 @@ use std::path::PathBuf;
 /// because Watchman and thus ByteString doesn't have a way to represent the poorly formed
 /// surrogate pairs that Windows allows in its filenames.
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct ByteString(Vec<u8>);
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct ByteString(#[serde(with = "serde_bytes")] Vec<u8>);
 
 impl std::fmt::Debug for ByteString {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let escaped = self.as_escaped_string();
         write!(fmt, "\"{}\"", escaped.escape_debug())
     }
 }
 
 impl std::fmt::Display for ByteString {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let escaped = self.as_escaped_string();
         write!(fmt, "\"{}\"", escaped.escape_default())
     }
@@ -54,9 +64,14 @@ impl std::ops::DerefMut for ByteString {
 }
 
 impl ByteString {
-    /// Returns the raw bytes as a slice
+    /// Returns the raw bytes as a slice.
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_slice()
+    }
+
+    /// Consumes ByteString yielding bytes.
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
     }
 
     /// Returns a version of the bytestring encoded as a mostly-utf-8
@@ -74,9 +89,7 @@ impl ByteString {
                 }
                 Err(error) => {
                     let (valid, after_valid) = input.split_at(error.valid_up_to());
-                    unsafe {
-                        output.push_str(::std::str::from_utf8_unchecked(valid))
-                    }
+                    unsafe { output.push_str(::std::str::from_utf8_unchecked(valid)) }
 
                     if let Some(invalid_sequence_length) = error.error_len() {
                         for b in &after_valid[..invalid_sequence_length] {
@@ -176,6 +189,27 @@ impl TryInto<ByteString> for PathBuf {
     type Error = &'static str;
 
     fn try_into(self) -> Result<ByteString, Self::Error> {
-        Ok(self.into_os_string().try_into()?)
+        self.into_os_string().try_into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ByteString;
+    use crate::from_slice;
+    use crate::ser::serialize;
+
+    #[test]
+    fn test_serde() {
+        let bs = ByteString::from(vec![1, 2, 3, 4]);
+
+        let out = serialize(Vec::<u8>::new(), &bs).unwrap();
+        assert_eq!(
+            out,
+            b"\x00\x02\x00\x00\x00\x00\x03\x07\x02\x03\x04\x01\x02\x03\x04"
+        );
+
+        let got: ByteString = from_slice(&out).unwrap();
+        assert_eq!(bs, got);
     }
 }

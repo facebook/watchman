@@ -1,7 +1,12 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 
 void watchman_dir::Deleter::operator()(watchman_file* file) const {
   free_file_node(file);
@@ -14,16 +19,16 @@ w_string watchman_dir::getFullPath() const {
   return getFullPathToChild(w_string_piece());
 }
 
-watchman_file* watchman_dir::getChildFile(w_string_piece name) const {
-  auto it = files.find(name);
+watchman_file* watchman_dir::getChildFile(w_string_piece name_2) const {
+  auto it = files.find(name_2);
   if (it == files.end()) {
     return nullptr;
   }
   return it->second.get();
 }
 
-watchman_dir* watchman_dir::getChildDir(w_string_piece name) const {
-  auto it = dirs.find(name);
+watchman_dir* watchman_dir::getChildDir(w_string_piece name_2) const {
+  auto it = dirs.find(name_2);
   if (it == dirs.end()) {
     return nullptr;
   }
@@ -32,9 +37,6 @@ watchman_dir* watchman_dir::getChildDir(w_string_piece name) const {
 
 w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   uint32_t length = 0;
-  w_string_t* s;
-  char *buf, *end;
-
   if (extra.size()) {
     length = extra.size() + 1 /* separator */;
   }
@@ -42,13 +44,10 @@ w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
     length += d->name.size() + 1 /* separator OR final NUL terminator */;
   }
 
-  s = (w_string_t*)(new char[sizeof(*s) + length]);
-  new (s) watchman_string();
+  auto* s = watchman::StringHeader::alloc(length - 1, W_STRING_BYTE);
 
-  s->refcnt = 1;
-  s->len = length - 1;
-  buf = const_cast<char*>(s->buf);
-  end = buf + s->len;
+  char* buf = s->buf();
+  char* end = buf + s->len;
 
   *end = 0;
   if (extra.size()) {
@@ -64,7 +63,7 @@ w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
     memcpy(end, d->name.data(), d->name.size());
   }
 
-  return w_string(s, false);
+  return w_string{s};
 }
 
 /* vim:ts=2:sw=2:et:

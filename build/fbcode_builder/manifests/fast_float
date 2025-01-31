@@ -1,0 +1,20 @@
+[manifest]
+name = fast_float
+
+[download]
+url = https://github.com/fastfloat/fast_float/archive/refs/tags/v6.1.4.tar.gz
+sha256 = 12cb6d250824160ca16bcb9d51f0ca7693d0d10cb444f34f1093bc02acfce704
+
+[build]
+builder = cmake
+subdir = fast_float-6.1.4
+
+[cmake.defines]
+FASTFLOAT_TEST = OFF
+FASTFLOAT_SANITIZE = OFF
+
+[debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04")))]
+libfast-float-dev
+
+[rpms.distro=fedora]
+fast_float-devel

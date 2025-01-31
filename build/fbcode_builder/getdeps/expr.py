@@ -1,9 +1,9 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
 
 import re
 import shlex
@@ -39,40 +39,40 @@ def parse_expr(expr_text, valid_variables):
 
 
 class ExprNode(object):
-    def eval(self, ctx):
+    def eval(self, ctx) -> bool:
         return False
 
 
 class TrueExpr(ExprNode):
-    def eval(self, ctx):
+    def eval(self, ctx) -> bool:
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "true"
 
 
 class NotExpr(ExprNode):
-    def __init__(self, node):
+    def __init__(self, node) -> None:
         self._node = node
 
-    def eval(self, ctx):
+    def eval(self, ctx) -> bool:
         return not self._node.eval(ctx)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "not(%s)" % self._node
 
 
 class AllExpr(ExprNode):
-    def __init__(self, nodes):
+    def __init__(self, nodes) -> None:
         self._nodes = nodes
 
-    def eval(self, ctx):
+    def eval(self, ctx) -> bool:
         for node in self._nodes:
             if not node.eval(ctx):
                 return False
         return True
 
-    def __str__(self):
+    def __str__(self) -> str:
         items = []
         for node in self._nodes:
             items.append(str(node))
@@ -80,16 +80,16 @@ class AllExpr(ExprNode):
 
 
 class AnyExpr(ExprNode):
-    def __init__(self, nodes):
+    def __init__(self, nodes) -> None:
         self._nodes = nodes
 
-    def eval(self, ctx):
+    def eval(self, ctx) -> bool:
         for node in self._nodes:
             if node.eval(ctx):
                 return True
         return False
 
-    def __str__(self):
+    def __str__(self) -> str:
         items = []
         for node in self._nodes:
             items.append(str(node))
@@ -97,19 +97,19 @@ class AnyExpr(ExprNode):
 
 
 class EqualExpr(ExprNode):
-    def __init__(self, key, value):
+    def __init__(self, key, value) -> None:
         self._key = key
         self._value = value
 
     def eval(self, ctx):
         return ctx.get(self._key) == self._value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s=%s" % (self._key, self._value)
 
 
 class Parser(object):
-    def __init__(self, text, valid_variables):
+    def __init__(self, text, valid_variables) -> None:
         self.text = text
         self.lex = shlex.shlex(text)
         self.valid_variables = valid_variables
@@ -141,19 +141,23 @@ class Parser(object):
         if op == "=":
             if name not in self.valid_variables:
                 raise Exception("unknown variable %r in expression" % (name,))
-            return EqualExpr(name, self.lex.get_token())
+            # remove shell quote from value so can test things with period in them, e.g "18.04"
+            unquoted = " ".join(shlex.split(self.lex.get_token()))
+            return EqualExpr(name, unquoted)
 
         raise Exception(
             "Unexpected token sequence '%s %s' in %s" % (name, op, self.text)
         )
 
-    def ident(self):
+    def ident(self) -> str:
         ident = self.lex.get_token()
+        # pyre-fixme[6]: For 2nd argument expected `str` but got `Optional[str]`.
         if not re.match("[a-zA-Z]+", ident):
             raise Exception("expected identifier found %s" % ident)
+        # pyre-fixme[7]: Expected `str` but got `Optional[str]`.
         return ident
 
-    def parse_not(self):
+    def parse_not(self) -> NotExpr:
         node = self.top()
         expr = NotExpr(node)
         tok = self.lex.get_token()
@@ -161,7 +165,7 @@ class Parser(object):
             raise Exception("expected ')' found %s" % tok)
         return expr
 
-    def parse_any(self):
+    def parse_any(self) -> AnyExpr:
         nodes = []
         while True:
             nodes.append(self.top())
@@ -172,7 +176,7 @@ class Parser(object):
                 raise Exception("expected ',' or ')' but found %s" % tok)
         return AnyExpr(nodes)
 
-    def parse_all(self):
+    def parse_all(self) -> AllExpr:
         nodes = []
         while True:
             nodes.append(self.top())

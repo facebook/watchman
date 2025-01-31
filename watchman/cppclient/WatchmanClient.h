@@ -1,5 +1,9 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
@@ -62,14 +66,16 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <folly/Executor.h>
 #include <folly/Optional.h>
 #include <folly/Try.h>
-#include <folly/dynamic.h>
 #include <folly/futures/Future.h>
+#include <folly/json/dynamic.h>
 
 namespace watchman {
 
@@ -81,11 +87,11 @@ struct WatchPath {
 
   WatchPath(
       const std::string& root,
-      const folly::Optional<std::string>& relativePath);
+      const std::optional<std::string>& relativePath);
 
  private:
   const std::string root_;
-  const folly::Optional<std::string> relativePath_;
+  const std::optional<std::string> relativePath_;
 };
 
 using Clock = std::string;
@@ -120,11 +126,24 @@ struct Subscription {
 using SubscriptionPtr = std::shared_ptr<Subscription>;
 
 struct WatchmanClient {
+  ~WatchmanClient();
+
   explicit WatchmanClient(
       folly::EventBase* eventBase,
-      folly::Optional<std::string>&& sockPath = {},
+      std::optional<std::string>&& sockPath = {},
       folly::Executor* cpuExecutor = {},
       ErrorCallback errCb = {});
+
+  [[deprecated("use std::optional instead")]] explicit WatchmanClient(
+      folly::EventBase* eventBase,
+      folly::Optional<std::string>&& sockPath,
+      folly::Executor* cpuExecutor = {},
+      ErrorCallback errCb = {})
+      : WatchmanClient(
+            eventBase,
+            std::optional<std::string>{std::move(sockPath)},
+            cpuExecutor,
+            std::move(errCb)) {}
 
   /**
    * Establishes a connection, returning version and capability information per
@@ -171,7 +190,7 @@ struct WatchmanClient {
    * See https://facebook.github.io/watchman/docs/cmd/watch-project.html for
    * details.
    */
-  folly::SemiFuture<WatchPathPtr> watch(folly::StringPiece path);
+  folly::SemiFuture<WatchPathPtr> watch(std::string_view path);
 
   /**
    * Ask Watchman for its current clock in a given root.
@@ -203,7 +222,7 @@ struct WatchmanClient {
    */
   folly::SemiFuture<SubscriptionPtr> subscribe(
       const folly::dynamic& query,
-      folly::StringPiece path,
+      std::string_view path,
       folly::Executor* executor,
       SubscriptionCallback&& callback,
       std::string subscriptionName = std::string{});
@@ -228,7 +247,7 @@ struct WatchmanClient {
  private:
   void connectionCallback(folly::Try<folly::dynamic>&& try_data);
 
-  folly::Future<WatchPathPtr> watchImpl(folly::StringPiece path);
+  folly::Future<WatchPathPtr> watchImpl(std::string_view path);
 
   std::shared_ptr<WatchmanConnection> conn_;
   ErrorCallback errorCallback_;

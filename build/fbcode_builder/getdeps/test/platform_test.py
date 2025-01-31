@@ -1,9 +1,10 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
+
 
 import unittest
 
@@ -11,7 +12,7 @@ from ..platform import HostType
 
 
 class PlatformTest(unittest.TestCase):
-    def test_create(self):
+    def test_create(self) -> None:
         p = HostType()
         self.assertNotEqual(p.ostype, None, msg="probed and returned something")
 
@@ -19,11 +20,11 @@ class PlatformTest(unittest.TestCase):
         round_trip = HostType.from_tuple_string(tuple_string)
         self.assertEqual(round_trip, p)
 
-    def test_rendering_of_none(self):
+    def test_rendering_of_none(self) -> None:
         p = HostType(ostype="foo")
         self.assertEqual(p.as_tuple_string(), "foo-none-none")
 
-    def test_is_methods(self):
+    def test_is_methods(self) -> None:
         p = HostType(ostype="windows")
         self.assertTrue(p.is_windows())
         self.assertFalse(p.is_darwin())

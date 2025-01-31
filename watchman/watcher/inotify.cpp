@@ -1,22 +1,30 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <folly/String.h>
 #include <folly/Synchronized.h>
-#include <folly/experimental/LockFreeRingBuffer.h>
 #include <atomic>
-#include "watchman/FileDescriptor.h"
+#include "eden/common/utils/FSDetect.h"
+#include "watchman/Constants.h"
+#include "watchman/Errors.h"
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
-#include "watchman/Pipe.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/Poison.h"
+#include "watchman/RingBuffer.h"
+#include "watchman/fs/FSDetect.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/root/Root.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
 
 #ifdef HAVE_INOTIFY_INIT
 
 using namespace watchman;
-using watchman::FileDescriptor;
-using watchman::inotify_category;
-using watchman::Pipe;
 
 #ifndef IN_EXCL_UNLINK
 /* defined in <linux/inotify.h> but we can't include that without
@@ -123,17 +131,12 @@ struct InotifyWatcher : public Watcher {
    * If not null, holds a fixed-size ring of the last `inotify_ring_log_size`
    * inotify events.
    */
-  std::unique_ptr<folly::LockFreeRingBuffer<InotifyLogEntry>> ringBuffer_;
-
-  /**
-   * Incremented by consumeNotify, which only runs on one thread.
-   */
-  uint64_t totalEventsSeen_ = 0;
+  std::unique_ptr<RingBuffer<InotifyLogEntry>> ringBuffer_;
 
   /**
    * Published from consumeNotify so getDebugInfo can read a recent value.
    */
-  std::atomic<uint64_t> totalEventsSeenAtomic_ = 0;
+  std::atomic<uint64_t> totalEventsSeen_ = 0;
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
@@ -149,15 +152,14 @@ struct InotifyWatcher : public Watcher {
   char ibuf
       [WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + (NAME_MAX + 1))];
 
-  explicit InotifyWatcher(watchman_root* root);
+  explicit InotifyWatcher(const Configuration& config);
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
@@ -166,17 +168,18 @@ struct InotifyWatcher : public Watcher {
   // needed. Returns true if the root directory was removed and the watch needs
   // to be cancelled.
   bool process_inotify_event(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll,
       struct inotify_event* ine,
       std::chrono::system_clock::time_point now);
 
-  void signalThreads() override;
+  void stopThreads() override;
 
   json_ref getDebugInfo() override;
+  void clearDebugInfo() override;
 };
 
-InotifyWatcher::InotifyWatcher(watchman_root* root)
+InotifyWatcher::InotifyWatcher(const Configuration& config)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
   infd = FileDescriptor(
@@ -191,25 +194,22 @@ InotifyWatcher::InotifyWatcher(watchman_root* root)
 
   {
     auto wlock = maps.wlock();
-    wlock->wd_to_name.reserve(
-        root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
+    wlock->wd_to_name.reserve(config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
   }
 
-  json_int_t inotify_ring_log_size =
-      root->config.getInt("inotify_ring_log_size", 0);
+  json_int_t inotify_ring_log_size = config.getInt("inotify_ring_log_size", 0);
   if (inotify_ring_log_size) {
-    ringBuffer_ = std::make_unique<folly::LockFreeRingBuffer<InotifyLogEntry>>(
-        inotify_ring_log_size);
+    ringBuffer_ =
+        std::make_unique<RingBuffer<InotifyLogEntry>>(inotify_ring_log_size);
   }
 }
 
-std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>&,
-    struct watchman_dir*,
+std::unique_ptr<DirHandle> InotifyWatcher::startWatchDir(
+    const std::shared_ptr<Root>&,
     const char* path) {
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
-  auto osdir = w_dir_open(path);
+  auto osdir = openDir(path);
 
   w_string dir_name(path, W_STRING_BYTE);
 
@@ -232,7 +232,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
 }
 
 bool InotifyWatcher::process_inotify_event(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll,
     struct inotify_event* ine,
     std::chrono::system_clock::time_point now) {
@@ -257,8 +257,8 @@ bool InotifyWatcher::process_inotify_event(
   } else if (ine->wd != -1) {
     w_string name;
     char buf[WATCHMAN_NAME_MAX];
-    int pending_flags = W_PENDING_VIA_NOTIFY;
-    w_string dir_name;
+    PendingFlags pending_flags = W_PENDING_VIA_NOTIFY;
+    std::optional<w_string> dir_name;
 
     {
       auto rlock = maps.rlock();
@@ -270,16 +270,17 @@ bool InotifyWatcher::process_inotify_event(
 
     if (dir_name) {
       if (ine->len > 0) {
+        // TODO: What if this truncates?
         snprintf(
             buf,
             sizeof(buf),
             "%.*s/%s",
-            int(dir_name.size()),
-            dir_name.data(),
+            int(dir_name->size()),
+            dir_name->data(),
             ine->name);
         name = w_string(buf, W_STRING_BYTE);
       } else {
-        name = dir_name;
+        name = *dir_name;
       }
     }
 
@@ -338,7 +339,7 @@ bool InotifyWatcher::process_inotify_event(
     if (dir_name) {
       if ((ine->mask &
            (IN_UNMOUNT | IN_IGNORED | IN_DELETE_SELF | IN_MOVE_SELF))) {
-        if (w_string_equal(root->root_path, name)) {
+        if (root->root_path == name) {
           logf(
               ERR,
               "root dir {} has been (re)moved, canceling watch\n",
@@ -353,7 +354,7 @@ bool InotifyWatcher::process_inotify_event(
       }
 
       if (ine->mask & (IN_CREATE | IN_DELETE)) {
-        pending_flags |= W_PENDING_RECURSIVE;
+        pending_flags.set(W_PENDING_RECURSIVE);
       }
 
       logf(
@@ -363,15 +364,22 @@ bool InotifyWatcher::process_inotify_event(
           name.c_str());
       coll.add(name, now, pending_flags);
 
+      if (ine->mask & (IN_CREATE | IN_DELETE)) {
+        // When a directory's child is created or unlinked, inotify does not
+        // tell us its parent has also changed. It should be rescanned, so
+        // synthesize an event for the IO thread here.
+        coll.add(name.dirName(), now, W_PENDING_VIA_NOTIFY);
+      }
+
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also
-      if ((ine->mask & IN_IGNORED) != 0) {
+      if (ine->mask & IN_IGNORED) {
         logf(
             DBG,
             "mask={:x}: remove watch {} {}\n",
             ine->mask,
             ine->wd,
-            dir_name);
+            dir_name.value());
         auto wlock = maps.wlock();
         wlock->wd_to_name.erase(ine->wd);
       }
@@ -393,12 +401,12 @@ bool InotifyWatcher::process_inotify_event(
 }
 
 Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   int n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
-      return {false, false};
+      return {false};
     }
     logf(
         FATAL,
@@ -413,15 +421,16 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
 
   struct inotify_event* ine;
   bool cancel = false;
+  size_t eventsSeen = 0;
   for (char* iptr = ibuf; iptr < ibuf + n; iptr += sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
     cancel |= process_inotify_event(root, coll, ine, now);
-    ++totalEventsSeen_;
+    ++eventsSeen;
   }
 
   // Relaxed because we don't really care exactly when the value is visible.
-  totalEventsSeenAtomic_.store(totalEventsSeen_, std::memory_order_relaxed);
+  totalEventsSeen_.fetch_add(eventsSeen, std::memory_order_relaxed);
 
   // It is possible that we can accumulate a set of pending_move
   // structs in move_map.  This happens when a directory is moved
@@ -449,7 +458,7 @@ Watcher::ConsumeNotifyRet InotifyWatcher::consumeNotify(
     }
   }
 
-  return {true, cancel};
+  return {cancel};
 }
 
 bool InotifyWatcher::waitNotify(int timeoutms) {
@@ -471,47 +480,50 @@ bool InotifyWatcher::waitNotify(int timeoutms) {
   return false;
 }
 
-void InotifyWatcher::signalThreads() {
+void InotifyWatcher::stopThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 
 json_ref InotifyWatcher::getDebugInfo() {
   json_ref events = json_null();
   if (ringBuffer_) {
-    std::vector<InotifyLogEntry> entries;
-
-    auto head = ringBuffer_->currentHead();
-    if (head.moveBackward()) {
-      InotifyLogEntry entry;
-      while (ringBuffer_->tryRead(entry, head)) {
-        entries.push_back(std::move(entry));
-        if (!head.moveBackward()) {
-          break;
-        }
-      }
+    std::vector<json_ref> arr;
+    for (auto& entry : ringBuffer_->readAll()) {
+      arr.push_back(entry.asJsonValue());
     }
-    std::reverse(entries.begin(), entries.end());
-
-    events = json_array();
-    for (auto& entry : entries) {
-      json_array_append(events, entry.asJsonValue());
-    }
+    events = json_array(std::move(arr));
   }
   return json_object({
       {"events", events},
-      {"total_event_count", json_integer(totalEventsSeenAtomic_.load())},
+      {"total_event_count", json_integer(totalEventsSeen_.load())},
   });
 }
 
+void InotifyWatcher::clearDebugInfo() {
+  // This is just debug info so small races are not problematic. To avoid races,
+  // totalEventsSeen_ could be stored directly if ringBuffer_ is null, or as the
+  // difference between currentHead() - lastClear_ if not null.
+  totalEventsSeen_.store(0, std::memory_order_release);
+  if (ringBuffer_) {
+    ringBuffer_->clear();
+  }
+}
+
 namespace {
-std::shared_ptr<watchman::QueryableView> detectInotify(watchman_root* root) {
-  if (is_edenfs_fs_type(root->fs_type)) {
+std::shared_ptr<QueryableView> detectInotify(
+    const w_string& root_path,
+    const w_string& fstype,
+    const Configuration& config) {
+  if (facebook::eden::is_edenfs_fs_type(fstype.string())) {
     // inotify is effectively O(repo) and we know that that access
     // pattern is undesirable when running on top of EdenFS
     throw std::runtime_error("cannot watch EdenFS file systems with inotify");
   }
-  return std::make_shared<watchman::InMemoryView>(
-      root, std::make_shared<InotifyWatcher>(root));
+  return std::make_shared<InMemoryView>(
+      realFileSystem,
+      root_path,
+      config,
+      std::make_shared<InotifyWatcher>(config));
 }
 } // namespace
 

@@ -1,9 +1,20 @@
-/* Copyright 2015-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/query/intcompare.h"
+#include <fmt/core.h>
+#include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/QueryExpr.h"
+#include "watchman/query/TermRegistry.h"
 
 #include <memory>
+
+namespace watchman {
 
 // Helper functions for integer comparisons in query expressions
 
@@ -26,17 +37,19 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   size_t i;
   bool found = false;
 
-  if (json_array_size(term) != 3) {
+  auto& arr = term.array();
+
+  if (arr.size() != 3) {
     throw QueryParseError("integer comparator must have 3 elements");
   }
-  if (!json_array_get(term, 1).isString()) {
+  if (!arr[1].isString()) {
     throw QueryParseError("integer comparator op must be a string");
   }
-  if (!json_array_get(term, 2).isInt()) {
+  if (!arr[2].isInt()) {
     throw QueryParseError("integer comparator operand must be an integer");
   }
 
-  opname = json_string_value(json_array_get(term, 1));
+  opname = json_string_value(arr[1]);
   for (i = 0; i < sizeof(opname_to_op) / sizeof(opname_to_op[0]); i++) {
     if (!strcmp(opname_to_op[i].opname, opname)) {
       comp->op = opname_to_op[i].op;
@@ -46,11 +59,11 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   }
 
   if (!found) {
-    throw QueryParseError(folly::to<std::string>(
-        "integer comparator opname `", opname, "' is invalid"));
+    throw QueryParseError(
+        fmt::format("integer comparator opname `{}' is invalid", opname));
   }
 
-  comp->operand = json_array_get(term, 2).asInt();
+  comp->operand = arr[2].asInt();
 }
 
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp) {
@@ -79,12 +92,12 @@ class SizeExpr : public QueryExpr {
  public:
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
-  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(QueryContextBase*, FileResult* file) override {
     auto exists = file->exists();
     auto size = file->size();
 
     if (!exists.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     // Removed files never match
@@ -93,13 +106,13 @@ class SizeExpr : public QueryExpr {
     }
 
     if (!size.has_value()) {
-      return folly::none;
+      return std::nullopt;
     }
 
     return eval_int_compare(size.value(), &comp);
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(Query*, const json_ref& term) {
     if (!term.isArray()) {
       throw QueryParseError("Expected array for 'size' term");
     }
@@ -109,8 +122,28 @@ class SizeExpr : public QueryExpr {
 
     return std::make_unique<SizeExpr>(comp);
   }
+
+  std::optional<std::vector<std::string>> computeGlobUpperBound(
+      CaseSensitivity) const override {
+    // `size` doesn't constrain the path.
+    return std::nullopt;
+  }
+
+  ReturnOnlyFiles listOnlyFiles() const override {
+    return ReturnOnlyFiles::Unrelated;
+  }
+
+  SimpleSuffixType evaluateSimpleSuffix() const override {
+    return SimpleSuffixType::Excluded;
+  }
+
+  std::vector<std::string> getSuffixQueryGlobPatterns() const override {
+    return std::vector<std::string>{};
+  }
 };
-W_TERM_PARSER("size", SizeExpr::parse)
+W_TERM_PARSER(size, SizeExpr::parse);
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

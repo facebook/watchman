@@ -1,14 +1,23 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "kqueue.h"
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <array>
-#include "watchman/FileDescriptor.h"
+#include "watchman/FlagMap.h"
 #include "watchman/InMemoryView.h"
-#include "watchman/Pipe.h"
-#include "watchman/watchman.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/root/Root.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
+#include "watchman/watchman_dir.h"
+#include "watchman/watchman_file.h"
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)
@@ -48,9 +57,12 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-KQueueWatcher::KQueueWatcher(watchman_root* root, bool recursive)
+KQueueWatcher::KQueueWatcher(
+    const w_string& /*root_path*/,
+    const Configuration& config,
+    bool recursive)
     : Watcher("kqueue", 0),
-      maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
+      maps_(maps(config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))),
       recursive_(recursive) {
   kq_fd = FileDescriptor(kqueue(), "kqueue", FileDescriptor::FDType::Generic);
   kq_fd.setCloExec();
@@ -144,14 +156,13 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   return true;
 }
 
-std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>& root,
-    struct watchman_dir* dir,
+std::unique_ptr<DirHandle> KQueueWatcher::startWatchDir(
+    const std::shared_ptr<Root>& root,
     const char* path) {
   struct stat st, osdirst;
   struct kevent k;
 
-  auto osdir = w_dir_open(path);
+  auto osdir = openDir(path);
 
   FileDescriptor fdHolder(
       open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC),
@@ -181,7 +192,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
   }
 
   memset(&k, 0, sizeof(k));
-  auto dir_name = dir->getFullPath();
+  w_string dir_name{path};
   EV_SET(
       &k,
       rawFd,
@@ -213,14 +224,12 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
 }
 
 Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
-  int n;
-  int i;
   struct timespec ts = {0, 0};
 
   errno = 0;
-  n = kevent(
+  int n = kevent(
       kq_fd.fd(),
       nullptr,
       0,
@@ -234,11 +243,11 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
       n,
       folly::errnoStr(errno));
   if (root->inner.cancelled) {
-    return {0, false};
+    return {false};
   }
 
   auto now = std::chrono::system_clock::now();
-  for (i = 0; n > 0 && i < n; i++) {
+  for (int i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = keventbuf[i].fflags;
     bool is_dir = is_udata_dir(keventbuf[i].udata);
     char flags_label[128];
@@ -247,8 +256,7 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
     w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
     auto wlock = maps_.wlock();
     auto it = wlock->fd_to_name.find(fd);
-    w_string path = it == wlock->fd_to_name.end() ? nullptr : it->second;
-    if (!path) {
+    if (it == wlock->fd_to_name.end()) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
       logf(
@@ -259,18 +267,19 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
           flags_label);
       continue;
     }
+    w_string path = it->second;
 
     logf(DBG, " KQ fd={} path {} [{:x} {}]\n", fd, path, fflags, flags_label);
     if ((fflags & (NOTE_DELETE | NOTE_RENAME | NOTE_REVOKE))) {
       struct kevent k;
 
-      if (w_string_equal(path, root->root_path)) {
+      if (path == root->root_path) {
         logf(
             ERR,
             "root dir {} has been (re)moved [code {:x}], canceling watch\n",
             root->root_path,
             fflags);
-        return {0, true};
+        return {true};
       }
 
       // Remove our watch bits
@@ -281,15 +290,27 @@ Watcher::ConsumeNotifyRet KQueueWatcher::consumeNotify(
       wlock->fd_to_name.erase(fd);
     }
 
-    coll.add(
-        path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
+    PendingFlags flags = W_PENDING_VIA_NOTIFY;
+    if (!is_dir) {
+      // TODO(xavierd): I believe we need this in case a file is replaced by a
+      // directory.
+      flags |= W_PENDING_RECURSIVE;
+    } else {
+      // You might be tempted to use W_PENDING_NONRECURSIVE_SCAN here, but this
+      // would lead to scanning the changed directories too, which when used in
+      // the kqueue+fsevents watcher will lead to cookies being discovered
+      // prior to FSEvents reporting them!
+      // TODO(xavierd): It's unclear to me why not specifying
+      // W_PENDING_NONRECURSIVE_SCAN here still allows cookies to be
+      // discovered...
+    }
+    coll.add(path, now, flags);
   }
 
-  return {n > 0, false};
+  return {false};
 }
 
 bool KQueueWatcher::waitNotify(int timeoutms) {
-  int n;
   std::array<struct pollfd, 2> pfd;
 
   pfd[0].fd = kq_fd.fd();
@@ -297,7 +318,7 @@ bool KQueueWatcher::waitNotify(int timeoutms) {
   pfd[1].fd = terminatePipe_.read.fd();
   pfd[1].events = POLLIN;
 
-  n = poll(pfd.data(), pfd.size(), timeoutms);
+  int n = poll(pfd.data(), pfd.size(), timeoutms);
 
   if (n > 0) {
     if (pfd[1].revents) {
@@ -309,7 +330,7 @@ bool KQueueWatcher::waitNotify(int timeoutms) {
   return false;
 }
 
-void KQueueWatcher::signalThreads() {
+void KQueueWatcher::stopThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 

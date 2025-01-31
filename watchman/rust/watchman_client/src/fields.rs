@@ -1,11 +1,21 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 //! Defines the fields used in the query result structs
 
 // don't show deprecation warnings about NewField when we build this file
 #![allow(deprecated)]
 
-use crate::prelude::*;
-use serde::Deserialize;
 use std::path::PathBuf;
+
+use serde::Deserialize;
+use serde_bser::bytestring::ByteString;
+
+use crate::prelude::*;
 
 /// This trait is used to furnish the caller with the watchman
 /// field name for an entry in the file results
@@ -41,6 +51,15 @@ macro_rules! define_field {(
         }
 
         impl $tyname {
+            /// Fields should only be consumed when constructed via a QueryResult.
+            /// This constructor is provided for users to easily mock out
+            /// QueryResult objects in tests.
+            pub fn new(val: $ty) -> Self {
+                $tyname {
+                    val,
+                }
+            }
+
             /// Consumes the field and returns the underlying
             /// value storage
             pub fn into_inner(self) -> $ty {
@@ -71,6 +90,13 @@ define_field!(
 );
 
 define_field!(
+    /// Like NameField but does not assume UTF-8.
+    BytesNameField,
+    ByteString,
+    "name"
+);
+
+define_field!(
     /// The field corresponding to the `exists` status of the file
     ExistsField,
     bool,
@@ -92,7 +118,7 @@ define_field!(
     /// change in this file or its metadata.
     ObservedClockField,
     ClockSpec,
-    "cclock"
+    "oclock"
 );
 
 define_field!(
@@ -256,8 +282,8 @@ define_field!(
 /// list of field names:
 ///
 /// ```
-/// use watchman_client::prelude::*;
 /// use serde::Deserialize;
+/// use watchman_client::prelude::*;
 ///
 /// query_result_type! {
 ///     struct NameAndHash {
@@ -325,5 +351,14 @@ impl From<PathBuf> for NameOnly {
         Self {
             name: NameField { val: path },
         }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct NoField {}
+
+impl QueryFieldList for NoField {
+    fn field_list() -> Vec<&'static str> {
+        vec![]
     }
 }

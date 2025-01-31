@@ -1,26 +1,37 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "WatchmanClient.h"
 
-#include <folly/Format.h>
+#include <fmt/core.h>
 #include <glog/logging.h>
 
 namespace watchman {
 
 using namespace folly;
 
+WatchmanClient::~WatchmanClient() {
+  // We need to explicitly close the connection so in the case that it outlives
+  // us it doesn't accidentally call our callback.
+  conn_->close();
+}
+
 WatchmanClient::WatchmanClient(
     EventBase* eventBase,
-    Optional<std::string>&& socketPath,
+    std::optional<std::string>&& socketPath,
     folly::Executor* cpuExecutor,
     ErrorCallback errorCallback)
     : conn_(std::make_shared<WatchmanConnection>(
           eventBase,
           std::move(socketPath),
-          Optional<WatchmanConnection::Callback>([this](Try<dynamic>&& data) {
-            connectionCallback(std::move(data));
-          }),
+          std::optional<WatchmanConnection::Callback>(
+              [this](Try<dynamic>&& data) {
+                connectionCallback(std::move(data));
+              }),
           cpuExecutor)),
       errorCallback_(errorCallback) {}
 
@@ -84,20 +95,20 @@ SemiFuture<dynamic> WatchmanClient::run(const dynamic& cmd) {
   return conn_->run(cmd);
 }
 
-Future<WatchPathPtr> WatchmanClient::watchImpl(StringPiece path) {
+Future<WatchPathPtr> WatchmanClient::watchImpl(std::string_view path) {
   return conn_->run(dynamic::array("watch-project", path))
       .thenValue([=](dynamic&& data) {
         auto relative_path = data["relative_path"];
-        Optional<std::string> relative_path_optional;
+        std::optional<std::string> relative_path_optional;
         if (relative_path != nullptr) {
-          relative_path_optional.assign(relative_path.asString());
+          relative_path_optional = relative_path.asString();
         }
         return std::make_shared<WatchPath>(
             data["watch"].asString(), relative_path_optional);
       });
 }
 
-SemiFuture<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
+SemiFuture<WatchPathPtr> WatchmanClient::watch(std::string_view path) {
   return watchImpl(path).semi();
 }
 
@@ -123,9 +134,8 @@ SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     Executor* executor,
     SubscriptionCallback&& callback,
     std::string subscriptionName) {
-  auto name = subscriptionName.empty()
-      ? folly::to<std::string>("sub", (int)++nextSubID_)
-      : std::move(subscriptionName);
+  auto name = subscriptionName.empty() ? fmt::format("sub{}", (int)++nextSubID_)
+                                       : std::move(subscriptionName);
   auto subscription =
       std::make_shared<Subscription>(executor, std::move(callback), name, path);
   {
@@ -146,7 +156,7 @@ SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
 
 SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     const dynamic& query,
-    StringPiece path,
+    std::string_view path,
     Executor* executor,
     SubscriptionCallback&& callback,
     std::string subscriptionName) {
@@ -201,7 +211,7 @@ Subscription::Subscription(
 
 WatchPath::WatchPath(
     const std::string& root,
-    const Optional<std::string>& relativePath)
+    const std::optional<std::string>& relativePath)
     : root_(root), relativePath_(relativePath) {}
 
 } // namespace watchman

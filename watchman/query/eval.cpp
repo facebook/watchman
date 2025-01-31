@@ -1,57 +1,33 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/query/eval.h"
 
+#include <fmt/chrono.h>
 #include <folly/ScopeGuard.h>
-#include "watchman/LocalFileResult.h"
+
+#include "eden/common/utils/ProcessInfoCache.h"
+#include "watchman/ClientContext.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
+#include "watchman/PerfSample.h"
+#include "watchman/QueryableView.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/query/GlobTree.h"
+#include "watchman/query/LocalFileResult.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/QueryContext.h"
+#include "watchman/root/Root.h"
 #include "watchman/saved_state/SavedStateInterface.h"
 #include "watchman/scm/SCM.h"
+#include "watchman/telemetry/LogEvent.h"
+#include "watchman/telemetry/WatchmanStructuredLogger.h"
 
 using namespace watchman;
-
-namespace {
-constexpr size_t kMaximumRenderBatchSize = 1024;
-}
-
-FileResult::~FileResult() {}
-
-folly::Optional<DType> FileResult::dtype() {
-  auto statInfo = stat();
-  if (!statInfo.has_value()) {
-    return folly::none;
-  }
-  return statInfo->dtype();
-}
-
-w_string w_query_ctx::computeWholeName(FileResult* file) const {
-  uint32_t name_start;
-
-  if (query->relative_root) {
-    // At this point every path should start with the relative root, so this is
-    // legal
-    name_start = query->relative_root.size() + 1;
-  } else {
-    name_start = root->root_path.size() + 1;
-  }
-
-  // Record the name relative to the root
-  auto parent = file->dirName();
-  if (name_start > parent.size()) {
-    return file->baseName().asWString();
-  }
-  parent.advance(name_start);
-  return w_string::build(parent, "/", file->baseName());
-}
-
-const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
-  if (ctx->wholename) {
-    return ctx->wholename;
-  }
-
-  ctx->wholename = ctx->computeWholeName(ctx->file.get());
-  return ctx->wholename;
-}
 
 namespace {
 std::vector<w_string> computeUnconditionalLogFilePrefixes() {
@@ -61,7 +37,7 @@ std::vector<w_string> computeUnconditionalLogFilePrefixes() {
 
   std::vector<w_string> result;
   if (names) {
-    for (auto name : names.array()) {
+    for (auto& name : names->array()) {
       result.push_back(json_to_w_string(name));
     }
   }
@@ -79,10 +55,12 @@ const std::vector<w_string>& getUnconditionalLogFilePrefixes() {
 
 /* Query evaluator */
 void w_query_process_file(
-    w_query* query,
-    struct w_query_ctx* ctx,
+    const Query* query,
+    QueryContext* ctx,
     std::unique_ptr<FileResult> file) {
-  ctx->wholename.reset();
+  // TODO: Should this be implicit by assigning a file to the QueryContext? It
+  // could be cleared when resetting the file.
+  ctx->resetWholeName();
   ctx->file = std::move(file);
   SCOPE_EXIT {
     ctx->file.reset();
@@ -94,8 +72,9 @@ void w_query_process_file(
   // instead of query->expr so that the lazy evaluation logic can
   // be automatically applied and avoid fetching the exists flag
   // for every file.  See also related TODO in batchFetchNow.
-  if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
-      ctx->since.clock.is_fresh_instance) {
+  if (!ctx->disableFreshInstance &&
+      std::holds_alternative<QuerySince::Clock>(ctx->since.since) &&
+      std::get<QuerySince::Clock>(ctx->since.since).is_fresh_instance) {
     auto exists = ctx->file->exists();
     if (!exists.has_value()) {
       // Reconsider this one later
@@ -122,7 +101,7 @@ void w_query_process_file(
   }
 
   if (ctx->query->dedup_results) {
-    auto name = w_query_ctx_get_wholename(ctx);
+    auto name = ctx->getWholeName();
 
     auto inserted = ctx->dedup.insert(name);
     if (!inserted.second) {
@@ -134,7 +113,7 @@ void w_query_process_file(
 
   auto logPrefixes = getUnconditionalLogFilePrefixes();
   if (!logPrefixes.empty()) {
-    auto name = w_query_ctx_get_wholename(ctx);
+    auto name = ctx->getWholeName();
     for (auto& prefix : logPrefixes) {
       if (name.piece().startsWith(prefix)) {
         ctx->namesToLog.push_back(name);
@@ -145,53 +124,21 @@ void w_query_process_file(
   ctx->maybeRender(std::move(ctx->file));
 }
 
-bool w_query_ctx::dirMatchesRelativeRoot(w_string_piece fullDirectoryPath) {
-  if (!query->relative_root) {
-    return true;
-  }
-
-  // "matches relative root" here can be either an exact match for
-  // the relative root, or some path below it, so we compare against
-  // both.  relative_root_slash is a precomputed version of relative_root
-  // with the trailing slash to make this comparison very slightly cheaper
-  // and less awkward to express in code.
-  return fullDirectoryPath == query->relative_root ||
-      fullDirectoryPath.startsWith(query->relative_root_slash);
-}
-
-bool w_query_ctx::fileMatchesRelativeRoot(w_string_piece fullFilePath) {
-  // dirName() scans the string contents; avoid it with this cheap test
-  if (!query->relative_root) {
-    return true;
-  }
-
-  return dirMatchesRelativeRoot(fullFilePath.dirName());
-}
-
-bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
-  // getFullPath() allocates memory; avoid it with this cheap test
-  if (!query->relative_root) {
-    return true;
-  }
-
-  return dirMatchesRelativeRoot(f->parent->getFullPath());
-}
-
 void time_generator(
-    w_query* query,
-    const std::shared_ptr<watchman_root>& root,
-    struct w_query_ctx* ctx) {
+    const Query* query,
+    const std::shared_ptr<Root>& root,
+    QueryContext* ctx) {
   root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
-    w_query* query,
-    const std::shared_ptr<watchman_root>& root,
-    struct w_query_ctx* ctx) {
+    const Query* query,
+    const std::shared_ptr<Root>& root,
+    QueryContext* ctx) {
   bool generated = false;
 
   // Time based query
-  if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
+  if (ctx->since.is_timestamp() || !ctx->since.is_fresh_instance()) {
     time_generator(query, root, ctx);
     generated = true;
   }
@@ -214,21 +161,25 @@ static void default_generators(
 }
 
 static void execute_common(
-    struct w_query_ctx* ctx,
-    w_perf_t* sample,
-    w_query_res* res,
-    w_query_generator generator) {
+    QueryContext* ctx,
+    QueryExecute* queryExecute,
+    PerfSample* sample,
+    QueryResult* res,
+    QueryGenerator generator,
+    const ClientContext& clientInfo) {
   ctx->stopWatch.reset();
 
   if (ctx->query->dedup_results) {
     ctx->dedup.reserve(64);
   }
 
-  // is_fresh_instance is also later set by the value in ctx after generator
-  res->is_fresh_instance =
-      !ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance;
+  // isFreshInstance is also later set by the value in ctx after generator
+  {
+    auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+    res->isFreshInstance = since_clock && since_clock->is_fresh_instance;
+  }
 
-  if (!(res->is_fresh_instance && ctx->query->empty_on_fresh_instance)) {
+  if (!(res->isFreshInstance && ctx->query->empty_on_fresh_instance)) {
     if (!generator) {
       generator = default_generators;
     }
@@ -253,140 +204,106 @@ static void execute_common(
   // For Eden instances it is possible that when running the query it was
   // discovered that it is actually a fresh instance [e.g. mount generation
   // changes or journal truncation]; update res to match
-  res->is_fresh_instance |= ctx->since.clock.is_fresh_instance;
-
+  {
+    auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+    res->isFreshInstance |= since_clock && since_clock->is_fresh_instance;
+  }
   if (sample && !ctx->namesToLog.empty()) {
-    auto nameList = json_array_of_size(ctx->namesToLog.size());
+    std::vector<json_ref> nameList;
+    nameList.reserve(ctx->namesToLog.size());
     for (auto& name : ctx->namesToLog) {
-      nameList.array().push_back(w_string_to_json(name));
+      nameList.push_back(w_string_to_json(name));
 
       // Avoid listing everything!
-      if (nameList.array().size() >= 12) {
+      if (nameList.size() >= 12) {
         break;
       }
     }
 
+    // NOTE: sample and queryExecute are either both non-null or both null
+    queryExecute->num_special_files = ctx->namesToLog.size();
+    queryExecute->special_files = json_array(nameList).toString();
+
     sample->add_meta(
         "num_special_files_in_result_set",
         json_integer(ctx->namesToLog.size()));
-    sample->add_meta("special_files_in_result_set", std::move(nameList));
+    sample->add_meta(
+        "special_files_in_result_set", json_array(std::move(nameList)));
     sample->force_log();
   }
 
-  if (sample && sample->finish()) {
-    sample->add_root_meta(ctx->root);
-    sample->add_meta(
-        "query_execute",
-        json_object(
-            {{"fresh_instance", json_boolean(res->is_fresh_instance)},
-             {"num_deduped", json_integer(ctx->num_deduped)},
-             {"num_results", json_integer(json_array_size(ctx->resultsArray))},
-             {"num_walked", json_integer(ctx->getNumWalked())},
-             {"query", ctx->query->query_spec}}));
-    sample->log();
-  }
+  if (sample) {
+    // NOTE: sample and queryExecute are either both non-null or both null
+    auto root_metadata = ctx->root->getRootMetadata();
 
-  res->resultsArray = ctx->resultsArray;
-  res->dedupedFileNames = std::move(ctx->dedup);
-}
+    if (sample->finish()) {
+      sample->add_root_metadata(root_metadata);
+      auto meta = json_object({
+          {"fresh_instance", json_boolean(res->isFreshInstance)},
+          {"num_deduped", json_integer(ctx->num_deduped)},
+          {"num_results", json_integer(ctx->resultsArray.size())},
+          {"num_walked", json_integer(ctx->getNumWalked())},
+      });
+      if (ctx->query->query_spec) {
+        meta.set("query", json_ref(*ctx->query->query_spec));
+      }
+      sample->add_meta("query_execute", std::move(meta));
+      sample->log();
+    }
 
-w_query_ctx::w_query_ctx(
-    w_query* q,
-    const std::shared_ptr<watchman_root>& root,
-    bool disableFreshInstance)
-    : created(std::chrono::steady_clock::now()),
-      query(q),
-      root(root),
-      resultsArray(json_array()),
-      disableFreshInstance{disableFreshInstance} {
-  // build a template for the serializer
-  if (query->fieldList.size() > 1) {
-    json_array_set_template_new(
-        resultsArray, field_list_to_json_name_array(query->fieldList));
-  }
-}
+    const auto& [samplingRate, eventCount] =
+        getLogEventCounters(LogEventType::QueryExecuteType);
+    // Log if override set, or if we have hit the sample rate
+    if (sample->will_log || eventCount == samplingRate) {
+      addRootMetadataToEvent(root_metadata, *queryExecute);
+      queryExecute->event_count = eventCount != samplingRate ? 0 : eventCount;
+      queryExecute->fresh_instance = res->isFreshInstance;
+      queryExecute->deduped = ctx->num_deduped;
+      queryExecute->results = ctx->resultsArray.size();
+      queryExecute->walked = ctx->getNumWalked();
+      queryExecute->eden_glob_files_duration_us =
+          ctx->edenGlobFilesDurationUs.load(std::memory_order_relaxed);
+      queryExecute->eden_changed_files_duration_us =
+          ctx->edenChangedFilesDurationUs.load(std::memory_order_relaxed);
+      queryExecute->eden_file_properties_duration_us =
+          ctx->edenFilePropertiesDurationUs.load(std::memory_order_relaxed);
 
-void w_query_ctx::addToEvalBatch(std::unique_ptr<FileResult>&& file) {
-  evalBatch_.emplace_back(std::move(file));
+      if (ctx->query->query_spec) {
+        queryExecute->query = ctx->query->query_spec->toString();
+      }
+      queryExecute->client_pid = clientInfo.clientPid;
+      queryExecute->client_name = clientInfo.clientInfo.has_value()
+          ? facebook::eden::ProcessInfoCache::cleanProcessCommandline(
+                std::move(clientInfo.clientInfo.value().get().name))
+          : "";
 
-  // Find a balance between local memory usage, latency in fetching
-  // and the cost of fetching the data needed to re-evaluate this batch.
-  // TODO: maybe allow passing this number in via the query?
-  if (evalBatch_.size() >= 20480) {
-    fetchEvalBatchNow();
-  }
-}
-
-void w_query_ctx::fetchEvalBatchNow() {
-  if (evalBatch_.empty()) {
-    return;
-  }
-  evalBatch_.front()->batchFetchProperties(evalBatch_);
-
-  auto toProcess = std::move(evalBatch_);
-
-  for (auto& file : toProcess) {
-    w_query_process_file(query, this, std::move(file));
-  }
-
-  w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
-}
-
-void w_query_ctx::maybeRender(std::unique_ptr<FileResult>&& file) {
-  auto maybeRendered = file_result_to_json(query->fieldList, file, this);
-  if (maybeRendered.has_value()) {
-    json_array_append_new(resultsArray, std::move(maybeRendered.value()));
-    return;
-  }
-
-  addToRenderBatch(std::move(file));
-}
-
-void w_query_ctx::addToRenderBatch(std::unique_ptr<FileResult>&& file) {
-  renderBatch_.emplace_back(std::move(file));
-  // TODO: maybe allow passing this number in via the query?
-  if (renderBatch_.size() >= kMaximumRenderBatchSize) {
-    fetchRenderBatchNow();
-  }
-}
-
-bool w_query_ctx::fetchRenderBatchNow() {
-  if (renderBatch_.empty()) {
-    return true;
-  }
-  renderBatch_.front()->batchFetchProperties(renderBatch_);
-
-  auto toProcess = std::move(renderBatch_);
-
-  for (auto& file : toProcess) {
-    auto maybeRendered = file_result_to_json(query->fieldList, file, this);
-    if (maybeRendered.has_value()) {
-      json_array_append_new(resultsArray, std::move(maybeRendered.value()));
-    } else {
-      renderBatch_.emplace_back(std::move(file));
+      getLogger()->logEvent(*queryExecute);
     }
   }
 
-  return renderBatch_.empty();
+  res->resultsArray = ctx->renderResults();
+  res->dedupedFileNames = std::move(ctx->dedup);
 }
 
 // Capability indicating support for scm-aware since queries
 W_CAP_REG("scm-since")
 
-w_query_res w_query_execute(
-    w_query* query,
-    const std::shared_ptr<watchman_root>& root,
-    w_query_generator generator) {
-  w_query_res res;
-  std::shared_ptr<w_query> altQuery;
+QueryResult w_query_execute(
+    const Query* query,
+    const std::shared_ptr<Root>& root,
+    QueryGenerator generator,
+    SavedStateFactory savedStateFactory) {
+  QueryResult res;
   ClockSpec resultClock(ClockPosition{});
   bool disableFreshInstance{false};
   auto requestId = query->request_id;
 
-  w_perf_t sample("query_execute");
-  if (requestId && !requestId.empty()) {
-    log(DBG, "request_id = ", requestId, "\n");
-    sample.add_meta("request_id", w_string_to_json(requestId));
+  QueryExecute queryExecute;
+  PerfSample sample("query_execute");
+  if (requestId && !requestId->empty()) {
+    log(DBG, "request_id = ", *requestId, "\n");
+    queryExecute.request_id = requestId->string();
+    sample.add_meta("request_id", w_string_to_json(*requestId));
   }
 
   // We want to check this before we sync, as the SCM may generate changes
@@ -423,15 +340,20 @@ w_query_res w_query_execute(
       if (query->since_spec->hasSavedStateParams()) {
         // Find the most recent saved state to the new mergebase and return
         // changed files since that saved state, if available.
-        auto savedStateInterface = SavedStateInterface::getInterface(
-            query->since_spec->savedStateStorageType,
-            query->since_spec->savedStateConfig,
+        auto savedStateInterface = savedStateFactory(
+            query->since_spec->savedStateStorageType.value(),
+            query->since_spec->savedStateConfig.value(),
             scm,
-            root);
+            root->config,
+            [root](RootMetadata& root_metadata) {
+              root->collectRootMetadata(root_metadata);
+            },
+            query->clientInfo);
         auto savedStateResult = savedStateInterface->getMostRecentSavedState(
-            resultClock.scmMergeBase);
+            resultClock.scmMergeBase ? resultClock.scmMergeBase->piece()
+                                     : w_string_piece{});
         res.savedStateInfo = savedStateResult.savedStateInfo;
-        if (savedStateResult.commitId) {
+        if (!savedStateResult.commitId.empty()) {
           resultClock.savedStateCommitId = savedStateResult.commitId;
           // Modify the mergebase to be the saved state mergebase so we can
           // return changed files since the saved state.
@@ -443,7 +365,7 @@ w_query_res w_query_execute(
           // clock as if scm-aware queries were not being used at all, to ensure
           // clients have all changed files they need.
           resultClock.savedStateCommitId = w_string();
-          modifiedMergebase = nullptr;
+          modifiedMergebase = std::nullopt;
         }
       }
       // If the modified mergebase is null then we had no saved state available
@@ -453,25 +375,19 @@ w_query_res w_query_execute(
       if (modifiedMergebase) {
         disableFreshInstance = true;
         generator = [root, modifiedMergebase, requestId](
-                        w_query* q,
-                        const std::shared_ptr<watchman_root>& r,
-                        struct w_query_ctx* c) {
+                        const Query* q,
+                        const std::shared_ptr<Root>& r,
+                        QueryContext* c) {
+          auto position = c->clockAtStartOfQuery.position();
           auto changedFiles =
               root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
-                  modifiedMergebase, requestId);
+                  modifiedMergebase ? modifiedMergebase->piece()
+                                    : w_string_piece{},
+                  position.toClockString(),
+                  requestId);
 
-          auto pathList = json_array_of_size(changedFiles.size());
-          for (auto& f : changedFiles) {
-            json_array_append_new(pathList, w_string_to_json(f));
-          }
-
-          auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-          w_clock_t clock{0, 0};
-          clock.ticks = spec.ticks;
-          time(&clock.timestamp);
-          for (auto& pathEntry : pathList.array()) {
-            auto path = json_to_w_string(pathEntry);
-
+          ClockStamp clock{position.ticks, ::time(nullptr)};
+          for (const auto& path : changedFiles) {
             auto fullPath = w_string::pathCat({r->root_path, path});
             if (!c->fileMatchesRelativeRoot(fullPath)) {
               continue;
@@ -484,7 +400,10 @@ w_query_res w_query_execute(
             // to see a directory returned from that call; we're only going
             // to enumerate !dirs for this case.
             w_query_process_file(
-                q, c, std::make_unique<LocalFileResult>(r, fullPath, clock));
+                q,
+                c,
+                std::make_unique<LocalFileResult>(
+                    fullPath, clock, r->case_sensitive));
           }
         };
       } else if (query->fail_if_no_saved_state) {
@@ -505,11 +424,10 @@ w_query_res w_query_execute(
   // indicated to omit those. To do so, lets just make an empty
   // generator.
   if (query->omit_changed_files) {
-    generator = [](w_query*,
-                   const std::shared_ptr<watchman_root>&,
-                   struct w_query_ctx*) {};
+    generator = [](const Query*, const std::shared_ptr<Root>&, QueryContext*) {
+    };
   }
-  w_query_ctx ctx(query, root, disableFreshInstance);
+  QueryContext ctx{query, root, disableFreshInstance};
 
   // Track the query against the root.
   // This is to enable the `watchman debug-status` diagnostic command.
@@ -518,13 +436,25 @@ w_query_res w_query_execute(
   SCOPE_EXIT {
     root->queries.wlock()->erase(&ctx);
   };
+  if (query->settle_timeouts) {
+    auto future = root->waitForSettle(query->settle_timeouts->settle_period);
+    try {
+      std::move(future).get(query->settle_timeouts->settle_timeout);
+    } catch (const folly::FutureTimeout&) {
+      QueryExecError::throwf(
+          "waitForSettle: timed out waiting for settle {} in {}",
+          query->settle_timeouts->settle_period,
+          query->settle_timeouts->settle_timeout);
+    }
+  }
   if (query->sync_timeout.count()) {
     ctx.state = QueryContextState::WaitingForCookieSync;
     ctx.stopWatch.reset();
     try {
-      root->syncToNow(query->sync_timeout);
+      auto result = root->syncToNow(query->sync_timeout, query->clientInfo);
+      res.debugInfo.cookieFileNames = std::move(result.cookieFileNames);
     } catch (const std::exception& exc) {
-      throw QueryExecError("synchronization failed: ", exc.what());
+      QueryExecError::throwf("synchronization failed: {}", exc.what());
     }
     ctx.cookieSyncDuration = ctx.stopWatch.lap();
   }
@@ -548,26 +478,28 @@ w_query_res w_query_execute(
   // Copy in any scm parameters
   res.clockAtStartOfQuery = resultClock;
   // then update the clock position portion
-  res.clockAtStartOfQuery.clock = ctx.clockAtStartOfQuery.clock;
+  std::get<ClockSpec::Clock>(res.clockAtStartOfQuery.spec) =
+      std::get<ClockSpec::Clock>(ctx.clockAtStartOfQuery.spec);
 
   // Evaluate the cursor for this root
   ctx.since = query->since_spec ? query->since_spec->evaluate(
                                       ctx.clockAtStartOfQuery.position(),
                                       ctx.lastAgeOutTickValueAtStartOfQuery,
                                       &root->inner.cursors)
-                                : w_query_since();
+                                : QuerySince{};
 
   if (query->bench_iterations > 0) {
     for (uint32_t i = 0; i < query->bench_iterations; ++i) {
-      w_query_ctx c(query, root, ctx.disableFreshInstance);
-      w_query_res r;
+      QueryContext c{query, root, ctx.disableFreshInstance};
+      QueryResult r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
       c.since = ctx.since;
-      execute_common(&c, nullptr, &r, generator);
+      execute_common(&c, nullptr, nullptr, &r, generator, query->clientInfo);
     }
   }
 
-  execute_common(&ctx, &sample, &res, generator);
+  execute_common(
+      &ctx, &queryExecute, &sample, &res, generator, query->clientInfo);
   return res;
 }
 

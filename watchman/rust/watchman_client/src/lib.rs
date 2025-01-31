@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 //! This crate provides a client to the watchman file watching service.
 //!
 //! Start with the [Connector](struct.Connector.html) struct and use
@@ -11,42 +18,59 @@
 //! This example shows how to connect and expand a glob from the
 //! current working directory:
 //!
-//! ```norun
+//! ```no_run
 //! use watchman_client::prelude::*;
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!   let mut client = Connector::new().connect().await?;
-//!   let resolved = client
-//!      .resolve_root(CanonicalPath::canonicalize(".")?)
-//!      .await?;
+//!     let mut client = Connector::new().connect().await?;
+//!     let resolved = client
+//!         .resolve_root(CanonicalPath::canonicalize(".")?)
+//!         .await?;
 //!
-//!   // Basic globs -> names
-//!   let files = client.glob(&resolved, &["**/*.rs"]).await?;
-//!   println!("files: {:#?}", files);
-//!   Ok(())
+//!     // Basic globs -> names
+//!     let files = client.glob(&resolved, &["**/*.rs"]).await?;
+//!     println!("files: {:#?}", files);
+//!     Ok(())
 //! }
 //! ```
+#![cfg_attr(fbcode_build, deny(warnings))]
+
 pub mod expr;
 pub mod fields;
 mod named_pipe;
 pub mod pdu;
-use bytes::{Bytes, BytesMut};
-use futures::{future::FutureExt, stream::StreamExt};
-use serde_bser::de::{Bunser, SliceRead};
-use serde_bser::value::Value;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
+use std::collections::VecDeque;
+use std::io;
+use std::io::Write;
 use std::marker::PhantomData;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+use bytes::Bytes;
+use bytes::BytesMut;
+use futures::future::FutureExt;
+use futures::stream::StreamExt;
+use serde_bser::de::Bunser;
+use serde_bser::de::SliceRead;
+pub use serde_bser::value::Value;
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use tokio::io::AsyncRead;
+use tokio::io::AsyncWrite;
+use tokio::io::AsyncWriteExt;
 #[cfg(unix)]
 use tokio::net::UnixStream;
 use tokio::process::Command;
-use tokio::sync::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
-use tokio_util::codec::{Decoder, FramedRead};
+use tokio_util::codec::Decoder;
+use tokio_util::codec::FramedRead;
 
 /// The next id number to use when generating a subscription name
 static SUB_ID: AtomicUsize = AtomicUsize::new(1);
@@ -58,15 +82,31 @@ pub mod prelude {
     pub use crate::fields::*;
     pub use crate::pdu::*;
     pub use crate::query_result_type;
-    pub use crate::{CanonicalPath, Client, Connector, ResolvedRoot};
+    pub use crate::CanonicalPath;
+    pub use crate::Client;
+    pub use crate::Connector;
+    pub use crate::ResolvedRoot;
 }
 
 use prelude::*;
 
 #[derive(Error, Debug)]
+pub enum ConnectionLost {
+    #[error("Client task exited")]
+    ClientTaskExited,
+
+    #[error("Client task failed: {0}")]
+    Error(String),
+}
+
+#[derive(Error, Debug)]
 pub enum Error {
-    #[error("IO Error: {0}")]
-    Tokio(#[from] tokio::io::Error),
+    #[error("Failed to connect to Watchman: {0}")]
+    ConnectionError(tokio::io::Error),
+
+    #[error("Lost connection to watchman")]
+    ConnectionLost(#[from] ConnectionLost),
+
     #[error(
         "While invoking the {watchman_path} CLI to discover the server connection details: {reason}, stderr=`{stderr}`"
     )]
@@ -85,34 +125,48 @@ pub enum Error {
         command: String,
         response: String,
     },
-    #[error("Unexpected EOF from server")]
-    Eof,
 
-    #[error("{source} (data: {data:x?})")]
+    #[error("Deserialization error (data: {data:x?})")]
     Deserialize {
-        source: Box<dyn std::error::Error + Send + 'static>,
         data: Vec<u8>,
+        #[source]
+        source: anyhow::Error,
     },
 
-    #[error("{source}")]
+    #[error("Seriaization error")]
     Serialize {
-        source: Box<dyn std::error::Error + Send + 'static>,
+        #[source]
+        source: anyhow::Error,
     },
 
-    #[error("while attempting to connect to {endpoint}: {source}")]
+    #[error("Failed to connect to {endpoint}")]
     Connect {
         endpoint: PathBuf,
-        source: Box<dyn std::error::Error + Send + Sync>,
+        #[source]
+        source: Box<std::io::Error>,
     },
-
-    #[error("{0}")]
-    Generic(String),
 }
 
-impl Error {
-    fn generic<T: std::fmt::Display>(error: T) -> Self {
-        Self::Generic(format!("{}", error))
-    }
+#[derive(Error, Debug)]
+enum TaskError {
+    #[error("IO Error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Task is shutting down")]
+    Shutdown,
+
+    #[error("EOF on Watchman socket")]
+    Eof,
+
+    #[error("Received a unilateral PDU from the server")]
+    UnilateralPdu,
+
+    #[error("Deserialization error (data: {data:x?})")]
+    Deserialize {
+        #[source]
+        source: anyhow::Error,
+        data: Vec<u8>,
+    },
 }
 
 /// The Connector defines how to connect to the watchman server.
@@ -166,11 +220,15 @@ impl Connector {
             let watchman_path = self
                 .watchman_cli_path
                 .as_ref()
-                .map(|p| p.as_ref())
-                .unwrap_or_else(|| Path::new("watchman"));
+                .map_or_else(|| Path::new("watchman"), |p| p.as_ref());
 
-            let output = Command::new(watchman_path)
-                .args(&["--output-encoding", "bser-v2", "get-sockname"])
+            let mut cmd = Command::new(watchman_path);
+            cmd.args(["--output-encoding", "bser-v2", "get-sockname"]);
+
+            #[cfg(windows)]
+            cmd.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+
+            let output = cmd
                 .output()
                 .await
                 .map_err(|source| Error::ConnectionDiscovery {
@@ -209,15 +267,18 @@ impl Connector {
     /// If the connector was configured to perform discovery (which is
     /// the default configuration), then this will attempt to start
     /// the watchman server.
-    pub async fn connect(self) -> Result<Client, Error> {
+    pub async fn connect(&self) -> Result<Client, Error> {
         let sock_path = self.resolve_unix_domain_path().await?;
 
         #[cfg(unix)]
-        let stream: Box<dyn ReadWriteStream> = Box::new(UnixStream::connect(sock_path).await?);
+        let stream = UnixStream::connect(sock_path)
+            .await
+            .map_err(Error::ConnectionError)?;
 
         #[cfg(windows)]
-        let stream: Box<dyn ReadWriteStream> =
-            Box::new(named_pipe::NamedPipe::connect(sock_path).await?);
+        let stream = named_pipe::NamedPipe::connect(sock_path).await?;
+
+        let stream: Box<dyn ReadWriteStream> = Box::new(stream);
 
         let (reader, writer) = tokio::io::split(stream);
 
@@ -233,7 +294,7 @@ impl Connector {
         };
         tokio::spawn(async move {
             if let Err(err) = task.run().await {
-                eprintln!("watchman client task failed: {}", err);
+                let _ignored = writeln!(io::stderr(), "watchman client task failed: {}", err);
             }
         });
 
@@ -244,7 +305,7 @@ impl Connector {
 }
 
 /// Represents a canonical path in the filesystem.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CanonicalPath(PathBuf);
 
 impl CanonicalPath {
@@ -288,6 +349,11 @@ impl CanonicalPath {
     #[inline]
     fn strip_unc_escape(path: PathBuf) -> PathBuf {
         path
+    }
+
+    /// Consume self yielding the canonicalized PathBuf.
+    pub fn into_path_buf(self) -> PathBuf {
+        self.0
     }
 }
 
@@ -349,16 +415,19 @@ struct SendRequest {
 }
 
 impl SendRequest {
-    fn respond(self, result: Result<Bytes, String>) -> Result<(), Error> {
-        self.tx
-            .send(result)
-            .map_err(|_| Error::generic("requestor has dropped its receiver"))
+    fn respond(self, result: Result<Bytes, String>) {
+        let _ = self.tx.send(result);
     }
+}
+
+enum SubscriptionNotification {
+    Pdu(Bytes),
+    Canceled,
 }
 
 enum TaskItem {
     QueueRequest(SendRequest),
-    RegisterSubscription(String, UnboundedSender<Bytes>),
+    RegisterSubscription(String, UnboundedSender<SubscriptionNotification>),
 }
 
 /// Splits BSER mesages out of a stream. Does not attempt to actually decode them.
@@ -366,7 +435,7 @@ struct BserSplitter;
 
 impl Decoder for BserSplitter {
     type Item = Bytes;
-    type Error = Error;
+    type Error = TaskError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let mut bunser = Bunser::new(SliceRead::new(buf.as_ref()));
@@ -387,8 +456,8 @@ impl Decoder for BserSplitter {
 
                 // We should have succeded in reading some data here, but we didn't. Return an
                 // error.
-                return Err(Error::Deserialize {
-                    source: Box::new(source),
+                return Err(TaskError::Deserialize {
+                    source: source.into(),
                     data: buf.to_vec(),
                 });
             }
@@ -421,17 +490,17 @@ struct ClientTask {
     request_rx: Receiver<TaskItem>,
     request_queue: VecDeque<SendRequest>,
     waiting_response: bool,
-    subscriptions: HashMap<String, UnboundedSender<Bytes>>,
+    subscriptions: HashMap<String, UnboundedSender<SubscriptionNotification>>,
 }
 
 impl Drop for ClientTask {
     fn drop(&mut self) {
-        self.fail_all(&Error::generic("the client task terminated"));
+        self.fail_all(&TaskError::Shutdown)
     }
 }
 
 impl ClientTask {
-    async fn run(&mut self) -> Result<(), Error> {
+    async fn run(&mut self) -> Result<(), TaskError> {
         // process things, and if we encounter an error, ensure that
         // we fail all outstanding requests
         match self.run_loop().await {
@@ -443,13 +512,13 @@ impl ClientTask {
         }
     }
 
-    async fn run_loop(&mut self) -> Result<(), Error> {
+    async fn run_loop(&mut self) -> Result<(), TaskError> {
         loop {
             futures::select_biased! {
                 pdu = self.reader.next().fuse() => {
                     match pdu {
                         Some(pdu) => self.process_pdu(pdu?).await?,
-                        None => return Err(Error::Eof),
+                        None => return Err(TaskError::Eof),
                     }
                 }
                 task = self.request_rx.recv().fuse() => {
@@ -467,22 +536,26 @@ impl ClientTask {
         Ok(())
     }
 
-    fn register_subscription(&mut self, name: String, tx: UnboundedSender<Bytes>) {
+    fn register_subscription(
+        &mut self,
+        name: String,
+        tx: UnboundedSender<SubscriptionNotification>,
+    ) {
         self.subscriptions.insert(name, tx);
     }
 
     /// Generate an error for each queued request.
     /// This is called in situations where the state of the connection
     /// to the serve is non-recoverable.
-    fn fail_all(&mut self, err: &Error) {
+    fn fail_all(&mut self, err: &TaskError) {
         while let Some(request) = self.request_queue.pop_front() {
-            request.respond(Err(err.to_string())).ok();
+            request.respond(Err(err.to_string()));
         }
     }
 
     /// If we're not waiting for the response to a request,
     /// then send the next one!
-    async fn send_next_request(&mut self) -> Result<(), Error> {
+    async fn send_next_request(&mut self) -> Result<(), TaskError> {
         if !self.waiting_response && !self.request_queue.is_empty() {
             match self
                 .writer
@@ -502,24 +575,33 @@ impl ClientTask {
 
     /// Queue up a new request from the client code, and then
     /// check to see if we can send a queued request to the server.
-    async fn queue_request(&mut self, request: SendRequest) -> Result<(), Error> {
+    async fn queue_request(&mut self, request: SendRequest) -> Result<(), TaskError> {
         self.request_queue.push_back(request);
         self.send_next_request().await?;
         Ok(())
     }
 
     /// Dispatch a PDU that we just read to the appropriate client code.
-    async fn process_pdu(&mut self, pdu: Bytes) -> Result<(), Error> {
+    async fn process_pdu(&mut self, pdu: Bytes) -> Result<(), TaskError> {
         use serde::Deserialize;
         #[derive(Deserialize, Debug)]
         pub struct Unilateral {
+            #[allow(unused)]
             pub unilateral: bool,
             pub subscription: String,
+            #[serde(default)]
+            pub canceled: bool,
         }
 
         if let Ok(unilateral) = bunser::<Unilateral>(&pdu) {
             if let Some(subscription) = self.subscriptions.get_mut(&unilateral.subscription) {
-                if subscription.send(pdu).is_err() {
+                let msg = if unilateral.canceled {
+                    SubscriptionNotification::Canceled
+                } else {
+                    SubscriptionNotification::Pdu(pdu)
+                };
+
+                if subscription.send(msg).is_err() || unilateral.canceled {
                     // The `Subscription` was dropped; we don't need to
                     // treat this as terminal for this client session,
                     // so just de-register the handler
@@ -533,10 +615,10 @@ impl ClientTask {
                 .expect("waiting_response is only true when request_queue is not empty");
             self.waiting_response = false;
 
-            request.respond(Ok(pdu))?;
+            request.respond(Ok(pdu));
         } else {
             // This should never happen as we're not doing any subscription stuff
-            return Err(Error::generic("received a unilateral PDU from the server"));
+            return Err(TaskError::UnilateralPdu);
         }
 
         self.send_next_request().await?;
@@ -548,8 +630,8 @@ fn bunser<T>(buf: &[u8]) -> Result<T, Error>
 where
     T: serde::de::DeserializeOwned,
 {
-    let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
-        source: Box::new(source),
+    let response: T = serde_bser::from_slice(buf).map_err(|source| Error::Deserialize {
+        source: source.into(),
         data: buf.to_vec(),
     })?;
     Ok(response)
@@ -577,7 +659,7 @@ impl ClientInner {
         let mut request_data = vec![];
         serde_bser::ser::serialize(&mut request_data, &request).map_err(|source| {
             Error::Serialize {
-                source: Box::new(source),
+                source: source.into(),
             }
         })?;
 
@@ -589,10 +671,13 @@ impl ClientInner {
                 tx,
             }))
             .await
-            .map_err(Error::generic)?;
+            .map_err(|_| ConnectionLost::ClientTaskExited)?;
 
         // Step 3: wait for the client task to give us the response
-        let pdu_data = rx.await.map_err(Error::generic)?.map_err(Error::generic)?;
+        let pdu_data = rx
+            .await
+            .map_err(|_| ConnectionLost::ClientTaskExited)?
+            .map_err(ConnectionLost::Error)?;
 
         // Step 4: sniff for an error response in the deserialized data
         use serde::Deserialize;
@@ -681,7 +766,7 @@ where
     name: String,
     inner: Arc<Mutex<ClientInner>>,
     root: ResolvedRoot,
-    responses: UnboundedReceiver<Bytes>,
+    responses: UnboundedReceiver<SubscriptionNotification>,
     _phantom: PhantomData<F>,
 }
 
@@ -699,29 +784,34 @@ where
     /// from the server.
     #[allow(clippy::should_implement_trait)]
     pub async fn next(&mut self) -> Result<SubscriptionData<F>, Error> {
-        let pdu = self
+        let msg = self
             .responses
             .recv()
             .await
-            .ok_or_else(|| Error::generic("client was torn down"))?;
+            .ok_or(ConnectionLost::ClientTaskExited)?;
 
-        let response: QueryResult<F> = bunser(&pdu)?;
+        match msg {
+            SubscriptionNotification::Pdu(pdu) => {
+                let response: QueryResult<F> = bunser(&pdu)?;
 
-        if response.subscription_canceled {
-            self.responses.close();
-            Ok(SubscriptionData::Canceled)
-        } else if let Some(state_name) = response.state_enter {
-            Ok(SubscriptionData::StateEnter {
-                state_name,
-                metadata: response.state_metadata,
-            })
-        } else if let Some(state_name) = response.state_leave {
-            Ok(SubscriptionData::StateLeave {
-                state_name,
-                metadata: response.state_metadata,
-            })
-        } else {
-            Ok(SubscriptionData::FilesChanged(response))
+                if let Some(state_name) = response.state_enter {
+                    Ok(SubscriptionData::StateEnter {
+                        state_name,
+                        metadata: response.state_metadata,
+                    })
+                } else if let Some(state_name) = response.state_leave {
+                    Ok(SubscriptionData::StateLeave {
+                        state_name,
+                        metadata: response.state_metadata,
+                    })
+                } else {
+                    Ok(SubscriptionData::FilesChanged(response))
+                }
+            }
+            SubscriptionNotification::Canceled => {
+                self.responses.close();
+                Ok(SubscriptionData::Canceled)
+            }
         }
     }
 
@@ -761,6 +851,79 @@ impl Client {
         Ok(response)
     }
 
+    pub async fn version(&self) -> Result<GetVersionResponse, Error> {
+        self.generic_request(&["version"]).await
+    }
+
+    pub async fn watch_list(&self) -> Result<WatchListResponse, Error> {
+        self.generic_request(&["watch-list"]).await
+    }
+
+    /// This method will attempt to assert the state named `state_name`
+    /// on the watchman server. This is used to facilitate advanced settling
+    /// in subscriptions.
+    ///
+    /// Only one client can assert a given named state for a given root at
+    /// a given time; an error will be returned if another client owns the
+    /// requested state assertion.
+    ///
+    /// If successful, the state will remain asserted until the owning client
+    /// either issues a `state-leave` or disconnects from the server.
+    ///
+    /// The optional `metadata` will be published to all subscribers of the
+    /// root and made visible via `SubscriptionData::StateEnter::metadata`.
+    ///
+    /// See also: <https://facebook.github.io/watchman/docs/cmd/state-enter.html>
+    pub async fn state_enter(
+        &self,
+        root: &ResolvedRoot,
+        state_name: &str,
+        sync_timeout: SyncTimeout,
+        metadata: Option<Value>,
+    ) -> Result<(), Error> {
+        let request = StateEnterLeaveRequest(
+            "state-enter",
+            root.root.clone(),
+            StateEnterLeaveParams {
+                name: state_name,
+                metadata,
+                sync_timeout,
+            },
+        );
+
+        let _response: StateEnterLeaveResponse = self.generic_request(request).await?;
+        Ok(())
+    }
+
+    /// This method will attempt to release an owned state assertion for the
+    /// state named `state_name` on the watchman server. This is used to facilitate
+    /// advanced settling in subscriptions.
+    ///
+    /// The optional `metadata` will be published to all subscribers of the
+    /// root and made visible via `SubscriptionData::StateLeave::metadata`.
+    ///
+    /// See also: <https://facebook.github.io/watchman/docs/cmd/state-leave.html>
+    pub async fn state_leave(
+        &self,
+        root: &ResolvedRoot,
+        state_name: &str,
+        sync_timeout: SyncTimeout,
+        metadata: Option<Value>,
+    ) -> Result<(), Error> {
+        let request = StateEnterLeaveRequest(
+            "state-leave",
+            root.root.clone(),
+            StateEnterLeaveParams {
+                name: state_name,
+                metadata,
+                sync_timeout,
+            },
+        );
+
+        let _response: StateEnterLeaveResponse = self.generic_request(request).await?;
+        Ok(())
+    }
+
     /// This is typically the first method invoked on a client.
     /// Its purpose is to ensure that the watchman server is watching the specified
     /// path and to resolve it to a `ResolvedRoot` instance.
@@ -794,8 +957,8 @@ impl Client {
     /// [NameOnly](struct.NameOnly.html) struct.
     ///
     /// ```
-    /// use watchman_client::prelude::*;
     /// use serde::Deserialize;
+    /// use watchman_client::prelude::*;
     ///
     /// query_result_type! {
     ///     struct NameAndType {
@@ -805,20 +968,20 @@ impl Client {
     /// }
     ///
     /// async fn query(
-    ///    client: &mut Client,
-    ///    resolved: &ResolvedRoot
+    ///     client: &mut Client,
+    ///     resolved: &ResolvedRoot,
     /// ) -> Result<(), Box<dyn std::error::Error>> {
-    ///    let response: QueryResult<NameAndType> = client
-    ///        .query(
-    ///            &resolved,
-    ///               QueryRequestCommon {
-    ///                glob: Some(vec!["**/*.rs".to_string()]),
-    ///                ..Default::default()
-    ///            },
-    ///        )
-    ///        .await?;
-    ///    println!("response: {:#?}", response);
-    ///    Ok(())
+    ///     let response: QueryResult<NameAndType> = client
+    ///         .query(
+    ///             &resolved,
+    ///             QueryRequestCommon {
+    ///                 glob: Some(vec!["**/*.rs".to_string()]),
+    ///                 ..Default::default()
+    ///             },
+    ///         )
+    ///         .await?;
+    ///     println!("response: {:#?}", response);
+    ///     Ok(())
     /// }
     /// ```
     ///
@@ -919,7 +1082,7 @@ impl Client {
                 .request_tx
                 .send(TaskItem::RegisterSubscription(name.clone(), tx))
                 .await
-                .map_err(Error::generic)?;
+                .map_err(|_| ConnectionLost::ClientTaskExited)?;
         }
 
         let subscription = Subscription::<F> {
@@ -994,16 +1157,55 @@ impl Client {
             .await?;
         Ok(response.config)
     }
+
+    /// Registers a trigger.
+    pub async fn register_trigger(
+        &self,
+        root: &ResolvedRoot,
+        request: TriggerRequest,
+    ) -> Result<TriggerResponse, Error> {
+        let response: TriggerResponse = self
+            .generic_request(TriggerCommand("trigger", root.root.clone(), request))
+            .await?;
+        Ok(response)
+    }
+
+    /// Removes a registered trigger.
+    pub async fn remove_trigger(
+        &self,
+        root: &ResolvedRoot,
+        name: &str,
+    ) -> Result<TriggerDelResponse, Error> {
+        let response: TriggerDelResponse = self
+            .generic_request(TriggerDelCommand(
+                "trigger-del",
+                root.root.clone(),
+                name.into(),
+            ))
+            .await?;
+        Ok(response)
+    }
+
+    /// Lists registered triggers.
+    pub async fn list_triggers(&self, root: &ResolvedRoot) -> Result<TriggerListResponse, Error> {
+        let response: TriggerListResponse = self
+            .generic_request(TriggerListCommand("trigger-list", root.root.clone()))
+            .await?;
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use futures::stream::{self, TryStreamExt};
-    use serde::{Deserialize, Serialize};
     use std::io;
+
+    use futures::stream;
+    use futures::stream::TryStreamExt;
+    use serde::Deserialize;
+    use serde::Serialize;
     use tokio_util::io::StreamReader;
+
+    use super::*;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct TestStruct {
@@ -1025,8 +1227,8 @@ mod tests {
 
             let reader = StreamReader::new(stream::iter(chunks));
 
-            let decoded = FramedRead::new(reader, BserSplitter)
-                .map_err(Error::from)
+            FramedRead::new(reader, BserSplitter)
+                .map_err(TaskError::from)
                 .and_then(|bytes| async move {
                     // We unwrap this since a) this is a test and b) serde_bser's errors aren't
                     // easily propagated into en error type like anyhow::Error without losing the
@@ -1035,9 +1237,7 @@ mod tests {
                 })
                 .try_collect()
                 .await
-                .unwrap();
-
-            decoded
+                .unwrap()
         }
 
         let msgs = vec![
@@ -1073,5 +1273,12 @@ mod tests {
         bytes.extend_from_slice(&[0; 10]);
         let r1 = BserSplitter.decode(&mut bytes);
         assert!(r1.is_err());
+    }
+
+    #[test]
+    fn test_bounds() {
+        fn assert_bounds<T: std::error::Error + Sync + Send + 'static>() {}
+        assert_bounds::<Error>();
+        assert_bounds::<TaskError>();
     }
 }

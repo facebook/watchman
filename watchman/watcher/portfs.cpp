@@ -1,5 +1,9 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 /* TODO:
  * This watcher fails with the scm tests */
@@ -8,7 +12,6 @@
 #include <folly/Synchronized.h>
 #include <memory>
 #include "watchman/InMemoryView.h"
-#include "watchman/watchman.h"
 
 #ifdef HAVE_PORT_CREATE
 
@@ -42,9 +45,8 @@ struct PortFSWatcher : public Watcher {
 
   bool start(const std::shared_ptr<watchman_root>& root) override;
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
+  std::unique_ptr<DirHandle> startWatchDir(
       const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
@@ -148,7 +150,7 @@ bool PortFSWatcher::start(const std::shared_ptr<watchman_root>& root) {
   struct stat st;
   if (stat(root->root_path.c_str(), &st)) {
     watchman::log(watchman::ERR, "stat failed in PortFS root delete watch");
-    root->cancel();
+    root->cancel("root inaccessible");
     return false;
   }
 
@@ -180,17 +182,17 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
   return do_watch(name, file->stat, false);
 }
 
-std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
+std::unique_ptr<DirHandle> PortFSWatcher::startWatchDir(
     const std::shared_ptr<watchman_root>& root,
-    struct watchman_dir* dir,
     const char* path) {
   struct stat st;
 
   auto osdir = w_dir_open(path);
 
+  w_string fullPath{path};
   if (fstat(osdir->getFd(), &st) == -1) {
-    if (dir->getFullPath() == root->root_path) {
-      root->cancel();
+    if (fullPath == root->root_path) {
+      root->cancel("root inaccessible");
     } else {
       // whaaa?
       root->scheduleRecrawl("fstat failed");
@@ -201,7 +203,7 @@ std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
         std::string("fstat failed for dir ") + path);
   }
 
-  do_watch(dir->getFullPath(), watchman::FileInformation(st), true);
+  do_watch(fullPath, watchman::FileInformation(st), true);
 
   return osdir;
 }

@@ -1,13 +1,21 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <folly/Synchronized.h>
 #include <condition_variable>
 #include <mutex>
-#include "fsevents.h"
-#include "kqueue.h"
+#include "watchman/Client.h"
 #include "watchman/InMemoryView.h"
-#include "watchman/watchman.h"
+#include "watchman/root/Root.h"
+#include "watchman/watcher/WatcherRegistry.h"
+#include "watchman/watcher/fsevents.h"
+#include "watchman/watcher/kqueue.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_file.h"
 
 #if HAVE_FSEVENTS && defined(HAVE_KQUEUE)
 namespace watchman {
@@ -40,13 +48,13 @@ class PendingEventsCond {
    * Wait for a change from a nested watcher. Return true if some events are
    * pending.
    */
-  bool wait(int timeoutms) {
+  bool waitAndClear(int timeoutms) {
     auto lock = stop_.lock();
-    if (lock->shouldStop) {
-      return false;
-    }
-    cond_.wait_for(lock.as_lock(), std::chrono::milliseconds(timeoutms));
-    return lock->hasPending;
+    cond_.wait_until(
+        lock.as_lock(),
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutms),
+        [&] { return lock->hasPending || lock->shouldStop; });
+    return std::exchange(lock->hasPending, false);
   }
 
   /**
@@ -60,8 +68,8 @@ class PendingEventsCond {
 
  private:
   struct Inner {
-    bool shouldStop{};
-    bool hasPending{};
+    bool shouldStop = false;
+    bool hasPending = false;
   };
 
   folly::Synchronized<Inner, std::mutex> stop_;
@@ -76,25 +84,26 @@ class PendingEventsCond {
  */
 class KQueueAndFSEventsWatcher : public Watcher {
  public:
-  explicit KQueueAndFSEventsWatcher(watchman_root* root);
+  explicit KQueueAndFSEventsWatcher(
+      const w_string& root_path,
+      const Configuration& config);
 
-  bool start(const std::shared_ptr<watchman_root>& root) override;
+  bool start(const std::shared_ptr<Root>& root) override;
 
   folly::SemiFuture<folly::Unit> flushPendingEvents() override;
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
+  void stopThreads() override;
 
   /**
    * Force a recrawl to be injected in the stream. Used in the
@@ -113,16 +122,16 @@ class KQueueAndFSEventsWatcher : public Watcher {
   folly::Synchronized<std::optional<w_string>> injectedRecrawl_;
 };
 
-KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(watchman_root* root)
-    : Watcher(
-          "kqueue+fsevents",
-          WATCHER_ONLY_DIRECTORY_NOTIFICATIONS | WATCHER_HAS_SPLIT_WATCH),
-      kqueueWatcher_(std::make_shared<KQueueWatcher>(root, false)),
+KQueueAndFSEventsWatcher::KQueueAndFSEventsWatcher(
+    const w_string& root_path,
+    const Configuration& config)
+    : Watcher("kqueue+fsevents", WATCHER_HAS_SPLIT_WATCH),
+      kqueueWatcher_(std::make_shared<KQueueWatcher>(root_path, config, false)),
       pendingCondition_(std::make_shared<PendingEventsCond>()) {}
 
 namespace {
 bool startThread(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     const std::shared_ptr<Watcher>& watcher,
     const std::shared_ptr<PendingEventsCond>& cond) {
   std::weak_ptr<Watcher> weakWatcher(watcher);
@@ -146,8 +155,7 @@ bool startThread(
 }
 } // namespace
 
-bool KQueueAndFSEventsWatcher::start(
-    const std::shared_ptr<watchman_root>& root) {
+bool KQueueAndFSEventsWatcher::start(const std::shared_ptr<Root>& root) {
   root->cookies.addCookieDir(root->root_path);
   return startThread(root, kqueueWatcher_, pendingCondition_);
 }
@@ -168,47 +176,54 @@ folly::SemiFuture<folly::Unit> KQueueAndFSEventsWatcher::flushPendingEvents() {
   futures.reserve(fseventsWatchers.size());
   for (auto& [name, watcher] : fseventsWatchers) {
     auto future = watcher->flushPendingEvents();
-    w_check(future.valid(), "FSEvents did not return valid flush future");
-    futures.push_back(std::move(future));
+    if (future.valid()) {
+      futures.push_back(std::move(future));
+    }
   }
   return folly::collect(futures).unit();
 }
 
-std::unique_ptr<watchman_dir_handle> KQueueAndFSEventsWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>& root,
-    struct watchman_dir* dir,
+std::unique_ptr<DirHandle> KQueueAndFSEventsWatcher::startWatchDir(
+    const std::shared_ptr<Root>& root,
     const char* path) {
-  if (!dir->parent) {
+  // Open the directory first to validate that the path is the canonical one.
+  // This will throw an exception if it's not.
+  auto ret = openDir(path);
+
+  if (root->root_path == path) {
     logf(DBG, "Watching root directory with kqueue\n");
     // This is the root, let's watch it with kqueue.
-    kqueueWatcher_->startWatchDir(root, dir, path);
-  } else if (dir->parent->getFullPath() == root->root_path) {
-    auto fullPath = dir->getFullPath();
-    auto wlock = fseventWatchers_.wlock();
-    if (wlock->find(fullPath) == wlock->end()) {
-      logf(
-          DBG,
-          "Creating a new FSEventsWatcher for top-level directory {}\n",
-          dir->name);
-      root->cookies.addCookieDir(fullPath);
-      auto [it, _] = wlock->emplace(
-          fullPath,
-          std::make_shared<FSEventsWatcher>(false, std::optional(fullPath)));
-      const auto& watcher = it->second;
-      if (!watcher->start(root)) {
-        throw std::runtime_error("couldn't start fsEvent");
-      }
-      if (!startThread(root, watcher, pendingCondition_)) {
-        throw std::runtime_error("couldn't start fsEvent");
+    kqueueWatcher_->startWatchDir(root, path);
+  } else {
+    w_string fullPath{path};
+    if (root->root_path == fullPath.dirName()) {
+      auto wlock = fseventWatchers_.wlock();
+      if (wlock->find(fullPath) == wlock->end()) {
+        logf(
+            DBG,
+            "Creating a new FSEventsWatcher for top-level directory {}\n",
+            fullPath);
+        root->cookies.addCookieDir(fullPath);
+        auto [it, _] = wlock->emplace(
+            fullPath,
+            std::make_shared<FSEventsWatcher>(
+                root->root_path, root->config, std::optional(fullPath)));
+        const auto& watcher = it->second;
+        if (!watcher->start(root)) {
+          throw std::runtime_error("couldn't start fsEvent");
+        }
+        if (!startThread(root, watcher, pendingCondition_)) {
+          throw std::runtime_error("couldn't start fsEvent");
+        }
       }
     }
   }
 
-  return w_dir_open(path);
+  return ret;
 }
 
 bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
-  if (file->parent->parent == nullptr) {
+  if (file->parent->parent == nullptr && !file->stat.isDir()) {
     // File at the root, watch it with kqueue.
     return kqueueWatcher_->startWatchFile(file);
   }
@@ -219,9 +234,8 @@ bool KQueueAndFSEventsWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
-  bool ret = false;
   {
     auto guard = injectedRecrawl_.wlock();
     if (guard->has_value()) {
@@ -236,37 +250,40 @@ Watcher::ConsumeNotifyRet KQueueAndFSEventsWatcher::consumeNotify(
       guard->reset();
     }
   }
+
   {
     auto fseventWatches = fseventWatchers_.wlock();
-    for (auto& [watchpath, fsevent] : *fseventWatches) {
-      auto [addedPending, cancelSelf] = fsevent->consumeNotify(root, coll);
+    auto it = fseventWatches->begin();
+    while (it != fseventWatches->end()) {
+      auto& [watchpath, fsevent] = *it;
+      auto [cancelSelf] = fsevent->consumeNotify(root, coll);
       if (cancelSelf) {
-        fsevent->signalThreads();
+        fsevent->stopThreads();
         root->cookies.removeCookieDir(watchpath);
-        fseventWatches->erase(watchpath);
+        it = fseventWatches->erase(it);
         continue;
+      } else {
+        ++it;
       }
-      ret |= addedPending;
     }
   }
-  auto [addedPending, cancelSelf] = kqueueWatcher_->consumeNotify(root, coll);
-  ret |= addedPending;
-  return {ret, cancelSelf};
+
+  return kqueueWatcher_->consumeNotify(root, coll);
 }
 
 bool KQueueAndFSEventsWatcher::waitNotify(int timeoutms) {
-  return pendingCondition_->wait(timeoutms);
+  return pendingCondition_->waitAndClear(timeoutms);
 }
 
-void KQueueAndFSEventsWatcher::signalThreads() {
+void KQueueAndFSEventsWatcher::stopThreads() {
   pendingCondition_->stopAll();
   {
     auto fseventWatches = fseventWatchers_.rlock();
     for (auto& [_, fsevent] : *fseventWatches) {
-      fsevent->signalThreads();
+      fsevent->stopThreads();
     }
   }
-  kqueueWatcher_->signalThreads();
+  kqueueWatcher_->stopThreads();
 }
 
 void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {
@@ -276,10 +293,15 @@ void KQueueAndFSEventsWatcher::injectRecrawl(w_string path) {
 
 namespace {
 std::shared_ptr<InMemoryView> makeKQueueAndFSEventsWatcher(
-    watchman_root* root) {
-  if (root->config.getBool("prefer_split_fsevents_watcher", false)) {
+    const w_string& root_path,
+    const w_string& /*fstype*/,
+    const Configuration& config) {
+  if (config.getBool("prefer_split_fsevents_watcher", false)) {
     return std::make_shared<InMemoryView>(
-        root, std::make_shared<KQueueAndFSEventsWatcher>(root));
+        realFileSystem,
+        root_path,
+        config,
+        std::make_shared<KQueueAndFSEventsWatcher>(root_path, config));
   } else {
     throw std::runtime_error(
         "Not using the kqueue+fsevents watcher as the \"prefer_split_fsevents_watcher\" config isn't set");
@@ -292,7 +314,7 @@ static WatcherRegistry reg("kqueue+fsevents", makeKQueueAndFSEventsWatcher, 5);
 namespace {
 
 std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
-    const std::shared_ptr<watchman_root>& root) {
+    const std::shared_ptr<Root>& root) {
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     return nullptr;
@@ -302,39 +324,33 @@ std::shared_ptr<KQueueAndFSEventsWatcher> watcherFromRoot(
       view->getWatcher());
 }
 
-static void cmd_debug_kqueue_and_fsevents_recrawl(
-    struct watchman_client* client,
+static UntypedResponse cmd_debug_kqueue_and_fsevents_recrawl(
+    Client* client,
     const json_ref& args) {
   /* resolve the root */
   if (json_array_size(args) != 3) {
-    send_error_response(
-        client,
+    throw ErrorResponse(
         "wrong number of arguments for 'debug-kqueue-and-fsevents-recrawl'");
-    return;
   }
 
   auto root = resolveRoot(client, args);
 
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
-    send_error_response(
-        client, "root is not using the kqueue+fsevents watcher");
-    return;
+    throw ErrorResponse("root is not using the kqueue+fsevents watcher");
   }
 
   /* Get the path that the recrawl should be triggered on */
   const auto& json_path = args.at(2);
   auto path = json_string_value(json_path);
   if (!path) {
-    send_error_response(
-        client,
+    throw ErrorResponse(
         "invalid value for argument 2, expected a string naming the path to trigger a recrawl on");
   }
 
   watcher->injectRecrawl(path);
 
-  auto resp = make_response();
-  send_and_dispose_response(client, std::move(resp));
+  return UntypedResponse{};
 }
 
 } // namespace
@@ -343,7 +359,7 @@ W_CMD_REG(
     "debug-kqueue-and-fsevents-recrawl",
     cmd_debug_kqueue_and_fsevents_recrawl,
     CMD_DAEMON,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 } // namespace watchman
 

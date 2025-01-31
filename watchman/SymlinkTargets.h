@@ -1,7 +1,14 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 #include <string>
-#include "LRUCache.h"
 #include "watchman/Clock.h"
+#include "watchman/LRUCache.h"
 #include "watchman/thirdparty/jansson/jansson.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
@@ -11,7 +18,7 @@ struct SymlinkTargetCacheKey {
   // Path relative to the watched root
   w_string relativePath;
   // The modification time
-  w_clock_t otime;
+  ClockStamp otime;
 
   // Computes a hash value for use in the cache map
   std::size_t hashValue() const;

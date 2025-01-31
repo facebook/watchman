@@ -1,19 +1,20 @@
 [manifest]
 name = jq
 
-[rpms]
+[rpms.distro=fedora]
 jq
 
-[debs]
+[homebrew]
 jq
 
 [download.not(os=windows)]
-url = https://github.com/stedolan/jq/releases/download/jq-1.5/jq-1.5.tar.gz
-sha256 = c4d2bfec6436341113419debf479d833692cc5cdab7eb0326b5a4d4fbe9f493c
+# we use jq-1.7+ to get fix for number truncation https://github.com/jqlang/jq/pull/1752
+url = https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-1.7.1.tar.gz
+sha256 = 478c9ca129fd2e3443fe27314b455e211e0d8c60bc8ff7df703873deeee580c2
 
 [build.not(os=windows)]
 builder = autoconf
-subdir = jq-1.5
+subdir = jq-1.7.1
 
 [build.os=windows]
 builder = nop

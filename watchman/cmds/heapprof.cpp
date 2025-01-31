@@ -1,35 +1,36 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include <fmt/core.h>
 #include <folly/String.h>
 #include <folly/memory/Malloc.h>
-#include "watchman/watchman.h"
+#include "watchman/Client.h"
+#include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
-#if defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+#if defined(FOLLY_USE_JEMALLOC)
 
-/** This command is present to manually trigger a
- * heap profile dump when jemalloc is in use.
- * Since there is a complicated relationship with our build system,
- * it is only included in the folly enabled portions of watchman.
- */
-static void cmd_debug_prof_dump(
-    struct watchman_client* client,
-    const json_ref&) {
+// This command is present to manually trigger a  heap profile dump when
+// jemalloc is in use.
+static UntypedResponse cmd_debug_prof_dump(Client*, const json_ref&) {
   if (!folly::usingJEMalloc()) {
     throw std::runtime_error("jemalloc is not in use");
   }
 
   auto result = mallctl("prof.dump", nullptr, nullptr, nullptr, 0);
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       "prof.dump",
       w_string_to_json(
-          folly::to<std::string>(
-              "mallctl prof.dump returned: ", folly::errnoStr(result))
+          fmt::format("mallctl prof.dump returned: {}", folly::errnoStr(result))
               .c_str()));
-  send_and_dispose_response(client, std::move(resp));
+  return resp;
 }
-W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, NULL)
+W_CMD_REG("debug-prof-dump", cmd_debug_prof_dump, CMD_DAEMON, nullptr);
+
 #endif

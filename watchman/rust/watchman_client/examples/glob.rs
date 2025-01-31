@@ -1,12 +1,20 @@
-use serde::Deserialize;
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 use std::path::PathBuf;
-use structopt::StructOpt;
+
+use clap::Parser;
+use serde::Deserialize;
 use watchman_client::prelude::*;
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Perform a glob query for a path, using watchman")]
-struct Opt {
-    #[structopt(default_value = ".")]
+/// Perform a glob query for a path, using watchman
+#[derive(Debug, Parser)]
+struct Cli {
+    #[arg(default_value = ".")]
     path: PathBuf,
 }
 
@@ -21,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+    let opt = Cli::parse();
     let client = Connector::new().connect().await?;
     let resolved = client
         .resolve_root(CanonicalPath::canonicalize(opt.path)?)

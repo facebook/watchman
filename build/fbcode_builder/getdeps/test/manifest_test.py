@@ -1,9 +1,10 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
+
 
 import sys
 import unittest
@@ -13,13 +14,13 @@ from ..manifest import ManifestParser
 
 
 class ManifestTest(unittest.TestCase):
-    def test_missing_section(self):
+    def test_missing_section(self) -> None:
         with self.assertRaisesRegex(
             Exception, "manifest file test is missing required section manifest"
         ):
             ManifestParser("test", "")
 
-    def test_missing_name(self):
+    def test_missing_name(self) -> None:
         with self.assertRaisesRegex(
             Exception,
             "manifest file test section 'manifest' is missing required field 'name'",
@@ -31,7 +32,7 @@ class ManifestTest(unittest.TestCase):
 """,
             )
 
-    def test_minimal(self):
+    def test_minimal(self) -> None:
         p = ManifestParser(
             "test",
             """
@@ -42,7 +43,7 @@ name = test
         self.assertEqual(p.name, "test")
         self.assertEqual(p.fbsource_path, None)
 
-    def test_minimal_with_fbsource_path(self):
+    def test_minimal_with_fbsource_path(self) -> None:
         p = ManifestParser(
             "test",
             """
@@ -54,7 +55,7 @@ fbsource_path = fbcode/wat
         self.assertEqual(p.name, "test")
         self.assertEqual(p.fbsource_path, "fbcode/wat")
 
-    def test_unknown_field(self):
+    def test_unknown_field(self) -> None:
         with self.assertRaisesRegex(
             Exception,
             (
@@ -71,7 +72,7 @@ invalid.field = woot
 """,
             )
 
-    def test_invalid_section_name(self):
+    def test_invalid_section_name(self) -> None:
         with self.assertRaisesRegex(
             Exception, "manifest file test contains unknown section 'invalid.section'"
         ):
@@ -86,7 +87,7 @@ foo = bar
 """,
             )
 
-    def test_value_in_dependencies_section(self):
+    def test_value_in_dependencies_section(self) -> None:
         with self.assertRaisesRegex(
             Exception,
             (
@@ -106,7 +107,7 @@ foo = bar
 """,
             )
 
-    def test_invalid_conditional_section_name(self):
+    def test_invalid_conditional_section_name(self) -> None:
         with self.assertRaisesRegex(
             Exception,
             (
@@ -125,7 +126,7 @@ name = test
 """,
             )
 
-    def test_section_as_args(self):
+    def test_section_as_args(self) -> None:
         p = ManifestParser(
             "test",
             """
@@ -165,7 +166,7 @@ name = test
             p2.get_section_as_args("autoconf.args"), ["--prefix=/foo", "--with-woot"]
         )
 
-    def test_section_as_dict(self):
+    def test_section_as_dict(self) -> None:
         p = ManifestParser(
             "test",
             """
@@ -179,7 +180,7 @@ foo = bar
 foo = baz
 """,
         )
-        self.assertEqual(p.get_section_as_dict("cmake.defines"), {"foo": "bar"})
+        self.assertEqual(p.get_section_as_dict("cmake.defines", {}), {"foo": "bar"})
         self.assertEqual(
             p.get_section_as_dict("cmake.defines", {"test": "on"}), {"foo": "baz"}
         )
@@ -203,12 +204,12 @@ foo = bar
             msg="sections cascade in the order they appear in the manifest",
         )
 
-    def test_parse_common_manifests(self):
+    def test_parse_common_manifests(self) -> None:
         patch_loader(__name__)
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
 
-    def test_mismatch_name(self):
+    def test_mismatch_name(self) -> None:
         with self.assertRaisesRegex(
             Exception,
             "filename of the manifest 'foo' does not match the manifest name 'bar'",
@@ -221,7 +222,7 @@ name = bar
 """,
             )
 
-    def test_duplicate_manifest(self):
+    def test_duplicate_manifest(self) -> None:
         patch_loader(__name__, "fixtures/duplicate")
 
         with self.assertRaisesRegex(Exception, "found duplicate manifest 'foo'"):
@@ -230,4 +231,4 @@ name = bar
     if sys.version_info < (3, 2):
 
         def assertRaisesRegex(self, *args, **kwargs):
-            return self.assertRaisesRegexp(*args, **kwargs)
+            return self.assertRaisesRegex(*args, **kwargs)

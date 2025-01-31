@@ -1,9 +1,18 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/QueryableView.h"
+#include "watchman/root/Root.h"
+#include "watchman/telemetry/LogEvent.h"
+#include "watchman/telemetry/WatchmanStructuredLogger.h"
 
-void watchman_root::considerAgeOut() {
+using namespace watchman;
+
+void Root::considerAgeOut() {
   if (gc_interval.count() == 0) {
     return;
   }
@@ -17,15 +26,18 @@ void watchman_root::considerAgeOut() {
   performAgeOut(gc_age);
 }
 
-void watchman_root::performAgeOut(std::chrono::seconds min_age) {
+void Root::performAgeOut(std::chrono::seconds min_age) {
   // Find deleted nodes older than the gc_age setting.
   // This is particularly useful in cases where your tree observes a
   // large number of creates and deletes for many unique filenames in
   // a given dir (eg: temporary/randomized filenames generated as part
   // of build tooling or atomic renames)
-  watchman::w_perf_t sample("age_out");
+  watchman::PerfSample sample("age_out");
 
-  view()->ageOut(sample, std::chrono::seconds(min_age));
+  int64_t walked = 0;
+  int64_t files = 0;
+  int64_t dirs = 0;
+  view()->ageOut(walked, files, dirs, std::chrono::seconds(min_age));
 
   // Age out cursors too.
   {
@@ -39,9 +51,34 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
       }
     }
   }
+  auto root_metadata = getRootMetadata();
+
   if (sample.finish()) {
-    sample.add_root_meta(shared_from_this());
+    sample.add_meta(
+        "age_out",
+        json_object(
+            {{"walked", json_integer(walked)},
+             {"files", json_integer(files)},
+             {"dirs", json_integer(dirs)}}));
+
+    sample.add_root_metadata(root_metadata);
     sample.log();
+  }
+
+  const auto& [samplingRate, eventCount] =
+      getLogEventCounters(LogEventType::AgeOutType);
+  // Log if override set, or if we have hit the sample rate
+  if (sample.will_log || eventCount == samplingRate) {
+    AgeOut ageOut;
+    ageOut.root = root_metadata.root_path.string();
+    ageOut.event_count = eventCount != samplingRate ? 0 : eventCount;
+    ageOut.recrawl = root_metadata.recrawl_count;
+    ageOut.case_sensitive = root_metadata.case_sensitive;
+    ageOut.watcher = root_metadata.watcher.string();
+    ageOut.walked = walked;
+    ageOut.files = files;
+    ageOut.dirs = dirs;
+    getLogger()->logEvent(ageOut);
   }
 }
 

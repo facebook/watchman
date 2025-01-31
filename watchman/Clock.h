@@ -1,48 +1,96 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
+
 #include <folly/Synchronized.h>
 #include <unordered_map>
+#include <variant>
 #include "watchman/Logging.h"
 
-struct w_clock_t {
-  uint32_t ticks;
+namespace watchman {
+
+using ClockTicks = uint64_t;
+using ClockRoot = uint64_t;
+
+struct ClockStamp {
+  ClockTicks ticks;
   time_t timestamp;
 };
 
-struct w_query_since;
+struct QuerySince {
+  struct Timestamp {
+    time_t time;
+  };
+  struct Clock {
+    bool is_fresh_instance;
+    ClockTicks ticks;
+  };
+  std::variant<Timestamp, Clock> since;
+
+  QuerySince() : since{Clock{true, 0}} {}
+  /* implicit */ QuerySince(Timestamp ts) : since{ts} {}
+  /* implicit */ QuerySince(Clock clock) : since{clock} {}
+
+  bool is_timestamp() const {
+    return std::holds_alternative<Timestamp>(since);
+  }
+
+  /**
+   * Throws if this holds a Timestamp.
+   */
+  bool is_fresh_instance() const {
+    return std::get<Clock>(since).is_fresh_instance;
+  }
+
+  /**
+   * Set the clock to a fresh instance.
+   *
+   * Throws if this holds a Timestamp.
+   */
+  void set_fresh_instance() {
+    std::get<Clock>(since).is_fresh_instance = true;
+  }
+};
 
 struct ClockPosition {
-  uint32_t rootNumber{0};
-  uint32_t ticks{0};
+  ClockRoot rootNumber{0};
+  ClockTicks ticks{0};
 
   ClockPosition() = default;
-  ClockPosition(uint32_t rootNumber, uint32_t ticks)
+  ClockPosition(ClockRoot rootNumber, ClockTicks ticks)
       : rootNumber(rootNumber), ticks(ticks) {}
 
   w_string toClockString() const;
 };
 
-enum w_clockspec_tag { w_cs_timestamp, w_cs_clock, w_cs_named_cursor };
-
 struct ClockSpec {
-  w_clockspec_tag tag;
-  time_t timestamp;
-  struct {
+  struct Timestamp {
+    time_t time;
+  };
+
+  struct Clock {
     uint64_t start_time;
     int pid;
     ClockPosition position;
-  } clock;
-  struct {
+  };
+
+  struct NamedCursor {
     w_string cursor;
-  } named_cursor;
+  };
+
+  std::variant<Timestamp, Clock, NamedCursor> spec;
 
   // Optional SCM merge base parameters
-  w_string scmMergeBase;
+  std::optional<w_string> scmMergeBase;
   w_string scmMergeBaseWith;
   // Optional saved state parameters
-  json_ref savedStateConfig;
-  w_string savedStateStorageType;
+  std::optional<json_ref> savedStateConfig;
+  std::optional<w_string> savedStateStorageType;
   w_string savedStateCommitId;
 
   ClockSpec();
@@ -61,18 +109,19 @@ struct ClockSpec {
    * the effective since parameter.
    * If cursorMap is passed in, it MUST be unlocked, as this method
    * will acquire a lock to evaluate a named cursor. */
-  w_query_since evaluate(
+  QuerySince evaluate(
       const ClockPosition& position,
-      const uint32_t lastAgeOutTick,
-      folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap =
+      const ClockTicks lastAgeOutTick,
+      folly::Synchronized<std::unordered_map<w_string, ClockTicks>>* cursorMap =
           nullptr) const;
 
   /** Initializes some global state needed for clockspec evaluation */
   static void init();
 
   inline const ClockPosition& position() const {
-    w_check(tag == w_cs_clock, "position() called for non-clock clockspec");
-    return clock.position;
+    auto* c = std::get_if<Clock>(&spec);
+    w_check(c, "position() called for non-clock clockspec");
+    return c->position;
   }
 
   bool hasScmParams() const;
@@ -83,3 +132,11 @@ struct ClockSpec {
    * constructor of this class */
   json_ref toJson() const;
 };
+
+} // namespace watchman
+
+bool clock_id_string(
+    watchman::ClockRoot root_number,
+    watchman::ClockTicks ticks,
+    char* buf,
+    size_t bufsize);

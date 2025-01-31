@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 include(FBCMakeParseArgs)
 
 set(
@@ -6,7 +8,14 @@ set(
 )
 set_property(CACHE USE_CARGO_VENDOR PROPERTY STRINGS AUTO ON OFF)
 
+set(
+  GENERATE_CARGO_VENDOR_CONFIG AUTO CACHE STRING
+  "Whether to generate Rust cargo vendor config or use existing"
+)
+set_property(CACHE GENERATE_CARGO_VENDOR_CONFIG PROPERTY STRINGS AUTO ON OFF)
+
 set(RUST_VENDORED_CRATES_DIR "$ENV{RUST_VENDORED_CRATES_DIR}")
+
 if("${USE_CARGO_VENDOR}" STREQUAL "AUTO")
   if(EXISTS "${RUST_VENDORED_CRATES_DIR}")
     set(USE_CARGO_VENDOR ON)
@@ -15,7 +24,11 @@ if("${USE_CARGO_VENDOR}" STREQUAL "AUTO")
   endif()
 endif()
 
-if(USE_CARGO_VENDOR)
+if("${GENERATE_CARGO_VENDOR_CONFIG}" STREQUAL "AUTO")
+  set(GENERATE_CARGO_VENDOR_CONFIG "${USE_CARGO_VENDOR}")
+endif()
+
+if(GENERATE_CARGO_VENDOR_CONFIG)
   if(NOT EXISTS "${RUST_VENDORED_CRATES_DIR}")
     message(
       FATAL "vendored rust crates not present: "
@@ -45,6 +58,8 @@ if(USE_CARGO_VENDOR)
   )
 endif()
 
+find_program(CARGO_COMMAND cargo REQUIRED)
+
 # Cargo is a build system in itself, and thus will try to take advantage of all
 # the cores on the system. Unfortunately, this conflicts with Ninja, since it
 # also tries to utilize all the cores. This can lead to a system that is
@@ -65,7 +80,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # Cargo build static library.
 #
 # ```cmake
-# rust_static_library(<TARGET> [CRATE <CRATE_NAME>])
+# rust_static_library(<TARGET> [CRATE <CRATE_NAME>] [FEATURES <FEATURE_NAME>] [USE_CXX_INCLUDE])
 # ```
 #
 # Parameters:
@@ -75,6 +90,10 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # - CRATE_NAME:
 #   Name of the crate. This parameter is optional. If unspecified, it will
 #   fallback to `${TARGET}`.
+# - FEATURE_NAME:
+#   Name of the Rust feature to enable.
+# - USE_CXX_INCLUDE:
+#   Include cxx.rs include path in `${TARGET}` INTERFACE.
 #
 # This function creates two targets:
 # - "${TARGET}": an interface library target contains the static library built
@@ -86,12 +105,17 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS rust_job_pool=1)
 # headers with the interface library.
 #
 function(rust_static_library TARGET)
-  fb_cmake_parse_args(ARG "" "CRATE" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "USE_CXX_INCLUDE" "CRATE;FEATURES" "" "${ARGN}")
 
   if(DEFINED ARG_CRATE)
     set(crate_name "${ARG_CRATE}")
   else()
     set(crate_name "${TARGET}")
+  endif()
+  if(DEFINED ARG_FEATURES)
+    set(features --features ${ARG_FEATURES})
+  else()
+    set(features )
   endif()
 
   set(cargo_target "${TARGET}.cargo")
@@ -99,12 +123,11 @@ function(rust_static_library TARGET)
   set(staticlib_name "${CMAKE_STATIC_LIBRARY_PREFIX}${crate_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(rust_staticlib "${CMAKE_CURRENT_BINARY_DIR}/${target_dir}/${staticlib_name}")
 
-  set(cargo_cmd cargo)
-  if(WIN32)
-    set(cargo_cmd cargo.exe)
+  if(DEFINED ARG_FEATURES)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
+  else()
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
   endif()
-
-  set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
     set(cargo_flags ${cargo_flags})
@@ -118,7 +141,7 @@ function(rust_static_library TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
-      ${cargo_cmd}
+      ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust crate '${crate_name}'..."
     JOB_POOL rust_job_pool
@@ -137,22 +160,32 @@ function(rust_static_library TARGET)
       INTERFACE_INSTALL_LIBNAME
         "${CMAKE_STATIC_LIBRARY_PREFIX}${crate_name}_rs${CMAKE_STATIC_LIBRARY_SUFFIX}"
   )
+
+  if(DEFINED ARG_USE_CXX_INCLUDE)
+    target_include_directories(
+      ${TARGET}
+      INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/cxxbridge/
+    )
+  endif()
+
   target_link_libraries(
     ${TARGET}
     INTERFACE "$<BUILD_INTERFACE:${rust_staticlib}>"
   )
 endfunction()
 
-# This function instructs cmake to define a target that will use `cargo build`
+# This function instructs CMake to define a target that will use `cargo build`
 # to build a bin crate referenced by the Cargo.toml file in the current source
 # directory.
 # It accepts a single `TARGET` parameter which will be passed as the package
 # name to `cargo build -p TARGET`. If binary has different name as package,
 # use optional flag BINARY_NAME to override it.
-# The cmake target will be registered to build by default as part of the
+# It also accepts a `FEATURES` parameter if you want to enable certain features
+# in your Rust binary.
+# The CMake target will be registered to build by default as part of the
 # ALL target.
 function(rust_executable TARGET)
-  fb_cmake_parse_args(ARG "" "BINARY_NAME" "" "${ARGN}")
+  fb_cmake_parse_args(ARG "" "BINARY_NAME;FEATURES" "" "${ARGN}")
 
   set(crate_name "${TARGET}")
   set(cargo_target "${TARGET}.cargo")
@@ -161,15 +194,19 @@ function(rust_executable TARGET)
   if(DEFINED ARG_BINARY_NAME)
     set(executable_name "${ARG_BINARY_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
   else()
-      set(executable_name "${crate_name}${CMAKE_EXECUTABLE_SUFFIX}")
+    set(executable_name "${crate_name}${CMAKE_EXECUTABLE_SUFFIX}")
+  endif()
+  if(DEFINED ARG_FEATURES)
+    set(features --features ${ARG_FEATURES})
+  else()
+    set(features )
   endif()
 
-  set(cargo_cmd cargo)
-  if(WIN32)
-    set(cargo_cmd cargo.exe)
+  if(DEFINED ARG_FEATURES)
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name} --features ${ARG_FEATURES})
+  else()
+    set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
   endif()
-
-  set(cargo_flags build $<IF:$<CONFIG:Debug>,,--release> -p ${crate_name})
   if(USE_CARGO_VENDOR)
     set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
     set(cargo_flags ${cargo_flags})
@@ -184,7 +221,7 @@ function(rust_executable TARGET)
       "${CMAKE_COMMAND}" -E env
       "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       ${extra_cargo_env}
-      ${cargo_cmd}
+      ${CARGO_COMMAND}
       ${cargo_flags}
     COMMENT "Building Rust executable '${crate_name}'..."
     JOB_POOL rust_job_pool
@@ -285,5 +322,213 @@ function(install_rust_static_library TARGET)
     FILES ${staticlib_output_path}
     RENAME ${staticlib_output_name}
     DESTINATION ${ARG_INSTALL_DIR}
+  )
+endfunction()
+
+# This function creates C++ bindings using the [cxx] crate.
+#
+# Original function found here: https://github.com/corrosion-rs/corrosion/blob/master/cmake/Corrosion.cmake#L1390
+# Simplified for use as part of RustStaticLibrary module. License below.
+#
+# MIT License
+#
+# Copyright (c) 2018 Andrew Gaspar
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# The rules approximately do the following:
+# - Check which version of `cxx` the Rust crate depends on.
+# - Check if the exact same version of `cxxbridge-cmd` is installed
+# - If not, create a rule to build the exact same version of `cxxbridge-cmd`.
+# - Create rules to run `cxxbridge` and generate
+#   - The `rust/cxx.h` header
+#   - A header and source file for the specified CXX_BRIDGE_FILE.
+# - The generated sources (and header include directories) are added to the
+#   `${TARGET}` CMake library target.
+#
+# ```cmake
+# rust_cxx_bridge(<TARGET> <CXX_BRIDGE_FILE> [CRATE <CRATE_NAME>] [LIBS <LIBNAMES>])
+# ```
+#
+# Parameters:
+# - TARGET:
+#   Name of the target name. The target that the bridge will be included with.
+# - CXX_BRIDGE_FILE:
+#   Name of the file that include the cxxbridge (e.g., "src/ffi.rs").
+# - CRATE_NAME:
+#   Name of the crate. This parameter is optional. If unspecified, it will
+#   fallback to `${TARGET}`.
+# - LIBS <lib1> [<lib2> ...]:
+#   A list of libraries that this library depends on.
+#
+function(rust_cxx_bridge TARGET CXX_BRIDGE_FILE)
+  fb_cmake_parse_args(ARG "" "CRATE" "LIBS" "${ARGN}")
+
+  if(DEFINED ARG_CRATE)
+    set(crate_name "${ARG_CRATE}")
+  else()
+    set(crate_name "${TARGET}")
+  endif()
+
+  if(USE_CARGO_VENDOR)
+    set(extra_cargo_env "CARGO_HOME=${RUST_CARGO_HOME}")
+  endif()
+
+  execute_process(
+    COMMAND
+      "${CMAKE_COMMAND}" -E env
+      ${extra_cargo_env}
+      "${CARGO_COMMAND}" tree -i cxx --depth=0
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE cxx_version_result
+    OUTPUT_VARIABLE cxx_version_output
+  )
+
+  if(NOT "${cxx_version_result}" EQUAL "0")
+    message(FATAL_ERROR "Crate ${crate_name} does not depend on cxx.")
+  endif()
+  if(cxx_version_output MATCHES "cxx v([0-9]+.[0-9]+.[0-9]+)")
+    set(cxx_required_version "${CMAKE_MATCH_1}")
+  else()
+    message(
+      FATAL_ERROR
+      "Failed to parse cxx version from cargo tree output: `cxx_version_output`")
+  endif()
+
+  # First check if a suitable version of cxxbridge is installed
+  find_program(INSTALLED_CXXBRIDGE cxxbridge PATHS "$ENV{HOME}/.cargo/bin/")
+  mark_as_advanced(INSTALLED_CXXBRIDGE)
+  if(INSTALLED_CXXBRIDGE)
+    execute_process(
+      COMMAND "${INSTALLED_CXXBRIDGE}" --version
+      OUTPUT_VARIABLE cxxbridge_version_output
+    )
+    if(cxxbridge_version_output MATCHES "cxxbridge ([0-9]+.[0-9]+.[0-9]+)")
+      set(cxxbridge_version "${CMAKE_MATCH_1}")
+    else()
+      set(cxxbridge_version "")
+    endif()
+  endif()
+
+  set(cxxbridge "")
+  if(cxxbridge_version)
+    if(cxxbridge_version VERSION_EQUAL cxx_required_version)
+      set(cxxbridge "${INSTALLED_CXXBRIDGE}")
+      if(NOT TARGET "cxxbridge_v${cxx_required_version}")
+        # Add an empty target.
+        add_custom_target("cxxbridge_v${cxx_required_version}")
+      endif()
+    endif()
+  endif()
+
+  # No suitable version of cxxbridge was installed,
+  # so use custom target to install correct version.
+  if(NOT cxxbridge)
+    if(NOT TARGET "cxxbridge_v${cxx_required_version}")
+      add_custom_command(
+        OUTPUT
+          "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+        COMMAND
+          "${CMAKE_COMMAND}" -E make_directory
+          "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}"
+        COMMAND
+          "${CMAKE_COMMAND}" -E remove -f "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock"
+        COMMAND
+          "${CMAKE_COMMAND}" -E env
+          ${extra_cargo_env}
+          "${CARGO_COMMAND}" install cxxbridge-cmd
+          --version "${cxx_required_version}"
+          --root "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}"
+          --quiet
+        COMMAND
+          "${CMAKE_COMMAND}" -E remove -f "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock"
+        COMMENT "Installing cxxbridge (version ${cxx_required_version})"
+      )
+      add_custom_target(
+        "cxxbridge_v${cxx_required_version}"
+        DEPENDS "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+      )
+    endif()
+    set(
+      cxxbridge
+      "${CMAKE_BINARY_DIR}/cxxbridge_v${cxx_required_version}/bin/cxxbridge"
+    )
+  endif()
+
+  add_library(${crate_name} STATIC)
+  target_include_directories(
+    ${crate_name}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<INSTALL_INTERFACE:include>
+  )
+  target_link_libraries(
+    ${crate_name}
+    PUBLIC
+    ${ARG_LIBS}
+  )
+
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rust")
+  add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    COMMAND
+      "${cxxbridge}" --header --output "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    DEPENDS "cxxbridge_v${cxx_required_version}"
+    COMMENT "Generating rust/cxx.h header"
+  )
+
+  get_filename_component(filename_component ${CXX_BRIDGE_FILE} NAME)
+  get_filename_component(directory_component ${CXX_BRIDGE_FILE} DIRECTORY)
+  set(directory "")
+  if(directory_component)
+    set(directory "${directory_component}")
+  endif()
+
+  set(cxx_header ${directory}/${filename_component}.h)
+  set(cxx_source ${directory}/${filename_component}.cc)
+  set(rust_source_path "${CMAKE_CURRENT_SOURCE_DIR}/${CXX_BRIDGE_FILE}")
+
+  file(
+    MAKE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/${directory_component}"
+  )
+
+  add_custom_command(
+    OUTPUT
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+      "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --header --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    COMMAND
+      ${cxxbridge} ${rust_source_path}
+        --output "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
+        --include "${cxx_header}"
+    DEPENDS "cxxbridge_v${cxx_required_version}" "${rust_source_path}"
+    COMMENT "Generating cxx bindings for crate ${crate_name}"
+  )
+
+  target_sources(
+    ${crate_name}
+    PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_header}"
+    "${CMAKE_CURRENT_BINARY_DIR}/rust/cxx.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/${cxx_source}"
   )
 endfunction()

@@ -1,9 +1,16 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
-#define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
+#include "watchman/Cookie.h"
+#include "watchman/fs/FileSystem.h"
+#include "watchman/watchman_string.h"
 
 namespace watchman {
 
@@ -11,26 +18,40 @@ class CookieSyncAborted : public std::exception {};
 
 class CookieSync {
  public:
-  explicit CookieSync(const w_string& dir);
+  struct SyncResult {
+    /**
+     * For logging and debugging, populated with the paths of all cookie files
+     * used.
+     */
+    std::vector<w_string> cookieFileNames;
+  };
+
+  explicit CookieSync(FileSystem& fs, const w_string& dir);
   ~CookieSync();
 
   void setCookieDir(const w_string& dir);
   void addCookieDir(const w_string& dir);
   void removeCookieDir(const w_string& dir);
 
-  /* Ensure that we're synchronized with the state of the
+  /**
+   * Ensure that we're synchronized with the state of the
    * filesystem at the current time.
-   * We do this by touching a cookie file and waiting to
-   * observe it via inotify.  When we see it we know that
+   *
+   * We do this by touching one or more cookie files and waiting to
+   * observe them via the watcher.  When we see it we know that
    * we've seen everything up to the point in time at which
-   * we're asking questions.
-   * Throws a std::system_error with an ETIMEDOUT error if
-   * the timeout expires before we observe the change, or
-   * a runtime_error if the root has been deleted or rendered
-   * inaccessible. */
-  void syncToNow(std::chrono::milliseconds timeout);
+   * we're asking questions. (Note: it's unclear if all filesystem watchers
+   * provide such an ordering guarantee, and it's worth flushing all pending
+   * notifications to be sure.)
+   *
+   * Throws a std::system_error with an ETIMEDOUT
+   * error if the timeout expires before we observe the change, or a
+   * runtime_error if the root has been deleted or rendered inaccessible.
+   */
+  SyncResult syncToNow(std::chrono::milliseconds timeout);
 
-  /** Touches a cookie file and returns a Future that will
+  /**
+   * Touches a cookie file and returns a Future that will
    * be ready when that cookie file is processed by the IO
    * thread at some future time.
    * Important: if you chain a lambda onto the future, it
@@ -38,7 +59,7 @@ class CookieSync {
    * It is recommended that you minimize the actions performed
    * in that context to avoid holding up the IO thread.
    **/
-  folly::Future<folly::Unit> sync();
+  folly::SemiFuture<SyncResult> sync();
 
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just
@@ -51,23 +72,11 @@ class CookieSync {
    * with a CookieSyncAborted exception */
   void abortAllCookies();
 
-  // We need to guarantee that we never collapse a cookie notification
-  // out of the pending list, because we absolutely must observe it coming
-  // in via the kernel notification mechanism in order for synchronization
-  // to be correct.
-  // Since we don't have a watchman_root available, we can't tell what the
-  // precise cookie prefix is for the current pending list here, so
-  // we do a substring match.  Not the most elegant thing in the world.
-  static inline bool isPossiblyACookie(const w_string_t* path) {
-    return w_string_contains_cstr_len(
-        path, WATCHMAN_COOKIE_PREFIX, sizeof(WATCHMAN_COOKIE_PREFIX) - 1);
-  }
-
   // Check if this path matches an actual cookie.
-  bool isCookiePrefix(const w_string& path);
+  bool isCookiePrefix(w_string_piece path) const;
 
   // Check if the path matches a cookie directory.
-  bool isCookieDir(const w_string& path);
+  bool isCookieDir(w_string_piece path) const;
 
   // Returns the set of prefixes for cookie files
   std::unordered_set<w_string> cookiePrefix() const;
@@ -79,6 +88,9 @@ class CookieSync {
   std::vector<w_string> getOutstandingCookieFileList() const;
 
  private:
+  CookieSync(CookieSync&&) = delete;
+  CookieSync& operator=(CookieSync&&) = delete;
+
   struct Cookie {
     folly::Promise<folly::Unit> promise;
     std::atomic<uint64_t> numPending;
@@ -95,6 +107,11 @@ class CookieSync {
     // valid filename prefix for cookies we create
     w_string cookiePrefix_;
   };
+
+  std::unordered_set<w_string> cookiePrefixLocked(
+      const CookieDirectories& guard) const;
+
+  FileSystem& fileSystem_;
 
   folly::Synchronized<CookieDirectories> cookieDirs_;
   // Serial number for cookie filename

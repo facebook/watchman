@@ -1,5 +1,13 @@
-use serde::Serialize;
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 use std::f64::consts;
+
+use serde::Serialize;
 
 use super::serialize;
 
@@ -37,7 +45,7 @@ fn test_basic_serialize() {
         test_enum: TestEnum::TestUnit,
         test_enum_list: vec![
             TestEnum::TestNewtype(&b"BSER test"[..]),
-            TestEnum::TestTuple(42, i64::max_value() as u64),
+            TestEnum::TestTuple(42, i64::MAX as u64),
             TestEnum::TestStruct {
                 abc: (),
                 def: '\u{1f4a9}',

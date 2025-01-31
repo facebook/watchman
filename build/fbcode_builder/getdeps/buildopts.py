@@ -1,9 +1,9 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
 
 import errno
 import glob
@@ -12,18 +12,13 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import Mapping, Optional
 
 from .copytree import containing_repo_type
-from .envfuncs import Env, add_path_entry
-from .fetcher import get_fbsource_repo_data
+from .envfuncs import add_flag, add_path_entry, Env
+from .fetcher import get_fbsource_repo_data, homebrew_package_prefix
 from .manifest import ContextGenerator
-from .platform import HostType, is_windows
-
-
-try:
-    import typing  # noqa: F401
-except ImportError:
-    pass
+from .platform import get_available_ram, HostType, is_windows
 
 
 def detect_project(path):
@@ -51,12 +46,16 @@ class BuildOptions(object):
         scratch_dir,
         host_type,
         install_dir=None,
-        num_jobs=0,
-        use_shipit=False,
+        num_jobs: int = 0,
+        use_shipit: bool = False,
         vcvars_path=None,
-        allow_system_packages=False,
+        allow_system_packages: bool = False,
         lfs_path=None,
-    ):
+        shared_libs: bool = False,
+        facebook_internal=None,
+        free_up_disk: bool = False,
+        build_type: Optional[str] = None,
+    ) -> None:
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
                              has been mapped into that dir.
@@ -69,11 +68,10 @@ class BuildOptions(object):
         num_jobs - the level of concurrency to use while building
         use_shipit - use real shipit instead of the simple shipit transformer
         vcvars_path - Path to external VS toolchain's vsvarsall.bat
+        shared_libs - whether to build shared libraries
+        free_up_disk - take extra actions to save runner disk space
+        build_type - CMAKE_BUILD_TYPE, used by cmake and cargo builders
         """
-        if not num_jobs:
-            import multiprocessing
-
-            num_jobs = multiprocessing.cpu_count() // 2
 
         if not install_dir:
             install_dir = os.path.join(scratch_dir, "installed")
@@ -91,11 +89,18 @@ class BuildOptions(object):
         # If we are running from an fbsource repository, set self.fbsource_dir
         # to allow the ShipIt-based fetchers to use it.
         if self.repo_project == "fbsource":
-            self.fbsource_dir = self.repo_root
+            self.fbsource_dir: Optional[str] = self.repo_root
         else:
             self.fbsource_dir = None
 
-        self.num_jobs = num_jobs
+        if facebook_internal is None:
+            if self.fbsource_dir:
+                facebook_internal = True
+            else:
+                facebook_internal = False
+
+        self.facebook_internal = facebook_internal
+        self.specified_num_jobs = num_jobs
         self.scratch_dir = scratch_dir
         self.install_dir = install_dir
         self.fbcode_builder_dir = fbcode_builder_dir
@@ -103,7 +108,38 @@ class BuildOptions(object):
         self.use_shipit = use_shipit
         self.allow_system_packages = allow_system_packages
         self.lfs_path = lfs_path
+        self.shared_libs = shared_libs
+        self.free_up_disk = free_up_disk
+
+        if build_type is None:
+            build_type = "RelWithDebInfo"
+
+        self.build_type = build_type
+
+        lib_path = None
+        if self.is_darwin():
+            lib_path = "DYLD_LIBRARY_PATH"
+        elif self.is_linux():
+            lib_path = "LD_LIBRARY_PATH"
+        elif self.is_windows():
+            lib_path = "PATH"
+        else:
+            lib_path = None
+        self.lib_path = lib_path
+
         if vcvars_path is None and is_windows():
+
+            try:
+                # Allow a site-specific vcvarsall path.
+                from .facebook.vcvarsall import build_default_vcvarsall
+            except ImportError:
+                vcvarsall = []
+            else:
+                vcvarsall = (
+                    build_default_vcvarsall(self.fbsource_dir)
+                    if self.fbsource_dir is not None
+                    else []
+                )
 
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
@@ -113,7 +149,6 @@ class BuildOptions(object):
             # the version of boost in our manifest cannot be built with
             # VS 2019, so we're effectively tied to VS 2017 until we upgrade
             # the boost dependency.
-            vcvarsall = []
             for year in ["2017", "2019"]:
                 vcvarsall += glob.glob(
                     os.path.join(
@@ -150,7 +185,21 @@ class BuildOptions(object):
     def is_linux(self):
         return self.host_type.is_linux()
 
-    def get_context_generator(self, host_tuple=None, facebook_internal=None):
+    def is_freebsd(self):
+        return self.host_type.is_freebsd()
+
+    def get_num_jobs(self, job_weight: int) -> int:
+        """Given an estimated job_weight in MiB, compute a reasonable concurrency limit."""
+        if self.specified_num_jobs:
+            return self.specified_num_jobs
+
+        available_ram = get_available_ram()
+
+        import multiprocessing
+
+        return max(1, min(multiprocessing.cpu_count(), available_ram // job_weight))
+
+    def get_context_generator(self, host_tuple=None):
         """Create a manifest ContextGenerator for the specified target platform."""
         if host_tuple is None:
             host_type = self.host_type
@@ -159,23 +208,21 @@ class BuildOptions(object):
         else:
             host_type = HostType.from_tuple_string(host_tuple)
 
-        # facebook_internal is an Optional[bool]
-        # If it is None, default to assuming this is a Facebook-internal build if
-        # we are running in an fbsource repository.
-        if facebook_internal is None:
-            facebook_internal = self.fbsource_dir is not None
-
         return ContextGenerator(
             {
                 "os": host_type.ostype,
                 "distro": host_type.distro,
                 "distro_vers": host_type.distrovers,
-                "fb": "on" if facebook_internal else "off",
+                "fb": "on" if self.facebook_internal else "off",
+                "fbsource": "on" if self.fbsource_dir else "off",
                 "test": "off",
+                "shared_libs": "on" if self.shared_libs else "off",
             }
         )
 
-    def compute_env_for_install_dirs(self, install_dirs, env=None, manifest=None):
+    def compute_env_for_install_dirs(
+        self, loader, dep_manifests, ctx, env=None, manifest=None
+    ):  # noqa: C901
         if env is not None:
             env = env.copy()
         else:
@@ -184,11 +231,54 @@ class BuildOptions(object):
         env["GETDEPS_BUILD_DIR"] = os.path.join(self.scratch_dir, "build")
         env["GETDEPS_INSTALL_DIR"] = self.install_dir
 
+        # Python setuptools attempts to discover a local MSVC for
+        # building Python extensions. On Windows, getdeps already
+        # supports invoking a vcvarsall prior to compilation.
+        #
+        # Tell setuptools to bypass its own search. This fixes a bug
+        # where setuptools would fail when run from CMake on GitHub
+        # Actions with the inscrutable message 'error: Microsoft
+        # Visual C++ 14.0 is required. Get it with "Build Tools for
+        # Visual Studio"'. I suspect the actual error is that the
+        # environment or PATH is overflowing.
+        #
+        # For extra credit, someone could patch setuptools to
+        # propagate the actual error message from vcvarsall, because
+        # often it does not mean Visual C++ is not available.
+        #
+        # Related discussions:
+        # - https://github.com/pypa/setuptools/issues/2028
+        # - https://github.com/pypa/setuptools/issues/2307
+        # - https://developercommunity.visualstudio.com/t/error-microsoft-visual-c-140-is-required/409173
+        # - https://github.com/OpenMS/OpenMS/pull/4779
+        # - https://github.com/actions/virtual-environments/issues/1484
+
+        if self.is_windows() and self.get_vcvars_path():
+            env["DISTUTILS_USE_SDK"] = "1"
+
         # On macOS we need to set `SDKROOT` when we use clang for system
         # header files.
         if self.is_darwin() and "SDKROOT" not in env:
             sdkroot = subprocess.check_output(["xcrun", "--show-sdk-path"])
             env["SDKROOT"] = sdkroot.decode().strip()
+
+        if (
+            self.is_darwin()
+            and self.allow_system_packages
+            and self.host_type.get_package_manager() == "homebrew"
+            and manifest
+            and manifest.resolved_system_packages
+        ):
+            # Homebrew packages may not be on the default PATHs
+            brew_packages = manifest.resolved_system_packages.get("homebrew", [])
+            for p in brew_packages:
+                found = self.add_homebrew_package_to_env(p, env)
+                # Try extra hard to find openssl, needed with homebrew on macOS
+                if found and p.startswith("openssl"):
+                    candidate = homebrew_package_prefix("openssl@1.1")
+                    if os.path.exists(candidate):
+                        os.environ["OPENSSL_ROOT_DIR"] = candidate
+                        env["OPENSSL_ROOT_DIR"] = os.environ["OPENSSL_ROOT_DIR"]
 
         if self.fbsource_dir:
             env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
@@ -209,72 +299,180 @@ class BuildOptions(object):
             env["FBSOURCE_HASH"] = hash_data.hash
             env["FBSOURCE_DATE"] = hash_data.date
 
-        lib_path = None
-        if self.is_darwin():
-            lib_path = "DYLD_LIBRARY_PATH"
-        elif self.is_linux():
-            lib_path = "LD_LIBRARY_PATH"
-        elif self.is_windows():
-            lib_path = "PATH"
-        else:
-            lib_path = None
+        # reverse as we are prepending to the PATHs
+        for m in reversed(dep_manifests):
+            is_direct_dep = (
+                manifest is not None and m.name in manifest.get_dependencies(ctx)
+            )
+            d = loader.get_project_install_dir(m)
+            if os.path.exists(d):
+                self.add_prefix_to_env(
+                    d,
+                    env,
+                    append=False,
+                    is_direct_dep=is_direct_dep,
+                )
 
-        for d in install_dirs:
-            bindir = os.path.join(d, "bin")
+        # Linux is always system openssl
+        system_openssl = self.is_linux()
 
-            if not (
-                manifest and manifest.get("build", "disable_env_override_pkgconfig")
-            ):
-                pkgconfig = os.path.join(d, "lib/pkgconfig")
-                if os.path.exists(pkgconfig):
-                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+        # For other systems lets see if package is requested
+        if not system_openssl and manifest and manifest.resolved_system_packages:
+            for _pkg_type, pkgs in manifest.resolved_system_packages.items():
+                for p in pkgs:
+                    if p.startswith("openssl") or p.startswith("libssl"):
+                        system_openssl = True
+                        break
 
-                pkgconfig = os.path.join(d, "lib64/pkgconfig")
-                if os.path.exists(pkgconfig):
-                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
-
-            if not (manifest and manifest.get("build", "disable_env_override_path")):
-                add_path_entry(env, "CMAKE_PREFIX_PATH", d)
-
-                # Allow resolving shared objects built earlier (eg: zstd
-                # doesn't include the full path to the dylib in its linkage
-                # so we need to give it an assist)
-                if lib_path:
-                    for lib in ["lib", "lib64"]:
-                        libdir = os.path.join(d, lib)
-                        if os.path.exists(libdir):
-                            add_path_entry(env, lib_path, libdir)
-
-                # Allow resolving binaries (eg: cmake, ninja) and dlls
-                # built by earlier steps
-                if os.path.exists(bindir):
-                    add_path_entry(env, "PATH", bindir, append=False)
-
-            # If rustc is present in the `bin` directory, set RUSTC to prevent
-            # cargo uses the rustc installed in the system.
-            if self.is_windows():
-                cargo_path = os.path.join(bindir, "cargo.exe")
-                rustc_path = os.path.join(bindir, "rustc.exe")
-                rustdoc_path = os.path.join(bindir, "rustdoc.exe")
-            else:
-                cargo_path = os.path.join(bindir, "cargo")
-                rustc_path = os.path.join(bindir, "rustc")
-                rustdoc_path = os.path.join(bindir, "rustdoc")
-
-            if os.path.isfile(rustc_path):
-                env["CARGO_BIN"] = cargo_path
-                env["RUSTC"] = rustc_path
-                env["RUSTDOC"] = rustdoc_path
-
-            openssl_include = os.path.join(d, "include/openssl")
-            if os.path.isdir(openssl_include) and any(
-                os.path.isfile(os.path.join(d, "lib", libcrypto))
-                for libcrypto in ("libcrypto.lib", "libcrypto.so", "libcrypto.a")
-            ):
-                # This must be the openssl library, let Rust know about it
-                env["OPENSSL_DIR"] = d
+        # Let openssl know to pick up the system certs if present
+        if system_openssl or "OPENSSL_DIR" in env:
+            for system_ssl_cfg in ["/etc/pki/tls", "/etc/ssl"]:
+                if os.path.isdir(system_ssl_cfg):
+                    cert_dir = system_ssl_cfg + "/certs"
+                    if os.path.isdir(cert_dir):
+                        env["SSL_CERT_DIR"] = cert_dir
+                    cert_file = system_ssl_cfg + "/cert.pem"
+                    if os.path.isfile(cert_file):
+                        env["SSL_CERT_FILE"] = cert_file
 
         return env
+
+    def add_homebrew_package_to_env(self, package, env) -> bool:
+        prefix = homebrew_package_prefix(package)
+        if prefix and os.path.exists(prefix):
+            return self.add_prefix_to_env(
+                prefix, env, append=False, add_library_path=True
+            )
+        return False
+
+    def add_prefix_to_env(
+        self,
+        d,
+        env,
+        append: bool = True,
+        add_library_path: bool = False,
+        is_direct_dep: bool = False,
+    ) -> bool:  # noqa: C901
+        bindir = os.path.join(d, "bin")
+        found = False
+        has_pkgconfig = False
+        pkgconfig = os.path.join(d, "lib", "pkgconfig")
+        if os.path.exists(pkgconfig):
+            found = True
+            has_pkgconfig = True
+            add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig, append=append)
+
+        pkgconfig = os.path.join(d, "lib64", "pkgconfig")
+        if os.path.exists(pkgconfig):
+            found = True
+            has_pkgconfig = True
+            add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig, append=append)
+
+        add_path_entry(env, "CMAKE_PREFIX_PATH", d, append=append)
+
+        # Tell the thrift compiler about includes it needs to consider
+        thriftdir = os.path.join(d, "include", "thrift-files")
+        if os.path.exists(thriftdir):
+            found = True
+            add_path_entry(env, "THRIFT_INCLUDE_PATH", thriftdir, append=append)
+
+        # module detection for python is old fashioned and needs flags
+        includedir = os.path.join(d, "include")
+        if os.path.exists(includedir):
+            found = True
+            ncursesincludedir = os.path.join(d, "include", "ncurses")
+            if os.path.exists(ncursesincludedir):
+                add_path_entry(env, "C_INCLUDE_PATH", ncursesincludedir, append=append)
+                add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
+                add_flag(env, "CPPFLAGS", f"-I{ncursesincludedir}", append=append)
+            elif "/bz2-" in d:
+                add_flag(env, "CPPFLAGS", f"-I{includedir}", append=append)
+            # For non-pkgconfig projects Cabal has no way to find the includes or
+            # libraries, so we provide a set of extra Cabal flags in the env
+            if not has_pkgconfig and is_direct_dep:
+                add_flag(
+                    env,
+                    "GETDEPS_CABAL_FLAGS",
+                    f"--extra-include-dirs={includedir}",
+                    append=append,
+                )
+
+            # The thrift compiler's built-in includes are installed directly to the include dir
+            includethriftdir = os.path.join(d, "include", "thrift")
+            if os.path.exists(includethriftdir):
+                add_path_entry(env, "THRIFT_INCLUDE_PATH", includedir, append=append)
+
+        # Map from FB python manifests to PYTHONPATH
+        pydir = os.path.join(d, "lib", "fb-py-libs")
+        if os.path.exists(pydir):
+            found = True
+            manifest_ext = ".manifest"
+            pymanifestfiles = [
+                f
+                for f in os.listdir(pydir)
+                if f.endswith(manifest_ext) and os.path.isfile(os.path.join(pydir, f))
+            ]
+            for f in pymanifestfiles:
+                subdir = f[: -len(manifest_ext)]
+                add_path_entry(
+                    env, "PYTHONPATH", os.path.join(pydir, subdir), append=append
+                )
+
+        # Allow resolving shared objects built earlier (eg: zstd
+        # doesn't include the full path to the dylib in its linkage
+        # so we need to give it an assist)
+        if self.lib_path:
+            for lib in ["lib", "lib64"]:
+                libdir = os.path.join(d, lib)
+                if os.path.exists(libdir):
+                    found = True
+                    add_path_entry(env, self.lib_path, libdir, append=append)
+                    # module detection for python is old fashioned and needs flags
+                    if "/ncurses-" in d:
+                        add_flag(env, "LDFLAGS", f"-L{libdir}", append=append)
+                    elif "/bz2-" in d:
+                        add_flag(env, "LDFLAGS", f"-L{libdir}", append=append)
+                    if add_library_path:
+                        add_path_entry(env, "LIBRARY_PATH", libdir, append=append)
+                    if not has_pkgconfig and is_direct_dep:
+                        add_flag(
+                            env,
+                            "GETDEPS_CABAL_FLAGS",
+                            f"--extra-lib-dirs={libdir}",
+                            append=append,
+                        )
+
+        # Allow resolving binaries (eg: cmake, ninja) and dlls
+        # built by earlier steps
+        if os.path.exists(bindir):
+            found = True
+            add_path_entry(env, "PATH", bindir, append=append)
+
+        # If rustc is present in the `bin` directory, set RUSTC to prevent
+        # cargo uses the rustc installed in the system.
+        if self.is_windows():
+            cargo_path = os.path.join(bindir, "cargo.exe")
+            rustc_path = os.path.join(bindir, "rustc.exe")
+            rustdoc_path = os.path.join(bindir, "rustdoc.exe")
+        else:
+            cargo_path = os.path.join(bindir, "cargo")
+            rustc_path = os.path.join(bindir, "rustc")
+            rustdoc_path = os.path.join(bindir, "rustdoc")
+
+        if os.path.isfile(rustc_path):
+            env["CARGO_BIN"] = cargo_path
+            env["RUSTC"] = rustc_path
+            env["RUSTDOC"] = rustdoc_path
+
+        openssl_include = os.path.join(d, "include", "openssl")
+        if os.path.isdir(openssl_include) and any(
+            os.path.isfile(os.path.join(d, "lib", libcrypto))
+            for libcrypto in ("libcrypto.lib", "libcrypto.so", "libcrypto.a")
+        ):
+            # This must be the openssl library, let Rust know about it
+            env["OPENSSL_DIR"] = d
+
+        return found
 
 
 def list_win32_subst_letters():
@@ -294,10 +492,9 @@ def list_win32_subst_letters():
 
 
 def find_existing_win32_subst_for_path(
-    path,  # type: str
-    subst_mapping,  # type: typing.Mapping[str, str]
-):
-    # type: (...) -> typing.Optional[str]
+    path: str,
+    subst_mapping: Mapping[str, str],
+) -> Optional[str]:
     path = ntpath.normcase(ntpath.normpath(path))
     for letter, target in subst_mapping.items():
         if ntpath.normcase(target) == path:
@@ -326,7 +523,8 @@ def find_unused_drive_letter():
     return available[-1]
 
 
-def create_subst_path(path):
+def map_subst_path(path: str) -> str:
+    """find a short drive letter mapping for a path"""
     for _attempt in range(0, 24):
         drive = find_existing_win32_subst_for_path(
             path, subst_mapping=list_win32_subst_letters()
@@ -347,9 +545,11 @@ def create_subst_path(path):
         # other processes on the same host, so this may not succeed.
         try:
             subprocess.check_call(["subst", "%s:" % available, path])
-            return "%s:\\" % available
+            subst = "%s:\\" % available
+            print("Mapped scratch dir %s -> %s" % (path, subst), file=sys.stderr)
+            return subst
         except Exception:
-            print("Failed to map %s -> %s" % (available, path))
+            print("Failed to map %s -> %s" % (available, path), file=sys.stderr)
 
     raise Exception("failed to set up a subst path for %s" % path)
 
@@ -366,7 +566,7 @@ def _check_host_type(args, host_type):
     return host_type
 
 
-def setup_build_options(args, host_type=None):
+def setup_build_options(args, host_type=None) -> BuildOptions:
     """Create a BuildOptions object based on the arguments"""
 
     fbcode_builder_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -422,10 +622,7 @@ def setup_build_options(args, host_type=None):
             os.makedirs(scratch_dir)
 
         if is_windows():
-            subst = create_subst_path(scratch_dir)
-            print(
-                "Mapping scratch dir %s -> %s" % (scratch_dir, subst), file=sys.stderr
-            )
+            subst = map_subst_path(scratch_dir)
             scratch_dir = subst
     else:
         if not os.path.exists(scratch_dir):
@@ -439,20 +636,33 @@ def setup_build_options(args, host_type=None):
     if not is_windows():
         scratch_dir = os.path.realpath(scratch_dir)
 
-    # Save any extra cmake defines passed by the user in an env variable, so it
+    # Save these args passed by the user in an env variable, so it
     # can be used while hashing this build.
     os.environ["GETDEPS_CMAKE_DEFINES"] = getattr(args, "extra_cmake_defines", "") or ""
 
     host_type = _check_host_type(args, host_type)
+
+    build_args = {
+        k: v
+        for (k, v) in vars(args).items()
+        if k
+        in {
+            "num_jobs",
+            "use_shipit",
+            "vcvars_path",
+            "allow_system_packages",
+            "lfs_path",
+            "shared_libs",
+            "free_up_disk",
+            "build_type",
+        }
+    }
 
     return BuildOptions(
         fbcode_builder_dir,
         scratch_dir,
         host_type,
         install_dir=args.install_prefix,
-        num_jobs=args.num_jobs,
-        use_shipit=args.use_shipit,
-        vcvars_path=args.vcvars_path,
-        allow_system_packages=args.allow_system_packages,
-        lfs_path=args.lfs_path,
+        facebook_internal=args.facebook_internal,
+        **build_args,
     )

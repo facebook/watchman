@@ -13,13 +13,15 @@ builder = cmake
 [dependencies]
 boost
 cpptoml
+edencommon
 fb303
 fbthrift
 folly
-pcre
+pcre2
 googletest
+python-setuptools
 
-[dependencies.fb=on]
+[dependencies.fbsource=on]
 rust
 
 [shipit.pathmap]
@@ -32,6 +34,7 @@ fbcode/eden/fs = eden/fs
 
 [cmake.defines.fb=on]
 ENABLE_EDEN_SUPPORT=ON
+IS_FB_BUILD=ON
 
 # FB macos specific settings
 [cmake.defines.all(fb=on,os=darwin)]

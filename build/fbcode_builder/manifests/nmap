@@ -3,9 +3,14 @@ name = nmap
 
 [rpms]
 nmap
+nmap-ncat
 
 [debs]
 nmap
+
+# 18.04 combines ncat into the nmap package, newer need the separate one
+[debs.not(all(distro=ubuntu,distro_vers="18.04"))]
+ncat
 
 [download.not(os=windows)]
 url = https://api.github.com/repos/nmap/nmap/tarball/ef8213a36c2e89233c806753a57b5cd473605408

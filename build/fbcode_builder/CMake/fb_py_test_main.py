@@ -6,7 +6,6 @@
 This file contains the main module code for Python test programs.
 """
 
-from __future__ import print_function
 
 import contextlib
 import ctypes
@@ -23,11 +22,8 @@ import time
 import traceback
 import unittest
 import warnings
+from importlib.machinery import PathFinder
 
-# Hide warning about importing "imp"; remove once python2 is gone.
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    import imp
 
 try:
     from StringIO import StringIO
@@ -83,7 +79,7 @@ class PathMatcher(object):
         return not self.omit(path)
 
 
-class DebugWipeFinder(object):
+class DebugWipeFinder(PathFinder):
     """
     PEP 302 finder that uses a DebugWipeLoader for all files which do not need
     coverage
@@ -92,27 +88,14 @@ class DebugWipeFinder(object):
     def __init__(self, matcher):
         self.matcher = matcher
 
-    def find_module(self, fullname, path=None):
-        _, _, basename = fullname.rpartition(".")
-        try:
-            fd, pypath, (_, _, kind) = imp.find_module(basename, path)
-        except Exception:
-            # Finding without hooks using the imp module failed. One reason
-            # could be that there is a zip file on sys.path. The imp module
-            # does not support loading from there. Leave finding this module to
-            # the others finders in sys.meta_path.
+    def find_spec(self, fullname, path=None, target=None):
+        spec = super().find_spec(fullname, path=path, target=target)
+        if spec is None or spec.origin is None:
             return None
-
-        if hasattr(fd, "close"):
-            fd.close()
-        if kind != imp.PY_SOURCE:
+        if not spec.origin.endswith(".py"):
             return None
-        if self.matcher.include(pypath):
+        if self.matcher.include(spec.origin):
             return None
-
-        """
-        This is defined to match CPython's PyVarObject struct
-        """
 
         class PyVarObject(ctypes.Structure):
             _fields_ = [
@@ -127,7 +110,7 @@ class DebugWipeFinder(object):
             """
 
             def get_code(self, fullname):
-                code = super(DebugWipeLoader, self).get_code(fullname)
+                code = super().get_code(fullname)
                 if code:
                     # Ideally we'd do
                     # code.co_lnotab = b''
@@ -137,7 +120,9 @@ class DebugWipeFinder(object):
                     code_impl.ob_size = 0
                 return code
 
-        return DebugWipeLoader(fullname, pypath)
+        if isinstance(spec.loader, SourceFileLoader):
+            spec.loader = DebugWipeLoader(fullname, spec.origin)
+        return spec
 
 
 def optimize_for_coverage(cov, include_patterns, omit_patterns):
@@ -195,7 +180,7 @@ class CallbackStream(object):
         return self._fileno
 
 
-class BuckTestResult(unittest._TextTestResult):
+class BuckTestResult(unittest.TextTestResult):
     """
     Our own TestResult class that outputs data in a format that can be easily
     parsed by buck's test runner.
@@ -263,7 +248,7 @@ class BuckTestResult(unittest._TextTestResult):
 
         super(BuckTestResult, self).stopTest(test)
 
-        # If a failure occured during module/class setup, then this "test" may
+        # If a failure occurred during module/class setup, then this "test" may
         # actually be a `_ErrorHolder`, which doesn't contain explicit info
         # about the upcoming test.  Since we really only care about the test
         # name field (i.e. `_testMethodName`), we use that to detect an actual
@@ -485,7 +470,7 @@ class Loader(object):
         return loader.suiteClass(suites)
 
 
-_COVERAGE_INI = '''\
+_COVERAGE_INI = """\
 [report]
 exclude_lines =
     pragma: no cover
@@ -495,7 +480,7 @@ exclude_lines =
     pragma:.*no${PY_IMPL}${PY_MAJOR}
     pragma:.*nopy${PY_MAJOR}
     pragma:.*nopy${PY_MAJOR}${PY_MINOR}
-'''
+"""
 
 
 class MainProgram(object):
@@ -734,7 +719,7 @@ class MainProgram(object):
         if not self.options.collect_coverage:
             return
 
-        with tempfile.NamedTemporaryFile('w', delete=False) as coverage_ini:
+        with tempfile.NamedTemporaryFile("w", delete=False) as coverage_ini:
             coverage_ini.write(_COVERAGE_INI)
             self._coverage_ini_path = coverage_ini.name
 

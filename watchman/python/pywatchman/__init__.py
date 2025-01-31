@@ -1,33 +1,10 @@
-# Copyright 2014-present Facebook, Inc.
-# All rights reserved.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#  * Redistributions of source code must retain the above copyright notice,
-#    this list of conditions and the following disclaimer.
-#
-#  * Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-#  * Neither the name Facebook nor the names of its contributors may be used to
-#    endorse or promote products derived from this software without specific
-#    prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
-# no unicode literals
-from __future__ import absolute_import, division, print_function
+# pyre-unsafe
+
 
 import inspect
 import math
@@ -36,8 +13,9 @@ import socket
 import subprocess
 import sys
 import time
+import typing
 
-from . import capabilities, compat, encoding, load
+from . import capabilities, encoding
 
 
 # Sometimes it's really hard to get Python extensions to compile,
@@ -50,6 +28,9 @@ try:
     bser.pdu_info
 except ImportError:
     from . import pybser as bser
+
+
+bser: typing.Any
 
 
 if os.name == "nt":
@@ -101,7 +82,6 @@ if _debugging:
             % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), fmt % args[:]),
             file=sys.stderr,
         )
-
 
 else:
 
@@ -189,13 +169,12 @@ class CommandError(WatchmanError):
         super(CommandError, self).__init__("watchman command error: %s" % (msg,), cmd)
 
 
-def is_named_pipe_path(path):
-    # type: (str) -> bool
+def is_named_pipe_path(path: str) -> bool:
     """Returns True if path is a watchman named pipe path"""
     return path.startswith("\\\\.\\pipe\\watchman")
 
 
-class SockPath(object):
+class SockPath:
     """Describes how to connect to watchman"""
 
     unix_domain = None
@@ -228,7 +207,7 @@ class SockPath(object):
         return self.unix_domain
 
 
-class Transport(object):
+class Transport:
     """communication transport to the watchman server"""
 
     buf = None
@@ -273,7 +252,7 @@ class Transport(object):
             self.buf.append(b)
 
 
-class Codec(object):
+class Codec:
     """communication encoding for the watchman server"""
 
     transport = None
@@ -448,10 +427,7 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(math.ceil(timeout * 1000))
         self._iobuf = None
 
-        if compat.PYTHON3:
-            path = os.fsencode(self.sockpath.named_pipe)
-        else:
-            path = self.sockpath.named_pipe
+        path = os.fsencode(self.sockpath.named_pipe)
 
         log("CreateFile %r", path)
 
@@ -609,7 +585,7 @@ class WindowsNamedPipeTransport(Transport):
         )
 
 
-def _default_binpath(binpath=None):
+def _default_binpath(binpath=None) -> str:
     if binpath:
         return binpath
     # The test harness sets WATCHMAN_BINARY to the binary under test,
@@ -754,10 +730,7 @@ class Bser2WithFallbackCodec(BserCodec):
         super(Bser2WithFallbackCodec, self).__init__(
             transport, value_encoding, value_errors
         )
-        if compat.PYTHON3:
-            bserv2_key = "required"
-        else:
-            bserv2_key = "optional"
+        bserv2_key = "required"
 
         self.send(["version", {bserv2_key: ["bser-v2"]}])
 
@@ -837,8 +810,7 @@ class JsonCodec(Codec):
             # the JSON blob to be ASCII-only with non-ASCII characters escaped,
             # but it's possible we might get non-ASCII bytes that are valid
             # UTF-8.
-            if compat.PYTHON3:
-                line = line.decode("utf-8")
+            line = line.decode("utf-8")
             return self.json.loads(line)
         except Exception as e:
             print(e, line)
@@ -849,12 +821,11 @@ class JsonCodec(Codec):
         # In Python 3, json.dumps is a transformation from objects possibly
         # containing Unicode strings to Unicode string. Even with (the default)
         # ensure_ascii=True, dumps returns a Unicode string.
-        if compat.PYTHON3:
-            cmd = cmd.encode("ascii")
+        cmd = cmd.encode("ascii")
         self.transport.write(cmd + b"\n")
 
 
-class client(object):
+class client:
     """Handles the communication with the watchman service"""
 
     sockpath = None
@@ -935,12 +906,8 @@ class client(object):
         # strings on Python 3. However we take an optional argument that lets
         # users override this.
         if valueEncoding is False:
-            if compat.PYTHON3:
-                self.valueEncoding = encoding.get_local_encoding()
-                self.valueErrors = encoding.default_local_errors
-            else:
-                self.valueEncoding = None
-                self.valueErrors = None
+            self.valueEncoding = encoding.get_local_encoding()
+            self.valueErrors = encoding.default_local_errors
         else:
             self.valueEncoding = valueEncoding
             if valueErrors is False:
@@ -960,15 +927,11 @@ class client(object):
                 return self._makeBSERCodec(ImmutableBser2Codec)
             return self._makeBSERCodec(Bser2WithFallbackCodec)
         elif enc == "bser-v1":
-            if compat.PYTHON3:
-                raise BSERv1Unsupported(
-                    "Python 3 does not support the BSER v1 encoding: specify "
-                    '"bser" or omit the sendEncoding and recvEncoding '
-                    "arguments"
-                )
-            if self.useImmutableBser:
-                return self._makeBSERCodec(ImmutableBserCodec)
-            return self._makeBSERCodec(BserCodec)
+            raise BSERv1Unsupported(
+                "Python 3 does not support the BSER v1 encoding: specify "
+                '"bser" or omit the sendEncoding and recvEncoding '
+                "arguments"
+            )
         elif enc == "json":
             return JsonCodec
         else:
@@ -1199,18 +1162,20 @@ class client(object):
 
     def capabilityCheck(self, optional=None, required=None):
         """Perform a server capability check"""
-        res = self.query(
-            "version", {"optional": optional or [], "required": required or []}
-        )
+        opts = {"optional": optional or [], "required": required or []}
+        res = self.query("version", opts)
 
         if not self._hasprop(res, "capabilities"):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
-            capabilities.synthesize(res, optional)
+            capabilities.synthesize(res, opts)
             if "error" in res:
                 raise CommandError(res["error"])
 
         return res
+
+    def listCapabilities(self):
+        return self.query("list-capabilities", {})["capabilities"]
 
     def setTimeout(self, value):
         self.recvConn.setTimeout(value)

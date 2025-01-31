@@ -1,9 +1,20 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
-#include "ContentHash.h"
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "watchman/ContentHash.h"
+#include <fmt/core.h>
+#include <folly/ScopeGuard.h>
+#include <string>
+#include "watchman/Hash.h"
+#include "watchman/Logging.h"
 #include "watchman/ThreadPool.h"
-#include "watchman_hash.h"
-#include "watchman_stream.h"
+#include "watchman/fs/FileSystem.h"
+#include "watchman/watchman_stream.h"
+
 #ifdef __APPLE__
 #define COMMON_DIGEST_FOR_OPENSSL
 #include "CommonCrypto/CommonDigest.h" // @manual
@@ -12,12 +23,6 @@
 #else
 #include <openssl/sha.h>
 #endif
-#include <folly/ScopeGuard.h>
-#include <string>
-#include "watchman/FileSystem.h"
-#include "watchman/Logging.h"
-
-using folly::to;
 
 namespace watchman {
 
@@ -31,9 +36,11 @@ bool ContentHashCacheKey::operator==(const ContentHashCacheKey& other) const {
 }
 
 std::size_t ContentHashCacheKey::hashValue() const {
-  return hash_128_to_64(
-      w_string_hval(relativePath),
-      hash_128_to_64(fileSize, hash_128_to_64(mtime.tv_sec, mtime.tv_nsec)));
+  return hash_combine(
+      {relativePath.hashValue(),
+       fileSize,
+       static_cast<uint64_t>(mtime.tv_sec),
+       static_cast<uint64_t>(mtime.tv_nsec)});
 }
 
 ContentHashCache::ContentHashCache(
@@ -55,9 +62,7 @@ HashValue ContentHashCache::computeHashImmediate(const char* fullPath) {
   auto stm = w_stm_open(fullPath, O_RDONLY);
   if (!stm) {
     throw std::system_error(
-        errno,
-        std::generic_category(),
-        to<std::string>("w_stm_open ", fullPath));
+        errno, std::generic_category(), fmt::format("w_stm_open {}", fullPath));
   }
 
 #ifndef _WIN32
@@ -73,7 +78,7 @@ HashValue ContentHashCache::computeHashImmediate(const char* fullPath) {
       throw std::system_error(
           errno,
           std::generic_category(),
-          to<std::string>("while reading from ", fullPath));
+          fmt::format("while reading from {}", fullPath));
     }
     SHA1_Update(&ctx, buf, n);
   }
@@ -115,7 +120,7 @@ HashValue ContentHashCache::computeHashImmediate(const char* fullPath) {
       throw std::system_error(
           errno,
           std::generic_category(),
-          to<std::string>("while reading from ", fullPath));
+          fmt::format("while reading from {}", fullPath));
     }
 
     if (!CryptHashData(ctx, buf, n, 0)) {

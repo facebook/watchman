@@ -1,4 +1,4 @@
-# Copyright (c) 2014-present Facebook. All Rights Reserved.
+# Copyright (c) Meta Platforms, Inc. All Rights Reserved.
 
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.description   = <<-DESC.gsub(/^\s+/, '')
     A fast implementation of the Watchman binary protocol written in C.
   DESC
-  s.homepage      = 'https://github.com/facebook/watchman/tree/master/ruby/ruby-watchman'
+  s.homepage      = 'https://github.com/facebook/watchman/tree/main/ruby/ruby-watchman'
   s.license       = 'BSD'
   s.extensions    = 'ext/ruby-watchman/extconf.rb'
 

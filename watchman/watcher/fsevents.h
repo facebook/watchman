@@ -1,15 +1,25 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include <folly/experimental/LockFreeRingBuffer.h>
+#pragma once
+
 #include <optional>
-#include "watchman/watchman.h"
+#include "watchman/RingBuffer.h"
+#include "watchman/fs/Pipe.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watchman_cmd.h"
 
 #if HAVE_FSEVENTS
 
 namespace watchman {
 
-struct fse_stream;
+class Client;
+class Configuration;
+struct FSEventsStream;
 struct FSEventsLogEntry;
 
 struct watchman_fsevent {
@@ -20,10 +30,59 @@ struct watchman_fsevent {
       : path(std::move(path)), flags(flags) {}
 };
 
-struct FSEventsWatcher : public Watcher {
-  watchman::Pipe fse_pipe;
+class FSEventsWatcher : public Watcher {
+ public:
+  explicit FSEventsWatcher(
+      bool hasFileWatching,
+      const Configuration& config,
+      std::optional<w_string> dir = std::nullopt);
 
-  std::condition_variable fse_cond;
+  explicit FSEventsWatcher(
+      const w_string& root_path,
+      const Configuration& config,
+      std::optional<w_string> dir = std::nullopt);
+  ~FSEventsWatcher();
+
+  bool start(const std::shared_ptr<Root>& root) override;
+
+  folly::SemiFuture<folly::Unit> flushPendingEvents() override;
+
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
+      const char* path) override;
+
+  Watcher::ConsumeNotifyRet consumeNotify(
+      const std::shared_ptr<Root>& root,
+      PendingChanges& changes) override;
+
+  bool waitNotify(int timeoutms) override;
+  void stopThreads() override;
+  void FSEventsThread(const std::shared_ptr<Root>& root);
+
+  json_ref getDebugInfo() override;
+  void clearDebugInfo() override;
+
+  static UntypedResponse cmd_debug_fsevents_inject_drop(
+      Client* client,
+      const json_ref& args);
+
+ private:
+  static std::unique_ptr<FSEventsStream> fse_stream_make(
+      const std::shared_ptr<Root>& root,
+      FSEventsWatcher* watcher,
+      FSEventStreamEventId since,
+      std::optional<w_string>& failure_reason);
+  static void fse_callback(
+      ConstFSEventStreamRef,
+      void* clientCallBackInfo,
+      size_t numEvents,
+      void* eventPaths,
+      const FSEventStreamEventFlags eventFlags[],
+      const FSEventStreamEventId eventIds[]);
+
+  watchman::Pipe fsePipe_;
+
+  std::condition_variable fseCond_;
   struct Items {
     // Unflattened queue of pending events. The fse_callback function will push
     // exactly one vector to the end of this one, flattening the vector would
@@ -34,9 +93,10 @@ struct FSEventsWatcher : public Watcher {
   };
   folly::Synchronized<Items, std::mutex> items_;
 
-  struct fse_stream* stream{nullptr};
-  bool attempt_resync_on_drop{false};
-  bool has_file_watching{false};
+  std::unique_ptr<FSEventsStream> stream_;
+  const bool attemptResyncOnDrop_{false};
+  const bool hasFileWatching_{false};
+  const bool enableStreamFlush_{true};
   std::optional<w_string> subdir{std::nullopt};
 
   // Incremented in fse_callback
@@ -45,35 +105,7 @@ struct FSEventsWatcher : public Watcher {
    * If not null, holds a fixed-size ring of the last `fsevents_ring_log_size`
    * FSEvents events.
    */
-  std::unique_ptr<folly::LockFreeRingBuffer<FSEventsLogEntry>> ringBuffer_;
-
-  explicit FSEventsWatcher(
-      bool hasFileWatching,
-      std::optional<w_string> dir = std::nullopt);
-
-  explicit FSEventsWatcher(
-      watchman_root* root,
-      std::optional<w_string> dir = std::nullopt);
-  ~FSEventsWatcher();
-
-  bool start(const std::shared_ptr<watchman_root>& root) override;
-
-  folly::SemiFuture<folly::Unit> flushPendingEvents() override;
-
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
-      const char* path) override;
-
-  Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
-      PendingChanges& changes) override;
-
-  bool waitNotify(int timeoutms) override;
-  void signalThreads() override;
-  void FSEventsThread(const std::shared_ptr<watchman_root>& root);
-
-  json_ref getDebugInfo() override;
+  std::unique_ptr<RingBuffer<FSEventsLogEntry>> ringBuffer_;
 };
 
 } // namespace watchman

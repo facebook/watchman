@@ -1,14 +1,22 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use serde::{de, forward_to_deserialize_any, Deserialize};
-
-use crate::errors::*;
-use crate::header::*;
+use serde::de;
+use serde::forward_to_deserialize_any;
+use serde::Deserialize;
 
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
 use super::Deserializer;
+use crate::errors::*;
+use crate::header::*;
 
 // This is ugly because #[serde(borrow)] can't be used with collections directly
 // at the moment. See
@@ -179,7 +187,7 @@ where
     }
 }
 
-struct KeyDeserializer<'a, 'de: 'a> {
+struct KeyDeserializer<'a, 'de> {
     key: &'a Key<'de>,
 }
 

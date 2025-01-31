@@ -1,19 +1,27 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #include "Mercurial.h"
+#include <fmt/core.h>
 #include <folly/String.h>
+#include <folly/portability/SysTime.h>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include "watchman/ChildProcess.h"
+#include "watchman/CommandRegistry.h"
 #include "watchman/Logging.h"
-#include "watchman/watchman.h"
+#include "watchman/fs/FileSystem.h"
+#include "watchman/sockname.h"
 
 // Capability indicating support for the mercurial SCM
 W_CAP_REG("scm-hg")
 
 using namespace std::chrono;
-using folly::to;
 
 namespace {
 using namespace watchman;
@@ -35,76 +43,40 @@ struct MercurialResult {
 };
 
 MercurialResult runMercurial(
-    std::vector<w_string_piece> cmdline,
+    std::vector<std::string_view> cmdline,
     ChildProcess::Options options,
-    folly::StringPiece description) {
+    std::string_view description) {
   ChildProcess proc{cmdline, std::move(options)};
   auto outputs = proc.communicate();
   auto status = proc.wait();
   if (status) {
-    auto output = folly::StringPiece{outputs.first}.str();
-    auto error = folly::StringPiece{outputs.second}.str();
+    auto output =
+        std::string{outputs.first ? outputs.first->view() : std::string_view{}};
+    auto error = std::string{
+        outputs.second ? outputs.second->view() : std::string_view{}};
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
-    throw SCMError{
-        "failed to ",
+    SCMError::throwf(
+        "failed to {}\ncmd = {}\nstdout = {}\nstderr = {}",
         description,
-        "\ncmd = ",
         folly::join(" ", cmdline),
-        "\nstdout = ",
         output,
-        "\nstderr = ",
-        error};
+        error);
   }
 
-  return MercurialResult{std::move(outputs.first)};
+  if (outputs.first) {
+    return MercurialResult{std::move(*outputs.first)};
+  } else {
+    return MercurialResult{""};
+  }
 }
 
 } // namespace
 
 namespace watchman {
 
-void StatusAccumulator::add(w_string_piece status) {
-  std::vector<w_string_piece> lines;
-  status.split(lines, '\0');
-
-  log(DBG, "processing ", lines.size(), " status lines\n");
-
-  for (auto& line : lines) {
-    if (line.size() < 3) {
-      continue;
-    }
-
-    w_string name{line.data() + 2, line.size() - 2};
-    switch (line.data()[0]) {
-      case 'A':
-        // Should remove + add be considered new? Treat it as changed for now.
-        byFile_[name] += 1;
-        break;
-      case 'D':
-        byFile_[name] += -1;
-        break;
-      default:
-        byFile_[name]; // just insert an entry
-    }
-  }
-}
-
-SCM::StatusResult StatusAccumulator::finalize() const {
-  SCM::StatusResult combined;
-  for (auto& [name, count] : byFile_) {
-    if (count == 0) {
-      combined.changedFiles.push_back(name);
-    } else if (count < 0) {
-      combined.removedFiles.push_back(name);
-    } else if (count > 0) {
-      combined.addedFiles.push_back(name);
-    }
-  }
-  return combined;
-}
-
-ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
+ChildProcess::Options Mercurial::makeHgOptions(
+    const std::optional<w_string>& requestId) const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
@@ -127,8 +99,8 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   // environmental variable allows us to break the view isolation and read
   // information about the commit before the transaction is complete.
   opt.environment().set("HG_PENDING", getRootPath());
-  if (requestId && !requestId.empty()) {
-    opt.environment().set("HGREQUESTID", requestId);
+  if (requestId && !requestId->empty()) {
+    opt.environment().set("HGREQUESTID", *requestId);
   }
 
   // Default to strict hg status.  HGDETECTRACE is used by some deployments
@@ -155,14 +127,9 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
 
 Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
-      dirStatePath_(to<std::string>(getSCMRoot(), "/.hg/dirstate")),
+      dirStatePath_(fmt::format("{}/.hg/dirstate", getSCMRoot())),
       commitsPrior_(Configuration(), "scm_hg_commits_prior", 32, 10),
       mergeBases_(Configuration(), "scm_hg_mergebase", 32, 10),
-      filesChangedBetweenCommits_(
-          Configuration(),
-          "scm_hg_files_between_commits",
-          32,
-          10),
       filesChangedSinceMergeBaseWith_(
           Configuration(),
           "scm_hg_files_since_mergebase",
@@ -185,27 +152,33 @@ struct timespec Mercurial::getDirStateMtime() const {
   }
 }
 
-w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
-    const {
+w_string Mercurial::mergeBaseWith(
+    w_string_piece commitId,
+    const std::optional<w_string>& requestId) const {
   auto mtime = getDirStateMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commit = folly::to<std::string>(commitId);
+  auto key = fmt::format("{}:{}:{}", commitId, mtime.tv_sec, mtime.tv_nsec);
+  auto commit = std::string{commitId.view()};
 
   return mergeBases_
       .get(
           key,
           [this, commit, requestId](const std::string&) {
-            auto revset = to<std::string>("ancestor(.,", commit, ")");
+            auto revset = fmt::format("ancestor(.,{})", commit);
             auto result = runMercurial(
                 {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
                 makeHgOptions(requestId),
                 "query for the merge base");
 
+            if (result.output.empty()) {
+              SCMError::throwf(
+                  "no output was returned from `hg log -T{{node}} -r {}",
+                  revset);
+            }
+
             if (result.output.size() != 40) {
-              throw SCMError(
-                  "expected merge base to be a 40 character string, got ",
-                  result.output);
+              SCMError::throwf(
+                  "expected merge base to be a 40 character string, got {}",
+                  result.output.view());
             }
 
             return folly::makeFuture(result.output);
@@ -216,12 +189,16 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId,
-    w_string requestId) const {
-  auto mtime = getDirStateMtime();
-  auto key =
-      folly::to<std::string>(commitId, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+    w_string_piece clock,
+    const std::optional<w_string>& requestId) const {
+  auto key = fmt::format("{}:{}", commitId, clock);
+  auto commitCopy = std::string{commitId.view()};
 
+  // This is not going to include changes to directories across commits because
+  // mercurial does not report them. Unclear if we need them in this case.
+  // We fixed missing directory events in getFilesChangedBetweenCommits, but
+  // this is a separate code path into hg status, so we need extra support to
+  // include directory support here if needed.
   return filesChangedSinceMergeBaseWith_
       .get(
           key,
@@ -241,71 +218,16 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
                 "query for files changed since merge base");
 
             std::vector<w_string> lines;
-            w_string_piece(result.output).split(lines, '\n');
+            result.output.piece().split(lines, '\n');
             return folly::makeFuture(lines);
           })
       .get()
       ->value();
 }
 
-SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
-    std::vector<std::string> commits,
-    w_string requestId) const {
-  StatusAccumulator result;
-  for (size_t i = 0; i + 1 < commits.size(); ++i) {
-    auto mtime = getDirStateMtime();
-    auto& commitA = commits[i];
-    auto& commitB = commits[i + 1];
-    if (commitA == commitB) {
-      // Older versions of EdenFS could report "commit transitions" from A to A,
-      // in which case we shouldn't ask Mercurial for the difference.
-      continue;
-    }
-    auto key = folly::to<std::string>(
-        commitA, ":", commitB, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-
-    // This loop runs `hg status` commands sequentially. There's an opportunity
-    // to run them concurrently, but:
-    // 1. In practice since each transition in `commits` corresponds to an
-    //    `hg update` call, the list is almost always short.
-    // 2. For debugging Watchman performance issues, it's nice to have the
-    //    subprocess call on the same stack.
-    // 3. If `hg status` acquires a lock on the backing storage, there may not
-    //    be much actual concurrency.
-    // 4. This codepath is most frequently executed under very fast checkout
-    //    operations between close commits, where the cost isn't that high.
-
-    result.add(
-        filesChangedBetweenCommits_
-            .get(
-                key,
-                [&](const std::string&) {
-                  auto hgresult = runMercurial(
-                      {hgExecutablePath(),
-                       "--traceback",
-                       "status",
-                       "--print0",
-                       "--rev",
-                       commitA,
-                       "--rev",
-                       commitB,
-                       // The "" argument at the end causes paths to be printed
-                       // out relative to the cwd (set to root path above).
-                       ""},
-                      makeHgOptions(requestId),
-                      "get files changed between commits");
-
-                  return folly::makeFuture(hgresult.output);
-                })
-            .get()
-            ->value());
-  }
-  return result.finalize();
-}
-
 time_point<system_clock> Mercurial::getCommitDate(
     w_string_piece commitId,
-    w_string requestId) const {
+    const std::optional<w_string>& requestId) const {
   auto result = runMercurial(
       {hgExecutablePath(),
        "--traceback",
@@ -322,32 +244,30 @@ time_point<system_clock> Mercurial::getCommitDate(
 time_point<system_clock> Mercurial::convertCommitDate(const char* commitDate) {
   double date;
   if (std::sscanf(commitDate, "%lf", &date) != 1) {
-    throw std::runtime_error(to<std::string>(
-        "failed to parse date value `", commitDate, "` into a double"));
+    throw std::runtime_error(fmt::format(
+        "failed to parse date value `{}` into a double", commitDate));
   }
-  return system_clock::from_time_t(date);
+  // TODO: maybe do some bounds checking on the double we get from
+  // hg.
+  return system_clock::from_time_t(static_cast<time_t>(date));
 }
 
 std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
     w_string_piece commitId,
     int numCommits,
-    w_string requestId) const {
+    const std::optional<w_string>& requestId) const {
   auto mtime = getDirStateMtime();
-  auto key = folly::to<std::string>(
-      commitId, ":", numCommits, ":", mtime.tv_sec, ":", mtime.tv_nsec);
-  auto commitCopy = folly::to<std::string>(commitId);
+  auto key = fmt::format(
+      "{}:{}:{}:{}", commitId, numCommits, mtime.tv_sec, mtime.tv_nsec);
+  auto commitCopy = std::string{commitId.view()};
 
   return commitsPrior_
       .get(
           key,
           [this, commit = std::move(commitCopy), numCommits, requestId](
               const std::string&) {
-            auto revset = to<std::string>(
-                "reverse(last(_firstancestors(",
-                commit,
-                "), ",
-                numCommits,
-                "))\n");
+            auto revset = fmt::format(
+                "reverse(last(_firstancestors({}), {}))\n", commit, numCommits);
             auto result = runMercurial(
                 {hgExecutablePath(),
                  "--traceback",

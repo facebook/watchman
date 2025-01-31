@@ -1,83 +1,85 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
-#include "watchman/watchman.h"
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include <fmt/core.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
+#include <folly/init/Init.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/portability/Fcntl.h>
+#include <folly/system/Shell.h>
 
 #include <stdio.h>
-#include <variant>
 
-#include "ProcessLock.h"
 #include "watchman/ChildProcess.h"
+#include "watchman/Client.h"
+#include "watchman/Clock.h"
+#include "watchman/Command.h"
+#include "watchman/Connect.h"
+#include "watchman/GroupLookup.h"
 #include "watchman/LogConfig.h"
 #include "watchman/Logging.h"
+#include "watchman/Options.h"
+#include "watchman/PDU.h"
+#include "watchman/PerfSample.h"
+#include "watchman/ProcessLock.h"
+#include "watchman/ProcessUtil.h"
 #include "watchman/ThreadPool.h"
+#include "watchman/UserDir.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/fs/DirHandle.h"
+#include "watchman/fs/FileSystem.h"
+#include "watchman/listener.h"
+#include "watchman/root/watchlist.h"
+#include "watchman/sockname.h"
+#include "watchman/state.h"
+#include "watchman/watchman_cmd.h"
+#include "watchman/watchman_stream.h"
 
 #ifdef _WIN32
 #include <Lmcons.h> // @manual
 #include <Shlobj.h> // @manual
-#include <deelevate.h> // @manual
+#include "watchman/thirdparty/deelevate_binding/include/deelevate.h" // @manual
 #endif
 
-#ifndef _WIN32
-#include <poll.h> // @manual
-#endif
-
-using watchman::ChildProcess;
-using watchman::FileDescriptor;
-using Options = ChildProcess::Options;
 using namespace watchman;
-
-static int show_help = 0;
-static int show_version = 0;
-static int enable_tcp = 0;
-static std::string tcp_host;
-static enum w_pdu_type server_pdu = is_bser;
-static enum w_pdu_type output_pdu = is_json_pretty;
-static uint32_t server_capabilities = 0;
-static uint32_t output_capabilities = 0;
-static std::string server_encoding;
-static std::string output_encoding;
-static std::string test_state_dir;
-static std::string pid_file;
-static char** daemon_argv = NULL;
-static int persistent = 0;
-static int foreground = 0;
-static int no_pretty = 0;
-static int no_spawn = 0;
-static int no_local = 0;
-static int no_site_spawner = 0;
-#ifndef _WIN32
-static int inetd_style = 0;
-#endif
-static struct sockaddr_un un;
-static int json_input_arg = 0;
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h> // @manual
 #endif
 
-static std::string compute_user_name();
+namespace {
+/// How should server requests be encoded?
+PduFormat server_format{is_bser, 0};
+/// How should output to stdout be encoded?
+PduFormat output_format{is_json_pretty, 0};
+} // namespace
+
 static void compute_file_name(
     std::string& str,
     const std::string& user,
     const char* suffix,
-    const char* what);
+    const char* what,
+    bool require_absolute = true);
 
 namespace {
 const std::string& get_pid_file() {
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
-  compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
-  return pid_file;
+  compute_file_name(flags.pid_file, computeUserName(), "pid", "pidfile");
+  return flags.pid_file;
 }
 } // namespace
+
+W_CAP_REG("bser-v2")
 
 /**
  * Log and fatal if Watchman was started with a low priority, which can cause a
@@ -93,35 +95,64 @@ void detect_low_process_priority() {
   auto nice_value = nice(0);
   folly::checkPosixError(errno, "failed to get `nice` value");
 
-  if (nice_value > cfg_get_int("min_acceptable_nice_value", 0)) {
-    log(watchman::FATAL,
-        "Watchman is running at a lower than normal priority. Since that "
-        "results in poor performance that is otherwise very difficult to "
-        "trace, diagnose and debug, Watchman is refusing to start.\n");
+  auto min_acceptable_nice_value = cfg_get_int("min_acceptable_nice_value", 0);
+  if (nice_value > min_acceptable_nice_value) {
+    logf(
+        watchman::FATAL,
+        "Watchman is running at a lower than normal priority. (nice_value={}, "
+        "min_acceptable_nice_value={}). Since that results in poor performance "
+        "that is otherwise very difficult to trace, diagnose and debug, "
+        "Watchman is refusing to start.\n",
+        nice_value,
+        min_acceptable_nice_value);
   }
 #endif
 }
 
-[[noreturn]] static void run_service(ProcessLock::Handle&&) {
+/*
+ * Detect the command that starts watchman
+ */
+std::optional<std::string> detect_starting_command(pid_t ppid) {
+#ifndef _WIN32
+  try {
+    auto processInfo = lookupProcessInfo(ppid).get();
+    return processInfo.name;
+  } catch (const std::exception& e) {
+    logf(
+        ERR,
+        "Failed to lookup process info for pid {} exception {} \n",
+        ppid,
+        e.what());
+  }
+
+#endif
+  return std::nullopt;
+}
+
+[[noreturn]] static void run_service(ProcessLock::Handle&&, pid_t ppid) {
 #ifndef _WIN32
   // Before we redirect stdin/stdout to the log files, move any inetd-provided
   // socket to a different descriptor number.
-  if (inetd_style) {
+  if (flags.inetd_style) {
     w_listener_prep_inetd();
   }
 #endif
 
   // redirect std{in,out,err}
-  int fd = ::open("/dev/null", O_RDONLY);
+  int fd = folly::fileops::open("/dev/null", O_RDONLY);
   if (fd != -1) {
     ignore_result(::dup2(fd, STDIN_FILENO));
-    ::close(fd);
+    folly::fileops::close(fd);
   }
-  fd = open(log_name.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
-  if (fd != -1) {
-    ignore_result(::dup2(fd, STDOUT_FILENO));
-    ignore_result(::dup2(fd, STDERR_FILENO));
-    ::close(fd);
+
+  if (logging::log_name != "-") {
+    fd = folly::fileops::open(
+        logging::log_name.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
+    if (fd != -1) {
+      ignore_result(::dup2(fd, STDOUT_FILENO));
+      ignore_result(::dup2(fd, STDERR_FILENO));
+      folly::fileops::close(fd);
+    }
   }
 
   // If we weren't attached to a tty, check this now that we've opened
@@ -141,16 +172,18 @@ void detect_low_process_priority() {
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
     hostname[sizeof(hostname) - 1] = '\0';
+    auto startingCommandName = detect_starting_command(ppid);
     logf(
         ERR,
-        "Watchman {} {} starting up on {}\n",
+        "Watchman {} {} starting up on {} by command {}\n",
         PACKAGE_VERSION,
 #ifdef WATCHMAN_BUILD_INFO
         WATCHMAN_BUILD_INFO,
 #else
         "<no build info set>",
 #endif
-        hostname);
+        hostname,
+        startingCommandName.value_or("<unknown_command>"));
   }
 
 #ifndef _WIN32
@@ -163,20 +196,26 @@ void detect_low_process_priority() {
 
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGCHLD);
-    sigprocmask(SIG_BLOCK, &sigset, NULL);
+    sigprocmask(SIG_BLOCK, &sigset, nullptr);
   }
 #endif
 
-  watchman::getThreadPool().start(
-      cfg_get_int("thread_pool_worker_threads", 16),
-      cfg_get_int("thread_pool_max_items", 1024 * 1024));
+  bool res = false;
+  {
+    watchman::getThreadPool().start(
+        cfg_get_int("thread_pool_worker_threads", 16),
+        cfg_get_int("thread_pool_max_items", 1024 * 1024));
 
-  ClockSpec::init();
-  w_state_load();
-  bool res = w_start_listener();
-  w_root_free_watched_roots();
-  perf_shutdown();
-  cfg_shutdown();
+    ClockSpec::init();
+    w_state_load();
+    SCOPE_EXIT {
+      w_state_shutdown();
+    };
+    res = w_start_listener();
+    w_root_free_watched_roots();
+    perf_shutdown();
+    cfg_shutdown();
+  }
 
   log(ERR, "Exiting from service with res=", res, "\n");
 
@@ -222,7 +261,7 @@ static void close_random_fds() {
   }
 
   for (max_fd = open_max; max_fd > STDERR_FILENO; --max_fd) {
-    close(max_fd);
+    folly::fileops::close(max_fd);
   }
 #endif
 }
@@ -233,7 +272,7 @@ static void close_random_fds() {
 
   auto& pid_file = get_pid_file();
   auto processLock = ProcessLock::acquire(pid_file);
-  run_service(processLock.writePid(pid_file));
+  run_service(processLock.writePid(pid_file), getppid());
 }
 
 namespace {
@@ -282,6 +321,7 @@ static SpawnResult run_service_as_daemon() {
   }
 
   auto& processLock = std::get<ProcessLock>(acquireResult);
+  auto parentPid = getppid();
 
   // the double-fork-and-setsid trick establishes a
   // child process that runs in its own process group
@@ -305,26 +345,29 @@ static SpawnResult run_service_as_daemon() {
 
   // We are the child. Let's populate the pid file and start listening on the
   // socket.
-  run_service(processLock.writePid(get_pid_file()));
+  run_service(processLock.writePid(get_pid_file()), parentPid);
 }
 #endif
 
 #ifdef _WIN32
-static SpawnResult spawn_win32() {
+static SpawnResult spawn_win32(const std::vector<std::string>& daemon_argv) {
   char module_name[WATCHMAN_NAME_MAX];
-  GetModuleFileName(NULL, module_name, sizeof(module_name));
+  GetModuleFileName(nullptr, module_name, sizeof(module_name));
 
-  Options opts;
+  ChildProcess::Options opts;
   opts.setFlags(POSIX_SPAWN_SETPGROUP);
-  opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+  opts.nullStdin();
   opts.open(
-      STDOUT_FILENO, log_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
+      STDOUT_FILENO,
+      logging::log_name.c_str(),
+      O_WRONLY | O_CREAT | O_APPEND,
+      0600);
   opts.dup2(STDOUT_FILENO, STDERR_FILENO);
   opts.chdir("/");
 
-  std::vector<w_string_piece> args{module_name, "--foreground"};
-  for (size_t i = 0; daemon_argv[i]; i++) {
-    args.push_back(daemon_argv[i]);
+  std::vector<std::string_view> args{module_name, "--foreground"};
+  for (auto& arg : daemon_argv) {
+    args.push_back(arg);
   }
 
   ChildProcess proc(args, std::move(opts));
@@ -335,7 +378,7 @@ static SpawnResult spawn_win32() {
         "Failed to spawn watchman server; it exited with code {}.\n"
         "Check the log file at {} for more information\n",
         proc.wait(),
-        log_name);
+        logging::log_name);
     exit(1);
   }
   proc.disown();
@@ -347,13 +390,14 @@ static SpawnResult spawn_win32() {
 // Spawn watchman via a site-specific spawn helper program.
 // We'll pass along any daemon-appropriate arguments that
 // we noticed during argument parsing.
-static SpawnResult spawn_site_specific(const char* spawner) {
-  std::vector<w_string_piece> args{
-      spawner,
-  };
-
-  for (size_t i = 0; daemon_argv[i]; i++) {
-    args.push_back(daemon_argv[i]);
+static SpawnResult spawn_site_specific(
+    const std::vector<std::string>& daemon_argv,
+    const char* spawner) {
+  std::vector<std::string_view> args;
+  args.reserve(1 + daemon_argv.size());
+  args.push_back(spawner);
+  for (auto& arg : daemon_argv) {
+    args.push_back(arg);
   }
 
   close_random_fds();
@@ -367,7 +411,7 @@ static SpawnResult spawn_site_specific(const char* spawner) {
   // run_service() function above.
   // However, we do need to make sure that any output from both stdout
   // and stderr goes to stderr of the end user.
-  Options opts;
+  ChildProcess::Options opts;
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
   opts.dup2(STDERR_FILENO, STDOUT_FILENO);
   opts.dup2(STDERR_FILENO, STDERR_FILENO);
@@ -402,6 +446,30 @@ static SpawnResult spawn_site_specific(const char* spawner) {
 #endif
 
 #ifdef __APPLE__
+
+std::vector<std::string> escape_args_for_sh(
+    const std::vector<std::string>& args) {
+  std::vector<std::string> transformedArgs{};
+  transformedArgs.reserve(args.size());
+
+  for (auto& arg : args) {
+    transformedArgs.push_back(folly::shellQuote(arg));
+  }
+  return transformedArgs;
+}
+
+std::string prep_args_for_plist(
+    const std::vector<std::string>& args,
+    size_t indentation) {
+  std::vector<std::string> transformedArgs{};
+  transformedArgs.reserve(args.size());
+  for (auto& arg : args) {
+    transformedArgs.push_back(
+        fmt::format("{:>{}}<string>{}</string>\n", "", indentation, arg));
+  }
+  return folly::join("", transformedArgs);
+}
+
 static SpawnResult spawn_via_launchd() {
   char watchman_path[WATCHMAN_NAME_MAX];
   uint32_t size = sizeof(watchman_path);
@@ -442,7 +510,8 @@ static SpawnResult spawn_via_launchd() {
     // Unload any that may already exist, as it is likely wrong
 
     ChildProcess unload_proc(
-        {"/bin/launchctl", "unload", "-F", plist_path}, Options());
+        {"/bin/launchctl", "unload", "-F", plist_path},
+        ChildProcess::Options());
     unload_proc.wait();
 
     // Forcibly remove the plist.  In some cases it may have some attributes
@@ -461,9 +530,33 @@ static SpawnResult spawn_via_launchd() {
         "\n");
   }
 
-  compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
+  compute_file_name(flags.pid_file, computeUserName(), "pid", "pidfile");
 
-  auto plist_content = folly::to<std::string>(
+  const char* path_env =
+      Configuration().getString("subprocess_path_env", getenv("PATH"));
+  // If subprocess_path_env is not set and PATH is not in the environment,
+  // set the path to the empty string.
+  if (path_env == nullptr) {
+    path_env = "";
+  }
+
+  std::vector<std::string> watchman_args{
+      watchman_path,
+      "--foreground",
+      fmt::format("--logfile={}", logging::log_name),
+      fmt::format("--log-level={}", logging::log_level),
+      fmt::format("--sockname={}", get_unix_sock_name()),
+      fmt::format("--statefile={}", flags.watchman_state_file),
+      fmt::format("--pidfile={}", flags.pid_file)};
+  std::string watchman_spawning_command;
+
+  auto spawn_with_sh = Configuration().getBool("macos_spawn_with_sh", false);
+  if (spawn_with_sh) {
+    watchman_args = escape_args_for_sh(std::move(watchman_args));
+    watchman_args = {"/bin/sh", "-c", folly::join(" ", watchman_args)};
+  }
+
+  auto plist_content = fmt::format(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
       "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -475,28 +568,7 @@ static SpawnResult spawn_via_launchd() {
       "    <false/>\n"
       "    <key>ProgramArguments</key>\n"
       "    <array>\n"
-      "        <string>",
-      watchman_path,
-      "</string>\n"
-      "        <string>--foreground</string>\n"
-      "        <string>--logfile=",
-      log_name,
-      "</string>\n"
-      "        <string>--log-level=",
-      log_level,
-      "</string>\n"
-      // TODO: switch from `--sockname` to `--unix-listener-path`
-      // after a grace period to allow for sane results if we
-      // roll back to an earlier version
-      "        <string>--sockname=",
-      get_unix_sock_name(),
-      "</string>\n"
-      "        <string>--statefile=",
-      watchman_state_file,
-      "</string>\n"
-      "        <string>--pidfile=",
-      pid_file,
-      "</string>\n"
+      "{}"
       "    </array>\n"
       "    <key>KeepAlive</key>\n"
       "    <dict>\n"
@@ -508,23 +580,25 @@ static SpawnResult spawn_via_launchd() {
       "    <key>EnvironmentVariables</key>\n"
       "    <dict>\n"
       "        <key>PATH</key>\n"
-      "        <string><![CDATA[",
-      getenv("PATH"),
-      "]]></string>\n"
+      "        <string>"
+      "{}"
+      "</string>\n"
       "    </dict>\n"
       "    <key>ProcessType</key>\n"
       "    <string>Interactive</string>\n"
       "    <key>Nice</key>\n"
       "    <integer>-5</integer>\n"
       "</dict>\n"
-      "</plist>\n");
+      "</plist>\n",
+      prep_args_for_plist(watchman_args, 8),
+      path_env);
   fwrite(plist_content.data(), 1, plist_content.size(), fp);
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
   chmod(plist_path, 0644);
 
   ChildProcess load_proc(
-      {"/bin/launchctl", "load", "-F", plist_path}, Options());
+      {"/bin/launchctl", "load", "-F", plist_path}, ChildProcess::Options());
   auto res = load_proc.wait();
 
   if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
@@ -542,7 +616,7 @@ static SpawnResult spawn_via_launchd() {
 }
 #endif
 
-static void parse_encoding(const std::string& enc, enum w_pdu_type* pdu) {
+static void parse_encoding(std::string_view enc, PduType* pdu) {
   if (enc.empty()) {
     return;
   }
@@ -562,23 +636,6 @@ static void parse_encoding(const std::string& enc, enum w_pdu_type* pdu) {
   exit(EX_USAGE);
 }
 
-static const char* get_env_with_fallback(
-    const char* name1,
-    const char* name2,
-    const char* fallback) {
-  const char* val;
-
-  val = getenv(name1);
-  if (!val || *val == 0) {
-    val = getenv(name2);
-  }
-  if (!val || *val == 0) {
-    val = fallback;
-  }
-
-  return val;
-}
-
 static void verify_dir_ownership(const std::string& state_dir) {
 #ifndef _WIN32
   // verify ownership
@@ -595,8 +652,8 @@ static void verify_dir_ownership(const std::string& state_dir) {
           "sock_access", false /* write bits */, true /* execute bits */) |
       S_ISGID;
 
-  auto dirp = w_dir_open(
-      state_dir.c_str(), false /* don't need strict symlink rules */);
+  auto dirp =
+      openDir(state_dir.c_str(), false /* don't need strict symlink rules */);
 
   dir_fd = dirp->getFd();
   if (dir_fd == -1) {
@@ -677,71 +734,18 @@ bail:
 #endif
 }
 
-#ifdef _WIN32
-static std::string get_watchman_appdata_path() {
-  PWSTR local_app_data = nullptr;
-  auto res =
-      SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &local_app_data);
-  if (res != S_OK) {
-    logf(
-        FATAL,
-        "SHGetKnownFolderPath FOLDERID_LocalAppData failed: {}\n",
-        win32_strerror(res));
-  }
-  SCOPE_EXIT {
-    CoTaskMemFree(local_app_data);
-  };
-  // Perform path mapping from wide string to our preferred UTF8
-  w_string temp_location(local_app_data, wcslen(local_app_data));
-  // and use the watchman subdir of LOCALAPPDATA
-  auto watchmanDir = folly::to<std::string>(temp_location, "/watchman");
-  if (mkdir(watchmanDir.c_str(), 0700) == 0 || errno == EEXIST) {
-    return watchmanDir;
-  }
-  logf(
-      ERR,
-      "failed to create directory {}: {}\n",
-      watchmanDir,
-      folly::errnoStr(errno));
-  exit(1);
-}
-
-static const std::string& cached_watchman_appdata_path() {
-  static std::string path = get_watchman_appdata_path();
-  return path;
-}
-#endif
-
-static std::string compute_per_user_state_dir(const std::string& user) {
-  if (!test_state_dir.empty()) {
-    return folly::to<std::string>(test_state_dir, "/", user, "-state");
-  }
-
-#ifdef _WIN32
-  return cached_watchman_appdata_path();
-#else
-  auto state_parent =
-#ifdef WATCHMAN_STATE_DIR
-      WATCHMAN_STATE_DIR
-#else
-      watchman_tmp_dir.c_str()
-#endif
-      ;
-  return folly::to<std::string>(state_parent, "/", user, "-state");
-#endif
-}
-
 static void compute_file_name(
     std::string& str,
     const std::string& user,
     const char* suffix,
-    const char* what) {
+    const char* what,
+    bool require_absolute) {
   bool str_computed = false;
   if (str.empty()) {
     str_computed = true;
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
-    auto state_dir = compute_per_user_state_dir(user);
+    auto state_dir = computeWatchmanStateDirectory(user);
 
     if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
       verify_dir_ownership(state_dir.c_str());
@@ -757,10 +761,10 @@ static void compute_file_name(
       exit(1);
     }
 
-    str = folly::to<std::string>(state_dir, "/", suffix);
+    str = fmt::format("{}/{}", state_dir, suffix);
   }
 #ifndef _WIN32
-  if (!w_string_piece(str).pathIsAbsolute()) {
+  if (require_absolute && !w_string_piece(str).pathIsAbsolute()) {
     log(FATAL,
         what,
         " must be an absolute file path but ",
@@ -769,51 +773,6 @@ static void compute_file_name(
         str_computed ? " computed." : " provided.",
         "\n");
   }
-#endif
-}
-
-static std::string compute_user_name() {
-#ifdef _WIN32
-  // We don't trust the environment on win32 because in some situations
-  // the environment may contain the domain name like `WORKGROUP\user`
-  // which can confuse some path construction we do later on.
-  WCHAR userW[1 + UNLEN];
-  DWORD size = static_cast<DWORD>(std::size(userW));
-  if (GetUserNameW(userW, &size) && size > 0) {
-    // Constructing a w_string from a WCHAR* will convert to UTF-8
-    w_string user(userW, size);
-    return folly::to<std::string>(user);
-  }
-
-  log(FATAL,
-      "GetUserName failed: ",
-      win32_strerror(GetLastError()),
-      ". I don't know who you are!?\n");
-#else
-  const char* user = get_env_with_fallback("USER", "LOGNAME", NULL);
-
-  if (!user) {
-    uid_t uid = getuid();
-    struct passwd* pw;
-
-    pw = getpwuid(uid);
-    if (!pw) {
-      log(FATAL,
-          "getpwuid(",
-          uid,
-          ") failed: ",
-          folly::errnoStr(errno),
-          ". I don't know who you are\n");
-    }
-
-    user = pw->pw_name;
-
-    if (!user) {
-      log(FATAL, "watchman requires that you set $USER in your env\n");
-    }
-  }
-
-  return user;
 #endif
 }
 
@@ -855,17 +814,11 @@ static void setup_sock_name() {
   }
 #endif
 
-  auto user = compute_user_name();
+  auto user = computeUserName();
 
-#ifdef _WIN32
-  if (!test_state_dir.empty()) {
-    watchman_tmp_dir = test_state_dir;
-  } else {
-    watchman_tmp_dir = cached_watchman_appdata_path();
-  }
-#else
-  watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
-#endif
+  // Precompute the temporary directory path in case this process's environment
+  // changes.
+  (void)getTemporaryDirectory();
 
 #ifdef _WIN32
   // On Windows, if an application uses --sockname to override the named
@@ -875,355 +828,154 @@ static void setup_sock_name() {
   // otherwise break their isolation.
   // If either option is specified without the other, then we disable
   // the use of the other.
-  if (!named_pipe_path.empty() || !unix_sock_name.empty()) {
-    disable_named_pipe = named_pipe_path.empty();
-    disable_unix_socket = unix_sock_name.empty();
+  if (!flags.named_pipe_path.empty() || !flags.unix_sock_name.empty()) {
+    disable_named_pipe = flags.named_pipe_path.empty();
+    disable_unix_socket = flags.unix_sock_name.empty();
   }
 
-  if (named_pipe_path.empty()) {
-    named_pipe_path = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
+  if (flags.named_pipe_path.empty()) {
+    flags.named_pipe_path = fmt::format("\\\\.\\pipe\\watchman-{}", user);
   }
 #endif
-  compute_file_name(unix_sock_name, user, "sock", "sockname");
+  compute_file_name(flags.unix_sock_name, user, "sock", "sockname");
 
-  compute_file_name(watchman_state_file, user, "state", "statefile");
-  compute_file_name(log_name, user, "log", "logfile");
-
-  if (unix_sock_name.size() >= sizeof(un.sun_path) - 1) {
-    log(FATAL, unix_sock_name, ": path is too long\n");
-  }
-  un.sun_family = PF_LOCAL;
-  memcpy(un.sun_path, unix_sock_name.c_str(), unix_sock_name.size() + 1);
+  compute_file_name(flags.watchman_state_file, user, "state", "statefile");
+  compute_file_name(
+      logging::log_name,
+      user,
+      "log",
+      "logfile",
+      /*require_absolute=*/logging::log_name != "-");
 }
 
-static bool should_start(int err) {
-  if (err == ECONNREFUSED) {
-    return true;
+static ResultErrno<folly::Unit> try_command(
+    const Command& command,
+    int timeout) {
+  auto stmResult = w_stm_connect(timeout * 1000);
+  if (stmResult.hasError()) {
+    return stmResult.error();
   }
-  if (err == ENOENT) {
-    return true;
+
+  if (command.isNullCommand()) {
+    // We've confirmed we can connect -- there's nothing else to do with the
+    // null command.
+    return folly::unit;
   }
-  return false;
+
+  auto stream = std::move(stmResult).value();
+
+  return command.run(
+      *stream,
+      flags.persistent,
+      server_format,
+      output_format,
+      flags.yes_pretty ? Pretty::Yes
+                       : (flags.no_pretty ? Pretty::No : Pretty::IfTty));
 }
 
-static bool try_command(json_t* cmd, int timeout) {
-  auto client = w_stm_connect(timeout * 1000);
-  if (!client) {
-    return false;
+static bool try_client_mode_command(const Command& command, bool pretty) {
+  auto client = std::make_shared<watchman::Client>();
+  client->client_mode = true;
+
+  bool res = client->dispatchCommand(command, CMD_CLIENT);
+
+  if (!client->responses.empty()) {
+    json_dumpf(
+        client->responses.front(),
+        stdout,
+        pretty ? JSON_INDENT(4) : JSON_COMPACT);
+    fmt::print("\n");
   }
 
-  // Start in a well-defined non-blocking state as we can't tell
-  // what mode we're in on windows until we've set it to something
-  // explicitly at least once before!
-  client->setNonBlock(false);
-
-  if (!cmd) {
-    return true;
-  }
-
-  w_jbuffer_t buffer;
-  w_jbuffer_t output_pdu_buffer;
-
-  // Send command
-  if (!buffer.pduEncodeToStream(
-          server_pdu, server_capabilities, cmd, client.get())) {
-    int err = errno;
-    logf(ERR, "error sending PDU to server\n");
-    errno = err;
-    return false;
-  }
-
-  buffer.clear();
-
-  do {
-    if (!buffer.passThru(
-            output_pdu,
-            output_capabilities,
-            &output_pdu_buffer,
-            client.get())) {
-      return false;
-    }
-  } while (persistent);
-
-  return true;
+  return res;
 }
 
-static struct watchman_getopt opts[] = {
-    {"help", 'h', "Show this help", OPT_NONE, &show_help, NULL, NOT_DAEMON},
-#ifndef _WIN32
-    {"inetd",
-     0,
-     "Spawning from an inetd style supervisor",
-     OPT_NONE,
-     &inetd_style,
-     NULL,
-     IS_DAEMON},
-#endif
-    {"no-site-spawner",
-     'S',
-     "Don't use the site or system spawner",
-     OPT_NONE,
-     &no_site_spawner,
-     NULL,
-     IS_DAEMON},
-    {"version",
-     'v',
-     "Show version number",
-     OPT_NONE,
-     &show_version,
-     NULL,
-     NOT_DAEMON},
-/* -U / --sockname  have legacy meaning; unix domain on unix,
- * named pipe path on windows.  After we chose this assignment,
- * Windows evolved unix domain support which muddies this.
- * We need to preserve the sockname/U option here for backwards
- * compatibility */
-#ifdef _WIN32
-    {"sockname",
-     'U',
-     "DEPRECATED: Specify alternate named pipe path (specifying this will"
-     " disable unix domain sockets unless `--unix-listener-path` is"
-     " specified)",
-     REQ_STRING,
-     &named_pipe_path,
-     "PATH",
-     IS_DAEMON},
-#else
-    {"sockname",
-     'U',
-     "DEPRECATED: Specify alternate sockname. Use `--unix-listener-path` instead.",
-     REQ_STRING,
-     &unix_sock_name,
-     "PATH",
-     IS_DAEMON},
-#endif
-    {"named-pipe-path",
-     0,
-     "Specify alternate named pipe path",
-     REQ_STRING,
-     &named_pipe_path,
-     "PATH",
-     IS_DAEMON},
-    {"unix-listener-path",
-     'u',
-#ifdef _WIN32
-     "Specify alternate unix domain socket path (specifying this will disable"
-     " named pipes unless `--named-pipe-path` is specified)",
-#else
-     "Specify alternate unix domain socket path",
-#endif
-     REQ_STRING,
-     &unix_sock_name,
-     "PATH",
-     IS_DAEMON},
-    {"tcp-listener-enable",
-     't',
-     "Enable listening on TCP; see also tcp-listener-address and tcp-listener-port",
-     OPT_NONE,
-     &enable_tcp,
-     nullptr,
-     IS_DAEMON},
-    {"tcp-listener-address",
-     0,
-     "Specify in <address>:<port> the address to bind to and listen on when tcp-listener-enable is true",
-     REQ_STRING,
-     &tcp_host,
-     "ADDRESS",
-     IS_DAEMON},
-    {"logfile",
-     'o',
-     "Specify path to logfile",
-     REQ_STRING,
-     &log_name,
-     "PATH",
-     IS_DAEMON},
-    {"log-level",
-     0,
-     "set the log level (0 = off, default is 1, verbose = 2)",
-     REQ_INT,
-     &log_level,
-     NULL,
-     IS_DAEMON},
-    {"pidfile",
-     0,
-     "Specify path to pidfile",
-     REQ_STRING,
-     &pid_file,
-     "PATH",
-     IS_DAEMON},
-    {"persistent",
-     'p',
-     "Persist and wait for further responses",
-     OPT_NONE,
-     &persistent,
-     NULL,
-     NOT_DAEMON},
-    {"no-save-state",
-     'n',
-     "Don't save state between invocations",
-     OPT_NONE,
-     &dont_save_state,
-     NULL,
-     IS_DAEMON},
-    {"statefile",
-     0,
-     "Specify path to file to hold watch and trigger state",
-     REQ_STRING,
-     &watchman_state_file,
-     "PATH",
-     IS_DAEMON},
-    {"json-command",
-     'j',
-     "Instead of parsing CLI arguments, take a single "
-     "json object from stdin",
-     OPT_NONE,
-     &json_input_arg,
-     NULL,
-     NOT_DAEMON},
-    {"output-encoding",
-     0,
-     "CLI output encoding. json (default) or bser",
-     REQ_STRING,
-     &output_encoding,
-     NULL,
-     NOT_DAEMON},
-    {"server-encoding",
-     0,
-     "CLI<->server encoding. bser (default) or json",
-     REQ_STRING,
-     &server_encoding,
-     NULL,
-     NOT_DAEMON},
-    {"foreground",
-     'f',
-     "Run the service in the foreground",
-     OPT_NONE,
-     &foreground,
-     NULL,
-     NOT_DAEMON},
-    {"no-pretty",
-     0,
-     "Don't pretty print JSON",
-     OPT_NONE,
-     &no_pretty,
-     NULL,
-     NOT_DAEMON},
-    {"no-spawn",
-     0,
-     "Don't try to start the service if it is not available",
-     OPT_NONE,
-     &no_spawn,
-     NULL,
-     NOT_DAEMON},
-    {"no-local",
-     0,
-     "When no-spawn is enabled, don't try to handle request"
-     " in client mode if service is unavailable",
-     OPT_NONE,
-     &no_local,
-     NULL,
-     NOT_DAEMON},
-    // test-state-dir is for testing only and should not be used in production:
-    // instead, use the compile-time WATCHMAN_STATE_DIR option
-    {"test-state-dir", 0, NULL, REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON},
-    {0, 0, 0, OPT_NONE, 0, 0, 0}};
-
-static void parse_cmdline(int* argcp, char*** argvp) {
+static std::vector<std::string> parse_cmdline(int* argcp, char*** argvp) {
   cfg_load_global_config_file();
-  w_getopt(opts, argcp, argvp, &daemon_argv);
-  if (show_help) {
-    usage(opts, stdout);
-  }
-  if (show_version) {
-    printf("%s\n", PACKAGE_VERSION);
-    exit(0);
-  }
+
+  auto daemon_argv = watchman::parseOptions(argcp, argvp);
   watchman::getLog().setStdErrLoggingLevel(
-      static_cast<enum watchman::LogLevel>(log_level));
+      static_cast<watchman::LogLevel>(logging::log_level));
   setup_sock_name();
-  parse_encoding(server_encoding, &server_pdu);
-  parse_encoding(output_encoding, &output_pdu);
-  if (output_encoding.empty()) {
-    output_pdu = no_pretty ? is_json_compact : is_json_pretty;
+  parse_encoding(flags.server_encoding, &server_format.type);
+  parse_encoding(flags.output_encoding, &output_format.type);
+  if (flags.output_encoding.empty()) {
+    output_format.type = flags.no_pretty ? is_json_compact : is_json_pretty;
   }
 
   // Prevent integration tests that call the watchman cli from
   // accidentally spawning a server.
   if (getenv("WATCHMAN_NO_SPAWN")) {
-    no_spawn = true;
+    flags.no_spawn = true;
   }
 
-  if (Configuration().getBool("tcp-listener-enable", false)) {
-    // hg requires the state-enter/state-leave commands, which are disabled over
-    // TCP by default since at present it is unauthenticated. This should be
-    // removed once TLS authentication is added to the TCP listener.
-    // TODO: When this code is removed, lookup() can be changed to return a
-    // const pointer.
-    lookup_command(w_string("state-enter"), CMD_DAEMON)->flags |=
-        CMD_ALLOW_ANY_USER;
-    lookup_command(w_string("state-leave"), CMD_DAEMON)->flags |=
-        CMD_ALLOW_ANY_USER;
-  }
+  return daemon_argv;
 }
 
-static json_ref build_command(int argc, char** argv) {
-  // Read blob from stdin
-  if (json_input_arg) {
-    auto err = json_error_t();
-    w_jbuffer_t buf;
+static Command build_command_from_stdin() {
+  auto err = json_error_t();
+  PduBuffer buf;
 
-    auto cmd = buf.decodeNext(w_stm_stdin(), &err);
+  auto cmd = buf.decodeNext(w_stm_stdin(), &err);
 
-    if (buf.pdu_type == is_bser) {
-      // If they used bser for the input, select bser for output
-      // unless they explicitly requested something else
-      if (server_encoding.empty()) {
-        server_pdu = is_bser;
-      }
-      if (output_encoding.empty()) {
-        output_pdu = is_bser;
-      }
-    } else if (buf.pdu_type == is_bser_v2) {
-      // If they used bser v2 for the input, select bser v2 for output
-      // unless they explicitly requested something else
-      if (server_encoding.empty()) {
-        server_pdu = is_bser_v2;
-      }
-      if (output_encoding.empty()) {
-        output_pdu = is_bser_v2;
-      }
+  if (buf.format.type == is_bser) {
+    // If they used bser for the input, select bser for output
+    // unless they explicitly requested something else
+    if (flags.server_encoding.empty()) {
+      server_format.type = is_bser;
     }
-
-    if (!cmd) {
-      fprintf(
-          stderr,
-          "failed to parse command from stdin: "
-          "line %d, column %d, position %d: %s\n",
-          err.line,
-          err.column,
-          err.position,
-          err.text);
-      exit(1);
+    if (flags.output_encoding.empty()) {
+      output_format.type = is_bser;
     }
-    return cmd;
+  } else if (buf.format.type == is_bser_v2) {
+    // If they used bser v2 for the input, select bser v2 for output
+    // unless they explicitly requested something else
+    if (flags.server_encoding.empty()) {
+      server_format.type = is_bser_v2;
+    }
+    if (flags.output_encoding.empty()) {
+      output_format.type = is_bser_v2;
+    }
+  }
+
+  if (!cmd) {
+    fprintf(
+        stderr,
+        "failed to parse command from stdin: "
+        "line %d, column %d, position %d: %s\n",
+        err.line,
+        err.column,
+        err.position,
+        err.text);
+    exit(1);
+  }
+  return Command::parse(std::move(*cmd));
+}
+
+static Command build_command(int argc, char** argv) {
+  if (flags.json_input_arg) {
+    return build_command_from_stdin();
   }
 
   // Special case: no arguments means that we just want
   // to verify that the service is up, starting it if
-  // needed
+  // needed.
+  // TODO: Add telemetry. Does anyone actually do this?
   if (argc == 0) {
-    return nullptr;
+    return Command{nullptr};
   }
 
-  auto cmd = json_array();
-  for (int i = 0; i < argc; i++) {
-    json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
+  w_string name = argv[0];
+  std::vector<json_ref> args;
+  for (int i = 1; i < argc; i++) {
+    args.push_back(typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
-  return cmd;
+  return Command{std::move(name), json_array(std::move(args))};
 }
 
-static SpawnResult try_spawn_watchman() {
+static SpawnResult try_spawn_watchman(
+    const std::vector<std::string>& daemon_argv) {
   // Every spawner that doesn't fork() this client process is susceptible to a
   // race condition if `watchman shutdown-server` and `watchman <command>` are
   // run in short order. The latter tries to spawn a daemon while the former is
@@ -1233,7 +985,7 @@ static SpawnResult try_spawn_watchman() {
   // communicating errors that are worthy of a retry.
 
 #ifndef _WIN32
-  if (no_site_spawner) {
+  if (flags.no_site_spawner) {
     // The astute reader will notice this we're calling run_service_as_daemon()
     // here and not the various other platform spawning functions in the block
     // further below in this function.  This is deliberate: we want
@@ -1248,31 +1000,36 @@ static SpawnResult try_spawn_watchman() {
   // spawning functionality.
   const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
   if (site_spawn) {
-    return spawn_site_specific(site_spawn);
+    return spawn_site_specific(daemon_argv, site_spawn);
   }
 #endif
 
 #if defined(__APPLE__)
   return spawn_via_launchd();
 #elif defined(_WIN32)
-  return spawn_win32();
+  return spawn_win32(daemon_argv);
 #else
   return run_service_as_daemon();
 #endif
 }
 
 static int inner_main(int argc, char** argv) {
-  // Since we don't fully integrate with folly, but may pull
-  // in dependencies that do, we need to perform a little bit
-  // of bootstrapping.  We don't want to run the full folly
-  // init today because it will interfere with our own signal
-  // handling.  In the future we will integrate this properly.
-  folly::SingletonVault::singleton()->registrationComplete();
+  // TODO: We used to avoid folly::init so it didn't interfere with our own
+  // signal handling. We want to swap to folly signal handling, so we'll do a
+  // full init on Linux to test it. We should remove this if in the future.
+  if (kUseFollySignalHandler) {
+    folly::init(&argc, &argv, folly::InitOptions().useGFlags(false));
+  } else {
+    folly::SingletonVault::singleton()->registrationComplete();
+  }
+
   SCOPE_EXIT {
-    folly::SingletonVault::singleton()->destroyInstances();
+    if (!kUseFollySignalHandler) {
+      folly::SingletonVault::singleton()->destroyInstancesFinal();
+    }
   };
 
-  parse_cmdline(&argc, &argv);
+  auto daemon_argv = parse_cmdline(&argc, &argv);
 
 #ifdef _WIN32
   // On Windows its not possible to connect to elevated Watchman daemon from
@@ -1285,20 +1042,26 @@ static int inner_main(int argc, char** argv) {
   }
 #endif
 
-  if (foreground) {
+  if (flags.foreground) {
     run_service_in_foreground();
     return 0;
   }
 
   w_set_thread_name("cli");
   auto cmd = build_command(argc, argv);
-  preprocess_command(cmd, output_pdu, output_capabilities);
+  cmd.validateOrExit(output_format);
 
-  bool ran = try_command(cmd, 0);
-  if (!ran && should_start(errno)) {
-    if (no_spawn) {
-      if (!no_local) {
-        ran = try_client_mode_command(cmd, !no_pretty);
+  auto should_start = [](int err) -> bool {
+    return err == ECONNREFUSED || err == ENOENT;
+  };
+
+  auto ran = try_command(cmd, 0);
+  if (ran.hasError() && should_start(ran.error())) {
+    if (flags.no_spawn) {
+      if (!flags.no_local) {
+        if (try_client_mode_command(cmd, !flags.no_pretty)) {
+          ran = folly::unit;
+        }
       }
     } else {
       // Failed to run command. Try to spawn a daemon.
@@ -1312,7 +1075,7 @@ static int inner_main(int argc, char** argv) {
       bool spawned = false;
       while (true) {
         if (!spawned) {
-          auto spawn_result = try_spawn_watchman();
+          auto spawn_result = try_spawn_watchman(daemon_argv);
           switch (spawn_result.status) {
             case SpawnResult::Spawned:
               spawned = true;
@@ -1327,7 +1090,7 @@ static int inner_main(int argc, char** argv) {
         }
 
         ran = try_command(cmd, 10);
-        if (!ran && should_start(errno) && attempts-- > 0) {
+        if (ran.hasError() && should_start(ran.error()) && attempts-- > 0) {
           /* sleep override */ std::this_thread::sleep_for(interval);
           // 10 doublings of 10 ms is about 10 seconds total.
           interval *= 2;
@@ -1339,16 +1102,16 @@ static int inner_main(int argc, char** argv) {
     }
   }
 
-  if (ran) {
+  if (ran.hasValue()) {
     return 0;
   }
 
-  if (!no_spawn) {
+  if (!flags.no_spawn) {
     log(ERR,
         "unable to talk to your watchman on ",
         get_sock_name_legacy(),
         "! (",
-        folly::errnoStr(errno),
+        folly::errnoStr(ran.error()),
         ")\n");
 #ifdef __APPLE__
     if (getenv("TMUX")) {
@@ -1380,13 +1143,11 @@ int main(int argc, char** argv) {
   try {
     return inner_main(argc, argv);
   } catch (const std::exception& e) {
-    log(ERR,
-        "Uncaught C++ exception: ",
-        folly::exceptionStr(e).toStdString(),
-        "\n");
+    logf_stderr(
+        "Uncaught C++ exception: {}\n", folly::exceptionStr(e).toStdString());
     return 1;
   } catch (...) {
-    log(ERR, "Uncaught C++ exception: ...\n");
+    logf_stderr("Uncaught C++ exception: ...\n");
     return 1;
   }
 }

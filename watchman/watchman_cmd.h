@@ -1,15 +1,29 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #pragma once
 
 #include <stdexcept>
-#include "CommandRegistry.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/PDU.h"
+#include "watchman/watchman_preprocessor.h"
+#include "watchman/watchman_system.h"
+
+namespace watchman {
+class Client;
+class Command;
+class Root;
+class UntypedResponse;
+} // namespace watchman
 
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
 // argument list
-void w_cmd_realpath_root(json_ref& args);
+void w_cmd_realpath_root(watchman::Command& command);
 
 // Try to find a project root that contains the path `resolved`. If found,
 // modify `resolved` to hold the path to the root project and return true.
@@ -23,52 +37,27 @@ bool find_project_root(
     w_string_piece& resolved,
     w_string_piece& relpath);
 
-void preprocess_command(
-    json_ref& args,
-    enum w_pdu_type output_pdu,
-    uint32_t output_capabilities);
-bool dispatch_command(
-    struct watchman_client* client,
-    const json_ref& args,
-    int mode);
-bool try_client_mode_command(const json_ref& cmd, bool pretty);
-
-void send_error_response(
-    struct watchman_client* client,
-    WATCHMAN_FMT_STRING(const char* fmt),
-    ...) WATCHMAN_FMT_ATTR(2, 3);
-void send_and_dispose_response(
-    struct watchman_client* client,
-    json_ref&& response);
-bool enqueue_response(
-    struct watchman_client* client,
-    json_ref&& json,
-    bool ping);
-
 // Resolve the root. Failure will throw a RootResolveError exception
-std::shared_ptr<watchman_root> resolveRoot(
-    struct watchman_client* client,
+std::shared_ptr<watchman::Root> resolveRoot(
+    watchman::Client* client,
     const json_ref& args);
 
 // Resolve the root, or if not found and the configuration permits,
 // attempt to create it. throws RootResolveError on failure.
-std::shared_ptr<watchman_root> resolveOrCreateRoot(
-    struct watchman_client* client,
+std::shared_ptr<watchman::Root> resolveOrCreateRoot(
+    watchman::Client* client,
     const json_ref& args);
 
-json_ref make_response();
-void annotate_with_clock(
-    const std::shared_ptr<watchman_root>& root,
-    json_ref& resp);
-void add_root_warnings_to_response(
-    json_ref& response,
-    const std::shared_ptr<watchman_root>& root);
+// Similar to resolveRoot() or resolveOrCreateRoot() but takes a root
+// string instead of json_ref.
+std::shared_ptr<watchman::Root> resolveRootByName(
+    watchman::Client* client,
+    const char* rootName,
+    bool create = false);
 
-bool clock_id_string(
-    uint32_t root_number,
-    uint32_t ticks,
-    char* buf,
-    size_t bufsize);
+void add_root_warnings_to_response(
+    watchman::UntypedResponse& response,
+    const std::shared_ptr<watchman::Root>& root);
 
 /* vim:ts=2:sw=2:et:
  */

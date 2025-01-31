@@ -14,74 +14,59 @@
 #include <vector>
 #include "jansson.h"
 
-/* va_copy is a C99 feature. In C89 implementations, it's sometimes
-   available as __va_copy. If not, memcpy() should do the trick. */
-#ifndef va_copy
-#ifdef __va_copy
-#define va_copy __va_copy
-#else
-#define va_copy(a, b) memcpy(&(a), &(b), sizeof(va_list))
-#endif
-#endif
-
-struct json_object_t {
-  json_t json;
+struct json_object_t : json_t {
   std::unordered_map<w_string, json_ref> map;
 
-  json_object_t(size_t sizeHint = 0);
+  explicit json_object_t(std::unordered_map<w_string, json_ref> values);
 
   typename std::unordered_map<w_string, json_ref>::iterator findCString(
       const char* key);
 };
 
-struct json_array_t {
-  json_t json;
+struct json_array_t : json_t {
   std::vector<json_ref> table;
-  json_ref templ;
+  std::optional<json_ref> templ;
 
-  json_array_t(size_t sizeHint = 0);
+  json_array_t(std::vector<json_ref> values);
   json_array_t(std::initializer_list<json_ref> values);
 };
 
-struct json_string_t {
-  json_t json;
+struct json_string_t : json_t {
   w_string value;
 
-  json_string_t(const w_string& str);
+  json_string_t(w_string str);
 };
 
-struct json_real_t {
-  json_t json;
+struct json_real_t : json_t {
   double value;
 
   json_real_t(double value);
 };
 
-struct json_integer_t {
-  json_t json;
+struct json_integer_t : json_t {
   json_int_t value;
 
   json_integer_t(json_int_t value);
 };
 
 inline json_object_t* json_to_object(const json_t* json) {
-  return reinterpret_cast<json_object_t*>(const_cast<json_t*>(json));
+  return static_cast<json_object_t*>(const_cast<json_t*>(json));
 }
 
 inline json_array_t* json_to_array(const json_t* json) {
-  return reinterpret_cast<json_array_t*>(const_cast<json_t*>(json));
+  return static_cast<json_array_t*>(const_cast<json_t*>(json));
 }
 
 inline json_string_t* json_to_string(const json_t* json) {
-  return reinterpret_cast<json_string_t*>(const_cast<json_t*>(json));
+  return static_cast<json_string_t*>(const_cast<json_t*>(json));
 }
 
 inline json_real_t* json_to_real(const json_t* json) {
-  return reinterpret_cast<json_real_t*>(const_cast<json_t*>(json));
+  return static_cast<json_real_t*>(const_cast<json_t*>(json));
 }
 
 inline json_integer_t* json_to_integer(const json_t* json) {
-  return reinterpret_cast<json_integer_t*>(const_cast<json_t*>(json));
+  return static_cast<json_integer_t*>(const_cast<json_t*>(json));
 }
 
 void jsonp_error_init(json_error_t* error, const char* source);

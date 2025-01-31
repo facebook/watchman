@@ -1,43 +1,45 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+# pyre-unsafe
 
 import errno
 import glob
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
 import sys
 from struct import unpack
-
-from .envfuncs import path_search
-
+from typing import List, Optional
 
 OBJECT_SUBDIRS = ("bin", "lib", "lib64")
 
 
-def copyfile(src, dest):
+def copyfile(src, dest) -> None:
     shutil.copyfile(src, dest)
     shutil.copymode(src, dest)
 
 
 class DepBase(object):
-    def __init__(self, buildopts, install_dirs, strip):
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
         self.buildopts = buildopts
-        self.env = buildopts.compute_env_for_install_dirs(install_dirs)
+        self.env = env
         self.install_dirs = install_dirs
         self.strip = strip
+
+        # Deduplicates dependency processing. Keyed on the library
+        # destination path.
         self.processed_deps = set()
 
     def list_dynamic_deps(self, objfile):
         raise RuntimeError("list_dynamic_deps not implemented")
 
-    def interesting_dep(self, d):
+    def interesting_dep(self, d) -> bool:
         return True
 
     # final_install_prefix must be the equivalent path to `destdir` on the
@@ -45,11 +47,12 @@ class DepBase(object):
     # is intended to map to `/usr/local` in the install image, then
     # final_install_prefix='/usr/local'.
     # If left unspecified, destdir will be used.
-    def process_deps(self, destdir, final_install_prefix=None):
+    def process_deps(self, destdir, final_install_prefix=None) -> None:
         if self.buildopts.is_windows():
             lib_dir = "bin"
         else:
             lib_dir = "lib"
+        # pyre-fixme[16]: `DepBase` has no attribute `munged_lib_dir`.
         self.munged_lib_dir = os.path.join(destdir, lib_dir)
 
         final_lib_dir = os.path.join(final_install_prefix or destdir, lib_dir)
@@ -93,7 +96,7 @@ class DepBase(object):
 
         return dep_paths
 
-    def munge_in_place(self, objfile, final_lib_dir):
+    def munge_in_place(self, objfile, final_lib_dir) -> None:
         print("Munging %s" % objfile)
         for d in self.list_dynamic_deps(objfile):
             if not self.interesting_dep(d):
@@ -102,11 +105,18 @@ class DepBase(object):
             # Resolve this dep: does it exist in any of our installation
             # directories?  If so, then it is a candidate for processing
             dep = self.resolve_loader_path(d)
-            print("dep: %s -> %s" % (d, dep))
             if dep:
+                # pyre-fixme[16]: `DepBase` has no attribute `munged_lib_dir`.
                 dest_dep = os.path.join(self.munged_lib_dir, os.path.basename(dep))
-                if dep not in self.processed_deps:
-                    self.processed_deps.add(dep)
+                print("dep: %s -> %s" % (d, dest_dep))
+                if dest_dep in self.processed_deps:
+                    # A previous dependency with the same name has already
+                    # been installed at dest_dep, so there is no need to copy
+                    # or munge the dependency again.
+                    # TODO: audit that both source paths have the same inode number
+                    pass
+                else:
+                    self.processed_deps.add(dest_dep)
                     copyfile(dep, dest_dep)
                     self.munge_in_place(dest_dep, final_lib_dir)
 
@@ -118,7 +128,7 @@ class DepBase(object):
     def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
         raise RuntimeError("rewrite_dep not implemented")
 
-    def resolve_loader_path(self, dep):
+    def resolve_loader_path(self, dep: str) -> Optional[str]:
         if os.path.isabs(dep):
             return dep
         d = os.path.basename(dep)
@@ -129,7 +139,7 @@ class DepBase(object):
                     return candidate
         return None
 
-    def list_objs_in_dir(self, dir, recurse=False, output_prefix=""):
+    def list_objs_in_dir(self, dir, recurse: bool = False, output_prefix: str = ""):
         for entry in os.listdir(dir):
             entry_path = os.path.join(dir, entry)
             st = os.lstat(entry_path)
@@ -144,21 +154,25 @@ class DepBase(object):
                 ):
                     yield result
 
-    def is_objfile(self, objfile):
+    def is_objfile(self, objfile) -> bool:
         return True
 
-    def strip_debug_info(self, objfile):
+    def strip_debug_info(self, objfile) -> None:
         """override this to define how to remove debug information
         from an object file"""
         pass
 
+    def check_call_verbose(self, args: List[str]) -> None:
+        print(" ".join(map(shlex.quote, args)))
+        subprocess.check_call(args)
+
 
 class WinDeps(DepBase):
-    def __init__(self, buildopts, install_dirs, strip):
-        super(WinDeps, self).__init__(buildopts, install_dirs, strip)
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
+        super(WinDeps, self).__init__(buildopts, env, install_dirs, strip)
         self.dumpbin = self.find_dumpbin()
 
-    def find_dumpbin(self):
+    def find_dumpbin(self) -> str:
         # Looking for dumpbin in the following hardcoded paths.
         # The registry option to find the install dir doesn't work anymore.
         globs = [
@@ -175,6 +189,9 @@ class WinDeps(DepBase):
                 "VC/bin/dumpbin.exe"
             ),
             ("c:/Program Files (x86)/Microsoft Visual Studio */VC/bin/dumpbin.exe"),
+            (
+                "C:/Program Files/Microsoft Visual Studio/*/Professional/VC/Tools/MSVC/*/bin/HostX64/x64/dumpbin.exe"
+            ),
         ]
         for pattern in globs:
             for exe in glob.glob(pattern):
@@ -197,7 +214,7 @@ class WinDeps(DepBase):
 
         return deps
 
-    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
+    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir) -> None:
         # We can't rewrite on windows, but we will
         # place the deps alongside the exe so that
         # they end up in the search path
@@ -218,21 +235,21 @@ class WinDeps(DepBase):
         ]
     )
 
-    def interesting_dep(self, d):
+    def interesting_dep(self, d) -> bool:
         if "api-ms-win-crt" in d:
             return False
         if d in self.SYSTEM_DLLS:
             return False
         return True
 
-    def is_objfile(self, objfile):
+    def is_objfile(self, objfile) -> bool:
         if not os.path.isfile(objfile):
             return False
         if objfile.lower().endswith(".exe"):
             return True
         return False
 
-    def emit_dev_run_script(self, script_path, dep_dirs):
+    def emit_dev_run_script(self, script_path, dep_dirs) -> None:
         """Emit a script that can be used to run build artifacts directly from the
         build directory, without installing them.
 
@@ -298,7 +315,7 @@ class WinDeps(DepBase):
 
         return dep_dirs
 
-    def _get_dev_run_script_contents(self, path_dirs):
+    def _get_dev_run_script_contents(self, path_dirs) -> str:
         path_entries = ["$env:PATH"] + path_dirs
         path_str = ";".join(path_entries)
         return """\
@@ -317,20 +334,25 @@ try {{
 
 
 class ElfDeps(DepBase):
-    def __init__(self, buildopts, install_dirs, strip):
-        super(ElfDeps, self).__init__(buildopts, install_dirs, strip)
+    def __init__(self, buildopts, env, install_dirs, strip) -> None:
+        super(ElfDeps, self).__init__(buildopts, env, install_dirs, strip)
 
         # We need patchelf to rewrite deps, so ensure that it is built...
-        subprocess.check_call([sys.executable, sys.argv[0], "build", "patchelf"])
+        args = [sys.executable, sys.argv[0]]
+        if buildopts.allow_system_packages:
+            args.append("--allow-system-packages")
+        subprocess.check_call(args + ["build", "patchelf"])
+
         # ... and that we know where it lives
-        self.patchelf = os.path.join(
-            os.fsdecode(
-                subprocess.check_output(
-                    [sys.executable, sys.argv[0], "show-inst-dir", "patchelf"]
-                ).strip()
-            ),
-            "bin/patchelf",
+        patchelf_install = os.fsdecode(
+            subprocess.check_output(args + ["show-inst-dir", "patchelf"]).strip()
         )
+        if not patchelf_install:
+            # its a system package, so we assume it is in the path
+            patchelf_install = "patchelf"
+        else:
+            patchelf_install = os.path.join(patchelf_install, "bin", "patchelf")
+        self.patchelf = patchelf_install
 
     def list_dynamic_deps(self, objfile):
         out = (
@@ -343,15 +365,17 @@ class ElfDeps(DepBase):
         lines = out.split("\n")
         return lines
 
-    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
+    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir) -> None:
         final_dep = os.path.join(
-            final_lib_dir, os.path.relpath(new_dep, self.munged_lib_dir)
+            final_lib_dir,
+            # pyre-fixme[16]: `ElfDeps` has no attribute `munged_lib_dir`.
+            os.path.relpath(new_dep, self.munged_lib_dir),
         )
-        subprocess.check_call(
+        self.check_call_verbose(
             [self.patchelf, "--replace-needed", depname, final_dep, objfile]
         )
 
-    def is_objfile(self, objfile):
+    def is_objfile(self, objfile) -> bool:
         if not os.path.isfile(objfile):
             return False
         with open(objfile, "rb") as f:
@@ -359,8 +383,8 @@ class ElfDeps(DepBase):
             magic = f.read(4)
             return magic == b"\x7fELF"
 
-    def strip_debug_info(self, objfile):
-        subprocess.check_call(["strip", objfile])
+    def strip_debug_info(self, objfile) -> None:
+        self.check_call_verbose(["strip", objfile])
 
 
 # MACH-O magic number
@@ -368,7 +392,7 @@ MACH_MAGIC = 0xFEEDFACF
 
 
 class MachDeps(DepBase):
-    def interesting_dep(self, d):
+    def interesting_dep(self, d) -> bool:
         if d.startswith("/usr/lib/") or d.startswith("/System/"):
             return False
         return True
@@ -404,27 +428,34 @@ class MachDeps(DepBase):
                     deps.append(os.path.normcase(m.group(1)))
         return deps
 
-    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
+    def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir) -> None:
         if objfile.endswith(".dylib"):
             # Erase the original location from the id of the shared
             # object.  It doesn't appear to hurt to retain it, but
             # it does look weird, so let's rewrite it to be sure.
-            subprocess.check_call(
+            self.check_call_verbose(
                 ["install_name_tool", "-id", os.path.basename(objfile), objfile]
             )
         final_dep = os.path.join(
-            final_lib_dir, os.path.relpath(new_dep, self.munged_lib_dir)
+            final_lib_dir,
+            # pyre-fixme[16]: `MachDeps` has no attribute `munged_lib_dir`.
+            os.path.relpath(new_dep, self.munged_lib_dir),
         )
 
-        subprocess.check_call(
+        self.check_call_verbose(
             ["install_name_tool", "-change", depname, final_dep, objfile]
         )
 
 
-def create_dyn_dep_munger(buildopts, install_dirs, strip=False):
+def create_dyn_dep_munger(
+    buildopts, env, install_dirs, strip: bool = False
+) -> Optional[DepBase]:
     if buildopts.is_linux():
-        return ElfDeps(buildopts, install_dirs, strip)
+        return ElfDeps(buildopts, env, install_dirs, strip)
     if buildopts.is_darwin():
-        return MachDeps(buildopts, install_dirs, strip)
+        return MachDeps(buildopts, env, install_dirs, strip)
     if buildopts.is_windows():
-        return WinDeps(buildopts, install_dirs, strip)
+        return WinDeps(buildopts, env, install_dirs, strip)
+    if buildopts.is_freebsd():
+        return ElfDeps(buildopts, env, install_dirs, strip)
+    return None

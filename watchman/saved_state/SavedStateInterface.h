@@ -1,13 +1,29 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
 #include "watchman/thirdparty/jansson/jansson.h"
-#include "watchman/watchman.h"
 
 namespace watchman {
 
+class Configuration;
+struct RootMetadata;
+class SavedStateInterface;
 class SCM;
+struct ClientContext;
+
+using SavedStateFactory = std::unique_ptr<SavedStateInterface> (*)(
+    w_string_piece storageType,
+    const json_ref& savedStateConfig,
+    const SCM* scm,
+    Configuration config,
+    std::function<void(RootMetadata&)> collectRootMetadata,
+    ClientContext clientInfo);
 
 // An interface that returns information about saved states associated with
 // specific source control commits. Clients using scm-aware queries can
@@ -20,23 +36,12 @@ class SavedStateInterface {
  public:
   virtual ~SavedStateInterface();
 
-  // Returns an appropriate SavedStateInterface implementation for the
-  // specified storage type. Returns a managed pointer to the saved state
-  // interface if successful. Throws if the storage type is not recognized, or
-  // if the saved state interface does not successfully parse the saved state
-  // config.
-  static std::unique_ptr<SavedStateInterface> getInterface(
-      w_string_piece storageType,
-      const json_ref& savedStateConfig,
-      const SCM* scm,
-      const std::shared_ptr<watchman_root> root);
-
   // The commit ID of a saved state and a JSON blob of information clients can
   // use to access the saved state.  The contents of the info varies with the
   // storage type.
   struct SavedStateResult {
     w_string commitId;
-    json_ref savedStateInfo;
+    std::optional<json_ref> savedStateInfo;
   };
   // Returns saved state information for the most recent commit prior to and
   // including lookupCommitId that has a valid saved state for the specified
@@ -46,7 +51,7 @@ class SavedStateInterface {
 
  protected:
   w_string project_;
-  w_string projectMetadata_;
+  std::optional<w_string> projectMetadata_;
 
   explicit SavedStateInterface(const json_ref& savedStateConfig);
   virtual SavedStateResult getMostRecentSavedStateImpl(

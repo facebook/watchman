@@ -1,4 +1,12 @@
-use std::io::{self, Write};
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+use std::io;
+use std::io::Write;
 
 /// A writer that counts how many bytes were written.
 pub struct CountWrite {

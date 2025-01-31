@@ -1,40 +1,55 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include <folly/MapUtil.h>
+#include "watchman/Client.h"
+#include "watchman/ClientContext.h"
+#include "watchman/Errors.h"
+#include "watchman/Logging.h"
 #include "watchman/MapUtil.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/ProcessUtil.h"
+#include "watchman/QueryableView.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/eval.h"
+#include "watchman/query/parse.h"
+#include "watchman/root/Root.h"
+#include "watchman/root/watchlist.h"
+#include "watchman/saved_state/SavedStateFactory.h"
+#include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
-watchman_client_subscription::watchman_client_subscription(
-    const std::shared_ptr<watchman_root>& root,
-    std::weak_ptr<watchman_client> client)
+ClientSubscription::ClientSubscription(
+    const std::shared_ptr<Root>& root,
+    std::weak_ptr<Client> client)
     : root(root), weakClient(client) {}
 
-std::shared_ptr<watchman_user_client>
-watchman_client_subscription::lockClient() {
+std::shared_ptr<UserClient> ClientSubscription::lockClient() {
   auto client = weakClient.lock();
   if (client) {
-    return std::dynamic_pointer_cast<watchman_user_client>(client);
+    return std::dynamic_pointer_cast<UserClient>(client);
   }
   return nullptr;
 }
 
-watchman_client_subscription::~watchman_client_subscription() {
+ClientSubscription::~ClientSubscription() {
   auto client = lockClient();
   if (client) {
     client->unsubByName(name);
   }
 }
 
-bool watchman_user_client::unsubByName(const w_string& name) {
+bool UserClient::unsubByName(const w_string& name) {
   auto subIter = subscriptions.find(name);
   if (subIter == subscriptions.end()) {
     return false;
   }
 
-  // Break the weakClient pointer so that ~watchman_client_subscription()
+  // Break the weakClient pointer so that ~ClientSubscription()
   // cannot successfully lockClient and recursively call us.
   subIter->second->weakClient.reset();
   unilateralSub.erase(subIter->second);
@@ -46,14 +61,13 @@ bool watchman_user_client::unsubByName(const w_string& name) {
 enum class sub_action { no_sync_needed, execute, defer, drop };
 
 static std::tuple<sub_action, w_string> get_subscription_action(
-    struct watchman_client_subscription* sub,
-    const std::shared_ptr<watchman_root>& root,
+    ClientSubscription* sub,
+    const std::shared_ptr<Root>& root,
     ClockPosition position) {
   auto action = sub_action::execute;
   w_string policy_name;
 
-  watchman::log(
-      watchman::DBG,
+  log(DBG,
       "sub=",
       fmt::ptr(sub),
       " ",
@@ -95,15 +109,14 @@ static std::tuple<sub_action, w_string> get_subscription_action(
       }
     }
   } else {
-    watchman::log(
-        watchman::DBG, "subscription ", sub->name, " is up to date\n");
+    log(DBG, "subscription ", sub->name, " is up to date\n");
     action = sub_action::no_sync_needed;
   }
 
   return std::make_tuple(action, policy_name);
 }
 
-void watchman_client_subscription::processSubscription() {
+void ClientSubscription::processSubscription() {
   try {
     processSubscriptionImpl();
   } catch (const std::system_error& exc) {
@@ -118,19 +131,18 @@ void watchman_client_subscription::processSubscription() {
           " got: ",
           exc.what(),
           ".  Cancel watch\n");
-      root->cancel();
+      root->cancel(
+          fmt::format("Error processing subscriptions: {}", exc.what()));
     } else {
       throw;
     }
   }
 }
 
-void watchman_client_subscription::processSubscriptionImpl() {
+void ClientSubscription::processSubscriptionImpl() {
   auto client = lockClient();
   if (!client) {
-    watchman::log(
-        watchman::ERR,
-        "encountered a vacated client while running subscription rules\n");
+    log(ERR, "encountered a vacated client while running subscription rules\n");
     return;
   }
 
@@ -146,8 +158,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
       // fast-forward over any notifications while in the drop state
       last_sub_tick = position.ticks;
       query->since_spec = std::make_unique<ClockSpec>(position);
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "dropping subscription notifications for ",
           name,
           " until state ",
@@ -157,8 +168,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
           "\n");
       executeQuery = false;
     } else if (action == sub_action::defer) {
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "deferring subscription notifications for ",
           name,
           " until state ",
@@ -166,8 +176,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
           " is vacated\n");
       executeQuery = false;
     } else if (vcs_defer && root->view()->isVCSOperationInProgress()) {
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "deferring subscription notifications for ",
           name,
           " until VCS operations complete\n");
@@ -195,32 +204,32 @@ void watchman_client_subscription::processSubscriptionImpl() {
       }
     }
   } else {
-    watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
+    log(DBG, "subscription ", name, " is up to date\n");
   }
 }
 
-void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
+void ClientSubscription::updateSubscriptionTicks(QueryResult* res) {
   // create a new spec that will be used the next time
   query->since_spec = std::make_unique<ClockSpec>(res->clockAtStartOfQuery);
 }
 
-json_ref watchman_client_subscription::buildSubscriptionResults(
-    const std::shared_ptr<watchman_root>& root,
+std::optional<UntypedResponse> ClientSubscription::buildSubscriptionResults(
+    const std::shared_ptr<Root>& root,
     ClockSpec& position,
     OnStateTransition onStateTransition) {
   auto since_spec = query->since_spec.get();
 
-  if (since_spec && since_spec->tag == w_cs_clock) {
-    watchman::log(
-        watchman::DBG,
+  if (const auto* clock = since_spec
+          ? std::get_if<ClockSpec::Clock>(&since_spec->spec)
+          : nullptr) {
+    log(DBG,
         "running subscription ",
         name,
         " rules since ",
-        since_spec->clock.position.ticks,
+        clock->position.ticks,
         "\n");
   } else {
-    watchman::log(
-        watchman::DBG, "running subscription ", name, " rules (no since)\n");
+    log(DBG, "running subscription ", name, " rules (no since)\n");
   }
 
   // Subscriptions never need to sync explicitly; we are only dispatched
@@ -234,13 +243,13 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   logf(DBG, "running subscription {} {}\n", name, fmt::ptr(this));
 
   try {
-    auto res = w_query_execute(query.get(), root, time_generator);
+    auto res = w_query_execute(query.get(), root, time_generator, getInterface);
 
     logf(
         DBG,
         "subscription {} generated {} results\n",
         name,
-        res.resultsArray.array().size());
+        res.resultsArray.results.size());
 
     position = res.clockAtStartOfQuery;
 
@@ -251,10 +260,9 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     bool scmAwareQuery = since_spec && since_spec->hasScmParams();
     if (onStateTransition == OnStateTransition::DontAdvance && scmAwareQuery) {
       if (root->stateTransCount.load() != res.stateTransCountAtStartOfQuery) {
-        watchman::log(
-            watchman::DBG,
+        log(DBG,
             "discarding SCM aware query results, SCM activity interleaved\n");
-        return nullptr;
+        return std::nullopt;
       }
     }
 
@@ -262,120 +270,106 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     // and the mergeBase has changed or this is a fresh instance.
     bool mergeBaseChanged = scmAwareQuery &&
         res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
-    if (res.resultsArray.array().empty() && !mergeBaseChanged &&
-        !res.is_fresh_instance) {
+    if (res.resultsArray.results.empty() && !mergeBaseChanged &&
+        !res.isFreshInstance) {
       updateSubscriptionTicks(&res);
-      return nullptr;
+      return std::nullopt;
     }
 
-    auto response = make_response();
+    UntypedResponse response;
 
     // It is way too much of a hassle to try to recreate the clock value if it's
     // not a relative clock spec, and it's only going to happen on the first run
     // anyway, so just skip doing that entirely.
-    if (since_spec && since_spec->tag == w_cs_clock) {
+    if (since_spec &&
+        std::holds_alternative<ClockSpec::Clock>(since_spec->spec)) {
       response.set("since", since_spec->toJson());
     }
     updateSubscriptionTicks(&res);
 
     response.set(
-        {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+        {{"is_fresh_instance", json_boolean(res.isFreshInstance)},
          {"clock", res.clockAtStartOfQuery.toJson()},
-         {"files", std::move(res.resultsArray)},
+         {"files", std::move(res.resultsArray).toJson()},
          {"root", w_string_to_json(root->root_path)},
          {"subscription", w_string_to_json(name)},
          {"unilateral", json_true()}});
     if (res.savedStateInfo) {
-      response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+      response.set({{"saved-state-info", std::move(*res.savedStateInfo)}});
     }
 
     return response;
   } catch (const QueryExecError& e) {
-    watchman::log(
-        watchman::ERR,
-        "error running subscription ",
-        name,
-        " query: ",
-        e.what());
-    return nullptr;
+    log(ERR, "error running subscription ", name, " query: ", e.what());
+    return std::nullopt;
   }
 }
 
-ClockSpec watchman_client_subscription::runSubscriptionRules(
-    watchman_user_client* client,
-    const std::shared_ptr<watchman_root>& root) {
+ClockSpec ClientSubscription::runSubscriptionRules(
+    UserClient* client,
+    const std::shared_ptr<Root>& root) {
   ClockSpec position;
 
   auto response =
       buildSubscriptionResults(root, position, OnStateTransition::DontAdvance);
 
   if (response) {
-    add_root_warnings_to_response(response, root);
-    client->enqueueResponse(std::move(response), false);
+    add_root_warnings_to_response(*response, root);
+    client->enqueueResponse(std::move(*response));
   }
   return position;
 }
 
-static void cmd_flush_subscriptions(
-    struct watchman_client* clientbase,
+static UntypedResponse cmd_flush_subscriptions(
+    Client* clientbase,
     const json_ref& args) {
-  auto client = (watchman_user_client*)clientbase;
+  auto client = (UserClient*)clientbase;
 
   int sync_timeout;
-  json_ref subs(nullptr);
+  std::optional<json_ref> subs;
 
+  // TODO: merge this parse and sync logic with the logic in query evaluation
   if (json_array_size(args) == 3) {
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
-    subs = args.at(2).get_default("subscriptions", nullptr);
+    subs = args.at(2).get_optional("subscriptions");
     if (!sync_timeout_obj.isInt()) {
-      send_error_response(client, "'sync_timeout' must be an integer");
-      return;
+      throw ErrorResponse("'sync_timeout' must be an integer");
     }
     sync_timeout = sync_timeout_obj.asInt();
   } else {
-    send_error_response(
-        client, "wrong number of arguments to 'flush-subscriptions'");
-    return;
+    throw ErrorResponse("wrong number of arguments to 'flush-subscriptions'");
   }
 
   auto root = resolveRoot(client, args);
 
   std::vector<w_string> subs_to_sync;
   if (subs) {
-    if (!subs.isArray()) {
-      send_error_response(
-          client,
+    if (!subs->isArray()) {
+      throw ErrorResponse(
           "expected 'subscriptions' to be an array of subscription names");
-      return;
     }
 
-    for (auto& sub_name : subs.array()) {
+    for (auto& sub_name : subs->array()) {
       if (!sub_name.isString()) {
-        send_error_response(
-            client,
+        throw ErrorResponse(
             "expected 'subscriptions' to be an array of subscription names");
-        return;
       }
 
       auto& sub_name_str = json_to_w_string(sub_name);
       auto sub_iter = client->subscriptions.find(sub_name_str);
       if (sub_iter == client->subscriptions.end()) {
-        send_error_response(
-            client,
-            "this client does not have a subscription named '%s'",
-            sub_name_str.c_str());
-        return;
+        throw ErrorResponse(
+            "this client does not have a subscription named '{}'",
+            sub_name_str);
       }
       auto& sub = sub_iter->second;
       if (sub->root != root) {
-        send_error_response(
-            client,
-            "subscription '%s' is on root '%s' different from command root "
-            "'%s'",
-            sub_name_str.c_str(),
-            sub->root->root_path.c_str(),
-            root->root_path.c_str());
-        return;
+        throw ErrorResponse(
+            "subscription '{}' is on root '{}' different from command root "
+            "'{}'",
+            sub_name_str,
+            sub->root->root_path,
+            root->root_path);
       }
 
       subs_to_sync.push_back(sub_name_str);
@@ -389,12 +383,13 @@ static void cmd_flush_subscriptions(
     }
   }
 
-  root->syncToNow(std::chrono::milliseconds(sync_timeout));
+  root->syncToNow(
+      std::chrono::milliseconds(sync_timeout), client->getClientInfo());
 
-  auto resp = make_response();
-  auto synced = json_array();
-  auto no_sync_needed = json_array();
-  auto dropped = json_array();
+  UntypedResponse resp;
+  std::vector<json_ref> synced;
+  std::vector<json_ref> no_sync_needed;
+  std::vector<json_ref> dropped;
 
   for (auto& sub_name_str : subs_to_sync) {
     auto sub_iter = client->subscriptions.find(sub_name_str);
@@ -409,8 +404,7 @@ static void cmd_flush_subscriptions(
     if (action == sub_action::drop) {
       sub->last_sub_tick = position.ticks;
       sub->query->since_spec = std::make_unique<ClockSpec>(position);
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "(flush-subscriptions) dropping subscription notifications for ",
           sub->name,
           " until state ",
@@ -418,151 +412,147 @@ static void cmd_flush_subscriptions(
           " is vacated. Advanced ticks to ",
           sub->last_sub_tick,
           "\n");
-      json_array_append(dropped, w_string_to_json(sub_name_str));
+      dropped.push_back(w_string_to_json(sub_name_str));
     } else {
       // flush-subscriptions means that we _should NOT defer_ notifications. So
       // ignore defer and defer_vcs.
       ClockSpec out_position;
-      watchman::log(
-          watchman::DBG,
+      log(DBG,
           "(flush-subscriptions) executing subscription ",
           sub->name,
           "\n");
       auto sub_result = sub->buildSubscriptionResults(
           root, out_position, OnStateTransition::QueryAnyway);
       if (sub_result) {
-        send_and_dispose_response(client, std::move(sub_result));
-        json_array_append(synced, w_string_to_json(sub_name_str));
+        client->enqueueResponse(std::move(*sub_result));
+        synced.push_back(w_string_to_json(sub_name_str));
       } else {
-        json_array_append(no_sync_needed, w_string_to_json(sub_name_str));
+        no_sync_needed.push_back(w_string_to_json(sub_name_str));
       }
     }
   }
 
   resp.set(
-      {{"synced", std::move(synced)},
-       {"no_sync_needed", std::move(no_sync_needed)},
-       {"dropped", std::move(dropped)}});
+      {{"synced", json_array(std::move(synced))},
+       {"no_sync_needed", json_array(std::move(no_sync_needed))},
+       {"dropped", json_array(std::move(dropped))}});
   add_root_warnings_to_response(resp, root);
-  send_and_dispose_response(client, std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "flush-subscriptions",
     cmd_flush_subscriptions,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-static void cmd_unsubscribe(
-    struct watchman_client* clientbase,
+static UntypedResponse cmd_unsubscribe(
+    Client* clientbase,
     const json_ref& args) {
-  const char* name;
-  bool deleted{false};
-  struct watchman_user_client* client =
-      (struct watchman_user_client*)clientbase;
+  UserClient* client = (UserClient*)clientbase;
 
   auto root = resolveRoot(client, args);
 
-  auto jstr = json_array_get(args, 2);
-  name = json_string_value(jstr);
+  auto jstr = args.at(2);
+  const char* name = json_string_value(jstr);
   if (!name) {
-    send_error_response(
-        client, "expected 2nd parameter to be subscription name");
-    return;
+    throw ErrorResponse("expected 2nd parameter to be subscription name");
   }
 
   auto sname = json_to_w_string(jstr);
-  deleted = client->unsubByName(sname);
+  bool deleted = client->unsubByName(sname);
 
-  auto resp = make_response();
+  UntypedResponse resp;
   resp.set(
       {{"unsubscribe", typed_string_to_json(name)},
        {"deleted", json_boolean(deleted)}});
-
-  send_and_dispose_response(client, std::move(resp));
+  return resp;
 }
 W_CMD_REG(
     "unsubscribe",
     cmd_unsubscribe,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-static void cmd_subscribe(
-    struct watchman_client* clientbase,
-    const json_ref& args) {
-  std::shared_ptr<watchman_client_subscription> sub;
-  json_ref resp, initial_subscription_results;
-  json_ref jfield_list;
-  json_ref jname;
-  std::shared_ptr<w_query> query;
-  json_ref query_spec;
-  json_ref defer_list;
-  json_ref drop_list;
-  struct watchman_user_client* client =
-      (struct watchman_user_client*)clientbase;
+static UntypedResponse cmd_subscribe(Client* clientbase, const json_ref& args) {
+  UserClient* client = (UserClient*)clientbase;
 
   if (json_array_size(args) != 4) {
-    send_error_response(client, "wrong number of arguments for subscribe");
-    return;
+    throw ErrorResponse("wrong number of arguments for subscribe");
   }
 
   auto root = resolveRoot(client, args);
 
-  jname = args.at(2);
+  json_ref jname = args.at(2);
   if (!jname.isString()) {
-    send_error_response(
-        client, "expected 2nd parameter to be subscription name");
-    return;
+    throw ErrorResponse("expected 2nd parameter to be subscription name");
   }
 
-  query_spec = args.at(3);
+  json_ref query_spec = args.at(3);
 
-  query = w_query_parse(root, query_spec);
-  query->clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
+  auto query = parseQuery(root, query_spec);
+  auto clientPid = client->stm ? client->stm->getPeerProcessID() : 0;
+  query->clientInfo.clientPid = clientPid;
+  query->clientInfo.clientInfo = clientPid
+      ? std::make_optional(lookupProcessInfo(clientPid))
+      : std::nullopt;
   query->subscriptionName = json_to_w_string(jname);
 
-  defer_list = query_spec.get_default("defer");
-  if (defer_list && !defer_list.isArray()) {
-    send_error_response(client, "defer field must be an array of strings");
-    return;
+  auto defer_list = query_spec.get_optional("defer");
+  if (defer_list && !defer_list->isArray()) {
+    throw ErrorResponse("defer field must be an array of strings");
   }
 
-  drop_list = query_spec.get_default("drop");
-  if (drop_list && !drop_list.isArray()) {
-    send_error_response(client, "drop field must be an array of strings");
-    return;
+  auto drop_list = query_spec.get_optional("drop");
+  if (drop_list && !drop_list->isArray()) {
+    throw ErrorResponse("drop field must be an array of strings");
   }
 
-  sub = std::make_shared<watchman_client_subscription>(
-      root, client->shared_from_this());
+  const std::vector<json_ref>* defer_array =
+      defer_list ? &defer_list->array() : nullptr;
+  const std::vector<json_ref>* drop_array =
+      drop_list ? &drop_list->array() : nullptr;
 
-  sub->name = json_to_w_string(jname);
+  UntypedResponse resp;
+
+  auto sub_name = json_to_w_string(jname);
+
+  // Check for duplicate subscription names. We do this early because
+  // constructing a ClientSubscription with a duplicate name isn't safe.
+  if (mapContainsAny(client->subscriptions, sub_name)) {
+    if (root->config.getBool("enforce_unique_subscription_names", false)) {
+      throw ErrorResponse("subscription name '{}' is not unique", sub_name);
+    }
+    log(ERR, "clobbering existing subscription '", sub_name, "'\n");
+    resp.set(
+        "warning",
+        w_string_to_json(w_string::format(
+            "subscription name '{}' is not unique", sub_name)));
+  }
+
+  auto sub =
+      std::make_shared<ClientSubscription>(root, client->shared_from_this());
+
+  sub->name = std::move(sub_name);
   sub->query = query;
 
   auto defer = query_spec.get_default("defer_vcs", json_true());
   if (!defer.isBool()) {
-    send_error_response(client, "defer_vcs must be boolean");
-    return;
+    throw ErrorResponse("defer_vcs must be boolean");
   }
   sub->vcs_defer = defer.asBool();
 
-  if (drop_list || defer_list) {
-    size_t i;
-
-    if (defer_list) {
-      for (i = 0; i < json_array_size(defer_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(defer_list, i))] =
-            false;
-      }
+  if (defer_array) {
+    for (auto& elt : *defer_array) {
+      sub->drop_or_defer[json_to_w_string(elt)] = false;
     }
-    if (drop_list) {
-      for (i = 0; i < json_array_size(drop_list); i++) {
-        sub->drop_or_defer[json_to_w_string(json_array_get(drop_list, i))] =
-            true;
-      }
+  }
+  if (drop_array) {
+    for (auto& elt : *drop_array) {
+      sub->drop_or_defer[json_to_w_string(elt)] = true;
     }
   }
 
@@ -573,8 +563,7 @@ static void cmd_subscribe(
 
     // If they didn't specify any drop/defer behavior, default to a reasonable
     // setting that works together with the fsmonitor extension for hg.
-    if (watchman::mapContainsAny(
-            sub->drop_or_defer, "hg.update", "hg.transaction")) {
+    if (mapContainsAny(sub->drop_or_defer, "hg.update", "hg.transaction")) {
       sub->drop_or_defer["hg.update"] = false; // defer
       sub->drop_or_defer["hg.transaction"] = false; // defer
     }
@@ -586,13 +575,15 @@ static void cmd_subscribe(
     auto client_stream = w_string::build(fmt::ptr(client->stm.get()));
     auto info_json = json_object(
         {{"name", w_string_to_json(sub->name)},
-         {"query", sub->query->query_spec},
          {"client", w_string_to_json(client_id)},
          {"stm", w_string_to_json(client_stream)},
          {"is_owner", json_boolean(client->stm->peerIsOwner())},
          {"pid", json_integer(client->stm->getPeerProcessID())}});
+    if (sub->query->query_spec) {
+      info_json.set("query", json_ref(*sub->query->query_spec));
+    }
 
-    std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
+    std::weak_ptr<Client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
         sub,
         root->unilateralResponses->subscribe(
@@ -607,42 +598,46 @@ static void cmd_subscribe(
 
   client->subscriptions[sub->name] = sub;
 
-  resp = make_response();
   resp.set("subscribe", json_ref(jname));
 
   add_root_warnings_to_response(resp, root);
   ClockSpec position;
-  initial_subscription_results = sub->buildSubscriptionResults(
+  auto initial_subscription_results = sub->buildSubscriptionResults(
       root, position, OnStateTransition::DontAdvance);
   resp.set("clock", position.toJson());
-  auto saved_state_info =
-      initial_subscription_results.get_default("saved-state-info");
-  if (saved_state_info) {
-    resp.set("saved-state-info", std::move(saved_state_info));
+  if (initial_subscription_results) {
+    if (auto* saved_state_info =
+            folly::get_ptr(*initial_subscription_results, "saved-state-info")) {
+      resp.set("saved-state-info", *saved_state_info);
+    }
   }
 
-  auto asserted_states = json_array();
+  std::vector<json_ref> asserted_states;
   {
     auto rootAssertedStates = root->assertedStates.rlock();
     for (const auto& key : sub->drop_or_defer) {
       if (rootAssertedStates->isStateAsserted(key.first)) {
         // Not sure what to do in case of failure here. -jupi
-        json_array_append(asserted_states, w_string_to_json(key.first));
+        asserted_states.push_back(w_string_to_json(key.first));
       }
     }
   }
-  resp.set("asserted-states", json_ref(asserted_states));
+  resp.set("asserted-states", json_array(std::move(asserted_states)));
 
-  send_and_dispose_response(client, std::move(resp));
+  // TODO: It would be nice to return something that indicates the start of a
+  // potential stream of responses, rather than manually enqueuing here and
+  // return null.
+  client->enqueueResponse(std::move(resp));
   if (initial_subscription_results) {
-    send_and_dispose_response(client, std::move(initial_subscription_results));
+    client->enqueueResponse(std::move(*initial_subscription_results));
   }
+  throw ResponseWasHandledManually{};
 }
 W_CMD_REG(
     "subscribe",
     cmd_subscribe,
     CMD_DAEMON | CMD_ALLOW_ANY_USER,
-    w_cmd_realpath_root)
+    w_cmd_realpath_root);
 
 /* vim:ts=2:sw=2:et:
  */

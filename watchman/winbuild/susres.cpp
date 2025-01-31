@@ -1,7 +1,12 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <errno.h>
+#include <fmt/core.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -15,12 +20,12 @@ const char* win32_strerror(DWORD err) {
   static char msgbuf[1024];
   FormatMessageA(
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL,
+      nullptr,
       err,
       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
       msgbuf,
       sizeof(msgbuf) - 1,
-      NULL);
+      nullptr);
   return msgbuf;
 }
 
@@ -33,8 +38,8 @@ int apply(DWORD pid, BOOL suspend) {
   func = (sus_res_func)GetProcAddress(GetModuleHandle("ntdll"), name);
 
   if (!func) {
-    printf(
-        "Failed to GetProcAddress(%s): %s\n",
+    fmt::print(
+        "Failed to GetProcAddress({}): {}\n",
         name,
         win32_strerror(GetLastError()));
     return 1;
@@ -42,15 +47,16 @@ int apply(DWORD pid, BOOL suspend) {
 
   proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (proc == INVALID_HANDLE_VALUE) {
-    printf(
-        "Failed to OpenProcess(%d): %s\n", pid, win32_strerror(GetLastError()));
+    fmt::print(
+        "Failed to OpenProcess({}): {}\n", pid, win32_strerror(GetLastError()));
     return 1;
   }
 
   res = func(proc);
 
   if (res) {
-    printf("%s(%d) returns %x: %s\n", name, pid, res, win32_strerror(res));
+    fmt::print(
+        "{}({}) returns {:x}: {}\n", name, pid, res, win32_strerror(res));
   }
 
   CloseHandle(proc);
@@ -59,7 +65,7 @@ int apply(DWORD pid, BOOL suspend) {
 }
 
 void usage() {
-  printf(
+  fmt::print(
       "Usage: susres suspend [pid]\n"
       "       susres resume  [pid\n");
   exit(1);

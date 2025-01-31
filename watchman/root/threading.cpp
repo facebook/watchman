@@ -1,89 +1,88 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
+#include "watchman/QueryableView.h"
+#include "watchman/TriggerCommand.h"
+#include "watchman/root/Root.h"
 
-std::shared_ptr<watchman::QueryableView> watchman_root::view() {
-  // We grab a read lock on the recrawl info to ensure that we
-  // can't race with scheduleRecrawl and observe a nullptr for
-  // the view_.
-  auto info = recrawlInfo.rlock();
-  return inner.view_;
-}
+using namespace watchman;
 
-void watchman_root::recrawlTriggered(const char* why) {
+void Root::recrawlTriggered(const char* why) {
   recrawlInfo.wlock()->recrawlCount++;
 
-  watchman::log(
-      watchman::ERR, root_path, ": ", why, ": tree recrawl triggered\n");
+  log(ERR, root_path, ": ", why, ": tree recrawl triggered\n");
 }
 
-void watchman_root::scheduleRecrawl(const char* why) {
+void Root::scheduleRecrawl(const char* why) {
   {
     auto info = recrawlInfo.wlock();
 
     if (!info->shouldRecrawl) {
       info->recrawlCount++;
+      info->reason = why;
       if (!config.getBool("suppress_recrawl_warnings", false)) {
         info->warning = w_string::build(
             "Recrawled this watch ",
             info->recrawlCount,
-            " times, most recently because:\n",
+            " time",
+            info->recrawlCount != 1 ? "s" : "",
+            ", most recently because:\n",
             why,
             "To resolve, please review the information on\n",
             cfg_get_trouble_url(),
             "#recrawl");
       }
 
-      watchman::log(
-          watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
+      log(ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
     }
     info->shouldRecrawl = true;
   }
   view()->wakeThreads();
 }
 
-void watchman_root::signalThreads() {
-  view()->signalThreads();
+void Root::stopThreads(std::string_view reason) {
+  view()->stopThreads(reason);
 }
 
 // Cancels a watch.
-bool watchman_root::cancel() {
-  bool cancelled = false;
+bool Root::cancel(std::string_view reason) {
+  if (inner.cancelled.exchange(true, std::memory_order_acq_rel)) {
+    // Already cancelled. Return false.
+    return false;
+  }
 
-  if (!inner.cancelled) {
-    cancelled = true;
+  log(DBG, "marked ", root_path, " cancelled\n");
 
-    watchman::log(watchman::DBG, "marked ", root_path, " cancelled\n");
-    inner.cancelled = true;
+  // The client will fan this out to all matching subscriptions.
+  // This happens in listener.cpp.
+  unilateralResponses->enqueue(json_object(
+      {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
 
-    // The client will fan this out to all matching subscriptions.
-    // This happens in listener.cpp.
-    unilateralResponses->enqueue(json_object(
-        {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
+  stopThreads(reason);
+  removeFromWatched();
 
-    signalThreads();
-    removeFromWatched();
-
-    {
-      auto map = triggers.rlock();
-      for (auto& it : *map) {
-        it.second->stop();
-      }
+  {
+    auto map = triggers.rlock();
+    for (auto& it : *map) {
+      it.second->stop();
     }
   }
 
-  return cancelled;
+  return true;
 }
 
-bool watchman_root::stopWatch() {
+bool Root::stopWatch(std::string_view reason) {
   bool stopped = removeFromWatched();
 
   if (stopped) {
-    cancel();
-    w_state_save();
+    cancel(reason);
+    saveGlobalStateHook_();
   }
-  signalThreads();
+  stopThreads(reason);
 
   return stopped;
 }

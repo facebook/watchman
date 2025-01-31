@@ -1,10 +1,17 @@
-#include "SymlinkTargets.h"
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "watchman/SymlinkTargets.h"
 #include <folly/ScopeGuard.h>
 #include <string>
-#include "watchman/FileSystem.h"
+#include "watchman/Hash.h"
 #include "watchman/Logging.h"
 #include "watchman/ThreadPool.h"
-#include "watchman_hash.h"
+#include "watchman/fs/FileSystem.h"
 
 namespace watchman {
 
@@ -16,7 +23,7 @@ bool SymlinkTargetCacheKey::operator==(
 }
 
 std::size_t SymlinkTargetCacheKey::hashValue() const {
-  return hash_128_to_64(w_string_hval(relativePath), otime.ticks);
+  return hash_128_to_64(relativePath.hashValue(), otime.ticks);
 }
 
 SymlinkTargetCache::SymlinkTargetCache(

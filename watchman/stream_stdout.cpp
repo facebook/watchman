@@ -1,6 +1,13 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
-#include "watchman/watchman.h"
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "watchman/Logging.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/watchman_stream.h"
 
 using watchman::FileDescriptor;
 using namespace watchman;
@@ -38,7 +45,7 @@ class StdioStream : public watchman_stream {
     return result.value();
   }
 
-  w_evt_t getEvents() override {
+  watchman_event* getEvents() override {
     log(FATAL, "calling get_events on a stdio stm\n");
     return nullptr;
   }
@@ -67,12 +74,12 @@ class StdioStream : public watchman_stream {
 };
 } // namespace
 
-w_stm_t w_stm_stdout() {
+watchman_stream* w_stm_stdout() {
   static StdioStream stdoutStream(FileDescriptor::stdOut());
   return &stdoutStream;
 }
 
-w_stm_t w_stm_stdin() {
+watchman_stream* w_stm_stdin() {
   static StdioStream stdinStream(FileDescriptor::stdIn());
   return &stdinStream;
 }

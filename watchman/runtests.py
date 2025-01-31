@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # vim:ts=4:sw=4:et:
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
-# no unicode literals
-from __future__ import absolute_import, division, print_function
 
 import argparse
 import json
@@ -19,6 +21,7 @@ import tempfile
 import threading
 import time
 import traceback
+import unittest
 
 
 # in the FB internal test infra, ensure that we are running from the
@@ -29,18 +32,13 @@ import traceback
 if not os.path.exists("runtests.py") and os.path.exists("watchman/runtests.py"):
     os.chdir("watchman")
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 # Ensure that we can find pywatchman and integration tests (if we're not the
 # main module, a wrapper is probably loading us up and we shouldn't screw around
 # with sys.path).
 if __name__ == "__main__":
     sys.path.insert(0, os.path.join(os.getcwd(), "python"))
-    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration"))
-    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration", "facebook"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "integration"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "integration", "facebook"))
 
 
 # Only Python 3.5+ supports native asyncio
@@ -369,8 +367,8 @@ class Loader(unittest.TestLoader):
 loader = Loader()
 suite = unittest.TestSuite()
 
-directories = ["python/tests", "tests/integration"]
-facebook_directory = "tests/integration/facebook"
+directories = ["python/tests", "integration"]
+facebook_directory = "integration/facebook"
 if os.path.exists(facebook_directory):
     # the facebook dir isn't sync'd to github, but it
     # is present internally, so it should remain in this list
@@ -389,9 +387,10 @@ else:
 
 tls = threading.local()
 
+
 # Manage printing from concurrent threads
 # http://stackoverflow.com/a/3030755/149111
-class ThreadSafeFile(object):
+class ThreadSafeFile:
     def __init__(self, f):
         self.f = f
         self.lock = threading.RLock()

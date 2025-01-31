@@ -52,9 +52,6 @@ project e-mail address, posting via an official social media account, or acting
 as an appointed representative at an online or offline event. Representation of
 a project may be further defined and clarified by project maintainers.
 
-This Code of Conduct also applies outside the project spaces when there is a
-reasonable belief that an individual's behavior may have a negative impact on
-the project or its community.
 
 ## Enforcement
 
@@ -77,4 +74,4 @@ available at https://www.contributor-covenant.org/version/1/4/code-of-conduct.ht
 [homepage]: https://www.contributor-covenant.org
 
 For answers to common questions about this code of conduct, see
-https://www.contributor-covenant.org/faq
+>>>>>> main

@@ -1,19 +1,25 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include "WatchmanConnection.h"
 
 #include <cstdlib>
 
+#include <fmt/core.h>
+
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/executors/InlineExecutor.h>
-#include <folly/experimental/bser/Bser.h>
+#include <folly/json/bser/Bser.h>
 
 #ifdef _WIN32
-#include <eden/fs/utils/SpawnedProcess.h>
+#include <eden/common/utils/SpawnedProcess.h> // @manual
 #else
-#include <folly/Subprocess.h>
+#include <folly/Subprocess.h> // @manual
 #endif
 
 namespace watchman {
@@ -36,8 +42,8 @@ static InlineExecutor inlineExecutor;
 
 WatchmanConnection::WatchmanConnection(
     EventBase* eventBase,
-    Optional<std::string>&& sockPath,
-    Optional<WatchmanConnection::Callback>&& callback,
+    std::optional<std::string>&& sockPath,
+    std::optional<WatchmanConnection::Callback>&& callback,
     Executor* cpuExecutor)
     : eventBase_(eventBase),
       sockPath_(std::move(sockPath)),
@@ -84,18 +90,29 @@ folly::Future<std::string> WatchmanConnection::getSockPath() {
     auto out_pair = proc.communicate();
     auto returnCode = proc.wait();
     if (returnCode.exitStatus() != 0) {
-      throw WatchmanError{folly::to<std::string>(
-          "`watchman get-sockname` returned error code ",
-          returnCode.exitStatus(),
 #ifndef _WIN32
-          " when called as user ",
+      throw WatchmanError{fmt::format(
+          "`watchman get-sockname` returned error code {} when called as user {}. Error: {}",
+          returnCode.exitStatus(),
           geteuid(),
-#endif
-          ". Error: ",
           out_pair.second)};
+#else
+      throw WatchmanError{fmt::format(
+          "`watchman get-sockname` returned error code {}. Error: {}", returnCode.exitStatus(), out_pair.second)};
+#endif
     }
     auto result = parseBser(out_pair.first);
-    return result["unix_domain"].asString();
+
+    // Recent versions of watchman include both `unix_domain` and `sockname`
+    // fields, however older versions - such as v4.9.0, included in Ubuntu
+    // 20.04 - only define `sockname`.
+    //
+    // Prefer the newer, more specific 'unix_domain', but fall back to
+    // 'sockname'.
+    if (result.count("unix_domain")) {
+      return result["unix_domain"].asString();
+    }
+    return result["sockname"].asString();
   });
 }
 
@@ -169,13 +186,10 @@ void WatchmanConnection::connectSuccess() noexcept {
           }
           shared_this->connectPromise_.setValue(std::move(result));
         })
-        .thenError([shared_this =
-                        shared_from_this()](const folly::exception_wrapper& e) {
-          shared_this->connectPromise_.setException(e);
-        });
-  } catch (const std::exception& e) {
-    connectPromise_.setException(
-        folly::exception_wrapper(std::current_exception(), e));
+        .thenError(
+            [shared_this = shared_from_this()](folly::exception_wrapper&& e) {
+              shared_this->connectPromise_.setException(std::move(e));
+            });
   } catch (...) {
     connectPromise_.setException(
         folly::exception_wrapper(std::current_exception()));
@@ -221,8 +235,7 @@ Future<dynamic> WatchmanConnection::run(const dynamic& command) noexcept {
 }
 
 // Generate a failure for all queued commands
-void WatchmanConnection::failQueuedCommands(
-    const folly::exception_wrapper& ex) {
+void WatchmanConnection::failQueuedCommands(folly::exception_wrapper&& ex) {
   std::lock_guard<std::mutex> g(mutex_);
   auto q = commandQ_;
   commandQ_.clear();
@@ -236,8 +249,12 @@ void WatchmanConnection::failQueuedCommands(
 
   // If the user has explicitly closed the connection no need for callback
   if (callback_ && !closing_) {
-    cpuExecutor_->add([shared_this = shared_from_this(), ex] {
-      (*(shared_this->callback_))(folly::Try<folly::dynamic>(ex));
+    cpuExecutor_->add([shared_this = shared_from_this(), ex = std::move(ex)] {
+      // Make sure we weren't asked to close between the time we fired this
+      // callback and when the callback ran.
+      if (!shared_this->closing_) {
+        (*(shared_this->callback_))(folly::Try<folly::dynamic>(std::move(ex)));
+      }
     });
   }
 }
@@ -391,9 +408,8 @@ void WatchmanConnection::decodeNextResponse() {
       // queued up more commands; we want to be the one thing that
       // is responsible for sending the next queued command here
       popAndSendCommand();
-    } catch (const std::exception& ex) {
-      failQueuedCommands(
-          folly::exception_wrapper{std::current_exception(), ex});
+    } catch (...) {
+      failQueuedCommands(folly::exception_wrapper{std::current_exception()});
       return;
     }
   }

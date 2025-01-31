@@ -1,30 +1,43 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/CommandRegistry.h"
+#include "watchman/Errors.h"
+#include "watchman/query/FileResult.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/QueryContext.h"
+#include "watchman/watchman_time.h"
 
-using namespace watchman;
-using folly::Optional;
+namespace watchman {
 
-static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
+namespace {
+
+std::optional<json_ref> make_name(FileResult* file, const QueryContext* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
+std::optional<json_ref> make_symlink(FileResult* file, const QueryContext*) {
   auto target = file->readLink();
   if (!target.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
-  return *target ? w_string_to_json(*target) : json_null();
+  if (std::holds_alternative<NotSymlink>(*target)) {
+    return json_null();
+  } else {
+    return w_string_to_json(std::get<w_string>(*target));
+  }
 }
 
-static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
+std::optional<json_ref> make_sha1_hex(FileResult* file, const QueryContext*) {
   try {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
       // Need to load it still
-      return folly::none;
+      return std::nullopt;
     }
     char buf[40];
     static const char* hexDigit = "0123456789abcdef";
@@ -36,8 +49,8 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
     return w_string_to_json(w_string(buf, sizeof(buf), W_STRING_UNICODE));
   } catch (const std::system_error& exc) {
     auto errcode = exc.code();
-    if (errcode == watchman::error_code::no_such_file_or_directory ||
-        errcode == watchman::error_code::is_a_directory) {
+    if (errcode == error_code::no_such_file_or_directory ||
+        errcode == error_code::is_a_directory) {
       // Deleted files, or (currently existing) directories have no hash
       return json_null();
     }
@@ -53,37 +66,39 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
   }
 }
 
-static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
+std::optional<json_ref> make_size(FileResult* file, const QueryContext*) {
   auto size = file->size();
   if (!size.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return json_integer(size.value());
 }
 
-static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
+std::optional<json_ref> make_exists(FileResult* file, const QueryContext*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
   return json_boolean(exists.value());
 }
 
-static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
+std::optional<json_ref> make_new(FileResult* file, const QueryContext* ctx) {
   bool is_new = false;
 
-  if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
+  auto* since_clock = std::get_if<QuerySince::Clock>(&ctx->since.since);
+  if (since_clock && since_clock->is_fresh_instance) {
     is_new = true;
   } else {
     auto ctime = file->ctime();
     if (!ctime.has_value()) {
       // Reconsider this one later
-      return folly::none;
+      return std::nullopt;
     }
-    if (ctx->since.is_timestamp) {
-      is_new = ctx->since.timestamp > ctime->timestamp;
+    if (since_clock) {
+      is_new = ctime->ticks > since_clock->ticks;
     } else {
-      is_new = ctime->ticks > ctx->since.clock.ticks;
+      auto& since_ts = std::get<QuerySince::Timestamp>(ctx->since.since);
+      is_new = since_ts.time > ctime->timestamp;
     }
   }
 
@@ -91,13 +106,13 @@ static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
 }
 
 #define MAKE_CLOCK_FIELD(name, member)                      \
-  static Optional<json_ref> make_##name(                    \
-      FileResult* file, const w_query_ctx* ctx) {           \
+  static std::optional<json_ref> make_##name(               \
+      FileResult* file, const QueryContext* ctx) {          \
     char buf[128];                                          \
     auto clock = file->member();                            \
     if (!clock.has_value()) {                               \
       /* need to load data */                               \
-      return folly::none;                                   \
+      return std::nullopt;                                  \
     }                                                       \
     if (clock_id_string(                                    \
             ctx->clockAtStartOfQuery.position().rootNumber, \
@@ -118,24 +133,24 @@ static_assert(
     sizeof(json_int_t) >= sizeof(time_t),
     "json_int_t isn't large enough to hold a time_t");
 
-#define MAKE_INT_FIELD(name, member)          \
-  static Optional<json_ref> make_##name(      \
-      FileResult* file, const w_query_ctx*) { \
-    auto stat = file->stat();                 \
-    if (!stat.has_value()) {                  \
-      /* need to load data */                 \
-      return folly::none;                     \
-    }                                         \
-    return json_integer(stat->member);        \
+#define MAKE_INT_FIELD(name, member)           \
+  static std::optional<json_ref> make_##name(  \
+      FileResult* file, const QueryContext*) { \
+    auto stat = file->stat();                  \
+    if (!stat.has_value()) {                   \
+      /* need to load data */                  \
+      return std::nullopt;                     \
+    }                                          \
+    return json_integer(stat->member);         \
   }
 
 #define MAKE_TIME_INT_FIELD(name, member, scale)                  \
-  static Optional<json_ref> make_##name(                          \
-      FileResult* file, const w_query_ctx*) {                     \
+  static std::optional<json_ref> make_##name(                     \
+      FileResult* file, const QueryContext*) {                    \
     auto spec = file->member();                                   \
     if (!spec.has_value()) {                                      \
       /* need to load data */                                     \
-      return folly::none;                                         \
+      return std::nullopt;                                        \
     }                                                             \
     return json_integer(                                          \
         ((int64_t)spec->tv_sec * scale) +                         \
@@ -143,12 +158,12 @@ static_assert(
   }
 
 #define MAKE_TIME_DOUBLE_FIELD(name, member)               \
-  static Optional<json_ref> make_##name(                   \
-      FileResult* file, const w_query_ctx*) {              \
+  static std::optional<json_ref> make_##name(              \
+      FileResult* file, const QueryContext*) {             \
     auto spec = file->member();                            \
     if (!spec.has_value()) {                               \
       /* need to load data */                              \
-      return folly::none;                                  \
+      return std::nullopt;                                 \
     }                                                      \
     return json_real(spec->tv_sec + 1e-9 * spec->tv_nsec); \
   }
@@ -186,9 +201,7 @@ MAKE_INT_FIELD(nlink, nlink)
   { #type "time_f", make_##type##time_f}
 // clang-format on
 
-static Optional<json_ref> make_type_field(
-    FileResult* file,
-    const w_query_ctx*) {
+std::optional<json_ref> make_type_field(FileResult* file, const QueryContext*) {
   auto dtype = file->dtype();
   if (dtype.has_value()) {
     switch (*dtype) {
@@ -221,7 +234,7 @@ static Optional<json_ref> make_type_field(
   // Bias towards the more common file types first
   auto optionalStat = file->stat();
   if (!optionalStat.has_value()) {
-    return folly::none;
+    return std::nullopt;
   }
 
   auto stat = optionalStat.value();
@@ -257,10 +270,10 @@ static Optional<json_ref> make_type_field(
 }
 
 // Helper to construct the list of field defs
-static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
+std::unordered_map<w_string, QueryFieldRenderer> build_defs() {
   struct {
     const char* name;
-    Optional<json_ref> (*make)(FileResult* file, const w_query_ctx* ctx);
+    std::optional<json_ref> (*make)(FileResult* file, const QueryContext* ctx);
   } defs[] = {
       {"name", make_name},
       {"symlink_target", make_symlink},
@@ -281,10 +294,10 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
       {"type", make_type_field},
       {"content.sha1hex", make_sha1_hex},
   };
-  std::unordered_map<w_string, w_query_field_renderer> map;
+  std::unordered_map<w_string, QueryFieldRenderer> map;
   for (auto& def : defs) {
     w_string name(def.name, W_STRING_UNICODE);
-    map.emplace(name, w_query_field_renderer{name, def.make});
+    map.emplace(name, QueryFieldRenderer{name, def.make});
   }
 
   return map;
@@ -292,84 +305,71 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
 
 // Meyers singleton to avoid SIOF wrt. static constructors in this module
 // and the order that w_ctor_fn callbacks are dispatched.
-static std::unordered_map<w_string, w_query_field_renderer>& field_defs() {
-  static std::unordered_map<w_string, w_query_field_renderer> map(build_defs());
+std::unordered_map<w_string, QueryFieldRenderer>& field_defs() {
+  static std::unordered_map<w_string, QueryFieldRenderer> map(build_defs());
   return map;
 }
 
-json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
-  auto templ = json_array_of_size(fieldList.size());
+} // namespace
 
-  for (auto& f : fieldList) {
-    json_array_append_new(templ, w_string_to_json(f->name));
+void QueryFieldList::add(const w_string& name) {
+  auto& defs = field_defs();
+  auto it = defs.find(name);
+  if (it == defs.end()) {
+    QueryParseError::throwf("unknown field name '{}'", name);
   }
-
-  return templ;
+  this->push_back(&it->second);
 }
 
-Optional<json_ref> file_result_to_json(
-    const w_query_field_list& fieldList,
-    const std::unique_ptr<FileResult>& file,
-    const w_query_ctx* ctx) {
-  if (fieldList.size() == 1) {
-    return fieldList.front()->make(file.get(), ctx);
-  }
-  auto value = json_object_of_size(fieldList.size());
+json_ref field_list_to_json_name_array(const QueryFieldList& fieldList) {
+  std::vector<json_ref> templ;
+  templ.reserve(fieldList.size());
 
   for (auto& f : fieldList) {
-    auto ele = f->make(file.get(), ctx);
-    if (!ele.has_value()) {
-      // Need data to be loaded
-      return folly::none;
-    }
-    value.set(f->name, std::move(ele.value()));
+    templ.push_back(w_string_to_json(f->name));
   }
-  return value;
+
+  return json_array(std::move(templ));
 }
 
-void parse_field_list(json_ref field_list, w_query_field_list* selected) {
-  uint32_t i;
-
+void parse_field_list(
+    const std::optional<json_ref>& maybe_field_list,
+    QueryFieldList* selected) {
   selected->clear();
 
-  if (!field_list) {
-    // Use the default list
-    field_list = json_array(
-        {typed_string_to_json("name", W_STRING_UNICODE),
-         typed_string_to_json("exists", W_STRING_UNICODE),
-         typed_string_to_json("new", W_STRING_UNICODE),
-         typed_string_to_json("size", W_STRING_UNICODE),
-         typed_string_to_json("mode", W_STRING_UNICODE)});
-  }
+  json_ref field_list = maybe_field_list
+      ? *maybe_field_list
+      : json_array(
+            {typed_string_to_json("name", W_STRING_UNICODE),
+             typed_string_to_json("exists", W_STRING_UNICODE),
+             typed_string_to_json("new", W_STRING_UNICODE),
+             typed_string_to_json("size", W_STRING_UNICODE),
+             typed_string_to_json("mode", W_STRING_UNICODE)});
 
   if (!field_list.isArray()) {
     throw QueryParseError("field list must be an array of strings");
   }
 
-  for (i = 0; i < json_array_size(field_list); i++) {
-    auto jname = json_array_get(field_list, i);
-
+  for (auto& jname : field_list.array()) {
     if (!jname.isString()) {
       throw QueryParseError("field list must be an array of strings");
     }
 
     auto name = json_to_w_string(jname);
-    auto& defs = field_defs();
-    auto it = defs.find(name);
-    if (it == defs.end()) {
-      throw QueryParseError("unknown field name '", name, "'");
+    selected->add(name);
+  }
+}
+
+namespace {
+struct register_field_capabilities {
+  register_field_capabilities() {
+    for (auto& it : field_defs()) {
+      char capname[128];
+      snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
+      capability_register(capname);
     }
-    selected->push_back(&it->second);
   }
-}
+} reg;
+} // namespace
 
-static w_ctor_fn_type(register_field_capabilities) {
-  for (auto& it : field_defs()) {
-    char capname[128];
-    snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
-    capability_register(capname);
-  }
-}
-
-// This is at the bottom because it confuses clang-format for things that follow
-w_ctor_fn_reg(register_field_capabilities)
+} // namespace watchman

@@ -1,5 +1,9 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 /*
   This is a test utility for WatchmanConnection. This works a bit like the
@@ -21,7 +25,7 @@
 
 #include <folly/init/Init.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
-#include <folly/json.h>
+#include <folly/json/json.h>
 
 using namespace folly;
 using namespace watchman;

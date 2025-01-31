@@ -1,10 +1,17 @@
-/* Copyright 2014-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #include <folly/Synchronized.h>
-#include "watchman/FileDescriptor.h"
 #include "watchman/InMemoryView.h"
-#include "watchman/watchman.h"
+#include "watchman/fs/FileDescriptor.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/root/Root.h"
+#include "watchman/watcher/Watcher.h"
+#include "watchman/watcher/WatcherRegistry.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -13,54 +20,52 @@
 #include <mutex>
 #include <tuple>
 
-using watchman::FileDescriptor;
 using namespace watchman;
 
 #ifdef _WIN32
 
-#define NETWORK_BUF_SIZE (64 * 1024)
-
 namespace {
+
+constexpr DWORD kNetworkBufSize = 64 * 1024;
 
 struct Item {
   w_string path;
-  int flags;
+  PendingFlags flags;
 
-  Item(w_string&& path, int flags) : path(std::move(path)), flags(flags) {}
+  Item(w_string&& path, PendingFlags flags)
+      : path(std::move(path)), flags(flags) {}
 };
 
 } // namespace
 
 struct WinWatcher : public Watcher {
-  HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
+  HANDLE ping{INVALID_HANDLE_VALUE};
+  HANDLE olapEvent{INVALID_HANDLE_VALUE};
   FileDescriptor dir_handle;
 
   std::condition_variable cond;
   folly::Synchronized<std::list<Item>, std::mutex> changedItems;
 
-  explicit WinWatcher(watchman_root* root);
+  explicit WinWatcher(const w_string& root_path, const Configuration& config);
   ~WinWatcher();
 
-  std::unique_ptr<watchman_dir_handle> startWatchDir(
-      const std::shared_ptr<watchman_root>& root,
-      struct watchman_dir* dir,
+  std::unique_ptr<DirHandle> startWatchDir(
+      const std::shared_ptr<Root>& root,
       const char* path) override;
 
   Watcher::ConsumeNotifyRet consumeNotify(
-      const std::shared_ptr<watchman_root>& root,
+      const std::shared_ptr<Root>& root,
       PendingChanges& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  bool start(const std::shared_ptr<watchman_root>& root) override;
-  void signalThreads() override;
-  void readChangesThread(const std::shared_ptr<watchman_root>& root);
+  bool start(const std::shared_ptr<Root>& root) override;
+  void stopThreads() override;
+  void readChangesThread(const std::shared_ptr<Root>& root);
 };
 
-WinWatcher::WinWatcher(watchman_root* root)
+WinWatcher::WinWatcher(const w_string& root_path, const Configuration& config)
     : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-  int err;
-
-  auto wpath = root->root_path.piece().asWideUNC();
+  auto wpath = root_path.piece().asWideUNC();
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
@@ -77,7 +82,7 @@ WinWatcher::WinWatcher(watchman_root* root)
 
   if (!dir_handle) {
     throw std::runtime_error(
-        std::string("failed to open dir ") + root->root_path.c_str() + ": " +
+        std::string("failed to open dir ") + root_path.c_str() + ": " +
         win32_strerror(GetLastError()));
   }
 
@@ -104,19 +109,18 @@ WinWatcher::~WinWatcher() {
   }
 }
 
-void WinWatcher::signalThreads() {
+void WinWatcher::stopThreads() {
   SetEvent(ping);
 }
 
-void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
+void WinWatcher::readChangesThread(const std::shared_ptr<Root>& root) {
   std::vector<uint8_t> buf;
-  DWORD err, filter;
   auto olap = OVERLAPPED();
   BOOL initiate_read = true;
   HANDLE handles[2] = {olapEvent, ping};
   DWORD bytes;
 
-  w_set_thread_name("readchange ", root->root_path);
+  w_set_thread_name("readchange ", root->root_path.view());
   watchman::log(watchman::DBG, "initializing\n");
 
   // Artificial extra latency to impose around processing changes.
@@ -127,13 +131,13 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
 
   DWORD size = root->config.getInt("win32_rdcw_buf_size", 16384);
 
+  DWORD filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+      FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
+      FILE_NOTIFY_CHANGE_LAST_WRITE;
+
   // Block until winmatch_root_st is waiting for our initialization
   {
     auto wlock = changedItems.lock();
-
-    filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
-        FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
-        FILE_NOTIFY_CHANGE_LAST_WRITE;
 
     olap.hEvent = olapEvent;
 
@@ -148,12 +152,13 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
             nullptr,
             &olap,
             nullptr)) {
-      err = GetLastError();
+      DWORD err = GetLastError();
       logf(
           ERR,
           "ReadDirectoryChangesW: failed, cancel watch. {}\n",
           win32_strerror(err));
-      root->cancel();
+      root->cancel(
+          fmt::format("ReadDirectoryChangesW failed: {}", win32_strerror(err)));
       return;
     }
     // Signal that we are done with init.  We MUST do this AFTER our first
@@ -179,12 +184,13 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
               nullptr,
               &olap,
               nullptr)) {
-        err = GetLastError();
+        DWORD err = GetLastError();
         logf(
             ERR,
             "ReadDirectoryChangesW: failed, cancel watch. {}\n",
             win32_strerror(err));
-        root->cancel();
+        root->cancel(fmt::format(
+            "ReadDirectoryChangesW failed: {}", win32_strerror(err)));
         break;
       } else {
         initiate_read = false;
@@ -209,7 +215,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
       bytes = 0;
       if (!GetOverlappedResult(
               (HANDLE)dir_handle.handle(), &olap, &bytes, FALSE)) {
-        err = GetLastError();
+        DWORD err = GetLastError();
         logf(
             ERR,
             "overlapped ReadDirectoryChangesW({}): {:x} {}\n",
@@ -217,7 +223,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
             err,
             win32_strerror(err));
 
-        if (err == ERROR_INVALID_PARAMETER && size > NETWORK_BUF_SIZE) {
+        if (err == ERROR_INVALID_PARAMETER && size > kNetworkBufSize) {
           // May be a network buffer related size issue; the docs say that
           // we can hit this when watching a UNC path. Let's downsize and
           // retry the read just one time
@@ -226,54 +232,79 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
               "retrying watch for possible network location {} "
               "with smaller buffer\n",
               root->root_path);
-          size = NETWORK_BUF_SIZE;
+          size = kNetworkBufSize;
           initiate_read = true;
           continue;
         }
 
         if (err == ERROR_NOTIFY_ENUM_DIR) {
-          root->scheduleRecrawl("ERROR_NOTIFY_ENUM_DIR");
+          root->recrawlTriggered(
+              "GetOverlappedResult failed with ERROR_NOTIFY_ENUM_DIR");
+          items.emplace_back(
+              w_string{root->root_path},
+              PendingFlags{W_PENDING_IS_DESYNCED | W_PENDING_RECURSIVE});
         } else {
           logf(ERR, "Cancelling watch for {}\n", root->root_path);
-          root->cancel();
+          root->cancel(fmt::format(
+              "unexpected error from GetOverlappedResult: {}",
+              win32_strerror(err)));
           break;
         }
       } else {
-        PFILE_NOTIFY_INFORMATION notify = (PFILE_NOTIFY_INFORMATION)buf.data();
+        if (bytes == 0) {
+          root->recrawlTriggered("ReadDirectoryChangesW overflowed");
+          items.emplace_back(
+              w_string{root->root_path},
+              PendingFlags{W_PENDING_IS_DESYNCED | W_PENDING_RECURSIVE});
+        } else {
+          PFILE_NOTIFY_INFORMATION notify =
+              (PFILE_NOTIFY_INFORMATION)buf.data();
 
-        while (true) {
-          DWORD n_chars;
+          while (true) {
+            // FileNameLength is in BYTES, but FileName is WCHAR
+            DWORD n_chars =
+                notify->FileNameLength / sizeof(notify->FileName[0]);
+            w_string name(notify->FileName, n_chars);
 
-          // FileNameLength is in BYTES, but FileName is WCHAR
-          n_chars = notify->FileNameLength / sizeof(notify->FileName[0]);
-          w_string name(notify->FileName, n_chars);
+            auto full = w_string::pathCat({root->root_path, name});
 
-          auto full = w_string::pathCat({root->root_path, name});
+            if (!root->ignore.isIgnored(full.data(), full.size())) {
+              // If we have a delete or rename-away it may be part of
+              // a recursive tree remove or rename.  In that situation
+              // the notifications that we'll receive from the OS will
+              // be from the leaves and bubble up to the root of the
+              // delete/rename.  We want to flag those paths for recursive
+              // analysis so that we can prune children from the trie
+              // that is built when we pass this to the pending list
+              // later.  We don't do that here in this thread because
+              // we're trying to minimize latency in this context.
+              items.emplace_back(
+                  w_string{full},
+                  (notify->Action == FILE_ACTION_REMOVED ||
+                   notify->Action == FILE_ACTION_RENAMED_OLD_NAME)
+                      ? W_PENDING_RECURSIVE
+                      : 0);
 
-          if (!root->ignore.isIgnored(full.data(), full.size())) {
-            // If we have a delete or rename-away it may be part of
-            // a recursive tree remove or rename.  In that situation
-            // the notifications that we'll receive from the OS will
-            // be from the leaves and bubble up to the root of the
-            // delete/rename.  We want to flag those paths for recursive
-            // analysis so that we can prune children from the trie
-            // that is built when we pass this to the pending list
-            // later.  We don't do that here in this thread because
-            // we're trying to minimize latency in this context.
-            items.emplace_back(
-                std::move(full),
-                (notify->Action &
-                 (FILE_ACTION_REMOVED | FILE_ACTION_RENAMED_OLD_NAME)) != 0
-                    ? W_PENDING_RECURSIVE
-                    : 0);
+              if (!name.empty() &&
+                  (notify->Action == FILE_ACTION_ADDED ||
+                   notify->Action == FILE_ACTION_REMOVED ||
+                   notify->Action == FILE_ACTION_RENAMED_OLD_NAME ||
+                   notify->Action == FILE_ACTION_RENAMED_NEW_NAME)) {
+                // ReadDirectoryChangesW provides change events when the child
+                // entry list changes, but may not provide a notification for
+                // the parent when its mtime changes. It should be rescanned, so
+                // synthesize an event for the IO thread here.
+                items.emplace_back(full.dirName(), PendingFlags{});
+              }
+            }
+
+            // Advance to next item
+            if (notify->NextEntryOffset == 0) {
+              break;
+            }
+            notify = (PFILE_NOTIFY_INFORMATION)(notify->NextEntryOffset +
+                                                (char*)notify);
           }
-
-          // Advance to next item
-          if (notify->NextEntryOffset == 0) {
-            break;
-          }
-          notify =
-              (PFILE_NOTIFY_INFORMATION)(notify->NextEntryOffset + (char*)notify);
         }
 
         ResetEvent(olapEvent);
@@ -302,9 +333,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<watchman_root>& root) {
   logf(DBG, "done\n");
 }
 
-bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
-  int err;
-
+bool WinWatcher::start(const std::shared_ptr<Root>& root) {
   // Spin up the changes reading thread; it owns a ref on the root
 
   try {
@@ -318,7 +347,7 @@ bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
         self->readChangesThread(root);
       } catch (const std::exception& e) {
         watchman::log(watchman::ERR, "uncaught exception: ", e.what());
-        root->cancel();
+        root->cancel(fmt::format("readChangesThread errored: {}", e.what()));
       }
 
       // Ensure that we signal the condition variable before we
@@ -337,7 +366,7 @@ bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
         std::cv_status::timeout) {
       watchman::log(
           watchman::ERR, "timedout waiting for readChangesThread to start\n");
-      root->cancel();
+      root->cancel("timedout waiting for readChangesThread to start");
       return false;
     }
 
@@ -345,7 +374,7 @@ bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
       logf(
           ERR,
           "failed to start readchanges thread: {}\n",
-          root->failure_reason);
+          *root->failure_reason);
       return false;
     }
     return true;
@@ -355,15 +384,14 @@ bool WinWatcher::start(const std::shared_ptr<watchman_root>& root) {
   }
 }
 
-std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
-    const std::shared_ptr<watchman_root>& root,
-    struct watchman_dir* dir,
+std::unique_ptr<DirHandle> WinWatcher::startWatchDir(
+    const std::shared_ptr<Root>& root,
     const char* path) {
-  return w_dir_open(path);
+  return openDir(path);
 }
 
 Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
-    const std::shared_ptr<watchman_root>& root,
+    const std::shared_ptr<Root>& root,
     PendingChanges& coll) {
   std::list<Item> items;
 
@@ -380,17 +408,20 @@ Watcher::ConsumeNotifyRet WinWatcher::consumeNotify(
         "readchanges: add pending ",
         item.path,
         " ",
-        item.flags,
+        item.flags.format(),
         "\n");
     coll.add(item.path, now, W_PENDING_VIA_NOTIFY | item.flags);
   }
 
   // The readChangesThread cancels itself.
-  return {!items.empty(), false};
+  return {false};
 }
 
 bool WinWatcher::waitNotify(int timeoutms) {
   auto wlock = changedItems.lock();
+  if (!wlock->empty()) {
+    return true;
+  }
   cond.wait_for(wlock.as_lock(), std::chrono::milliseconds(timeoutms));
   return !wlock->empty();
 }

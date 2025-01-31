@@ -1,11 +1,16 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
-#include <folly/Conv.h>
+
 #include <chrono>
-#include <memory>
-#include <stdexcept>
+#include <optional>
 #include <vector>
+#include "watchman/Errors.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
@@ -15,17 +20,15 @@ namespace watchman {
 // At each level, checks to see if any of the candidate filenames
 // in the provided candidates list exist.  Returns the name of
 // the first one it finds.  If no candidates are found, returns
-// nullptr.
-w_string findFileInDirTree(
+// nullopt.
+std::optional<w_string> findFileInDirTree(
     w_string_piece rootPath,
     std::initializer_list<w_string_piece> candidates);
 
-class SCMError : public std::runtime_error {
+class SCMError : public WatchmanError<SCMError> {
  public:
-  template <typename... Args>
-  explicit SCMError(Args&&... args)
-      : std::runtime_error(
-            folly::to<std::string>(std::forward<Args>(args)...)) {}
+  static constexpr char* prefix = nullptr;
+  using WatchmanError::WatchmanError;
 };
 
 class SCM {
@@ -54,10 +57,10 @@ class SCM {
   const w_string& getSCMRoot() const;
 
   // Compute the merge base between the working copy revision and the
-  // specified commitId.  The commitId is typically something like "master".
+  // specified commitId.  The commitId is typically a branch name like "main".
   virtual w_string mergeBaseWith(
       w_string_piece commitId,
-      w_string requestId = nullptr) const = 0;
+      const std::optional<w_string>& requestId = std::nullopt) const = 0;
 
   // Compute the set of paths that have changed in the commits
   // starting in the working copy and going back to the merge base
@@ -66,31 +69,14 @@ class SCM {
   // but NOT those that are ignored.
   virtual std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId,
-      w_string requestId = nullptr) const = 0;
-
-  struct StatusResult {
-    std::vector<w_string> changedFiles;
-    std::vector<w_string> addedFiles;
-    std::vector<w_string> removedFiles;
-  };
-
-  // Compute the set of paths that have changed across all of the transitions
-  // between the list of given commits.
-  //
-  // For example, if commits is [A, B, C], then this accumulates the changes
-  // between [A, B] and [B, C] into one StatusResult.
-  //
-  // This is purely a history operation and does not consider the working
-  // copy status.
-  virtual StatusResult getFilesChangedBetweenCommits(
-      std::vector<std::string> commits,
-      w_string requestId = nullptr) const = 0;
+      w_string_piece clock,
+      const std::optional<w_string>& requestId = std::nullopt) const = 0;
 
   // Compute the source control date associated with the specified
   // commit.
   virtual std::chrono::time_point<std::chrono::system_clock> getCommitDate(
       w_string_piece commitId,
-      w_string requestId = nullptr) const = 0;
+      const std::optional<w_string>& requestId = std::nullopt) const = 0;
 
   // Compute the numCommits commits prior to and including the specified commit
   // in source control history. Returns an ordered list with the most recent
@@ -98,7 +84,7 @@ class SCM {
   virtual std::vector<w_string> getCommitsPriorToAndIncluding(
       w_string_piece commitId,
       int numCommits,
-      w_string requestId = nullptr) const = 0;
+      const std::optional<w_string>& requestId = std::nullopt) const = 0;
 
  private:
   w_string rootPath_;

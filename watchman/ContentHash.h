@@ -1,8 +1,13 @@
-/* Copyright 2017-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 #include <array>
-#include "LRUCache.h"
+#include "watchman/LRUCache.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 

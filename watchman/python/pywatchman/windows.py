@@ -1,43 +1,18 @@
-# Copyright 2014-present Facebook, Inc.
-# All rights reserved.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#  * Redistributions of source code must retain the above copyright notice,
-#    this list of conditions and the following disclaimer.
-#
-#  * Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-#  * Neither the name Facebook nor the names of its contributors may be used to
-#    endorse or promote products derived from this software without specific
-#    prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
+# pyre-unsafe
 
-# no unicode literals
-from __future__ import absolute_import, division, print_function
 
 import ctypes
 import ctypes.wintypes
 import os
 import socket
 
-from . import compat
 
-
+# pyre-ignore
 wintypes = ctypes.wintypes
 GENERIC_READ = 0x80000000
 GENERIC_WRITE = 0x40000000
@@ -84,7 +59,10 @@ class OVERLAPPED(ctypes.Structure):
 
 LPDWORD = ctypes.POINTER(wintypes.DWORD)
 
-CreateFile = ctypes.windll.kernel32.CreateFileA
+# pyre-ignore
+windll = ctypes.windll
+
+CreateFile = windll.kernel32.CreateFileA
 CreateFile.argtypes = [
     wintypes.LPSTR,
     wintypes.DWORD,
@@ -96,11 +74,11 @@ CreateFile.argtypes = [
 ]
 CreateFile.restype = wintypes.HANDLE
 
-CloseHandle = ctypes.windll.kernel32.CloseHandle
+CloseHandle = windll.kernel32.CloseHandle
 CloseHandle.argtypes = [wintypes.HANDLE]
 CloseHandle.restype = wintypes.BOOL
 
-ReadFile = ctypes.windll.kernel32.ReadFile
+ReadFile = windll.kernel32.ReadFile
 ReadFile.argtypes = [
     wintypes.HANDLE,
     wintypes.LPVOID,
@@ -110,7 +88,7 @@ ReadFile.argtypes = [
 ]
 ReadFile.restype = wintypes.BOOL
 
-WriteFile = ctypes.windll.kernel32.WriteFile
+WriteFile = windll.kernel32.WriteFile
 WriteFile.argtypes = [
     wintypes.HANDLE,
     wintypes.LPVOID,
@@ -120,15 +98,15 @@ WriteFile.argtypes = [
 ]
 WriteFile.restype = wintypes.BOOL
 
-GetLastError = ctypes.windll.kernel32.GetLastError
+GetLastError = windll.kernel32.GetLastError
 GetLastError.argtypes = []
 GetLastError.restype = wintypes.DWORD
 
-SetLastError = ctypes.windll.kernel32.SetLastError
+SetLastError = windll.kernel32.SetLastError
 SetLastError.argtypes = [wintypes.DWORD]
 SetLastError.restype = None
 
-FormatMessage = ctypes.windll.kernel32.FormatMessageA
+FormatMessage = windll.kernel32.FormatMessageA
 FormatMessage.argtypes = [
     wintypes.DWORD,
     wintypes.LPVOID,
@@ -140,9 +118,9 @@ FormatMessage.argtypes = [
 ]
 FormatMessage.restype = wintypes.DWORD
 
-LocalFree = ctypes.windll.kernel32.LocalFree
+LocalFree = windll.kernel32.LocalFree
 
-GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
+GetOverlappedResult = windll.kernel32.GetOverlappedResult
 GetOverlappedResult.argtypes = [
     wintypes.HANDLE,
     ctypes.POINTER(OVERLAPPED),
@@ -151,7 +129,7 @@ GetOverlappedResult.argtypes = [
 ]
 GetOverlappedResult.restype = wintypes.BOOL
 
-GetOverlappedResultEx = getattr(ctypes.windll.kernel32, "GetOverlappedResultEx", None)
+GetOverlappedResultEx = getattr(windll.kernel32, "GetOverlappedResultEx", None)
 if GetOverlappedResultEx is not None:
     GetOverlappedResultEx.argtypes = [
         wintypes.HANDLE,
@@ -162,40 +140,40 @@ if GetOverlappedResultEx is not None:
     ]
     GetOverlappedResultEx.restype = wintypes.BOOL
 
-WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
+WaitForSingleObjectEx = windll.kernel32.WaitForSingleObjectEx
 WaitForSingleObjectEx.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL]
 WaitForSingleObjectEx.restype = wintypes.DWORD
 
-CreateEvent = ctypes.windll.kernel32.CreateEventA
+CreateEvent = windll.kernel32.CreateEventA
 CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL, wintypes.LPSTR]
 CreateEvent.restype = wintypes.HANDLE
 
 # Windows Vista is the minimum supported client for CancelIoEx.
-CancelIoEx = ctypes.windll.kernel32.CancelIoEx
+CancelIoEx = windll.kernel32.CancelIoEx
 CancelIoEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED)]
 CancelIoEx.restype = wintypes.BOOL
 
-WinSocket = ctypes.windll.ws2_32.socket
+WinSocket = windll.ws2_32.socket
 WinSocket.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
 WinSocket.restype = ctypes.wintypes.HANDLE
 
-WinConnect = ctypes.windll.ws2_32.connect
+WinConnect = windll.ws2_32.connect
 WinConnect.argtypes = [ctypes.wintypes.HANDLE, ctypes.c_void_p, ctypes.c_int]
 WinConnect.restype = ctypes.c_int
 
-WinSend = ctypes.windll.ws2_32.send
+WinSend = windll.ws2_32.send
 WinSend.argtypes = [ctypes.wintypes.HANDLE, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
 WinSend.restype = ctypes.c_int
 
-WinRecv = ctypes.windll.ws2_32.recv
+WinRecv = windll.ws2_32.recv
 WinRecv.argtypes = [ctypes.wintypes.HANDLE, ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
 WinRecv.restype = ctypes.c_int
 
-closesocket = ctypes.windll.ws2_32.closesocket
+closesocket = windll.ws2_32.closesocket
 closesocket.argtypes = [ctypes.wintypes.HANDLE]
 closesocket.restype = ctypes.c_int
 
-WinSetIntSockOpt = ctypes.windll.ws2_32.setsockopt
+WinSetIntSockOpt = windll.ws2_32.setsockopt
 WinSetIntSockOpt.argtypes = [
     ctypes.wintypes.HANDLE,
     ctypes.c_int,
@@ -205,7 +183,7 @@ WinSetIntSockOpt.argtypes = [
 ]
 WinSetIntSockOpt.restype = ctypes.c_int
 
-WSAGetLastError = ctypes.windll.ws2_32.WSAGetLastError
+WSAGetLastError = windll.ws2_32.WSAGetLastError
 WSAGetLastError.argtypes = []
 
 WSADESCRIPTION_LEN = 256 + 1
@@ -224,7 +202,7 @@ class WSAData64(ctypes.Structure):
     ]
 
 
-WSAStartup = ctypes.windll.ws2_32.WSAStartup
+WSAStartup = windll.ws2_32.WSAStartup
 WSAStartup.argtypes = [ctypes.wintypes.WORD, ctypes.POINTER(WSAData64)]
 WSAStartup.restype = ctypes.c_int
 
@@ -234,19 +212,18 @@ class SOCKADDR_UN(ctypes.Structure):
 
 
 class WindowsSocketException(Exception):
-    def __init__(self, code):
-        # type: (int) -> None
+    def __init__(self, code: int) -> None:
         super(WindowsSocketException, self).__init__(
             "Windows Socket Error: {}".format(code)
         )
 
 
-class WindowsSocketHandle(object):
+class WindowsSocketHandle:
     AF_UNIX = 1
     SOCK_STREAM = 1
 
-    fd = -1  # type: int
-    address = ""  # type: str
+    fd: int = -1
+    address: str = ""
 
     @staticmethod
     def _checkReturnCode(retcode):
@@ -268,12 +245,10 @@ class WindowsSocketHandle(object):
         self._checkReturnCode(fd)
         self.fd = fd
 
-    def fileno(self):
-        # type: () -> int
+    def fileno(self) -> int:
         return self.fd
 
-    def settimeout(self, timeout):
-        # type: (int) -> None
+    def settimeout(self, timeout: int) -> None:
         timeout = wintypes.DWORD(0 if timeout is None else int(timeout * 1000))
         retcode = WinSetIntSockOpt(
             self.fd,
@@ -293,25 +268,21 @@ class WindowsSocketHandle(object):
         self._checkReturnCode(retcode)
         return None
 
-    def connect(self, address):
-        # type: (str) -> None
-        address = os.path.normpath(address)
-        if compat.PYTHON3:
-            address = os.fsencode(address)
+    def connect(self, address: str) -> None:
+        # pyre-ignore
+        address = os.fsencode(os.path.normpath(address))
         addr = SOCKADDR_UN(sun_family=self.AF_UNIX, sun_path=address)
         self._checkReturnCode(
             WinConnect(self.fd, ctypes.pointer(addr), ctypes.sizeof(addr))
         )
         self.address = address
 
-    def send(self, buff):
-        # type: (bytes) -> int
+    def send(self, buff: bytes) -> int:
         retcode = WinSend(self.fd, buff, len(buff), 0)
         self._checkReturnCode(retcode)
         return retcode
 
-    def sendall(self, buff):
-        # type: (bytes) -> None
+    def sendall(self, buff: bytes) -> None:
         while len(buff) > 0:
             x = self.send(buff)
             if x > 0:
@@ -320,21 +291,17 @@ class WindowsSocketHandle(object):
                 break
         return None
 
-    def recv(self, size):
-        # type: (int) -> bytes
+    def recv(self, size: int) -> bytes:
         buff = ctypes.create_string_buffer(size)
         retsize = WinRecv(self.fd, buff, size, 0)
         self._checkReturnCode(retsize)
         return buff.raw[0:retsize]
 
-    def getpeername(self):
-        # type: () -> str
+    def getpeername(self) -> str:
         return self.address
 
-    def getsockname(self):
-        # type: () -> str
+    def getsockname(self) -> str:
         return self.address
 
-    def close(self):
-        # type: () -> int
+    def close(self) -> int:
         return closesocket(self.fd)

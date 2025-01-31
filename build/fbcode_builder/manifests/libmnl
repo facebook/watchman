@@ -3,10 +3,17 @@ name = libmnl
 
 [rpms]
 libmnl-devel
+
+# all centos 8 distros are missing this,
+# but its in fedora so may be back in a later version
+[rpms.not(all(any(distro=centos_stream,distro=centos),distro_vers=8))]
 libmnl-static
 
 [debs]
 libmnl-dev
+
+[pps]
+libmnl
 
 [download]
 url = http://www.netfilter.org/pub/libmnl/libmnl-1.0.4.tar.bz2

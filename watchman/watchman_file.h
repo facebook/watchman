@@ -1,9 +1,15 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
-#include "FileInformation.h"
 #include "watchman/Clock.h"
+#include "watchman/fs/FileInformation.h"
+#include "watchman/watchman_dir.h"
 
 struct watchman_file {
   /* the parent dir */
@@ -15,11 +21,11 @@ struct watchman_file {
   struct watchman_file **prev, *next;
 
   /* the time we last observed a change to this file */
-  w_clock_t otime;
+  watchman::ClockStamp otime;
   /* the time we first observed this file OR the time
    * that this file switched from !exists to exists.
    * This is thus the "created time" */
-  w_clock_t ctime;
+  watchman::ClockStamp ctime;
 
   /* whether we believe that this file still exists */
   bool exists;

@@ -1,29 +1,35 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/InMemoryView.h"
-#include "watchman/watchman.h"
-#include "watchman/watchman_error_category.h"
+#include "watchman/root/warnerr.h"
+#include "watchman/Errors.h"
+#include "watchman/Logging.h"
+#include "watchman/Poison.h"
+#include "watchman/root/Root.h"
+#include "watchman/watchman_dir.h"
 
-using namespace watchman;
+namespace watchman {
 
 void handle_open_errno(
-    watchman_root& root,
-    struct watchman_dir* dir,
+    Root& root,
+    w_string_piece dirPath,
     std::chrono::system_clock::time_point now,
     const char* syscall,
     const std::error_code& err) {
-  auto dir_name = dir->getFullPath();
   bool log_warning = true;
 
-  if (err == watchman::error_code::no_such_file_or_directory ||
-      err == watchman::error_code::not_a_directory ||
-      err == watchman::error_code::too_many_symbolic_link_levels) {
+  if (err == error_code::no_such_file_or_directory ||
+      err == error_code::not_a_directory ||
+      err == error_code::too_many_symbolic_link_levels) {
     log_warning = false;
-  } else if (err == watchman::error_code::permission_denied) {
+  } else if (err == error_code::permission_denied) {
     log_warning = true;
-  } else if (err == watchman::error_code::system_limits_exceeded) {
-    set_poison_state(dir_name, now, syscall, err);
+  } else if (err == error_code::system_limits_exceeded) {
+    set_poison_state(dirPath, now, syscall, err);
     if (!root.failure_reason) {
       root.failure_reason = w_string::build(*poisoned_reason.rlock());
     }
@@ -32,11 +38,11 @@ void handle_open_errno(
     log_warning = true;
   }
 
-  if (w_string_equal(dir_name, root.root_path)) {
+  if (dirPath == root.root_path) {
     auto warn = w_string::build(
         syscall,
         "(",
-        dir_name,
+        dirPath,
         ") -> ",
         err.message(),
         ". Root is inaccessible; cancelling watch\n");
@@ -44,27 +50,22 @@ void handle_open_errno(
     if (!root.failure_reason) {
       root.failure_reason = warn;
     }
-    root.cancel();
+    root.cancel("root inaccessible");
     return;
   }
 
   auto warn = w_string::build(
       syscall,
       "(",
-      dir_name,
+      dirPath,
       ") -> ",
       err.message(),
       ". Marking this portion of the tree deleted");
 
-  watchman::log(
-      err == watchman::error_code::no_such_file_or_directory ? watchman::DBG
-                                                             : watchman::ERR,
-      warn,
-      "\n");
+  log(err == error_code::no_such_file_or_directory ? DBG : ERR, warn, "\n");
   if (log_warning) {
     root.recrawlInfo.wlock()->warning = warn;
   }
 }
 
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

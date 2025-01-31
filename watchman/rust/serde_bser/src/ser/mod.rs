@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 mod count_write;
 #[cfg(test)]
 mod test;
@@ -5,12 +12,12 @@ mod test;
 use std::io;
 
 use bytes::BufMut;
-use serde::ser::{self, Serialize};
-
-use crate::errors::*;
-use crate::header::*;
+use serde::ser;
+use serde::ser::Serialize;
 
 use self::count_write::CountWrite;
+use crate::errors::*;
+use crate::header::*;
 
 // How full must the buffer get before we start flushing it?
 const HIGHWATER: usize = 4096;
@@ -49,8 +56,8 @@ pub struct Serializer<W> {
 /// This works for all $val types except for `u64`.
 macro_rules! maybe_put_int {
     ($self:ident, $val:expr, $to:ident, $put:ident) => {
-        let min = $to::min_value() as i64;
-        let max = $to::max_value() as i64;
+        let min = $to::MIN as i64;
+        let max = $to::MAX as i64;
         let val = $val as i64;
         if val >= min && val <= max {
             return $self.$put($val as $to);
@@ -126,7 +133,7 @@ where
         #[cfg(target_endian = "little")]
         self.scratch.put_i16_le(v);
         #[cfg(target_endian = "big")]
-        self.scratch.put_i16_be(v);
+        self.scratch.put_i16(v);
     }
 
     #[inline]
@@ -136,7 +143,7 @@ where
         #[cfg(target_endian = "little")]
         self.scratch.put_i32_le(v);
         #[cfg(target_endian = "big")]
-        self.scratch.put_i32_be(v);
+        self.scratch.put_i32(v);
     }
 
     #[inline]
@@ -146,7 +153,7 @@ where
         #[cfg(target_endian = "little")]
         self.scratch.put_i64_le(v);
         #[cfg(target_endian = "big")]
-        self.scratch.put_i64_be(v);
+        self.scratch.put_i64(v);
     }
 }
 
@@ -229,8 +236,8 @@ where
     fn serialize_u64(self, v: u64) -> Result<()> {
         // maybe_put_int! doesn't work for u64 because it converts to i64
         // internally.
-        if v > (i64::max_value() as u64) {
-            Err(ErrorKind::SerU64TooBig(v).into())
+        if v > (i64::MAX as u64) {
+            Err(Error::SerU64TooBig { v })
         } else {
             self.serialize_i64(v as i64)
         }
@@ -248,7 +255,7 @@ where
         #[cfg(target_endian = "little")]
         self.scratch.put_f64_le(v);
         #[cfg(target_endian = "big")]
-        self.scratch.put_f64_be(v);
+        self.scratch.put_f64(v);
         Ok(())
     }
 
@@ -339,7 +346,7 @@ where
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         match len {
-            None => Err(ErrorKind::SerNeedSize("sequence").into()),
+            None => Err(Error::SerNeedSize { kind: "sequence" }),
             Some(len) => self.serialize_tuple(len),
         }
     }
@@ -382,7 +389,7 @@ where
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         match len {
-            None => Err(ErrorKind::SerNeedSize("map").into()),
+            None => Err(Error::SerNeedSize { kind: "map" }),
             Some(len) => self.serialize_struct("", len),
         }
     }

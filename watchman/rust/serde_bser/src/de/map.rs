@@ -1,12 +1,18 @@
-use error_chain::bail;
-use serde::{de, forward_to_deserialize_any};
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-use crate::errors::*;
-use crate::header::*;
+use serde::de;
+use serde::forward_to_deserialize_any;
 
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
 use super::Deserializer;
+use crate::errors::*;
+use crate::header::*;
 
 pub struct MapAccess<'a, R> {
     de: &'a mut Deserializer<R>,
@@ -76,7 +82,10 @@ where
             // Both bytestrings and UTF-8 strings are treated as Unicode strings, since field
             // identifiers must be Unicode strings.
             BSER_BYTESTRING | BSER_UTF8STRING => self.de.visit_utf8string(visitor),
-            other => bail!(ErrorKind::DeInvalidStartByte("map key".into(), other)),
+            other => Err(Error::DeInvalidStartByte {
+                kind: "map key".into(),
+                byte: other,
+            }),
         }
     }
 

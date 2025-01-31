@@ -1,19 +1,27 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include "watchman/watchman.h"
-
+#include "watchman/root/watchlist.h"
+#include <fmt/core.h>
 #include <folly/Synchronized.h>
 #include <vector>
+#include "watchman/QueryableView.h"
+#include "watchman/TriggerCommand.h"
+#include "watchman/query/Query.h"
+#include "watchman/query/QueryContext.h"
+#include "watchman/root/Root.h"
 
-using namespace watchman;
+namespace watchman {
 
-folly::Synchronized<
-    std::unordered_map<w_string, std::shared_ptr<watchman_root>>>
+folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<Root>>>
     watched_roots;
 std::atomic<long> live_roots{0};
 
-bool watchman_root::removeFromWatched() {
+bool Root::removeFromWatched() {
   auto map = watched_roots.wlock();
   auto it = map->find(root_path);
   if (it == map->end()) {
@@ -28,18 +36,11 @@ bool watchman_root::removeFromWatched() {
   return false;
 }
 
-// Given a filename, walk the current set of watches.
-// If a watch is a prefix match for filename then we consider it to
-// be an enclosing watch and we'll return the root path and the relative
-// path to filename.
-// Returns NULL if there were no matches.
-// If multiple watches have the same prefix, it is undefined which one will
-// match.
 bool findEnclosingRoot(
     const w_string& fileName,
     w_string_piece& prefix,
     w_string_piece& relativePath) {
-  std::shared_ptr<watchman_root> root;
+  std::shared_ptr<Root> root;
   auto name = fileName.piece();
   {
     auto map = watched_roots.rlock();
@@ -64,15 +65,17 @@ bool findEnclosingRoot(
 }
 
 json_ref w_root_stop_watch_all() {
-  std::vector<watchman_root*> roots;
-  json_ref stopped = json_array();
+  std::vector<Root*> roots;
+  std::vector<json_ref> stopped;
+
+  Root::SaveGlobalStateHook saveGlobalStateHook = nullptr;
 
   // Funky looking loop because root->cancel() needs to acquire the
   // watched_roots wlock and will invalidate any iterators we might
   // otherwise have held.  Therefore we just loop until the map is
   // empty.
   while (true) {
-    std::shared_ptr<watchman_root> root;
+    std::shared_ptr<Root> root;
 
     {
       auto map = watched_roots.wlock();
@@ -84,122 +87,102 @@ json_ref w_root_stop_watch_all() {
       root = it->second;
     }
 
-    root->cancel();
-    json_array_append_new(stopped, w_string_to_json(root->root_path));
+    root->cancel("watch-del-all");
+    if (!saveGlobalStateHook) {
+      saveGlobalStateHook = root->getSaveGlobalStateHook();
+    } else {
+      // This assumes there is only one hook per application, rather than
+      // independent hooks per root. That's true today because every root holds
+      // w_state_save.
+      w_assert(
+          saveGlobalStateHook == root->getSaveGlobalStateHook(),
+          "all roots must contain the same saveGlobalStateHook");
+    }
+    stopped.push_back(w_string_to_json(root->root_path));
   }
 
-  w_state_save();
+  if (saveGlobalStateHook) {
+    saveGlobalStateHook();
+  }
 
-  return stopped;
+  return json_array(std::move(stopped));
 }
 
 json_ref w_root_watch_list_to_json() {
-  auto arr = json_array();
+  std::vector<json_ref> arr;
 
   auto map = watched_roots.rlock();
   for (const auto& it : *map) {
     auto root = it.second;
-    json_array_append_new(arr, w_string_to_json(root->root_path));
+    arr.push_back(w_string_to_json(root->root_path));
   }
 
-  return arr;
+  return json_array(std::move(arr));
 }
 
-json_ref watchman_root::getStatusForAllRoots() {
-  auto arr = json_array();
+std::vector<RootDebugStatus> Root::getStatusForAllRoots() {
+  std::vector<RootDebugStatus> result;
 
   auto map = watched_roots.rlock();
-  for (const auto& it : *map) {
-    auto root = it.second;
-    json_array_append_new(arr, root->getStatus());
+  result.reserve(map->size());
+  for (const auto& [name, root] : *map) {
+    result.push_back(root->getStatus());
   }
-
-  return arr;
-}
-
-bool w_root_save_state(json_ref& state) {
-  bool result = true;
-
-  auto watched_dirs = json_array();
-
-  logf(DBG, "saving state\n");
-
-  {
-    auto map = watched_roots.rlock();
-    for (const auto& it : *map) {
-      auto root = it.second;
-
-      auto obj = json_object();
-
-      json_object_set_new(obj, "path", w_string_to_json(root->root_path));
-
-      auto triggers = root->triggerListToJson();
-      json_object_set_new(obj, "triggers", std::move(triggers));
-
-      json_array_append_new(watched_dirs, std::move(obj));
-    }
-  }
-
-  json_object_set_new(state, "watched", std::move(watched_dirs));
 
   return result;
 }
 
-json_ref watchman_root::getStatus() const {
-  auto obj = json_object();
+RootDebugStatus Root::getStatus() const {
+  RootDebugStatus obj;
   auto now = std::chrono::steady_clock::now();
 
-  auto cookie_array = json_array();
-  for (auto& name : cookies.getOutstandingCookieFileList()) {
-    cookie_array.array().push_back(w_string_to_json(name));
-  }
+  auto cookie_array = cookies.getOutstandingCookieFileList();
 
   std::string crawl_status;
-  auto recrawl_info = json_object();
+  RootRecrawlInfo recrawl_info;
   {
     auto info = recrawlInfo.rlock();
-    recrawl_info.set({
-        {"count", json_integer(info->recrawlCount)},
-        {"should-recrawl", json_boolean(info->shouldRecrawl)},
-        {"warning", w_string_to_json(info->warning)},
-    });
+    recrawl_info.count = info->recrawlCount;
+    recrawl_info.should_recrawl = info->shouldRecrawl;
+    recrawl_info.reason = info->reason;
+    if (info->warning) {
+      recrawl_info.warning = info->warning;
+    }
+    std::shared_ptr<std::atomic<size_t>> stat_count = info->statCount;
+    if (stat_count) {
+      recrawl_info.stat_count = stat_count->load(std::memory_order_acquire);
+    }
 
+    int64_t finish_ago = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             now - info->crawlFinish)
+                             .count();
+    int64_t start_ago = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now - info->crawlStart)
+                            .count();
     if (!inner.done_initial) {
-      crawl_status = folly::to<std::string>(
-          info->recrawlCount ? "re-" : "",
-          "crawling for ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlStart)
-              .count(),
-          "ms");
+      recrawl_info.started_at = -start_ago;
+      crawl_status = fmt::format(
+          "{}crawling for {} ms", info->recrawlCount ? "re-" : "", start_ago);
     } else if (info->shouldRecrawl) {
-      crawl_status = folly::to<std::string>(
-          "needs recrawl: ",
-          info->warning,
-          ". Last crawl was ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlFinish)
-              .count(),
-          "ms ago");
+      recrawl_info.completed_at = -finish_ago;
+      crawl_status = fmt::format(
+          "needs recrawl: {}. Last crawl was {}ms ago",
+          info->warning ? info->warning->view() : std::string_view{},
+          finish_ago);
     } else {
-      crawl_status = folly::to<std::string>(
-          "crawl completed ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              now - info->crawlFinish)
-              .count(),
-          "ms ago, and took ",
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              info->crawlFinish - info->crawlStart)
-              .count(),
-          "ms");
+      recrawl_info.started_at = -start_ago;
+      recrawl_info.completed_at = -finish_ago;
+      crawl_status = fmt::format(
+          "crawl completed {}ms ago, and took {}ms",
+          finish_ago,
+          start_ago - finish_ago);
     }
   }
 
-  auto query_info = json_array();
+  std::vector<RootQueryInfo> query_info;
   {
     auto locked = queries.rlock();
     for (auto& ctx : *locked) {
-      auto info = json_object();
       auto elapsed = now - ctx->created;
 
       const char* queryState = "?";
@@ -224,159 +207,76 @@ json_ref watchman_root::getStatus() const {
           break;
       }
 
-      info.set({
-          {"elapsed-milliseconds",
-           json_integer(
-               std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
-                   .count())},
-          {"cookie-sync-duration-milliseconds",
-           json_integer(ctx->cookieSyncDuration.load().count())},
-          {"generation-duration-milliseconds",
-           json_integer(ctx->generationDuration.load().count())},
-          {"render-duration-milliseconds",
-           json_integer(ctx->renderDuration.load().count())},
-          {"view-lock-wait-duration-milliseconds",
-           json_integer(ctx->viewLockWaitDuration.load().count())},
-          {"state", typed_string_to_json(queryState)},
-          {"client-pid", json_integer(ctx->query->clientPid)},
-          {"request-id", w_string_to_json(ctx->query->request_id)},
-          {"query", json_ref(ctx->query->query_spec)},
-      });
+      RootQueryInfo info;
+      info.elapsed_milliseconds =
+          std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
+              .count();
+      info.cookie_sync_duration_milliseconds =
+          ctx->cookieSyncDuration.load().count();
+      info.generation_duration_milliseconds =
+          ctx->generationDuration.load().count();
+      info.render_duration_milliseconds = ctx->renderDuration.load().count();
+      info.view_lock_wait_duration_milliseconds =
+          ctx->viewLockWaitDuration.load().count();
+      info.state = queryState;
+      info.client_pid = ctx->query->clientInfo.clientPid;
+      info.request_id = ctx->query->request_id;
+      info.query = ctx->query->query_spec;
       if (ctx->query->subscriptionName) {
-        info.set(
-            "subscription-name",
-            w_string_to_json(ctx->query->subscriptionName));
+        info.subscription_name = ctx->query->subscriptionName;
       }
 
-      query_info.array().push_back(info);
+      query_info.push_back(std::move(info));
     }
   }
 
-  auto cookiePrefix = cookies.cookiePrefix();
-  auto jsonCookiePrefix = json_array();
-  for (const auto& name : cookiePrefix) {
-    jsonCookiePrefix.array().push_back(w_string_to_json(name));
+  std::vector<w_string> cookiePrefix;
+  for (const auto& name : cookies.cookiePrefix()) {
+    // If cookiePrefix() returned a std::vector, we could move the string here.
+    cookiePrefix.push_back(name);
   }
 
-  auto cookieDirs = cookies.cookieDirs();
-  auto jsonCookieDirs = json_array();
-  for (const auto& dir : cookieDirs) {
-    jsonCookieDirs.array().push_back(w_string_to_json(dir));
+  std::vector<w_string> cookieDirs;
+  for (const auto& dir : cookies.cookieDirs()) {
+    // If cookieDirs() returned a std::vector, we could move the string here.
+    cookieDirs.push_back(dir);
   }
 
-  obj.set({
-      {"path", w_string_to_json(root_path)},
-      {"fstype", w_string_to_json(fs_type)},
-      {"case_sensitive",
-       json_boolean(case_sensitive == CaseSensitivity::CaseSensitive)},
-      {"cookie_prefix", std::move(jsonCookiePrefix)},
-      {"cookie_dir", std::move(jsonCookieDirs)},
-      {"cookie_list", std::move(cookie_array)},
-      {"recrawl_info", std::move(recrawl_info)},
-      {"queries", std::move(query_info)},
-      {"done_initial", json_boolean(inner.done_initial)},
-      {"cancelled", json_boolean(inner.cancelled)},
-      {"crawl-status",
-       w_string_to_json(w_string(crawl_status.data(), crawl_status.size()))},
-  });
+  obj.path = root_path;
+  obj.fstype = fs_type;
+  obj.watcher = view_->getName();
+  obj.uptime =
+      std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
+  obj.case_sensitive = case_sensitive == CaseSensitivity::CaseSensitive;
+  obj.cookie_prefix = cookiePrefix;
+  obj.cookie_dir = cookieDirs;
+  obj.cookie_list = cookie_array;
+  obj.recrawl_info = std::move(recrawl_info);
+  obj.queries = std::move(query_info);
+  obj.done_initial = inner.done_initial;
+  obj.cancelled = inner.cancelled;
+  obj.crawl_status = w_string{crawl_status.data(), crawl_status.size()};
+  obj.enable_parallel_crawl = enable_parallel_crawl;
   return obj;
 }
 
-json_ref watchman_root::triggerListToJson() const {
-  auto arr = json_array();
+json_ref Root::triggerListToJson() const {
+  std::vector<json_ref> arr;
   {
     auto map = triggers.rlock();
     for (const auto& it : *map) {
       const auto& cmd = it.second;
-      json_array_append(arr, cmd->definition);
+      arr.push_back(cmd->definition);
     }
   }
 
-  return arr;
-}
-
-bool w_root_load_state(const json_ref& state) {
-  size_t i;
-
-  auto watched = state.get_default("watched");
-  if (!watched) {
-    return true;
-  }
-
-  if (!watched.isArray()) {
-    return false;
-  }
-
-  for (i = 0; i < json_array_size(watched); i++) {
-    const auto& obj = watched.at(i);
-    bool created = false;
-    const char* filename;
-    size_t j;
-
-    auto triggers = obj.get_default("triggers");
-    filename = json_string_value(json_object_get(obj, "path"));
-
-    std::shared_ptr<watchman_root> root;
-    try {
-      root = root_resolve(filename, true, &created);
-    } catch (const std::exception&) {
-      continue;
-    }
-
-    {
-      auto wlock = root->triggers.wlock();
-      auto& map = *wlock;
-
-      /* re-create the trigger configuration */
-      for (j = 0; j < json_array_size(triggers); j++) {
-        const auto& tobj = triggers.at(j);
-
-        // Legacy rules format
-        auto rarray = tobj.get_default("rules");
-        if (rarray) {
-          continue;
-        }
-
-        try {
-          auto cmd = std::make_unique<watchman_trigger_command>(root, tobj);
-          cmd->start(root);
-          auto& mapEntry = map[cmd->triggername];
-          mapEntry = std::move(cmd);
-        } catch (const std::exception& exc) {
-          watchman::log(
-              watchman::ERR,
-              "loading trigger for ",
-              root->root_path,
-              ": ",
-              exc.what(),
-              "\n");
-        }
-      }
-    }
-
-    if (created) {
-      try {
-        root->view()->startThreads(root);
-      } catch (const std::exception& e) {
-        watchman::log(
-            watchman::ERR,
-            "root_start(",
-            root->root_path,
-            ") failed: ",
-            e.what(),
-            "\n");
-        root->cancel();
-      }
-    }
-  }
-
-  return true;
+  return json_array(std::move(arr));
 }
 
 void w_root_free_watched_roots() {
   int last, interval;
   time_t started;
-  std::vector<std::shared_ptr<watchman_root>> roots;
+  std::vector<std::shared_ptr<Root>> roots;
 
   // We want to cancel the list of roots, but need to be careful to avoid
   // deadlock; make a copy of the set of roots under the lock...
@@ -389,8 +289,8 @@ void w_root_free_watched_roots() {
 
   // ... and cancel them outside of the lock
   for (auto& root : roots) {
-    if (!root->cancel()) {
-      root->signalThreads();
+    if (!root->cancel("main thread exiting")) {
+      root->stopThreads("main thread exiting");
     }
   }
 
@@ -407,7 +307,7 @@ void w_root_free_watched_roots() {
     if (current == 0) {
       break;
     }
-    if (time(NULL) > started + 3) {
+    if (time(nullptr) > started + 3) {
       logf(ERR, "{} roots were still live at exit\n", current);
       break;
     }
@@ -422,6 +322,8 @@ void w_root_free_watched_roots() {
 
   logf(DBG, "all roots are gone\n");
 }
+
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

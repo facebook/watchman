@@ -1,45 +1,46 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
-from __future__ import absolute_import, division, print_function
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+# pyre-unsafe
+
 
 import binascii
 import collections
 import inspect
 import os
+import struct
 import sys
 import tempfile
+import unittest
 import uuid
 
 from pywatchman import (
+    bser,
+    client,
+    load,
+    pybser,
     SocketConnectError,
     SocketTimeout,
     Transport,
     WatchmanError,
-    bser,
-    client,
-    compat,
-    load,
-    pybser,
 )
 
 
-# no unicode literals
-
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
-
+# pyre-fixme[16]: Module `pywatchman` has no attribute `bser`.
 if os.path.basename(bser.__file__) == "pybser.py":
     raise Exception(
         "bser module resolved to pybser! Something is broken in your build. __file__={!r}, sys.path={!r}".format(
-            bser.__file__, sys.path
+            # pyre-fixme[16]: Module `pywatchman` has no attribute `bser`.
+            bser.__file__,
+            sys.path,
         )
     )
 
-PILE_OF_POO = u"\U0001F4A9"
+PILE_OF_POO = "\U0001f4a9"
 NON_UTF8_STRING = b"\xff\xff\xff"
 
 
@@ -135,7 +136,7 @@ def expand_bser_mods(test_class):
     caller_scope = inspect.currentframe().f_back.f_locals
 
     flavors = [(bser, "Bser"), (pybser, "PyBser")]
-    for (mod, suffix) in flavors:
+    for mod, suffix in flavors:
 
         def make_class(mod, suffix):
             subclass_name = test_class.__name__ + suffix
@@ -155,7 +156,7 @@ def expand_bser_mods(test_class):
         make_class(mod, suffix)
 
 
-class FakeFile(object):
+class FakeFile:
     def __init__(self, data):
         self._data = data
         self._ptr = 0
@@ -252,22 +253,22 @@ class TestBSERDump(unittest.TestCase):
 
         # For Python 3, here we can only check that a Unicode string goes in,
         # not that a Unicode string comes out.
-        self.munged(u"Hello", b"Hello")
+        self.munged("Hello", b"Hello")
 
-        self.roundtrip(u"Hello", value_encoding="utf8")
-        self.roundtrip(u"Hello", value_encoding="ascii")
-        self.roundtrip(u"Hello" + PILE_OF_POO, value_encoding="utf8")
+        self.roundtrip("Hello", value_encoding="utf8")
+        self.roundtrip("Hello", value_encoding="ascii")
+        self.roundtrip("Hello" + PILE_OF_POO, value_encoding="utf8")
 
         # can't use the with form here because Python 2.6
         self.assertRaises(
             UnicodeDecodeError,
             self.roundtrip,
-            u"Hello" + PILE_OF_POO,
+            "Hello" + PILE_OF_POO,
             value_encoding="ascii",
         )
         self.munged(
-            u"Hello" + PILE_OF_POO,
-            u"Hello",
+            "Hello" + PILE_OF_POO,
+            "Hello",
             value_encoding="ascii",
             value_errors="ignore",
         )
@@ -280,13 +281,13 @@ class TestBSERDump(unittest.TestCase):
         )
         self.munged(
             b"hello" + NON_UTF8_STRING,
-            u"hello",
+            "hello",
             value_encoding="utf8",
             value_errors="ignore",
         )
         # TODO: test non-UTF8 strings with surrogateescape in Python 3
 
-        ustr = u"\xe4\xf6\xfc"
+        ustr = "\xe4\xf6\xfc"
         self.munged(ustr, ustr.encode("utf-8"))
 
     def test_list(self):
@@ -299,20 +300,20 @@ class TestBSERDump(unittest.TestCase):
 
     def test_dict(self):
         self.roundtrip({"hello": b"there"})
-        self.roundtrip({"hello": u"there"}, value_encoding="utf8")
-        self.roundtrip({"hello": u"there"}, value_encoding="ascii")
-        self.roundtrip({"hello": u"there" + PILE_OF_POO}, value_encoding="utf8")
+        self.roundtrip({"hello": "there"}, value_encoding="utf8")
+        self.roundtrip({"hello": "there"}, value_encoding="ascii")
+        self.roundtrip({"hello": "there" + PILE_OF_POO}, value_encoding="utf8")
 
         # can't use the with form here because Python 2.6
         self.assertRaises(
             UnicodeDecodeError,
             self.roundtrip,
-            {"hello": u"there" + PILE_OF_POO},
+            {"hello": "there" + PILE_OF_POO},
             value_encoding="ascii",
         )
         self.munged(
-            {"Hello": u"there" + PILE_OF_POO},
-            {"Hello": u"there"},
+            {"Hello": "there" + PILE_OF_POO},
+            {"Hello": "there"},
             value_encoding="ascii",
             value_errors="ignore",
         )
@@ -325,7 +326,7 @@ class TestBSERDump(unittest.TestCase):
         )
         self.munged(
             {"Hello": b"there" + NON_UTF8_STRING},
-            {"Hello": u"there"},
+            {"Hello": "there"},
             value_encoding="utf8",
             value_errors="ignore",
         )
@@ -333,9 +334,7 @@ class TestBSERDump(unittest.TestCase):
         obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": b"there"}), False)
         self.assertEqual(1, len(obj))
         self.assertEqual(b"there", obj.hello)
-        self.assertEqual(b"there", obj[u"hello"])
-        if not compat.PYTHON3:
-            self.assertEqual(b"there", obj[b"hello"])
+        self.assertEqual(b"there", obj["hello"])
         self.assertEqual(b"there", obj[0])
         # make sure this doesn't crash
         self.assertRaises(Exception, lambda: obj[45.25])
@@ -407,7 +406,48 @@ class TestBSERDump(unittest.TestCase):
 
         self.assertRaises(ValueError, self.bser_mod.pdu_info, b"\x00\x02")
 
+    def test_string_lengths(self):
+        self.roundtrip(b"")
+
+        self.roundtrip(b"a" * ((1 << 8) - 2))
+        self.roundtrip(b"a" * ((1 << 8) - 1))
+        self.roundtrip(b"a" * ((1 << 8) + 0))
+        self.roundtrip(b"a" * ((1 << 8) + 1))
+
+        self.roundtrip(b"a" * ((1 << 16) - 2))
+        self.roundtrip(b"a" * ((1 << 16) - 1))
+        self.roundtrip(b"a" * ((1 << 16) + 0))
+        self.roundtrip(b"a" * ((1 << 16) + 1))
+
+        self.roundtrip(b"a" * ((1 << 24) - 2))
+        self.roundtrip(b"a" * ((1 << 24) - 1))
+        self.roundtrip(b"a" * ((1 << 24) + 0))
+        self.roundtrip(b"a" * ((1 << 24) + 1))
+
+    def test_big_string_lengths(self):
+        # These tests take a couple dozen seconds with the Python
+        # implementation of bser. Keep them in a separate test so we can run
+        # them conditionally.
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) - 2))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) - 1))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) + 0))
+        self.assertRaises(MemoryError, self.bser_mod.dumps, b"a" * ((1 << 32) + 1))
+
+    def test_fuzz_examples(self):
+        def t(ex: bytes):
+            try:
+                document = b"\x00\x01\x05" + struct.pack("@i", len(ex)) + ex
+                print("encoded", document)
+                # pyre-fixme[16]: `TestBSERDump` has no attribute `bser_mod`.
+                self.bser_mod.loads(document)
+            except Exception:
+                # Exceptions are okay - abort is not.
+                pass
+
+        t(b"\x03\x00")
+        t(b"\x02")
+        t(b"\x07")
+
 
 if __name__ == "__main__":
-    suite = load_tests(unittest.TestLoader())
-    unittest.TextTestRunner().run(suite)
+    unittest.main()

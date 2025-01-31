@@ -171,12 +171,12 @@ static int dump_string(
 }
 
 static int do_dump(
-    const json_t* json,
+    const json_ref& json,
     size_t flags,
     int depth,
     json_dump_callback_t dump,
     void* data) {
-  switch (json_typeof(json)) {
+  switch (json.type()) {
     case JSON_NULL:
       return dump("null", 4, data);
 
@@ -219,26 +219,23 @@ static int do_dump(
       return dump_string(json_string_value(json), dump, data, flags);
 
     case JSON_ARRAY: {
-      int i;
-      int n;
-
-      n = json_array_size(json);
+      auto& arr = json.array();
 
       if (dump("[", 1, data)) {
         return -1;
       }
-      if (n == 0) {
+      if (arr.size() == 0) {
         return dump("]", 1, data);
       }
       if (dump_indent(flags, depth + 1, 0, dump, data))
         return -1;
 
-      for (i = 0; i < n; ++i) {
-        if (do_dump(json_array_get(json, i), flags, depth + 1, dump, data)) {
+      for (size_t i = 0; i < arr.size(); ++i) {
+        if (do_dump(arr[i], flags, depth + 1, dump, data)) {
           return -1;
         }
 
-        if (i < n - 1) {
+        if (i < arr.size() - 1) {
           if (dump(",", 1, data) ||
               dump_indent(flags, depth + 1, 1, dump, data)) {
             return -1;
@@ -266,7 +263,7 @@ static int do_dump(
         separator_length = 2;
       }
 
-      object = json_to_object(json);
+      object = json_to_object(json.get());
       auto it = object->map.begin();
 
       if (dump("{", 1, data)) {
@@ -281,20 +278,25 @@ static int do_dump(
       }
 
       if (flags & JSON_SORT_KEYS) {
-        using Pair = std::pair<w_string, json_t*>;
-        std::vector<Pair> items(object->map.begin(), object->map.end());
+        using Pair = std::pair<const w_string, json_ref>;
 
-        std::sort(items.begin(), items.end(), [](const Pair& a, const Pair& b) {
-          return a.first < b.first;
+        std::vector<Pair*> items;
+        items.reserve(object->map.size());
+        for (auto& item : object->map) {
+          items.push_back(&item);
+        }
+
+        std::sort(items.begin(), items.end(), [](const Pair* a, const Pair* b) {
+          return a->first < b->first;
         });
 
         auto sorted_it = items.begin();
         while (sorted_it != items.end()) {
           auto next = std::next(sorted_it);
 
-          dump_string(sorted_it->first.c_str(), dump, data, flags);
+          dump_string((*sorted_it)->first.c_str(), dump, data, flags);
           if (dump(separator, separator_length, data) ||
-              do_dump(sorted_it->second, flags, depth + 1, dump, data)) {
+              do_dump((*sorted_it)->second, flags, depth + 1, dump, data)) {
             return -1;
           }
 
@@ -344,7 +346,7 @@ static int do_dump(
   }
 }
 
-std::string json_dumps(const json_t* json, size_t flags) {
+std::string json_dumps(const json_ref& json, size_t flags) {
   std::string strbuff;
 
   if (json_dump_callback(json, dump_to_string, (void*)&strbuff, flags)) {
@@ -353,30 +355,25 @@ std::string json_dumps(const json_t* json, size_t flags) {
   return strbuff;
 }
 
-int json_dumpf(const json_t* json, FILE* output, size_t flags) {
+int json_dumpf(const json_ref& json, FILE* output, size_t flags) {
   return json_dump_callback(json, dump_to_file, (void*)output, flags);
 }
 
-int json_dump_file(const json_t* json, const char* path, size_t flags) {
-  int result;
-
-  FILE* output = fopen(path, "w");
+int json_dump_file(const json_ref& json, const char* path, size_t flags) {
+  std::unique_ptr<FILE, int (*)(FILE*)> output{fopen(path, "w"), &fclose};
   if (!output)
     return -1;
 
-  result = json_dumpf(json, output, flags);
-
-  fclose(output);
-  return result;
+  return json_dumpf(json, output.get(), flags);
 }
 
 int json_dump_callback(
-    const json_t* json,
+    const json_ref& json,
     json_dump_callback_t callback,
     void* data,
     size_t flags) {
   if (!(flags & JSON_ENCODE_ANY)) {
-    if (!json_is_array(json) && !json_is_object(json))
+    if (!json.isArray() && !json.isObject())
       return -1;
   }
 

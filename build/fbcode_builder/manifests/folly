@@ -9,14 +9,18 @@ repo_url = https://github.com/facebook/folly.git
 
 [build]
 builder = cmake
+job_weight_mib = 1024
 
 [dependencies]
 gflags
 glog
 googletest
 boost
+libdwarf
 libevent
+libsodium
 double-conversion
+fast_float
 fmt
 lz4
 snappy
@@ -40,6 +44,15 @@ openssl
 openssl
 zlib
 
+[dependencies.os=linux]
+libiberty
+libunwind
+
+# xz depends on autoconf which does not build on
+# Windows
+[dependencies.not(os=windows)]
+xz
+
 [shipit.pathmap]
 fbcode/folly/public_tld = .
 fbcode/folly = folly
@@ -50,9 +63,15 @@ fbcode/folly = folly
 
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
+BOOST_LINK_STATIC=ON
+
+[cmake.defines.os=freebsd]
+LIBDWARF_FOUND=NO
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON
+BUILD_BENCHMARKS=OFF
 
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
+BUILD_BENCHMARKS=OFF

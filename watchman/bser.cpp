@@ -1,8 +1,15 @@
-/* Copyright 2013-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include "watchman/bser.h"
+#include "watchman/Logging.h"
 #include "watchman/thirdparty/jansson/jansson_private.h"
-#include "watchman/watchman.h"
+
+#include <math.h>
 
 /*
  * This defines a binary serialization of the JSON data objects in this
@@ -11,6 +18,8 @@
  * are signed integers and are stored in host byte order to minimize
  * transformation overhead.
  */
+
+namespace {
 
 /* Return the smallest size int that can store the value */
 #define INT_SIZE(x)                \
@@ -34,21 +43,39 @@
 #define BSER_SKIP 0x0c
 #define BSER_UTF8STRING 0x0d
 
-static const char bser_true = BSER_TRUE;
-static const char bser_false = BSER_FALSE;
-static const char bser_null = BSER_NULL;
-static const char bser_bytestring_hdr = BSER_BYTESTRING;
-static const char bser_array_hdr = BSER_ARRAY;
-static const char bser_object_hdr = BSER_OBJECT;
-static const char bser_template_hdr = BSER_TEMPLATE;
-static const char bser_utf8string_hdr = BSER_UTF8STRING;
-static const char bser_skip = BSER_SKIP;
+const char bser_true = BSER_TRUE;
+const char bser_false = BSER_FALSE;
+const char bser_null = BSER_NULL;
+const char bser_bytestring_hdr = BSER_BYTESTRING;
+const char bser_array_hdr = BSER_ARRAY;
+const char bser_object_hdr = BSER_OBJECT;
+const char bser_template_hdr = BSER_TEMPLATE;
+const char bser_utf8string_hdr = BSER_UTF8STRING;
+const char bser_skip = BSER_SKIP;
 
-static bool is_bser_version_supported(const bser_ctx_t* ctx) {
+constexpr size_t kMaximumContainerSize = std::numeric_limits<uint32_t>::max();
+
+// We could write the BSER parser to use O(1) stack depth, but in the short term
+// let's limit container depth.
+constexpr size_t kMaximumDepth = 1000;
+
+constexpr size_t kMaximumReservation = 10000;
+
+template <typename T>
+void limitedReservation(T& container, size_t size) {
+  // When parsing BSER, we want to avoid reallocations when
+  // possible. However, hostile inputs can ask for extremely large
+  // arrays and maps. In those cases, simply cap the reservation
+  // request to a reasonable amount before attempting to parse. If
+  // reallocation is necessary, so be it.
+  container.reserve(std::min(size, kMaximumReservation));
+}
+
+bool is_bser_version_supported(const bser_ctx_t* ctx) {
   return ctx->bser_version == 1 || ctx->bser_version == 2;
 }
 
-static int bser_real(const bser_ctx_t* ctx, double val, void* data) {
+int bser_real(const bser_ctx_t* ctx, double val, void* data) {
   char sz = BSER_REAL;
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -60,89 +87,7 @@ static int bser_real(const bser_ctx_t* ctx, double val, void* data) {
   return ctx->dump((char*)&val, sizeof(val), data);
 }
 
-bool bunser_generic_string(
-    const char* buf,
-    json_int_t avail,
-    json_int_t* needed,
-    const char** start,
-    json_int_t* len) {
-  json_int_t ineed;
-
-  if (!bunser_int(buf + 1, avail - 1, &ineed, len)) {
-    *needed = ineed;
-    return false;
-  }
-
-  buf += ineed + 1;
-  avail -= ineed + 1;
-  *needed = ineed + 1 + *len;
-
-  if (*len > avail) {
-    return false;
-  }
-
-  *start = buf;
-  return true;
-}
-
-// Attempt to unserialize an integer value.
-// Returns bool if successful, and populates *val with the value.
-// Otherwise populates *needed with the size required to successfully
-// decode the integer value
-bool bunser_int(
-    const char* buf,
-    json_int_t avail,
-    json_int_t* needed,
-    json_int_t* val) {
-  int8_t i8;
-  int16_t i16;
-  int32_t i32;
-  int64_t i64;
-
-  switch (buf[0]) {
-    case BSER_INT8:
-      *needed = 2;
-      break;
-    case BSER_INT16:
-      *needed = 3;
-      break;
-    case BSER_INT32:
-      *needed = 5;
-      break;
-    case BSER_INT64:
-      *needed = 9;
-      break;
-    default:
-      *needed = -1;
-      return false;
-  }
-  if (avail < *needed) {
-    return false;
-  }
-
-  switch (buf[0]) {
-    case BSER_INT8:
-      memcpy(&i8, buf + 1, sizeof(i8));
-      *val = i8;
-      return true;
-    case BSER_INT16:
-      memcpy(&i16, buf + 1, sizeof(i16));
-      *val = i16;
-      return true;
-    case BSER_INT32:
-      memcpy(&i32, buf + 1, sizeof(i32));
-      *val = i32;
-      return true;
-    case BSER_INT64:
-      memcpy(&i64, buf + 1, sizeof(i64));
-      *val = i64;
-      return true;
-    default:
-      return false;
-  }
-}
-
-static int bser_int(const bser_ctx_t* ctx, json_int_t val, void* data) {
+int bser_int(const bser_ctx_t* ctx, json_int_t val, void* data) {
   int8_t i8;
   int16_t i16;
   int32_t i32;
@@ -187,7 +132,7 @@ static int bser_int(const bser_ctx_t* ctx, json_int_t val, void* data) {
   return ctx->dump(iptr, size, data);
 }
 
-static int bser_generic_string(
+int bser_generic_string(
     const bser_ctx_t* ctx,
     w_string_piece str,
     void* data,
@@ -211,13 +156,11 @@ static int bser_generic_string(
   return 0;
 }
 
-static int
-bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+int bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   return bser_generic_string(ctx, str, data, bser_bytestring_hdr);
 }
 
-static int
-bser_utf8string(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+int bser_utf8string(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   if ((ctx->bser_capabilities & BSER_CAP_DISABLE_UNICODE) ||
       ctx->bser_version == 1) {
     return bser_bytestring(ctx, str, data);
@@ -225,8 +168,7 @@ bser_utf8string(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   return bser_generic_string(ctx, str, data, bser_utf8string_hdr);
 }
 
-static int
-bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+int bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   if (ctx->bser_version != 1 &&
       !(BSER_CAP_DISABLE_UNICODE_FOR_ERRORS & ctx->bser_capabilities) &&
       !(BSER_CAP_DISABLE_UNICODE & ctx->bser_capabilities)) {
@@ -237,15 +179,14 @@ bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   }
 }
 
-static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data);
+int bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data);
 
-static int bser_template(
+int bser_template(
     const bser_ctx_t* ctx,
-    const json_t* array,
-    const json_t* templ,
+    const json_ref& array,
+    const json_ref& templ,
     void* data) {
   size_t n = json_array_size(array);
-  size_t i, pn;
 
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -266,16 +207,17 @@ static int bser_template(
     return -1;
   }
 
-  pn = json_array_size(templ);
+  auto& array_arr = array.array();
+  auto& templ_arr = templ.array();
+  size_t pn = templ_arr.size();
 
   // For each object
-  for (i = 0; i < n; i++) {
-    auto obj = json_array_get(array, i);
-    size_t pi;
+  for (size_t i = 0; i < n; i++) {
+    auto& obj = array_arr[i];
 
     // For each factored key
-    for (pi = 0; pi < pn; pi++) {
-      const char* key = json_string_value(json_array_get(templ, pi));
+    for (size_t pi = 0; pi < pn; pi++) {
+      const char* key = json_string_value(templ_arr[pi]);
 
       // Look up the object property
       auto val = json_object_get(obj, key);
@@ -288,7 +230,7 @@ static int bser_template(
       }
 
       // Emit value
-      if (w_bser_dump(ctx, val, data)) {
+      if (w_bser_dump(ctx, *val, data)) {
         return -1;
       }
     }
@@ -297,30 +239,26 @@ static int bser_template(
   return 0;
 }
 
-static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data) {
-  size_t n = json_array_size(array);
-  size_t i;
-
+int bser_array(const bser_ctx_t* ctx, const json_ref& array, void* data) {
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
   auto templ = json_array_get_template(array);
-  if (templ) {
-    return bser_template(ctx, array, templ, data);
+  if (templ && !templ->array().empty()) {
+    return bser_template(ctx, array, *templ, data);
   }
 
   if (ctx->dump(&bser_array_hdr, sizeof(bser_array_hdr), data)) {
     return -1;
   }
 
-  if (bser_int(ctx, n, data)) {
+  auto& arr = array.array();
+  if (bser_int(ctx, arr.size(), data)) {
     return -1;
   }
 
-  for (i = 0; i < n; i++) {
-    auto val = json_array_get(array, i);
-
+  for (auto& val : arr) {
     if (w_bser_dump(ctx, val, data)) {
       return -1;
     }
@@ -329,7 +267,7 @@ static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data) {
   return 0;
 }
 
-static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
+int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
   size_t n;
 
   if (!is_bser_version_supported(ctx)) {
@@ -360,14 +298,14 @@ static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
   return 0;
 }
 
-int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
-  int type = json_typeof(json);
+} // namespace
 
+int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
-  switch (type) {
+  switch (json.type()) {
     case JSON_NULL:
       return ctx->dump(&bser_null, sizeof(bser_null), data);
     case JSON_TRUE:
@@ -401,11 +339,15 @@ int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
   }
 }
 
-static int measure(const char*, size_t size, void* ptr) {
+namespace {
+
+int measure(const char*, size_t size, void* ptr) {
   auto tot = (json_int_t*)ptr;
   *tot += size;
   return 0;
 }
+
+} // namespace
 
 int w_bser_write_pdu(
     const uint32_t bser_version,
@@ -455,287 +397,340 @@ int w_bser_write_pdu(
   return 0;
 }
 
-static json_ref bunser_array(
-    const char* buf,
-    const char* end,
-    json_int_t* used,
-    json_error_t* jerr) {
-  json_int_t needed;
-  json_int_t total = 0;
-  json_int_t i, nelems;
+namespace {
 
-  buf++;
-  total++;
-
-  if (!bunser_int(buf, end - buf, &needed, &nelems)) {
-    if (needed == -1) {
-      snprintf(
-          jerr->text,
-          sizeof(jerr->text),
-          "invalid integer encoding 0x%02x for array length. buf=%p\n",
-          (int)buf[0],
-          buf);
-      return nullptr;
-    }
-    *used = needed + total;
-    snprintf(
-        jerr->text,
-        sizeof(jerr->text),
-        "invalid array length encoding 0x%02x (needed %d but have %d)",
-        (int)buf[0],
-        (int)needed,
-        (int)(end - buf));
-    return nullptr;
-  }
-
-  total += needed;
-  buf += needed;
-
-  auto arrval = json_array();
-  for (i = 0; i < nelems; i++) {
-    needed = 0;
-    auto item = bunser(buf, end, &needed, jerr);
-
-    total += needed;
-    buf += needed;
-
-    if (!item) {
-      *used = total;
-      return nullptr;
-    }
-
-    if (json_array_append_new(arrval, std::move(item))) {
-      *used = total;
-      snprintf(jerr->text, sizeof(jerr->text), "failed to append array item");
-      return nullptr;
+/**
+ * Contains BserParser state. BSER is a simple format, so the only mutable state
+ * is the current pointer.
+ *
+ * Terminology note:
+ * "parse" means we know the current value type, so decode and return it.
+ * "expect" means we don't know the current value type, but the document
+ * requires it be a specific type.
+ */
+class BserParser {
+ public:
+  BserParser(const char* buf, const char* end)
+      : buf{buf}, start{buf}, end{end} {
+    if (end < buf) {
+      logf(
+          watchman::FATAL,
+          "end {} < buf {}",
+          static_cast<const void*>(end),
+          static_cast<const void*>(buf));
     }
   }
 
-  *used = total;
-  return arrval;
-}
-
-static json_ref bunser_template(
-    const char* buf,
-    const char* end,
-    json_int_t* used,
-    json_error_t* jerr) {
-  json_int_t needed = 0;
-  json_int_t total = 0;
-  json_int_t i, nelems;
-  json_int_t ip, np;
-
-  buf++;
-  total++;
-
-  if (*buf != BSER_ARRAY) {
-    snprintf(
-        jerr->text,
-        sizeof(jerr->text),
-        "Expected array encoding, but found 0x%02x",
-        *buf);
-    *used = total;
-    return nullptr;
+  json_ref expectValue() {
+    return parseValue(*ensure(1));
   }
 
-  // Load in the property names template
-  auto templ = bunser_array(buf, end, &needed, jerr);
-  if (!templ) {
-    *used = needed + total;
-    return nullptr;
-  }
-  total += needed;
-  buf += needed;
+  json_ref parseValue(char value_type) {
+    switch (value_type) {
+      case BSER_INT8:
+      case BSER_INT16:
+      case BSER_INT32:
+      case BSER_INT64:
+        return json_integer(parseInteger(value_type));
 
-  // And the number of objects
-  needed = 0;
-  if (!bunser_int(buf, end - buf, &needed, &nelems)) {
-    *used = needed + total;
-    snprintf(
-        jerr->text,
-        sizeof(jerr->text),
-        "invalid object number encoding (needed %d but have %d)",
-        (int)needed,
-        (int)(end - buf));
-    return nullptr;
-  }
-  total += needed;
-  buf += needed;
-
-  np = json_array_size(templ);
-
-  // Now load up the array with object values
-  auto arrval = json_array_of_size((size_t)nelems);
-  for (i = 0; i < nelems; i++) {
-    auto item = json_object_of_size((size_t)np);
-    for (ip = 0; ip < np; ip++) {
-      if (*buf == BSER_SKIP) {
-        buf++;
-        total++;
-        continue;
+      case BSER_BYTESTRING:
+      case BSER_UTF8STRING: {
+        std::string_view str = parseString();
+        return typed_string_to_json(
+            str.data(),
+            str.size(),
+            value_type == BSER_BYTESTRING ? W_STRING_BYTE : W_STRING_UNICODE);
       }
 
-      needed = 0;
-      auto val = bunser(buf, end, &needed, jerr);
-      if (!val) {
-        *used = needed + total;
-        return nullptr;
+      case BSER_REAL: {
+        return json_real(parseReal());
       }
-      buf += needed;
-      total += needed;
 
-      json_object_set_new_nocheck(
-          item,
-          json_string_value(json_array_get(templ, (size_t)ip)),
-          std::move(val));
+      case BSER_TRUE:
+        return json_true();
+      case BSER_FALSE:
+        return json_false();
+      case BSER_NULL:
+        return json_null();
+      case BSER_ARRAY:
+        return json_array(parseArray());
+      case BSER_TEMPLATE:
+        return parseTemplate();
+      case BSER_OBJECT:
+        return parseObject();
+      default:
+        throw BserParseError("invalid bser encoding type: {:02x}", value_type);
     }
-
-    json_array_append_new(arrval, std::move(item));
   }
 
-  *used = total;
-  return arrval;
-}
-
-static json_ref bunser_object(
-    const char* buf,
-    const char* end,
-    json_int_t* used,
-    json_error_t* jerr) {
-  json_int_t needed;
-  json_int_t total = 0;
-  json_int_t i, nelems;
-  char keybuf[128];
-
-  total = 1;
-  buf++;
-
-  if (!bunser_int(buf, end - buf, &needed, &nelems)) {
-    *used = needed + total;
-    snprintf(
-        jerr->text,
-        sizeof(jerr->text),
-        "invalid object property count encoding");
-    return nullptr;
-  }
-
-  total += needed;
-  buf += needed;
-
-  auto objval = json_object();
-  for (i = 0; i < nelems; i++) {
-    const char* start;
-    json_int_t slen;
-
-    // Read key
-    if (!bunser_generic_string(buf, end - buf, &needed, &start, &slen)) {
-      *used = total + needed;
-      snprintf(
-          jerr->text, sizeof(jerr->text), "invalid bytestring for object key");
-      return nullptr;
+ private:
+  /**
+   * Ensures `needed` bytes remain in the document, and advances the `buf`
+   * pointer. Returns the old `buf` with the assurance that up to `needed` bytes
+   * are safe to read.
+   */
+  const char* ensure(size_t needed) {
+    assert(end >= buf);
+    if (needed > static_cast<size_t>(end - buf)) {
+      throw BserParseError(
+          "unexpected EOF at {}: expected {} remaining but total document is {}",
+          buf - start,
+          needed,
+          end - start);
     }
-    total += needed;
+    const char* old = buf;
     buf += needed;
-
-    // Saves us allocating a string when the library is going to
-    // do that anyway
-    if ((uint16_t)slen > sizeof(keybuf) - 1) {
-      snprintf(jerr->text, sizeof(jerr->text), "object key is too long");
-      return nullptr;
-    }
-    memcpy(keybuf, start, (size_t)slen);
-    keybuf[slen] = '\0';
-
-    // Read value
-    auto item = bunser(buf, end, &needed, jerr);
-    total += needed;
-    buf += needed;
-
-    if (!item) {
-      *used = total;
-      return nullptr;
-    }
-
-    if (json_object_set_new_nocheck(objval, keybuf, std::move(item))) {
-      *used = total;
-      snprintf(jerr->text, sizeof(jerr->text), "failed to add object property");
-      return nullptr;
-    }
+    return old;
   }
 
-  *used = total;
-  return objval;
-}
+  char expectType(std::initializer_list<char> types) {
+    char type = *ensure(1);
+    for (char expected : types) {
+      if (type == expected) {
+        return type;
+      }
+    }
+    std::string expected = "{";
+    bool comma = false;
+    for (char type_2 : types) {
+      if (comma) {
+        expected += ",";
+      } else {
+        comma = true;
+      }
+      expected += std::to_string(static_cast<int>(type_2));
+    }
+    expected += "}";
+    throw BserParseError(
+        "unexpected value type: expected {} but saw {}",
+        expected,
+        static_cast<int>(type));
+  }
 
-json_ref bunser(
-    const char* buf,
-    const char* end,
-    json_int_t* needed,
-    json_error_t* jerr) {
-  json_int_t ival;
+  template <typename T>
+  json_int_t parseInteger() {
+    T v;
+    memcpy(&v, ensure(sizeof(v)), sizeof(v));
+    return v;
+  }
+
+  json_int_t parseInteger(char type) {
+    switch (type) {
+      case BSER_INT8:
+        return parseInteger<int8_t>();
+      case BSER_INT16:
+        return parseInteger<int16_t>();
+      case BSER_INT32:
+        return parseInteger<int32_t>();
+      case BSER_INT64:
+        return parseInteger<int64_t>();
+    }
+    assert(!"invalid integer type");
+    abort();
+  }
+
+  double parseReal() {
+    double dval;
+    memcpy(&dval, ensure(sizeof(double)), sizeof(dval));
+
+    if (!isfinite(dval)) {
+      throw BserParseError("reals must be finite");
+    }
+
+    return dval;
+  }
+
+  json_int_t expectInteger() {
+    char type = expectType({BSER_INT8, BSER_INT16, BSER_INT32, BSER_INT64});
+    return parseInteger(type);
+  }
+
+  size_t expectSize(const char* label) {
+    json_int_t size = expectInteger();
+    if (size < 0) {
+      throw BserParseError("{} has negative size", label);
+    }
+    size_t rv = size;
+    if (rv > kMaximumContainerSize) {
+      throw BserParseError("{} size is too large: {}", label, rv);
+    }
+    return rv;
+  }
+
+  // References memory in the input document.
+  std::string_view parseString() {
+    size_t length = expectSize("string");
+    return std::string_view{ensure(length), length};
+  }
+
+  std::string_view expectString() {
+    expectType({BSER_BYTESTRING, BSER_UTF8STRING});
+    return parseString();
+  }
+
+  std::vector<json_ref> parseArray() {
+    BumpDepth scope{depth};
+
+    size_t count = expectSize("array");
+
+    std::vector<json_ref> rv;
+    limitedReservation(rv, count);
+    for (size_t i = 0; i < count; i++) {
+      rv.push_back(expectValue());
+    }
+    return rv;
+  }
+
+  std::vector<json_ref> expectArray() {
+    expectType({BSER_ARRAY});
+    return parseArray();
+  }
+
+  json_ref parseTemplate() {
+    BumpDepth scope{depth};
+
+    // Load in the property names template
+    auto templ = expectArray();
+    if (templ.empty()) {
+      // To avoid "decompression bombs" -- small documents that expand into huge
+      // memory requirements -- require that templates have a non-empty key set.
+      throw BserParseError("templates require a non-empty key set");
+    }
+
+    // Validate that all template keys are strings before entering the main
+    // loop.
+    for (const auto& template_key : templ) {
+      if (!template_key.isString()) {
+        throw BserParseError(
+            "template value must be string, was {}", template_key.type());
+      }
+    }
+
+    // And the number of objects
+    auto element_count = expectSize("template");
+
+    // Now load up the array with object values
+    std::vector<json_ref> rv;
+    limitedReservation(rv, element_count);
+    for (size_t i = 0; i < element_count; ++i) {
+      std::unordered_map<w_string, json_ref> item;
+      limitedReservation(item, templ.size());
+      for (const auto& template_key : templ) {
+        char type = *ensure(1);
+        if (type == BSER_SKIP) {
+          continue;
+        }
+
+        assert(template_key.isString());
+        item.insert_or_assign(
+            json_string_value(template_key), parseValue(type));
+      }
+
+      rv.push_back(json_object(std::move(item)));
+    }
+
+    return json_array(std::move(rv));
+  }
+
+  json_ref parseObject() {
+    BumpDepth scope{depth};
+
+    size_t element_count = expectSize("object");
+
+    std::unordered_map<w_string, json_ref> rv;
+    limitedReservation(rv, element_count);
+
+    for (size_t i = 0; i < element_count; i++) {
+      auto key = expectString();
+      auto value = expectValue();
+
+      rv.emplace(
+          w_string{
+              key.data(),
+              key.size(),
+              // Hard-coding the string type matches BSER's previous behavior,
+              // but should we respect the type encoded in the BSER document?
+              W_STRING_BYTE},
+          std::move(value));
+    }
+
+    return json_object(std::move(rv));
+  }
+
+  struct BumpDepth {
+    explicit BumpDepth(size_t& depth) : depth{depth} {
+      if (++depth == kMaximumDepth) {
+        throw BserParseTooDeep{};
+      }
+    }
+    ~BumpDepth() {
+      --depth;
+    }
+
+    size_t& depth;
+  };
+
+  const char* buf;
+  const char* const start;
+  const char* const end;
+  size_t depth = 0;
+};
+
+} // namespace
+
+std::optional<json_int_t>
+bunser_int(const char* buf, size_t avail, size_t* needed) {
+  if (avail == 0) {
+    *needed = 1;
+    return std::nullopt;
+  }
 
   switch (buf[0]) {
     case BSER_INT8:
+      *needed = 2;
+      if (avail < 2) {
+        return std::nullopt;
+      } else {
+        int8_t i8;
+        memcpy(&i8, buf + 1, sizeof(i8));
+        return i8;
+      }
     case BSER_INT16:
+      *needed = 3;
+      if (avail < 3) {
+        return std::nullopt;
+      } else {
+        int16_t i16;
+        memcpy(&i16, buf + 1, sizeof(i16));
+        return i16;
+      }
     case BSER_INT32:
+      *needed = 5;
+      if (avail < 5) {
+        return std::nullopt;
+      } else {
+        int32_t i32;
+        memcpy(&i32, buf + 1, sizeof(i32));
+        return i32;
+      }
     case BSER_INT64:
-      if (!bunser_int(buf, end - buf, needed, &ival)) {
-        snprintf(jerr->text, sizeof(jerr->text), "invalid integer encoding");
-        return nullptr;
+      *needed = 9;
+      if (avail < 9) {
+        return std::nullopt;
+      } else {
+        int64_t i64;
+        memcpy(&i64, buf + 1, sizeof(i64));
+        return i64;
       }
-      return json_integer(ival);
-
-    case BSER_BYTESTRING:
-    case BSER_UTF8STRING: {
-      const char* start;
-      json_int_t len;
-
-      if (!bunser_generic_string(buf, end - buf, needed, &start, &len)) {
-        snprintf(jerr->text, sizeof(jerr->text), "invalid bytestring encoding");
-        return nullptr;
-      }
-
-      return typed_string_to_json(
-          start,
-          len,
-          buf[0] == BSER_BYTESTRING ? W_STRING_BYTE : W_STRING_UNICODE);
-    }
-
-    case BSER_REAL: {
-      double dval;
-      *needed = sizeof(double) + 1;
-      memcpy(&dval, buf + 1, sizeof(dval));
-      return json_real(dval);
-    }
-
-    case BSER_TRUE:
-      *needed = 1;
-      return json_true();
-    case BSER_FALSE:
-      *needed = 1;
-      return json_false();
-    case BSER_NULL:
-      *needed = 1;
-      return json_null();
-    case BSER_ARRAY:
-      return bunser_array(buf, end, needed, jerr);
-    case BSER_TEMPLATE:
-      return bunser_template(buf, end, needed, jerr);
-    case BSER_OBJECT:
-      return bunser_object(buf, end, needed, jerr);
     default:
-      snprintf(
-          jerr->text,
-          sizeof(jerr->text),
-          "invalid bser encoding type %02x",
-          (int)buf[0]);
-      return nullptr;
+      *needed = kDecodeIntFailed;
+      return std::nullopt;
   }
-
-#ifndef _WIN32 // It knows this is unreachable
-  return nullptr;
-#endif
 }
 
-/* vim:ts=2:sw=2:et:
- */
+json_ref bunser(const char* buf, const char* end) {
+  if (buf >= end) {
+    throw BserParseError("document too short");
+  }
+  return BserParser{buf, end}.expectValue();
+}

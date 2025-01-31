@@ -1,11 +1,17 @@
 [manifest]
 name = ninja
 
+[debs]
+ninja-build
+
+[homebrew]
+ninja
+
 [rpms]
 ninja-build
 
-[debs]
-ninja-build
+[pps]
+ninja
 
 [download.os=windows]
 url = https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip

@@ -1,10 +1,19 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
-#include "PubSub.h"
-#include "folly/Synchronized.h"
+
+#include <fmt/ranges.h>
+#include <folly/Synchronized.h>
+#include <folly/portability/Windows.h> // For timeval. Replace this.
+
+#include "watchman/PubSub.h"
+#include "watchman/watchman_preprocessor.h"
 #include "watchman/watchman_string.h"
-#include "watchman_preprocessor.h"
 
 namespace watchman {
 
@@ -66,6 +75,8 @@ class Log {
 
     char timebuf[64];
 
+    auto message =
+        fmt::format(fmt::runtime(format_str), std::forward<Args>(args)...);
     auto payload = json_object(
         {{"log",
           typed_string_to_json(w_string::build(
@@ -73,7 +84,7 @@ class Log {
               ": [",
               getThreadName(),
               "] ",
-              fmt::format(format_str, std::forward<Args>(args)...)))},
+              std::move(message)))},
          {"unilateral", json_true()},
          {"level", typed_string_to_json(logLevelToLabel(level))}});
 
@@ -119,6 +130,14 @@ void logf(LogLevel level, fmt::string_view format_str, Args&&... args) {
   getLog().logf(level, format_str, std::forward<Args>(args)...);
 }
 
+// Log only to stderr. This bypasses Logging / folly::Synchronized which
+// might deadlock during exit.
+template <typename... Args>
+void logf_stderr(fmt::string_view format_str, Args&&... args) {
+  auto msg = fmt::format(fmt::runtime(format_str), std::forward<Args>(args)...);
+  ignore_result(folly::fileops::write(STDERR_FILENO, msg.data(), msg.size()));
+}
+
 #ifdef _WIN32
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep);
 #endif
@@ -126,8 +145,9 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep);
 } // namespace watchman
 
 template <typename... Args>
-const char* w_set_thread_name(Args&&... args) {
-  auto name = folly::to<std::string>(std::forward<Args>(args)...);
+const char* w_set_thread_name(const Args&... args) {
+  auto name =
+      fmt::to_string(fmt::join(std::make_tuple<const Args&...>(args...), ""));
   return watchman::Log::setThreadName(std::move(name));
 }
 

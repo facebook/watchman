@@ -1,5 +1,9 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
 #ifndef WATCHMAN_SYSTEM_H
 #define WATCHMAN_SYSTEM_H
@@ -10,7 +14,7 @@
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
 #include <folly/portability/SysTypes.h>
-#include "config.h" // @manual=//watchman:config_h
+#include "watchman/config.h"
 
 // This header plays tricks with posix IO functions and
 // can result in ambiguous overloads on Windows if io.h
@@ -44,24 +48,11 @@
 #include <time.h>
 #include <windows.h>
 
-#if _MSC_VER >= 1400
-#include <sal.h> // @manual
-#if _MSC_VER > 1400
-#define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
-#else
-#define WATCHMAN_FMT_STRING(x) __format_string x
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef ptrdiff_t ssize_t;
-
-const char* win32_strerror(DWORD err);
-int map_win32_err(DWORD err);
-int map_winsock_err();
 
 #define snprintf _snprintf
 char* dirname(char* path);
@@ -75,15 +66,6 @@ char* realpath(const char* filename, char* target);
 #define O_DIRECTORY _O_OBTAIN_DIR
 #define O_CLOEXEC _O_NOINHERIT
 #define O_NOFOLLOW 0 /* clowny, but there's no translation */
-
-#define HAVE_BACKTRACE
-#define HAVE_BACKTRACE_SYMBOLS
-size_t backtrace(void** frames, size_t n_frames);
-char** backtrace_symbols(void** array, size_t n_frames);
-size_t backtrace_from_exception(
-    LPEXCEPTION_POINTERS exception,
-    void** frames,
-    size_t n_frames);
 
 #ifdef __cplusplus
 }
@@ -114,13 +96,7 @@ size_t backtrace_from_exception(
 #endif
 #include <errno.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
 #include <sys/types.h>
-#include <time.h>
 #ifndef _WIN32
 #include <grp.h>
 #include <libgen.h>
@@ -142,9 +118,6 @@ size_t backtrace_from_exception(
 #include <poll.h>
 #include <sys/wait.h>
 #endif
-#ifdef HAVE_PCRE_H
-#include <pcre.h>
-#endif
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
 #endif
@@ -153,19 +126,11 @@ size_t backtrace_from_exception(
 #include <sys/uio.h>
 #include <sysexits.h>
 #endif
-#include <spawn.h>
-#include <stddef.h>
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
-#endif
-
-#ifdef _WIN32
-#define PRIsize_t "Iu"
-#else
-#define PRIsize_t "zu"
 #endif
 
 #if defined(__clang__)
@@ -238,9 +203,6 @@ size_t backtrace_from_exception(
 #else
 #define ignore_result(x) x
 #endif
-
-// self-documenting hint to the compiler that we didn't use it
-#define unused_parameter(x) (void)x
 
 #ifdef __cplusplus
 extern "C" {

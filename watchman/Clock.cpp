@@ -1,10 +1,16 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include "watchman/Clock.h"
+#include <folly/Overload.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/portability/SysTime.h>
 #include <memory>
-#include "watchman/watchman.h"
 
 using namespace watchman;
 
@@ -15,7 +21,7 @@ void ClockSpec::init() {
   struct timeval tv;
 
   proc_pid = (int)::getpid();
-  if (gettimeofday(&tv, NULL) == -1) {
+  if (gettimeofday(&tv, nullptr) == -1) {
     logf(FATAL, "gettimeofday failed: {}\n", folly::errnoStr(errno));
   }
   proc_start_time = (uint64_t)tv.tv_sec;
@@ -25,70 +31,57 @@ ClockSpec::ClockSpec(const json_ref& value) {
   auto parseClockString = [=](const char* str) {
     uint64_t start_time;
     int pid;
-    uint32_t root_number;
-    uint32_t ticks;
+    ClockRoot root_number;
+    ClockTicks ticks;
     // Parse a >= 2.8.2 version clock string
     if (sscanf(
             str,
-            "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
+            "c:%" PRIu64 ":%d:%" PRIu64 ":%" PRIu64,
             &start_time,
             &pid,
             &root_number,
             &ticks) == 4) {
-      tag = w_cs_clock;
-      clock.start_time = start_time;
-      clock.pid = pid;
-      clock.position.rootNumber = root_number;
-      clock.position.ticks = ticks;
+      spec = Clock{start_time, pid, ClockPosition{root_number, ticks}};
       return true;
     }
 
-    if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+    if (sscanf(str, "c:%d:%" PRIu64, &pid, &ticks) == 2) {
       // old-style clock value (<= 2.8.2) -- by setting clock time and root
       // number to 0 we guarantee that this is treated as a fresh instance
-      tag = w_cs_clock;
-      clock.start_time = 0;
-      clock.pid = pid;
-      clock.position.rootNumber = root_number;
-      clock.position.ticks = ticks;
+      spec = Clock{0, pid, ClockPosition{root_number, ticks}};
       return true;
     }
 
     return false;
   };
 
-  switch (json_typeof(value)) {
+  switch (value.type()) {
     case JSON_INTEGER:
-      tag = w_cs_timestamp;
-      timestamp = (time_t)value.asInt();
+      spec = Timestamp{static_cast<time_t>(value.asInt())};
       return;
 
     case JSON_OBJECT: {
-      auto clockStr = value.get_default("clock");
+      auto clockStr = value.get_optional("clock");
       if (clockStr) {
-        if (!parseClockString(json_string_value(clockStr))) {
+        if (!parseClockString(json_string_value(*clockStr))) {
           throw std::domain_error("invalid clockspec");
         }
       } else {
-        tag = w_cs_clock;
-        clock.start_time = 0;
-        clock.pid = 0;
-        clock.position.rootNumber = 0;
-        clock.position.ticks = 0;
+        spec = Clock{0, 0, ClockPosition{0, 0}};
       }
 
-      auto scm = value.get_default("scm");
+      auto scm = value.get_optional("scm");
       if (scm) {
         scmMergeBase = json_to_w_string(
-            scm.get_default("mergebase", w_string_to_json("")));
-        scmMergeBaseWith = json_to_w_string(scm.get("mergebase-with"));
-        auto savedState = scm.get_default("saved-state");
+            scm->get_default("mergebase", w_string_to_json("")));
+        scmMergeBaseWith = json_to_w_string(scm->get("mergebase-with"));
+        auto savedState = scm->get_optional("saved-state");
         if (savedState) {
-          savedStateConfig = savedState.get("config");
-          savedStateStorageType = json_to_w_string(savedState.get("storage"));
-          auto commitId = savedState.get_default("commit-id");
+          savedStateConfig = savedState->get("config");
+          savedStateStorageType = json_to_w_string(savedState->get("storage"));
+          auto commitId = savedState->get_optional("commit-id");
           if (commitId) {
-            savedStateCommitId = json_to_w_string(commitId);
+            savedStateCommitId = json_to_w_string(*commitId);
           } else {
             savedStateCommitId = w_string();
           }
@@ -102,8 +95,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
       auto str = json_string_value(value);
 
       if (str[0] == 'n' && str[1] == ':') {
-        tag = w_cs_named_cursor;
-        named_cursor.cursor = json_to_w_string(value);
+        spec = NamedCursor{json_to_w_string(value)};
         return;
       }
 
@@ -114,8 +106,8 @@ ClockSpec::ClockSpec(const json_ref& value) {
       /* fall through to default case and throw error.
        * The redundant looking comment below is a hint to
        * gcc that it is ok to fall through. */
+      [[fallthrough]];
     }
-      /* fall through */
 
     default:
       throw std::domain_error("invalid clockspec");
@@ -130,95 +122,88 @@ std::unique_ptr<ClockSpec> ClockSpec::parseOptionalClockSpec(
   return std::make_unique<ClockSpec>(value);
 }
 
-ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}
+ClockSpec::ClockSpec() : spec{Timestamp{0}} {}
 
 ClockSpec::ClockSpec(const ClockPosition& position)
-    : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
+    : spec{Clock{proc_start_time, proc_pid, position}} {}
 
-w_query_since ClockSpec::evaluate(
+QuerySince ClockSpec::evaluate(
     const ClockPosition& position,
-    const uint32_t lastAgeOutTick,
-    folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
+    ClockTicks lastAgeOutTick,
+    folly::Synchronized<std::unordered_map<w_string, ClockTicks>>* cursorMap)
     const {
-  w_query_since since;
-
-  switch (tag) {
-    case w_cs_timestamp:
-      // just copy the values over
-      since.is_timestamp = true;
-      since.timestamp = timestamp;
-      return since;
-
-    case w_cs_named_cursor: {
-      if (!cursorMap) {
-        // This is checked for and handled at parse time in SinceExpr::parse,
-        // so this should be impossible to hit.
-        throw std::runtime_error(
-            "illegal to use a named cursor in this context");
-      }
-
-      {
-        auto wlock = cursorMap->wlock();
-        auto& cursors = *wlock;
-        auto it = cursors.find(named_cursor.cursor);
-
-        if (it == cursors.end()) {
-          since.clock.is_fresh_instance = true;
-          since.clock.ticks = 0;
+  return folly::variant_match(
+      spec,
+      [](const Timestamp& ts) -> QuerySince {
+        return QuerySince::Timestamp{ts.time};
+      },
+      [&](const Clock& clock) -> QuerySince {
+        QuerySince::Clock since_clock;
+        if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
+            clock.position.rootNumber == position.rootNumber) {
+          since_clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
+          if (since_clock.is_fresh_instance) {
+            since_clock.ticks = 0;
+          } else {
+            since_clock.ticks = clock.position.ticks;
+          }
         } else {
-          since.clock.ticks = it->second;
-          since.clock.is_fresh_instance = since.clock.ticks < lastAgeOutTick;
+          // If the pid, start time or root number don't match, they asked a
+          // different incarnation of the server or a different instance of this
+          // root, so we treat them as having never spoken to us before.
+          since_clock.is_fresh_instance = true;
+          since_clock.ticks = 0;
+        }
+        return since_clock;
+      },
+      [&](const NamedCursor& named_cursor) -> QuerySince {
+        if (!cursorMap) {
+          // This is checked for and handled at parse time in SinceExpr::parse,
+          // so this should be impossible to hit.
+          throw std::runtime_error(
+              "illegal to use a named cursor in this context");
         }
 
-        // record the current tick value against the cursor so that we use that
-        // as the basis for a subsequent query.
-        cursors[named_cursor.cursor] = position.ticks;
-      }
+        QuerySince::Clock since_clock;
 
-      watchman::log(
-          watchman::DBG,
-          "resolved cursor ",
-          named_cursor.cursor,
-          " -> ",
-          since.clock.ticks,
-          "\n");
+        {
+          auto wlock = cursorMap->wlock();
+          auto& cursors = *wlock;
+          auto it = cursors.find(named_cursor.cursor);
 
-      return since;
-    }
+          if (it == cursors.end()) {
+            since_clock.is_fresh_instance = true;
+            since_clock.ticks = 0;
+          } else {
+            since_clock.ticks = it->second;
+            since_clock.is_fresh_instance = since_clock.ticks < lastAgeOutTick;
+          }
 
-    case w_cs_clock: {
-      if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
-          clock.position.rootNumber == position.rootNumber) {
-        since.clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
-        if (since.clock.is_fresh_instance) {
-          since.clock.ticks = 0;
-        } else {
-          since.clock.ticks = clock.position.ticks;
+          // record the current tick value against the cursor so that we use
+          // that as the basis for a subsequent query.
+          cursors[named_cursor.cursor] = position.ticks;
         }
-      } else {
-        // If the pid, start time or root number don't match, they asked a
-        // different incarnation of the server or a different instance of this
-        // root, so we treat them as having never spoken to us before.
-        since.clock.is_fresh_instance = true;
-        since.clock.ticks = 0;
-      }
-      return since;
-    }
 
-    default:
-      throw std::runtime_error("impossible case in ClockSpec::evaluate");
-  }
+        log(DBG,
+            "resolved cursor ",
+            named_cursor.cursor,
+            " -> ",
+            since_clock.ticks,
+            "\n");
+
+        return since_clock;
+      });
 }
 
 bool clock_id_string(
-    uint32_t root_number,
-    uint32_t ticks,
+    ClockRoot root_number,
+    ClockTicks ticks,
     char* buf,
     size_t bufsize) {
   int res = snprintf(
       buf,
       bufsize,
-      "c:%" PRIu64 ":%d:%u:%" PRIu32,
+      "c:%" PRIu64 ":%d:%" PRIu64 ":%" PRIu64,
       proc_start_time,
       proc_pid,
       root_number,
@@ -238,22 +223,15 @@ w_string ClockPosition::toClockString() const {
   return w_string(clockbuf, W_STRING_UNICODE);
 }
 
-/* Add the current clock value to the response */
-void annotate_with_clock(
-    const std::shared_ptr<watchman_root>& root,
-    json_ref& resp) {
-  resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
-}
-
 json_ref ClockSpec::toJson() const {
-  if (hasScmParams()) {
+  if (scmMergeBase) {
     auto scm = json_object(
-        {{"mergebase", w_string_to_json(scmMergeBase)},
+        {{"mergebase", w_string_to_json(scmMergeBase.value())},
          {"mergebase-with", w_string_to_json(scmMergeBaseWith)}});
-    if (hasSavedStateParams()) {
+    if (savedStateStorageType) {
       auto savedState = json_object(
-          {{"storage", w_string_to_json(savedStateStorageType)},
-           {"config", savedStateConfig}});
+          {{"storage", w_string_to_json(savedStateStorageType.value())},
+           {"config", savedStateConfig.value()}});
       if (savedStateCommitId != w_string()) {
         json_object_set(
             savedState, "commit-id", w_string_to_json(savedStateCommitId));
@@ -268,11 +246,11 @@ json_ref ClockSpec::toJson() const {
 }
 
 bool ClockSpec::hasScmParams() const {
-  return scmMergeBase;
+  return scmMergeBase.has_value();
 }
 
 bool ClockSpec::hasSavedStateParams() const {
-  return savedStateStorageType;
+  return savedStateStorageType.has_value();
 }
 
 /* vim:ts=2:sw=2:et:

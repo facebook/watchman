@@ -4,6 +4,9 @@ fbsource_path = fbcode/eden
 shipit_project = eden
 shipit_fbcode_builder = true
 
+[git]
+repo_url = https://github.com/facebook/sapling.git
+
 [build.not(os=windows)]
 builder = make
 subdir = eden/mononoke/tests/integration
@@ -26,22 +29,19 @@ fbcode/eden/mononoke/tests/integration = eden/mononoke/tests/integration
 
 [shipit.strip]
 ^.*/facebook/.*$
+^.*/fb/.*$
 
 [dependencies]
-eden_scm
-eden_scm_lib_edenapi_tools
+git-lfs
 jq
 mononoke
 nmap
+python
 python-click
-python-dulwich
+ripgrep
+sapling
 tree
+zstd
 
 [dependencies.os=linux]
-sqlite3-bin
-
-[dependencies.os=darwin]
-gnu-bash
-gnu-coreutils
-gnu-grep
-gnu-sed
+sqlite3

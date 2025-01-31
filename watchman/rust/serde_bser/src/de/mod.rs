@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 mod bunser;
 mod map;
 mod read;
@@ -11,15 +18,17 @@ mod variant;
 use std::io;
 use std::str;
 
-use error_chain::bail;
-use serde::{de, forward_to_deserialize_any};
+use serde::de;
+use serde::forward_to_deserialize_any;
 
+pub use self::bunser::Bunser;
+pub use self::bunser::PduInfo;
+pub use self::read::DeRead;
+pub use self::read::Reference;
+pub use self::read::SliceRead;
+use self::reentrant::ReentrantLimit;
 use crate::errors::*;
 use crate::header::*;
-
-pub use self::bunser::{Bunser, PduInfo};
-pub use self::read::{DeRead, Reference, SliceRead};
-use self::reentrant::ReentrantLimit;
 
 pub struct Deserializer<R> {
     bunser: Bunser<R>,
@@ -131,7 +140,10 @@ where
             BSER_INT16 => self.visit_i16(visitor),
             BSER_INT32 => self.visit_i32(visitor),
             BSER_INT64 => self.visit_i64(visitor),
-            ch => bail!(ErrorKind::DeInvalidStartByte("next item".into(), ch)),
+            ch => Err(Error::DeInvalidStartByte {
+                kind: "next item".into(),
+                byte: ch,
+            }),
         }
     }
 
@@ -168,7 +180,8 @@ where
         match self
             .bunser
             .read_bytes(len)?
-            .map_result(|x| str::from_utf8(x))?
+            .map_result(str::from_utf8)
+            .map_err(Error::de_reader_error)?
         {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
@@ -264,10 +277,10 @@ where
                 }
                 visitor.visit_enum(variant::VariantAccess::new(self, &guard))
             }
-            ch => bail!(ErrorKind::DeInvalidStartByte(
-                format!("enum '{}'", name),
-                ch
-            )),
+            ch => Err(Error::DeInvalidStartByte {
+                kind: format!("enum '{}'", name),
+                byte: ch,
+            }),
         }
     }
 

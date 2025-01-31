@@ -1,334 +1,36 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
+#include "watchman/listener.h"
 #include <folly/Exception.h>
 #include <folly/MapUtil.h>
-#include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
 #include <folly/net/NetworkSocket.h>
 #include <atomic>
 #include <chrono>
+#include <optional>
 #include <thread>
-#include "SignalHandler.h"
-#include "watchman/watchman.h"
+#include "watchman/Client.h"
+#include "watchman/Constants.h"
+#include "watchman/GroupLookup.h"
+#include "watchman/SanityCheck.h"
+#include "watchman/Shutdown.h"
+#include "watchman/SignalHandler.h"
+#include "watchman/WatchmanConfig.h"
+#include "watchman/portability/WinError.h"
+#include "watchman/sockname.h"
+#include "watchman/state.h"
+#include "watchman/watchman_cmd.h"
 
 using namespace watchman;
 
-folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
-    clients;
 static FileDescriptor listener_fd;
-static std::vector<std::shared_ptr<watchman_event>> listener_thread_events;
-static std::atomic<bool> stopping = false;
-static constexpr size_t kResponseLogLimit = 8;
-
-bool w_is_stopping() {
-  return stopping.load(std::memory_order_relaxed);
-}
-
-json_ref make_response() {
-  auto resp = json_object();
-
-  resp.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
-
-  return resp;
-}
-
-void send_and_dispose_response(
-    struct watchman_client* client,
-    json_ref&& response) {
-  client->enqueueResponse(std::move(response), false);
-}
-
-void send_error_response(struct watchman_client* client, const char* fmt, ...) {
-  va_list ap;
-
-  va_start(ap, fmt);
-  auto errorText = w_string::vprintf(fmt, ap);
-  va_end(ap);
-
-  auto resp = make_response();
-  resp.set("error", w_string_to_json(errorText));
-
-  if (client->perf_sample) {
-    client->perf_sample->add_meta("error", w_string_to_json(errorText));
-  }
-
-  if (client->current_command) {
-    auto command = json_dumps(client->current_command, 0);
-    watchman::log(
-        watchman::ERR,
-        "send_error_response: ",
-        command,
-        ", failed: ",
-        errorText,
-        "\n");
-  } else {
-    watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
-  }
-
-  send_and_dispose_response(client, std::move(resp));
-}
-
-namespace {
-// TODO: If used in a hot loop, EdenFS has a faster implementation.
-// https://github.com/facebookexperimental/eden/blob/c745d644d969dae1e4c0d184c19320fac7c27ae5/eden/fs/utils/IDGen.h
-std::atomic<uint64_t> id_generator{1};
-} // namespace
-
-watchman_client::watchman_client() : watchman_client(nullptr) {}
-
-watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
-    : unique_id{id_generator++},
-      stm(std::move(stm)),
-      ping(
-#ifdef _WIN32
-          (this->stm &&
-           this->stm->getFileDescriptor().fdType() ==
-               FileDescriptor::FDType::Socket)
-              ? w_event_make_sockets()
-              : w_event_make_named_pipe()
-#else
-          w_event_make_sockets()
-#endif
-
-      ) {
-  logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
-}
-
-watchman_client::~watchman_client() {
-  debugSub.reset();
-  errorSub.reset();
-
-  logf(DBG, "client_delete {}\n", unique_id);
-
-  if (stm) {
-    stm->shutdown();
-  }
-}
-
-void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
-  responses.emplace_back(std::move(resp));
-
-  if (ping) {
-    this->ping->notify();
-  }
-}
-
-void w_request_shutdown() {
-  stopping.store(true, std::memory_order_relaxed);
-  // Knock listener thread out of poll/accept
-  for (auto& evt : listener_thread_events) {
-    evt->notify();
-  }
-}
-
-// The client thread reads and decodes json packets,
-// then dispatches the commands that it finds
-static void client_thread(
-    std::shared_ptr<watchman_user_client> client) noexcept {
-  // Keep a persistent vector around so that we can avoid allocating
-  // and releasing heap memory when we collect items from the publisher
-  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
-
-  client->stm->setNonBlock(true);
-  w_set_thread_name(
-      "client=",
-      client->unique_id,
-      ":stm=",
-      uintptr_t(client->stm.get()),
-      ":pid=",
-      client->stm->getPeerProcessID());
-
-  client->client_is_owner = client->stm->peerIsOwner();
-
-  struct watchman_event_poll pfd[2];
-  pfd[0].evt = client->stm->getEvents();
-  pfd[1].evt = client->ping.get();
-
-  bool client_alive = true;
-  while (!w_is_stopping() && client_alive) {
-    // Wait for input from either the client socket or
-    // via the ping pipe, which signals that some other
-    // thread wants to unilaterally send data to the client
-
-    ignore_result(w_poll_events(pfd, 2, 2000));
-    if (w_is_stopping()) {
-      break;
-    }
-
-    if (pfd[0].ready) {
-      json_error_t jerr;
-      auto request = client->reader.decodeNext(client->stm.get(), &jerr);
-
-      if (!request && errno == EAGAIN) {
-        // That's fine
-      } else if (!request) {
-        // Not so cool
-        if (client->reader.wpos == client->reader.rpos) {
-          // If they disconnected in between PDUs, no need to log
-          // any error
-          goto disconnected;
-        }
-        send_error_response(
-            client.get(),
-            "invalid json at position %d: %s",
-            jerr.position,
-            jerr.text);
-        logf(ERR, "invalid data from client: {}\n", jerr.text);
-
-        goto disconnected;
-      } else if (request) {
-        client->pdu_type = client->reader.pdu_type;
-        client->capabilities = client->reader.capabilities;
-        dispatch_command(client.get(), request, CMD_DAEMON);
-      }
-    }
-
-    if (pfd[1].ready) {
-      while (client->ping->testAndClear()) {
-        // Enqueue refs to pending log payloads
-        pending.clear();
-        getPending(pending, client->debugSub, client->errorSub);
-        for (auto& item : pending) {
-          client->enqueueResponse(json_ref(item->payload), false);
-        }
-
-        // Maybe we have subscriptions to dispatch?
-        std::vector<w_string> subsToDelete;
-        for (auto& subiter : client->unilateralSub) {
-          auto sub = subiter.first;
-          auto subStream = subiter.second;
-
-          watchman::log(
-              watchman::DBG, "consider fan out sub ", sub->name, "\n");
-
-          pending.clear();
-          subStream->getPending(pending);
-          bool seenSettle = false;
-          for (auto& item : pending) {
-            auto dumped = json_dumps(item->payload, 0);
-            watchman::log(
-                watchman::DBG,
-                "Unilateral payload for sub ",
-                sub->name,
-                " ",
-                dumped,
-                "\n");
-
-            if (item->payload.get_default("canceled")) {
-              watchman::log(
-                  watchman::ERR,
-                  "Cancel subscription ",
-                  sub->name,
-                  " due to root cancellation\n");
-
-              auto resp = make_response();
-              resp.set(
-                  {{"root", item->payload.get_default("root")},
-                   {"unilateral", json_true()},
-                   {"canceled", json_true()},
-                   {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp), false);
-              // Remember to cancel this subscription.
-              // We can't do it in this loop because that would
-              // invalidate the iterators and cause a headache.
-              subsToDelete.push_back(sub->name);
-              continue;
-            }
-
-            if (item->payload.get_default("state-enter") ||
-                item->payload.get_default("state-leave")) {
-              auto resp = make_response();
-              json_object_update(item->payload, resp);
-              // We have the opportunity to populate additional response
-              // fields here (since we don't want to block the command).
-              // We don't populate the fat clock for SCM aware queries
-              // because determination of mergeBase could add latency.
-              resp.set(
-                  {{"unilateral", json_true()},
-                   {"subscription", w_string_to_json(sub->name)}});
-              client->enqueueResponse(std::move(resp), false);
-
-              watchman::log(
-                  watchman::DBG,
-                  "Fan out subscription state change for ",
-                  sub->name,
-                  "\n");
-              continue;
-            }
-
-            if (!sub->debug_paused && item->payload.get_default("settled")) {
-              seenSettle = true;
-              continue;
-            }
-          }
-
-          if (seenSettle) {
-            sub->processSubscription();
-          }
-        }
-
-        for (auto& name : subsToDelete) {
-          client->unsubByName(name);
-        }
-      }
-    }
-
-    /* now send our response(s) */
-    while (!client->responses.empty() && client_alive) {
-      auto& response_to_send = client->responses.front();
-
-      client->stm->setNonBlock(false);
-      /* Return the data in the same format that was used to ask for it.
-       * Update client liveness based on send success.
-       */
-      client_alive = client->writer.pduEncodeToStream(
-          client->pdu_type,
-          client->capabilities,
-          response_to_send,
-          client->stm.get());
-      client->stm->setNonBlock(true);
-
-      json_ref subscriptionValue = response_to_send.get_default("subscription");
-      if (subscriptionValue && subscriptionValue.isString() &&
-          json_string_value(subscriptionValue)) {
-        auto subscriptionName = json_to_w_string(subscriptionValue);
-        if (auto* sub =
-                folly::get_ptr(client->subscriptions, subscriptionName)) {
-          if ((*sub)->lastResponses.size() >= kResponseLogLimit) {
-            (*sub)->lastResponses.pop_front();
-          }
-          (*sub)->lastResponses.push_back(
-              watchman_client_subscription::LoggedResponse{
-                  std::chrono::system_clock::now(), response_to_send});
-        }
-      }
-
-      client->responses.pop_front();
-    }
-  }
-
-disconnected:
-  w_set_thread_name(
-      "NOT_CONN:client=",
-      client->unique_id,
-      ":stm=",
-      uintptr_t(client->stm.get()),
-      ":pid=",
-      client->stm->getPeerProcessID());
-  // Remove the client from the map before we tear it down, as this makes
-  // it easier to flush out pending writes on windows without worrying
-  // about w_log_to_clients contending for the write buffers
-  clients.wlock()->erase(client);
-}
-
-// This is just a placeholder.
-// This catches SIGUSR1 so we don't terminate.
-// We use this to interrupt blocking syscalls
-// on the worker threads
-static void wakeme(int) {}
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
@@ -337,7 +39,6 @@ static void wakeme(int) {}
 #include <sys/param.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
-#include <sys/time.h>
 #endif
 
 #ifndef _WIN32
@@ -361,71 +62,14 @@ void w_listener_prep_inetd() {
 
 #endif
 
-static FileDescriptor get_listener_tcp_socket() {
-  FileDescriptor listener_fd;
-
-  folly::SocketAddress addr;
-  addr.setFromHostPort(
-      Configuration().getString("tcp-listener-address", nullptr));
-
-  listener_fd = FileDescriptor(
-      ::socket(addr.getFamily(), SOCK_STREAM, 0),
-      "socket() for TCP socket",
-      FileDescriptor::FDType::Socket);
-
-  int one = 1;
-  ::setsockopt(
-      listener_fd.system_handle(),
-      SOL_SOCKET,
-      SO_REUSEADDR,
-      (char*)&one,
-      sizeof(one));
-  // Most of our TCP transactions are quite small, so this seems appropriate
-  ::setsockopt(
-      listener_fd.system_handle(),
-      IPPROTO_TCP,
-      TCP_NODELAY,
-      (char*)&one,
-      sizeof(one));
-
-  sockaddr_storage storage;
-  auto addrLen = addr.getAddress(&storage);
-
-  folly::checkUnixError(
-      ::bind(listener_fd.system_handle(), (struct sockaddr*)&storage, addrLen),
-      "bind to ",
-      addr.getAddressStr(),
-      "failed");
-
-  folly::checkUnixError(
-      ::listen(listener_fd.system_handle(), 200),
-      "listen on ",
-      addr.getAddressStr(),
-      "failed");
-
-  addr.setFromLocalAddress(folly::NetworkSocket(listener_fd.system_handle()));
-  log(ERR, "Started TCP listener on ", addr.describe(), "\n");
-
-  return listener_fd;
-}
-
 static FileDescriptor get_listener_unix_domain_socket(const char* path) {
-  struct sockaddr_un un {};
-
 #ifndef _WIN32
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
 #endif
   FileDescriptor listener_fd;
 
-#ifdef __APPLE__
-  listener_fd = w_get_listener_socket_from_launchd();
-  if (listener_fd) {
-    logf(ERR, "Using socket from launchd as listening socket\n");
-    return listener_fd;
-  }
-#endif
-
+  struct sockaddr_un un {};
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     logf(ERR, "{}: path is too long\n", path);
     return FileDescriptor();
@@ -438,8 +82,8 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
 
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path) + 1);
-  unlink(path);
 
+  (void)unlink(path);
   if (::bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
       0) {
     logf(ERR, "bind({}): {}\n", path, folly::errnoStr(errno));
@@ -503,29 +147,6 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   return listener_fd;
 }
 
-static std::shared_ptr<watchman_client> make_new_client(
-    std::unique_ptr<watchman_stream>&& stm) {
-  auto client = std::make_shared<watchman_user_client>(std::move(stm));
-
-  clients.wlock()->insert(client);
-
-  // Start a thread for the client.
-  // We used to use libevent for this, but we have
-  // a low volume of concurrent clients and the json
-  // parse/encode APIs are not easily used in a non-blocking
-  // server architecture.
-  try {
-    std::thread thr([client] { client_thread(client); });
-
-    thr.detach();
-  } catch (const std::exception&) {
-    clients.wlock()->erase(client);
-    throw;
-  }
-
-  return client;
-}
-
 #ifdef _WIN32
 
 static FileDescriptor create_pipe_server(const char* path) {
@@ -546,7 +167,7 @@ static void named_pipe_accept_loop_internal(
     std::shared_ptr<watchman_event> listener_event) {
   HANDLE handles[2];
   auto olap = OVERLAPPED();
-  HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
+  HANDLE connected_event = CreateEvent(nullptr, FALSE, TRUE, nullptr);
   auto path = get_named_pipe_sock_path();
 
   if (!connected_event) {
@@ -561,7 +182,7 @@ static void named_pipe_accept_loop_internal(
   handles[1] = (HANDLE)listener_event->system_handle();
   olap.hEvent = connected_event;
 
-  logf(ERR, "waiting for pipe clients on {}\n", get_named_pipe_sock_path());
+  logf(ERR, "waiting for pipe clients on {}\n", path);
   while (!w_is_stopping()) {
     FileDescriptor client_fd;
     DWORD res;
@@ -581,7 +202,7 @@ static void named_pipe_accept_loop_internal(
       res = GetLastError();
 
       if (res == ERROR_PIPE_CONNECTED) {
-        make_new_client(w_stm_fdopen(std::move(client_fd)));
+        UserClient::create(w_stm_fdopen(std::move(client_fd)));
         continue;
       }
 
@@ -607,7 +228,7 @@ static void named_pipe_accept_loop_internal(
         continue;
       }
     }
-    make_new_client(w_stm_fdopen(std::move(client_fd)));
+    UserClient::create(w_stm_fdopen(std::move(client_fd)));
   }
   logf(ERR, "is_stopping is true, so acceptor is done\n");
 }
@@ -615,11 +236,10 @@ static void named_pipe_accept_loop_internal(
 static void named_pipe_accept_loop() {
   log(DBG, "Starting pipe listener on ", get_named_pipe_sock_path(), "\n");
 
+  std::shared_ptr<watchman_event> listener_event = w_event_make_named_pipe();
+  w_push_listener_thread_event(listener_event);
+
   std::vector<std::thread> acceptors;
-  std::shared_ptr<watchman_event> listener_event(w_event_make_named_pipe());
-
-  listener_thread_events.push_back(listener_event);
-
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(std::thread([i, listener_event]() {
       w_set_thread_name("accept", i);
@@ -636,17 +256,63 @@ static void named_pipe_accept_loop() {
  * named pipe style) accept loop that runs in another thread.
  */
 class AcceptLoop {
-  std::thread thread_;
-  bool joined_{false};
+ public:
+  /** Start an accept loop thread using the provided socket
+   * descriptor (`fd`).  The `name` parameter is used to name the
+   * thread */
+  AcceptLoop(std::string name, FileDescriptor&& fd) {
+    fd.setCloExec();
+    fd.setNonBlock();
 
+    std::shared_ptr<watchman_event> listener_event = w_event_make_sockets();
+    w_push_listener_thread_event(listener_event);
+
+    thread_ = std::thread([listener_fd = std::move(fd),
+                           name = std::move(name),
+                           listener_event]() mutable {
+      w_set_thread_name(name);
+      accept_thread(std::move(listener_fd), listener_event);
+    });
+  }
+
+  AcceptLoop(const AcceptLoop&) = delete;
+  AcceptLoop& operator=(const AcceptLoop&) = delete;
+
+  AcceptLoop(AcceptLoop&& other) {
+    *this = std::move(other);
+  }
+
+  AcceptLoop& operator=(AcceptLoop&& other) {
+    thread_ = std::move(other.thread_);
+    joined_ = other.joined_;
+    // Ensure that we don't try to join the source,
+    // as std::thread::join will std::terminate in that case.
+    // If it weren't for this we could use the compiler
+    // default implementation of move.
+    other.joined_ = true;
+    return *this;
+  }
+
+  ~AcceptLoop() {
+    join();
+  }
+
+  void join() {
+    if (joined_) {
+      return;
+    }
+    thread_.join();
+    joined_ = true;
+  }
+
+ private:
   static void accept_thread(
       FileDescriptor&& listenerDescriptor,
       std::shared_ptr<watchman_event> listener_event) {
     auto listener = w_stm_fdopen(std::move(listenerDescriptor));
     while (!w_is_stopping()) {
       FileDescriptor client_fd;
-      struct watchman_event_poll pfd[2];
-      int bufsize;
+      EventPoll pfd[2];
 
       pfd[0].evt = listener->getEvents();
       pfd[1].evt = listener_event.get();
@@ -680,7 +346,7 @@ class AcceptLoop {
         continue;
       }
       client_fd.setCloExec();
-      bufsize = WATCHMAN_IO_BUF_SIZE;
+      int bufsize = WATCHMAN_IO_BUF_SIZE;
       ::setsockopt(
           client_fd.system_handle(),
           SOL_SOCKET,
@@ -688,57 +354,12 @@ class AcceptLoop {
           (char*)&bufsize,
           sizeof(bufsize));
 
-      make_new_client(w_stm_fdopen(std::move(client_fd)));
+      UserClient::create(w_stm_fdopen(std::move(client_fd)));
     }
   }
 
- public:
-  /** Start an accept loop thread using the provided socket
-   * descriptor (`fd`).  The `name` parameter is used to name the
-   * thread */
-  AcceptLoop(std::string name, FileDescriptor&& fd) {
-    fd.setCloExec();
-    fd.setNonBlock();
-
-    std::shared_ptr<watchman_event> listener_event(w_event_make_sockets());
-    listener_thread_events.push_back(listener_event);
-
-    thread_ = std::thread(
-        [listener_fd = std::move(fd), name, listener_event]() mutable {
-          w_set_thread_name(name);
-          accept_thread(std::move(listener_fd), listener_event);
-        });
-  }
-
-  AcceptLoop(const AcceptLoop&) = delete;
-  AcceptLoop& operator=(const AcceptLoop&) = delete;
-
-  AcceptLoop(AcceptLoop&& other) {
-    *this = std::move(other);
-  }
-
-  AcceptLoop& operator=(AcceptLoop&& other) {
-    thread_ = std::move(other.thread_);
-    joined_ = other.joined_;
-    // Ensure that we don't try to join the source,
-    // as std::thread::join will std::terminate in that case.
-    // If it weren't for this we could use the compiler
-    // default implementation of move.
-    other.joined_ = true;
-    return *this;
-  }
-
-  ~AcceptLoop() {
-    join();
-  }
-
-  void join() {
-    if (joined_) {
-      return;
-    }
-    thread_.join();
-    joined_ = true;
-  }
+  std::thread thread_;
+  bool joined_{false};
 };
 
 bool w_start_listener() {
@@ -769,7 +390,7 @@ bool w_start_listener() {
       size_t len;
 
       len = sizeof(maxperproc);
-      sysctl(mib, 2, &maxperproc, &len, NULL, 0);
+      sysctl(mib, 2, &maxperproc, &len, nullptr, 0);
       logf(
           ERR,
           "file limit is {} kern.maxfilesperproc={}\n",
@@ -819,28 +440,32 @@ bool w_start_listener() {
   /* allow SIGUSR1 and SIGCHLD to wake up a blocked thread, without restarting
    * syscalls */
   memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = wakeme;
+  sa.sa_handler = [](int) {};
   sa.sa_flags = 0;
-  sigaction(SIGUSR1, &sa, NULL);
-  sigaction(SIGCHLD, &sa, NULL);
+  sigaction(SIGUSR1, &sa, nullptr);
+  sigaction(SIGCHLD, &sa, nullptr);
 
   // Block SIGCHLD everywhere
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGCHLD);
-  sigprocmask(SIG_BLOCK, &sigset, NULL);
+  sigprocmask(SIG_BLOCK, &sigset, nullptr);
 #endif
-  setup_signal_handlers();
+  // TODO: We are trying out folly signal handling on Linux. Eventually we
+  // should remove this if and use folly signal handling on all platforms.
+  if (!kUseFollySignalHandler) {
+    setup_signal_handlers();
+  }
 
-  folly::Optional<AcceptLoop> tcp_loop;
-  folly::Optional<AcceptLoop> unix_loop;
+  std::optional<AcceptLoop> tcp_loop;
+  std::optional<AcceptLoop> unix_loop;
 
   // When we unwind, ensure that we stop the accept threads
   SCOPE_EXIT {
     if (!w_is_stopping()) {
       w_request_shutdown();
     }
-    unix_loop.clear();
-    tcp_loop.clear();
+    unix_loop.reset();
+    tcp_loop.reset();
   };
 
   if (listener_fd) {
@@ -855,14 +480,12 @@ bool w_start_listener() {
   }
 
   if (listener_fd && !disable_unix_socket) {
-    unix_loop.assign(AcceptLoop("unix-listener", std::move(listener_fd)));
+    unix_loop = AcceptLoop("unix-listener", std::move(listener_fd));
   }
 
-  if (Configuration().getBool("tcp-listener-enable", false)) {
-    tcp_loop.assign(AcceptLoop("tcp-listener", get_listener_tcp_socket()));
+  if (Configuration().getBool("enable-sanity-check", true)) {
+    startSanityCheckThread();
   }
-
-  startSanityCheckThread();
 
 #ifdef _WIN32
   // Start the named pipes and join them; this will
@@ -876,8 +499,8 @@ bool w_start_listener() {
   // so the next two lines will block until the server
   // shutdown is initiated, rather than cause the server
   // to shutdown.
-  unix_loop.clear();
-  tcp_loop.clear();
+  unix_loop.reset();
+  tcp_loop.reset();
 
   // Wait for clients, waking any sleeping clients up in the process
   {
@@ -886,17 +509,20 @@ bool w_start_listener() {
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-    size_t last_count = 0, n_clients = 0;
+    size_t last_count = 0;
+    size_t n_clients = 0;
 
     while (true) {
       {
-        auto clientsLock = clients.rlock();
-        n_clients = clientsLock->size();
-
-        for (auto client : *clientsLock) {
+        auto clients = UserClient::getAllClients();
+        n_clients = clients.size();
+        for (auto& client : clients) {
           client->ping->notify();
         }
       }
+
+      // The clients lock and shared_ptr refcounts are released here, so entries
+      // may be removed from the active clients table.
 
       if (n_clients == 0) {
         break;
@@ -920,20 +546,16 @@ bool w_start_listener() {
     }
   }
 
-  w_state_shutdown();
-
   return true;
 }
 
 /* get-pid */
-static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
-  auto resp = make_response();
-
+static UntypedResponse cmd_get_pid(Client*, const json_ref&) {
+  UntypedResponse resp;
   resp.set("pid", json_integer(::getpid()));
-
-  send_and_dispose_response(client, std::move(resp));
+  return resp;
 }
-W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
+W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, nullptr);
 
 /* vim:ts=2:sw=2:et:
  */

@@ -1,28 +1,40 @@
-/* Copyright 2012-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-#include <array>
-#include <limits>
-#include <sstream>
-#ifdef __APPLE__
-#include <pthread.h>
-#endif
-#include <folly/Optional.h>
+#include "watchman/Logging.h"
+
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/portability/SysTime.h>
 #include <folly/system/ThreadName.h>
-#include "watchman/Logging.h"
+
+#include "watchman/portability/Backtrace.h"
+
+#include <fmt/core.h>
+#include <array>
+#include <limits>
+#include <optional>
+#include <sstream>
+
+#ifdef __APPLE__
+#include <pthread.h>
+#endif
 
 using namespace watchman;
 
-static folly::ThreadLocal<folly::Optional<std::string>> threadName;
+static folly::ThreadLocal<std::optional<std::string>> threadName;
 
 namespace {
 template <typename String>
 void write_stderr(const String& str) {
   w_string_piece piece = str;
-  ignore_result(::write(STDERR_FILENO, piece.data(), piece.size()));
+  ignore_result(
+      folly::fileops::write(STDERR_FILENO, piece.data(), piece.size()));
 }
 
 template <typename String, typename... Strings>
@@ -113,7 +125,7 @@ char* Log::timeString(char* buf, size_t bufsize, timeval tv) {
 
 char* Log::currentTimeString(char* buf, size_t bufsize) {
   struct timeval tv;
-  gettimeofday(&tv, NULL);
+  gettimeofday(&tv, nullptr);
   return timeString(buf, bufsize, tv);
 }
 
@@ -130,19 +142,20 @@ const char* Log::setThreadName(std::string&& name) {
     // our local thread name for the purposes of Watchman's log messages.
     folly::setThreadName(name);
   }
-  threadName->assign(name);
+
+  threadName->emplace(name);
   return threadName->value().c_str();
 }
 
 const char* Log::getThreadName() {
-  if (!threadName->hasValue()) {
+  if (!threadName->has_value()) {
     auto name = folly::getCurrentThreadName();
     if (name.hasValue()) {
-      threadName->assign(name);
+      threadName->emplace(name.value());
     } else {
       std::stringstream ss;
       ss << std::this_thread::get_id();
-      threadName->assign(ss.str());
+      threadName->emplace(ss.str());
     }
   }
   return threadName->value().c_str();
@@ -190,7 +203,7 @@ void Log::doLogToStdErr() {
 
   for (auto& item : items) {
     auto& log = json_to_w_string(item->payload.get("log"));
-    ignore_result(::write(STDERR_FILENO, log.data(), log.size()));
+    ignore_result(folly::fileops::write(STDERR_FILENO, log.data(), log.size()));
 
     auto level = json_to_w_string(item->payload.get("level"));
     if (level == kFatal) {
@@ -228,7 +241,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
       ": [",
       watchman::Log::getThreadName(),
       "] Unhandled win32 exception code=",
-      folly::to<std::string>(excep->ExceptionRecord->ExceptionCode),
+      fmt::to_string(excep->ExceptionRecord->ExceptionCode),
       ".  Fatal error detected at:\n");
 
   for (i = 0; i < size; i++) {

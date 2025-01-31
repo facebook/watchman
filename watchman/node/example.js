@@ -1,4 +1,11 @@
-var watchman = require('fb-watchman');
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+var watchman = require('./index.js');
 var client = new watchman.Client();
 
 client.on('end', function() {

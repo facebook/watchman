@@ -1,48 +1,77 @@
-/* Copyright 2016-present Facebook, Inc.
- * Licensed under the Apache License, Version 2.0 */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 #pragma once
 
-#include <future>
+#include <folly/futures/Future.h>
 #include <vector>
-#include "watchman/watchman_perf.h"
-#include "watchman/watchman_string.h"
-#include "watchman_query.h"
 
-struct watchman_file;
-struct watchman_dir;
-struct watchman_glob_tree;
+#include "watchman/Clock.h"
+#include "watchman/CookieSync.h"
+#include "watchman/PerfSample.h"
+#include "watchman/telemetry/LogEvent.h"
+#include "watchman/watchman_string.h"
 
 namespace watchman {
 
+struct Query;
+struct QueryContext;
+class Root;
 class SCM;
 
 class QueryableView : public std::enable_shared_from_this<QueryableView> {
  public:
+  /**
+   * Set if this view requires crawling the filesystem.
+   */
+  const bool requiresCrawl;
+
+  QueryableView(const w_string& root_path, bool requiresCrawl);
   virtual ~QueryableView();
 
   /**
    * Perform a time-based (since) query and emit results to the supplied
    * query context.
    */
-  virtual void timeGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void timeGenerator(const Query* query, QueryContext* ctx) const;
 
   /**
    * Walks files that match the supplied set of paths.
    */
-  virtual void pathGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void pathGenerator(const Query* query, QueryContext* ctx) const;
 
-  virtual void globGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void globGenerator(const Query* query, QueryContext* ctx) const;
 
-  virtual void allFilesGenerator(w_query* query, struct w_query_ctx* ctx) const;
+  virtual void allFilesGenerator(const Query* query, QueryContext* ctx) const;
 
   virtual ClockPosition getMostRecentRootNumberAndTickValue() const = 0;
   virtual w_string getCurrentClockString() const = 0;
-  virtual uint32_t getLastAgeOutTickValue() const;
+  virtual ClockTicks getLastAgeOutTickValue() const;
   virtual std::chrono::system_clock::time_point getLastAgeOutTimeStamp() const;
-  virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
-  virtual void syncToNow(
-      const std::shared_ptr<watchman_root>& root,
+  virtual void ageOut(
+      int64_t& walked,
+      int64_t& files,
+      int64_t& dirs,
+      std::chrono::seconds minAge);
+
+  virtual folly::SemiFuture<folly::Unit> waitForSettle(
+      std::chrono::milliseconds settle_period) = 0;
+  virtual CookieSync::SyncResult syncToNow(
+      const std::shared_ptr<Root>& root,
       std::chrono::milliseconds timeout) = 0;
+
+  /**
+   * Synchronize this view with the working copy.
+   *
+   * The returned future will complete when this view caught up with all the
+   * writes to the working copy.
+   */
+  virtual folly::SemiFuture<CookieSync::SyncResult> sync(
+      const std::shared_ptr<Root>& root) = 0;
 
   // Specialized query function that is used to test whether
   // version control files exist as part of some settling handling.
@@ -56,11 +85,11 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   /**
    * Start up any helper threads.
    */
-  virtual void startThreads(const std::shared_ptr<watchman_root>& /*root*/) {}
+  virtual void startThreads(const std::shared_ptr<Root>& /*root*/) {}
   /**
    * Request that helper threads shutdown (but does not join them).
    */
-  virtual void signalThreads() {}
+  virtual void stopThreads(std::string_view /*reason*/) {}
   /**
    * Request that helper threads wake up and re-evaluate their state.
    */
@@ -68,10 +97,17 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
 
   virtual const w_string& getName() const = 0;
   virtual json_ref getWatcherDebugInfo() const = 0;
-  virtual std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<watchman_root>& root) = 0;
+  virtual void clearWatcherDebugInfo() = 0;
+  FOLLY_NODISCARD virtual folly::SemiFuture<folly::Unit>
+  waitUntilReadyToQuery() = 0;
 
   // Return the SCM detected for this watched root
-  virtual SCM* getSCM() const = 0;
+  SCM* getSCM() const {
+    return scm_.get();
+  }
+
+ private:
+  // The source control system that we detected during initialization
+  std::unique_ptr<SCM> scm_;
 };
 } // namespace watchman
