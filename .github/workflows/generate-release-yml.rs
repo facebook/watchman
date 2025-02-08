@@ -33,12 +33,12 @@ fn parse_pattern(pattern: &String) -> Option<(Pattern, Vec<&'static str>)> {
     if pattern.contains("%UBUNTU_LTS_VERSION%") {
         Some((
             Box::new(move |p: &str, s: &str| p.replace("%UBUNTU_LTS_VERSION%", s)),
-            vec!["20", "22"],
+            vec!["20", "22", "24"],
         ))
     } else if pattern.contains("%FEDORA_STABLE_VERSION%") {
         Some((
             Box::new(move |p: &str, s: &str| p.replace("%FEDORA_STABLE_VERSION%", s)),
-            vec!["36", "37", "38"],
+            vec!["39", "40", "41"],
         ))
     } else {
         None
