@@ -24,7 +24,7 @@ use serde::Serialize;
 /// When it comes to interoperating with Rust code, ByteString is nominally
 /// equivalent to `OsString`/`PathBuf` and is convertible to and from those values.
 ///
-/// It is worth noting that on Windows sytems the conversion from ByteString to OsString is
+/// It is worth noting that on Windows systems the conversion from ByteString to OsString is
 /// potentially lossy: while convention is that bytestring holds utf8 in the common case in
 /// watchman, that isn't enforced by its serializer and we may potentially encounter an error
 /// during conversion.  Converting from OsString to ByteString can potentially fail on windows
