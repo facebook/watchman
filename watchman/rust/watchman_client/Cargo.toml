@@ -17,14 +17,16 @@ maplit = "1.0"
 serde = { version = "1.0.126", features = ["derive", "rc"] }
 serde_bser = { version = "0.4", path = "../serde_bser" }
 thiserror = "1.0"
-tokio = { version = "1.7.1", features = ["full", "test-util"] }
-tokio-util = { version = "0.6", features = ["full"] }
+tokio = { version = "1.7.1", features = ["io-util", "net", "rt", "process"] }
+tokio-util = { version = "0.6", features = ["codec"] }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["fileapi", "handleapi", "winbase", "winuser"] }
 
 [dev-dependencies]
 clap = { version = "4.5.7", features = ["derive"] }
+tokio = { version = "1.7.1", features = ["io-util", "net", "macros", "process", "rt-multi-thread", "test-util"] }
+tokio-util = { version = "0.6", features = ["codec", "io"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fbcode_build)"] }
