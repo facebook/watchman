@@ -303,7 +303,7 @@ class Root : public RootConfig, public std::enable_shared_from_this<Root> {
   // all outstanding query contexts that are executing against this root.
   // If is only safe to read the query contexts while the queries.rlock()
   // is held, and even then it is only really safe to read fields that
-  // are not changed by the query exection.
+  // are not changed by the query execution.
   folly::Synchronized<std::unordered_set<QueryContext*>> queries;
 
   /**

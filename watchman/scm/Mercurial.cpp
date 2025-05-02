@@ -79,7 +79,7 @@ ChildProcess::Options Mercurial::makeHgOptions(
     const std::optional<w_string>& requestId) const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
-  // of the commands that we're runing.
+  // of the commands that we're running.
   opt.environment().set("HGPLAIN", w_string("1"));
   // Ensure that we do not telemetry log profiling data for the commands we are
   // running by default. This is to avoid a significant increase in the rate of
