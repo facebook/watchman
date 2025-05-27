@@ -1,0 +1,23 @@
+load("@fbcode//eden:defs.bzl", "get_test_env_and_deps")
+load("@fbcode//watchman/integration:defs.bzl", "eden_integration_env")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("scm_client_infra")
+
+artifacts = get_test_env_and_deps("-oss")
+
+python_unittest(
+    name = "eden",
+    srcs = glob(["test_eden*.py"]),
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    env = eden_integration_env(artifacts["env"]),
+    typing = True,
+    deps = [
+        "//eden/fs/service:thrift-py-deprecated",
+        "//eden/integration/lib:lib",
+        "//watchman/integration/lib:lib",
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)

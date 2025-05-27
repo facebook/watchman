@@ -1,0 +1,57 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("scm_client_infra")
+
+# Just copy the pre-configured attributes so that we have
+# know precisely what the characteristics will be for this build.
+export_file(
+    name = "config.h",
+    src = "buck_config.h",
+    out = "config.h",
+    mode = "copy",
+)
+
+python_library(
+    name = "watchman_version",
+    srcs = ["watchman_version.py"],
+    base_module = "",
+    typing = True,
+)
+
+python_unittest(
+    name = "test_watchman_version",
+    srcs = ["test/test_watchman_version.py"],
+    typing = True,
+    deps = [
+        ":watchman_version",
+        "//libfb/py:testutil",
+    ],
+)
+
+python_binary(
+    name = "watchman-perf",
+    srcs = {"watchman-perf.py": "watchman_perf.py"},
+    base_module = "",
+    labels = ["noautodeps"],
+    main_function = "watchman_perf.main",
+    typing = True,
+)
+
+python_unittest(
+    name = "test_watchman_perf",
+    srcs = [
+        "test/test_watchman_perf.py",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+    ],
+    labels = ["noautodeps"],
+    typing = True,
+    deps = [
+        ":watchman-perf-library",
+    ],
+)

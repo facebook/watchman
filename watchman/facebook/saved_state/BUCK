@@ -1,0 +1,36 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "manifold_saved_state",
+    srcs = [
+        "DevInfraSavedStateManifoldClient.cpp",
+        "DevInfraSavedStateXDBClient.cpp",
+        "ManifoldSavedStateInterface.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    deps = [
+        "fbcode//common/db/locator:dblocator",
+        "fbcode//eden/common/utils:process_info_cache",
+        "fbcode//servicerouter/client/cpp2:client_factory",
+        "fbcode//servicerouter/client/cpp2:cpp2",
+        "fbcode//watchman:command_registry",
+        "fbcode//watchman:errors",
+        "fbcode//watchman:logging",
+        "fbcode//watchman:perf_sample",
+        "fbcode//watchman:scm",
+        "fbcode//watchman/telemetry:telemetry",
+    ],
+    exported_deps = [
+        "fbcode//common/db/mysql_client:mysql_client",
+        "fbcode//manifold/blobstore/if:blobstore-cpp2-services",
+        "fbcode//watchman:client_context",
+        "fbcode//watchman:config",
+        "fbcode//watchman:string",
+        "fbcode//watchman/saved_state:saved_state",
+        "fbcode//watchman/thirdparty/jansson:jansson",
+    ],
+)

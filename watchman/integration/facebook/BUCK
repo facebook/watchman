@@ -1,0 +1,19 @@
+load("@fbcode//watchman/integration:defs.bzl", "integration_env")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("scm_client_infra")
+
+python_unittest(
+    name = "integration",
+    srcs = glob(["test_*.py"]),
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    env = integration_env(),
+    supports_static_listing = False,
+    typing = True,
+    deps = [
+        "//watchman/integration/lib:lib",
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)

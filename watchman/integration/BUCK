@@ -1,0 +1,71 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load(":defs.bzl", "integration_env")
+
+oncall("scm_client_infra")
+
+cpp_binary(
+    name = "cppclient",
+    srcs = ["cppclient.cpp"],
+    deps = [
+        "//folly/experimental/io:fs_util",
+        "//folly/init:init",
+        "//folly/io/async:event_base_thread",
+        "//folly/json:dynamic",
+        "//folly/testing:test_util",
+        "//watchman/cppclient:cppclient",
+    ],
+    external_deps = ["glog"],
+)
+
+buck_filegroup(
+    name = "integration-helpers",
+    srcs = [
+        "cat.py",
+        "site_spawn.py",
+        "site_spawn_fail.py",
+        "touch.py",
+        "trig.py",
+        "trig-cwd.py",
+        "trigjson.py",
+    ],
+)
+
+# fbsource/third-party/pcre is not available in @mode/mac at this time, so temporarily
+# exclude tests that depend on PCRE from the @mode/mac PCRE build.
+python_unittest(
+    name = "pcre",
+    srcs = [
+        "test_capabilities.py",
+        "test_pcre.py",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    env = integration_env(),
+    supports_static_listing = False,
+    typing = True,
+    deps = [
+        "//watchman/integration/lib:lib",
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)
+
+python_unittest(
+    name = "integration",
+    srcs = glob(
+        ["test_*.py"],
+        exclude = [
+            "test_capabilities.py",
+            "test_pcre.py",
+        ],
+    ),
+    env = integration_env({"WATCHMAN_TEST_CONFIG": '{"parallel_crawl_thread_count":4}'}),
+    supports_static_listing = False,
+    typing = True,
+    deps = [
+        "//watchman/integration/lib:lib",
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)

@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:rust_library.bzl", "rust_library")
+
+oncall("scm_client_infra")
+
+rust_library(
+    name = "serde_bser",
+    srcs = glob(["src/**/*.rs"]),
+    preferred_linkage = "static",
+    test_deps = [
+        "fbsource//third-party/rust:maplit",
+    ],
+    deps = [
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:byteorder",
+        "fbsource//third-party/rust:bytes",
+        "fbsource//third-party/rust:serde",
+        "fbsource//third-party/rust:serde_bytes",
+        "fbsource//third-party/rust:thiserror",
+    ],
+)
