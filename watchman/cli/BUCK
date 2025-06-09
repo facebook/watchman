@@ -1,0 +1,58 @@
+load("@fbcode_macros//build_defs:rust_binary.bzl", "rust_binary")
+
+oncall("scm_client_infra")
+
+rust_binary(
+    name = "cli",
+    srcs = glob(["src/**/*.rs"]),
+    autocargo = {
+        "cargo_target_config": {
+            "name": "watchmanctl",
+        },
+        "cargo_toml_config": {
+            "extra_buck_dependencies": {
+                "target": {
+                    "'cfg(unix)'": {
+                        "dependencies": [
+                            "fbsource//third-party/rust:nix",
+                        ],
+                    },
+                },
+            },
+            "package": {
+                "authors": ["Source Control Oncall oncall+source_control@xmail.facebook.com"],
+                "name": "watchmanctl",
+            },
+        },
+    },
+    features = [
+        "fb",
+    ],
+    os_deps = [
+        (
+            "linux",
+            [
+                "fbsource//third-party/rust:nix",
+            ],
+        ),
+        (
+            "macos",
+            [
+                "fbsource//third-party/rust:nix",
+            ],
+        ),
+    ],
+    deps = [
+        "fbsource//third-party/rust:ahash",
+        "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:duct",
+        "fbsource//third-party/rust:jwalk",
+        "fbsource//third-party/rust:serde",
+        "fbsource//third-party/rust:serde_json",
+        "fbsource//third-party/rust:structopt",
+        "fbsource//third-party/rust:sysinfo",
+        "fbsource//third-party/rust:tabular",
+        "fbsource//third-party/rust:tokio",
+        "//watchman/rust/watchman_client:watchman_client",
+    ],
+)

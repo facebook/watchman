@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
+
+oncall("scm_client_infra")
+
+python_binary(
+    name = "watchman-make",
+    srcs = {"watchman-make": "watchman_make.py"},
+    main_module = "watchman.python.bin.watchman_make",
+    deps = ["//watchman/python/pywatchman:pywatchman"],
+)
+
+python_binary(
+    name = "watchman-wait",
+    srcs = {"watchman-wait": "watchman_wait.py"},
+    main_module = "watchman.python.bin.watchman_wait",
+    deps = ["//watchman/python/pywatchman:pywatchman"],
+)
+
+python_binary(
+    name = "watchman-diag",
+    srcs = {"watchman-diag": "watchman_diag.py"},
+    main_module = "watchman.python.bin.watchman_diag",
+    deps = ["//watchman/python/pywatchman:pywatchman"],
+)
+
+python_binary(
+    name = "watchman-replicate-subscription",
+    srcs = {"watchman-replicate-subscription": "watchman_replicate_subscription.py"},
+    main_module = "watchman.python.bin.watchman_replicate_subscription",
+    deps = ["//watchman/python/pywatchman:pywatchman"],
+)

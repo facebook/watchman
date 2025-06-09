@@ -1,0 +1,968 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("fbcode_buck2_contbuilds")
+
+# Our node tests need access to the source tree, so export the
+# relevant directory.
+buck_filegroup(
+    name = "node-sources",
+    srcs = glob(["node/**/*"]),
+)
+
+# Wraps the generated config.h file in a library rule that we can
+# depend upon.
+cpp_library(
+    name = "config_h",
+    headers = {
+        "config.h": "//watchman/facebook:config.h",
+    },
+)
+
+cpp_library(
+    name = "prelude",
+    headers = [
+        "Constants.h",
+        "watchman_preprocessor.h",
+        "watchman_system.h",
+        "watchman_time.h",
+    ],
+    exported_deps = [
+        ":config_h",
+        "//common/base:build_info",
+        "//folly/portability:sys_time",
+        "//folly/portability:sys_types",
+        "//folly/portability:unistd",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
+    ],
+)
+
+cpp_library(
+    name = "child_process",
+    srcs = ["ChildProcess.cpp"],
+    headers = ["ChildProcess.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":logging",
+        "//folly:scope_guard",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":prelude",
+        ":string",
+        "//folly/futures:core",
+        "//watchman/fs:fd",
+        "//watchman/portability:posixspawn",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "bser",
+    srcs = ["bser.cpp"],
+    headers = ["bser.h"],
+    deps = [
+        ":logging",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "clock",
+    srcs = ["Clock.cpp"],
+    headers = ["Clock.h"],
+    deps = [
+        "//folly:overload",
+        "//folly:string",
+        "//folly/portability:sys_time",
+    ],
+    exported_deps = [
+        ":logging",
+        "//folly:synchronized",
+    ],
+)
+
+cpp_library(
+    name = "config",
+    srcs = ["WatchmanConfig.cpp"],
+    headers = ["WatchmanConfig.h"],
+    deps = [
+        ":errors",
+        ":logging",
+        "//folly:exception_string",
+        "//folly:synchronized",
+    ],
+    exported_deps = [
+        "//folly:portability",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+# Maybe this could be merged with ":sockname"
+cpp_library(
+    name = "connect",
+    srcs = ["Connect.cpp"],
+    headers = ["Connect.h"],
+    deps = [
+        ":config",
+        ":sockname",
+        ":stream",
+    ],
+    exported_deps = [
+        ":result",
+    ],
+)
+
+cpp_library(
+    name = "content_hash",
+    srcs = ["ContentHash.cpp"],
+    headers = ["ContentHash.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":hash",
+        ":logging",
+        ":stream",
+        ":thread_pool",
+        "//folly:scope_guard",
+        "//watchman/fs:fs",
+    ],
+    exported_deps = [
+        ":prelude",
+        ":string",
+        ":util",
+    ],
+    external_deps = [
+        ("openssl", None, "crypto"),
+    ],
+)
+
+cpp_library(
+    name = "cookie",
+    headers = ["Cookie.h"],
+    exported_deps = [
+        ":string",
+    ],
+)
+
+cpp_library(
+    name = "errors",
+    srcs = ["Errors.cpp"],
+    headers = ["Errors.h"],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+)
+
+cpp_library(
+    name = "flag_map",
+    srcs = [
+        "FlagMap.cpp",
+    ],
+    headers = [
+        "FlagMap.h",
+    ],
+)
+
+cpp_library(
+    name = "hash",
+    headers = ["Hash.h"],
+)
+
+cpp_library(
+    name = "ignore",
+    srcs = ["IgnoreSet.cpp"],
+    headers = ["IgnoreSet.h"],
+    exported_deps = [
+        ":string",
+        "//watchman/thirdparty/libart/src:art",
+    ],
+)
+
+cpp_library(
+    name = "logging",
+    srcs = [
+        "LogConfig.cpp",
+        "Logging.cpp",
+        "PubSub.cpp",
+    ],
+    deps = [
+        "//folly:scope_guard",
+        "//folly:thread_local",
+        "//folly/experimental/symbolizer:symbolizer",
+        "//folly/portability:sys_time",
+        "//folly/system:thread_name",
+        "//watchman/portability:backtrace",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":prelude",
+        ":string",
+        "//folly:synchronized",
+        "//folly/portability:windows",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+    external_deps = [
+        ("glibc", None, "pthread"),
+    ],
+)
+
+cpp_library(
+    name = "serde",
+    headers = ["Serde.h"],
+    exported_deps = [
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "shutdown",
+    srcs = ["Shutdown.cpp"],
+    deps = [
+        ":stream",
+    ],
+)
+
+cpp_library(
+    name = "string",
+    srcs = ["string.cpp"],
+    headers = ["watchman_string.h"],
+    deps = [
+        "//watchman/thirdparty/jansson:utf",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":prelude",
+        "//folly:fbstring",
+    ],
+)
+
+cpp_library(
+    name = "view",
+    srcs = [
+        "root/dir.cpp",
+        "root/file.cpp",
+    ],
+    headers = [
+        "watchman_dir.h",
+        "watchman_file.h",
+    ],
+    exported_deps = [
+        ":clock",
+        ":string",
+        "//watchman/fs:fd",
+    ],
+)
+
+cpp_library(
+    name = "pending",
+    srcs = [
+        "PendingCollection.cpp",
+    ],
+    headers = [
+        "PendingCollection.h",
+    ],
+    deps = [
+        ":cookie",
+        ":logging",
+        ":view",
+    ],
+    exported_deps = [
+        ":string",
+        "//eden/common/utils:option_set",
+        "//folly:synchronized",
+        "//folly/futures:core",
+        "//watchman/thirdparty/libart/src:art",
+    ],
+)
+
+cpp_library(
+    name = "poison",
+    srcs = ["Poison.cpp"],
+    headers = ["Poison.h"],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":config",
+        ":logging",
+    ],
+    exported_deps = [
+        ":string",
+        "//folly:synchronized",
+    ],
+)
+
+cpp_library(
+    name = "result",
+    headers = ["Result.h"],
+    exported_deps = [
+        "//folly:unit",
+    ],
+)
+
+cpp_library(
+    name = "scm",
+    srcs = [
+        "scm/Git.cpp",
+        "scm/Mercurial.cpp",
+        "scm/SCM.cpp",
+    ],
+    headers = [
+        "scm/Git.h",
+        "scm/Mercurial.h",
+        "scm/SCM.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":command_registry",
+        ":logging",
+        ":sockname",
+        "//folly:string",
+        "//folly/portability:sys_time",
+        "//watchman/fs:fd",
+        "//watchman/fs:fs",
+    ],
+    exported_deps = [
+        ":child_process",
+        ":errors",
+        ":prelude",
+        ":string",
+        ":util",
+    ],
+)
+
+cpp_library(
+    name = "util",
+    srcs = [
+        "ProcessUtil.cpp",
+    ],
+    headers = [
+        "LRUCache.h",
+        "MapUtil.h",
+        "ProcessUtil.h",
+        "RingBuffer.h",
+    ],
+    deps = [
+        "//eden/common/utils:process_info_cache",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":config",
+        "//folly:synchronized",
+        "//folly/concurrency/container:lock_free_ring_buffer",
+        "//folly/futures:core",
+        "//folly/portability:sys_types",
+    ],
+)
+
+# TODO: maybe Command.h and Command.cpp should live in PDU target.
+cpp_library(
+    name = "command_registry",
+    srcs = [
+        "Command.cpp",
+        "CommandRegistry.cpp",
+    ],
+    headers = [
+        "Command.h",
+        "CommandRegistry.h",
+    ],
+    deps = [
+        ":errors",
+        ":logging",
+        ":stream",
+        "//folly:string",
+        "//watchman/fs:fd",
+    ],
+    exported_deps = [
+        ":pdu",
+        ":prelude",
+        ":result",
+        ":serde",
+        "//eden/common/utils:option_set",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "options",
+    srcs = [
+        "Options.cpp",
+    ],
+    headers = [
+        "Options.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":command_registry",
+        ":config",
+        ":logging",
+        "//watchman/portability:getopt",
+    ],
+)
+
+cpp_library(
+    name = "perf_sample",
+    srcs = ["PerfSample.cpp"],
+    headers = ["PerfSample.h"],
+    deps = [
+        ":child_process",
+        ":config",
+        ":logging",
+        ":options",
+        ":prelude",
+        ":sockname",
+        "//folly:synchronized",
+    ],
+    exported_deps = [
+        "//folly/portability:sys_time",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "sockname",
+    srcs = ["sockname.cpp"],
+    headers = ["sockname.h"],
+    deps = [
+        ":options",
+    ],
+)
+
+cpp_library(
+    name = "stream",
+    srcs = [
+        "stream.cpp",
+        "stream_stdout.cpp",
+        "stream_unix.cpp",
+        "stream_win.cpp",
+    ],
+    headers = [
+        "watchman_stream.h",
+    ],
+    os_deps = [
+        (
+            "windows",
+            [
+                "//eden/common/utils:win_util",
+            ],
+        ),
+    ],
+    deps = [
+        ":config",
+        ":logging",
+        ":prelude",
+        "//folly:network_address",
+        "//folly/net:network_socket",
+        "//watchman/portability:winerror",
+    ],
+    exported_deps = [
+        "//watchman/fs:fd",
+    ],
+)
+
+cpp_library(
+    name = "thread_pool",
+    srcs = ["ThreadPool.cpp"],
+    headers = ["ThreadPool.h"],
+    deps = [
+        ":logging",
+    ],
+    exported_deps = [
+        ":prelude",
+        "//folly:executor",
+    ],
+)
+
+cpp_library(
+    name = "pdu",
+    srcs = [
+        "PDU.cpp",
+    ],
+    headers = [
+        "PDU.h",
+    ],
+    deps = [
+        ":bser",
+        ":logging",
+        ":prelude",
+        ":stream",
+        "//folly:range",
+        "//folly:string",
+        "//watchman/portability:winerror",
+    ],
+    exported_deps = [
+        ":result",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "cookie_sync",
+    srcs = [
+        "CookieSync.cpp",
+    ],
+    headers = [
+        "CookieSync.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":logging",
+        ":stream",
+        "//folly:string",
+    ],
+    exported_deps = [
+        ":cookie",
+        ":string",
+        "//folly:synchronized",
+        "//folly/futures:core",
+        "//watchman/fs:fs",
+    ],
+)
+
+cpp_library(
+    name = "signal_handler",
+    srcs = [
+        "SignalHandler.cpp",
+    ],
+    headers = [
+        "SignalHandler.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":logging",
+        ":shutdown",
+    ],
+)
+
+cpp_library(
+    name = "symlink_targets",
+    srcs = ["SymlinkTargets.cpp"],
+    headers = ["SymlinkTargets.h"],
+    deps = [
+        ":hash",
+        ":thread_pool",
+        "//watchman/fs:fs",
+    ],
+    exported_deps = [
+        ":clock",
+        ":prelude",
+        ":string",
+        ":util",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "query",
+    srcs = [
+        "query/FileResult.cpp",
+        "query/GlobEscaping.cpp",
+        "query/GlobTree.cpp",
+        "query/LocalFileResult.cpp",
+        "query/Query.cpp",
+        "query/QueryResult.cpp",
+    ],
+    headers = [
+        "query/FileResult.h",
+        "query/GlobEscaping.h",
+        "query/GlobTree.h",
+        "query/LocalFileResult.h",
+        "query/Query.h",
+        "query/QueryExpr.h",
+        "query/QueryResult.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":content_hash",
+        "//folly:range",
+    ],
+    exported_deps = [
+        ":client_context",
+        ":clock",
+        ":string",
+        "//watchman/fs:fd",
+        "//watchman/fs:fs",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "parse",
+    srcs = [
+        "query/TermRegistry.cpp",
+        "query/base.cpp",
+        "query/dirname.cpp",
+        "query/empty.cpp",
+        "query/intcompare.cpp",
+        "query/match.cpp",
+        "query/name.cpp",
+        "query/pcre.cpp",
+        "query/since.cpp",
+        "query/suffix.cpp",
+        "query/type.cpp",
+    ],
+    headers = [
+        "query/TermRegistry.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/pcre2:pcre2-8",
+        ":command_registry",
+        ":errors",
+        ":query",
+        "//folly:overload",
+        "//watchman/fs:fd",
+        "//watchman/fs:fs",
+        "//watchman/thirdparty/wildmatch:wildmatch",
+    ],
+    exported_deps = [
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "userdir",
+    srcs = ["UserDir.cpp"],
+    headers = ["UserDir.h"],
+    os_deps = [
+        (
+            "windows",
+            [
+                "fbsource//third-party/toolchains/win:shell32.lib",
+                "fbsource//third-party/toolchains/win:ole32.lib",
+            ],
+        ),
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":logging",
+        ":options",
+        "//eden/common/utils:stringconv",
+        "//folly:string",
+        "//watchman/fs:fs",
+        "//watchman/portability:winerror",
+    ],
+)
+
+cpp_library(
+    name = "root",
+    srcs = [
+        "QueryableView.cpp",
+        "TriggerCommand.cpp",
+        "query/QueryContext.cpp",
+        "query/eval.cpp",
+        "query/fieldlist.cpp",
+        "query/glob.cpp",
+        "query/parse.cpp",
+        "root/init.cpp",
+        "root/reap.cpp",
+        "root/sync.cpp",
+        "root/threading.cpp",
+        "root/watchlist.cpp",
+    ],
+    headers = [
+        "QueryableView.h",
+        "TriggerCommand.h",
+        "query/QueryContext.h",
+        "query/eval.h",
+        "query/parse.h",
+        "root/Root.h",
+    ],
+    deps = [
+        "fbcode//eden/common/utils:process_info_cache",
+        "fbcode//folly:scope_guard",
+        "fbcode//folly:string",
+        "fbcode//watchman:client_context",
+        "fbcode//watchman:command_registry",
+        "fbcode//watchman:errors",
+        "fbcode//watchman:parse",
+        "fbcode//watchman:pdu",
+        "fbcode//watchman:prelude",
+        "fbcode//watchman:scm",
+        "fbcode//watchman:shutdown",
+        "fbcode//watchman:sockname",
+        "fbcode//watchman:stream",
+        "fbcode//watchman:userdir",
+        "fbcode//watchman:view",
+        "fbcode//watchman/fs:fd",
+        "fbcode//watchman/thirdparty/wildmatch:wildmatch",
+        "fbsource//third-party/fmt:fmt",
+    ],
+    exported_deps = [
+        ":child_process",
+        ":clock",
+        ":config",
+        ":cookie_sync",
+        ":ignore",
+        ":logging",
+        ":pending",
+        ":perf_sample",
+        ":query",
+        ":serde",
+        ":string",
+        "//folly:stop_watch",
+        "//folly:synchronized",
+        "//folly/futures:core",
+        "//watchman/fs:fs",
+        "//watchman/saved_state:saved_state",
+        "//watchman/telemetry:telemetry",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "watcher",
+    srcs = ["watcher/Watcher.cpp"],
+    headers = ["watcher/Watcher.h"],
+    exported_deps = [
+        ":pending",
+        "//folly/futures:core",
+        "//watchman/fs:fs",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "inmemoryview",
+    srcs = [
+        "InMemoryView.cpp",
+        "root/ageout.cpp",
+        "root/iothread.cpp",
+        "root/notifythread.cpp",
+        "root/warnerr.cpp",
+    ],
+    headers = [
+        "InMemoryView.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":errors",
+        ":logging",
+        ":poison",
+        ":thread_pool",
+        ":view",
+        ":watcher",
+        "//folly:scope_guard",
+        "//watchman/fs:parallel_walk",
+        "//watchman/telemetry:telemetry",
+        "//watchman/thirdparty/wildmatch:wildmatch",
+    ],
+    exported_deps = [
+        ":config",
+        ":content_hash",
+        ":cookie_sync",
+        ":pending",
+        ":perf_sample",
+        ":prelude",
+        ":query",
+        ":result",
+        ":root",
+        ":string",
+        ":symlink_targets",
+        ":util",
+        "//folly:synchronized",
+        "//watchman/fs:fs",
+    ],
+)
+
+# The bulk of the watchman implementation lives in this library
+cpp_library(
+    name = "watchmanlib",
+    srcs = [
+        "Client.cpp",
+        "GroupLookup.cpp",
+        "SanityCheck.cpp",
+        "XattrUtils.cpp",
+        "cmds/debug.cpp",
+        "cmds/find.cpp",
+        "cmds/heapprof.cpp",
+        "cmds/info.cpp",
+        "cmds/log.cpp",
+        "cmds/query.cpp",
+        "cmds/since.cpp",
+        "cmds/state.cpp",
+        "cmds/subscribe.cpp",
+        "cmds/trigger.cpp",
+        "cmds/watch.cpp",
+        "listener.cpp",
+        "listener-user.cpp",
+        "root/resolve.cpp",
+        "root/warnerr.cpp",
+        "state.cpp",
+        "watcher/WatcherRegistry.cpp",
+        "watcher/eden.cpp",
+        "watcher/fsevents.cpp",
+        "watcher/inotify.cpp",
+        "watcher/kqueue.cpp",
+        "watcher/kqueue_and_fsevents.cpp",
+        "watcher/portfs.cpp",
+        "watcher/win32.cpp",
+    ],
+    headers = [
+        "Client.h",
+        "GroupLookup.h",
+        "XattrUtils.h",
+        "listener.h",
+        "state.h",
+        "watchman_cmd.h",
+    ],
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole = True,
+    os_deps = [
+        (
+            "macos",
+            [
+                "fbsource//third-party/toolchains/macos:CoreFoundation",
+                "fbsource//third-party/toolchains/macos:CoreServices",
+            ],
+        ),
+    ],
+    deps = [
+        "fbsource//third-party/cpptoml:cpptoml",
+        ":child_process",
+        ":client_context",
+        ":config",
+        ":connect",
+        ":errors",
+        ":flag_map",
+        ":inmemoryview",
+        ":options",
+        ":poison",
+        ":query",
+        ":root",
+        ":scm",
+        ":serde",
+        ":shutdown",
+        ":signal_handler",
+        ":sockname",
+        ":thread_pool",
+        ":view",
+        "//eden/common/utils:fsdetect",
+        "//eden/fs/service:thrift-streaming-cpp2-services",
+        "//folly:exception",
+        "//folly:map_util",
+        "//folly:network_address",
+        "//folly:scope_guard",
+        "//folly:stop_watch",
+        "//folly:string",
+        "//folly:synchronized",
+        "//folly/chrono:conv",
+        "//folly/futures:core",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:event_base_manager",
+        "//folly/logging:logging",
+        "//folly/memory:malloc",
+        "//folly/net:network_socket",
+        "//folly/system:shell",
+        "//thrift/lib/cpp2/async:header_client_channel",
+        "//thrift/lib/cpp2/async:pooled_request_channel",
+        "//thrift/lib/cpp2/async:reconnecting_request_channel",
+        "//thrift/lib/cpp2/async:retrying_request_channel",
+        "//thrift/lib/cpp2/async:rocket_client_channel",
+        "//watchman/portability:winerror",
+        "//watchman/saved_state:factory",
+        "//watchman/thirdparty/wildmatch:wildmatch",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":clock",
+        ":command_registry",
+        ":logging",
+        ":pdu",
+        ":perf_sample",
+        ":prelude",
+        ":stream",
+        ":string",
+        ":util",
+        ":watcher",
+        "//eden/common/utils:process_info_cache",
+        "//watchman/fs:fd",
+        "//watchman/fs:fs",
+        "//watchman/telemetry:telemetry",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "client_context",
+    headers = [
+        "ClientContext.h",
+    ],
+    exported_deps = [
+        "//eden/common/utils:process_info_cache",
+    ],
+)
+
+# and the watchman binary itself
+cpp_binary(
+    name = "watchman",
+    srcs = [
+        "ProcessLock.cpp",
+        "main.cpp",
+    ],
+    os_deps = [
+        (
+            "linux",
+            ["//watchman/facebook/saved_state:manifold_saved_state"],
+        ),
+        (
+            "windows",
+            ["//watchman/thirdparty/deelevate_binding:deelevate_binding"],
+        ),
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":child_process",
+        ":clock",
+        ":command_registry",
+        ":config",
+        ":connect",
+        ":logging",
+        ":options",
+        ":pdu",
+        ":perf_sample",
+        ":root",
+        ":sockname",
+        ":stream",
+        ":thread_pool",
+        ":userdir",
+        ":util",
+        ":watchmanlib",
+        "//folly:exception",
+        "//folly:network_address",
+        "//folly:scope_guard",
+        "//folly:singleton",
+        "//folly:string",
+        "//folly/init:init",
+        "//folly/net:network_socket",
+        "//folly/portability:fcntl",
+        "//folly/system:shell",
+        "//watchman/fs:fd",
+        "//watchman/fs:fs",
+    ],
+)
+
+python_unittest(
+    name = "test_bser",
+    srcs = ["node/bser/test_bser.py"],
+    # There is no Yarn offline mirror on macOS.
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    env = {
+        "WATCHMAN_SRC_DIR": "$(location //watchman:node-sources)",
+        "YARN_OFFLINE": "1",
+    },
+    supports_static_listing = False,
+    deps = [
+        "//watchman/integration/lib:lib",
+    ],
+)

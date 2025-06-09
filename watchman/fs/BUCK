@@ -1,0 +1,104 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "fd",
+    srcs = [
+        "FSDetect.cpp",
+        "FileDescriptor.cpp",
+        "FileInformation.cpp",
+        "Pipe.cpp",
+        "WindowsTime.cpp",
+    ],
+    headers = [
+        "FSDetect.h",
+        "FileDescriptor.h",
+        "FileInformation.h",
+        "Pipe.h",
+        "WindowsTime.h",
+    ],
+    deps = [
+        "//eden/common/utils:fsdetect",
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:string",
+        "//folly/portability:event",
+        "//folly/system:pid",
+        "//watchman/portability:winerror",
+    ],
+    exported_deps = [
+        "fbcode//eden/common/utils:file_utils",
+        "fbcode//folly:range",
+        "fbcode//folly/portability:sys_time",
+        "fbcode//watchman:prelude",
+        "fbcode//watchman:result",
+        "fbcode//watchman:string",
+    ],
+    exported_external_deps = [
+        ("glibc", None, "rt"),
+    ],
+)
+
+cpp_library(
+    name = "fs",
+    srcs = [
+        "FileSystem.cpp",
+        "UnixDirHandle.cpp",
+        "WinDirHandle.cpp",
+    ],
+    headers = [
+        "DirHandle.h",
+        "FileSystem.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:scope_guard",
+        "//folly:string",
+        "//watchman:config",
+        "//watchman:logging",
+        "//watchman:prelude",
+        "//watchman:stream",
+        "//watchman:string",
+        "//watchman/portability:winerror",
+    ],
+    exported_deps = [
+        ":fd",
+        "//watchman:result",
+    ],
+)
+
+cpp_library(
+    name = "parallel_walk",
+    srcs = [
+        "ParallelWalk.cpp",
+    ],
+    headers = [
+        "ParallelWalk.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/concurrency:unbounded_queue",
+        "//folly/executors:cpu_thread_pool_executor",
+        "//folly/system:hardware_concurrency",
+    ],
+    exported_deps = [
+        ":fd",
+        ":fs",
+        "//folly:exception_wrapper",
+        "//folly:fbstring",
+    ],
+)
+
+cpp_binary(
+    name = "pwalk",
+    srcs = [
+        "ParallelWalkMain.cpp",
+    ],
+    deps = [
+        ":fs",
+        ":parallel_walk",
+        "//folly/init:init",
+    ],
+)

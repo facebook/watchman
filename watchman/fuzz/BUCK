@@ -1,0 +1,56 @@
+load("@fbcode//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+load("@fbsource//xplat/security/lionhead:defs.bzl", "Metadata", "SUBSET_OF_EMPLOYEES", "Severity")
+
+oncall("scm_client_infra")
+
+watchman_metadata = Metadata(
+    exposure = SUBSET_OF_EMPLOYEES,
+    project = "watchman",
+    severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+    severity_service_takeover = Severity.FILE_SECURITY_TASK,
+)
+
+cpp_lionhead_harness(
+    name = "bser_decode",
+    srcs = [
+        "BserDecode.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    metadata = watchman_metadata,
+    deps = [
+        "//watchman:bser",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "json_decode",
+    srcs = [
+        "JsonDecode.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    metadata = watchman_metadata,
+    deps = [
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "pybser_decode",
+    srcs = [
+        "PyBserDecode.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    metadata = watchman_metadata,
+    deps = [
+        "//watchman/python/pywatchman:bserimpl",
+    ],
+)

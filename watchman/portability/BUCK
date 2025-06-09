@@ -1,0 +1,48 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "backtrace",
+    srcs = ["Backtrace.cpp"],
+    headers = ["Backtrace.h"],
+    os_deps = [
+        (
+            "windows",
+            ["fbsource//third-party/toolchains/win:dbghelp.lib"],
+        ),
+    ],
+)
+
+cpp_library(
+    name = "getopt",
+    headers = ["GetOpt.h"],
+    os_deps = [
+        (
+            "windows",
+            ["//watchman/thirdparty/getopt:getopt"],
+        ),
+    ],
+)
+
+cpp_library(
+    name = "posixspawn",
+    srcs = ["PosixSpawn.cpp"],
+    headers = ["PosixSpawn.h"],
+    deps = [
+        ":winerror",
+        "//folly:string",
+        "//folly:synchronized",
+        "//watchman:logging",
+        "//watchman:stream",
+    ],
+    exported_deps = [
+        "//folly/portability:sys_types",
+    ],
+)
+
+cpp_library(
+    name = "winerror",
+    srcs = ["WinError.cpp"],
+    headers = ["WinError.h"],
+)

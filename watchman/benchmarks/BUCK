@@ -1,0 +1,22 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("scm_client_infra")
+
+cpp_binary(
+    name = "bser",
+    srcs = ["bser.cpp"],
+    deps = [
+        "fbsource//third-party/benchmark:benchmark",
+        "fbsource//third-party/fmt:fmt",
+        "//watchman:bser",
+    ],
+)
+
+cpp_binary(
+    name = "string",
+    srcs = ["string.cpp"],
+    deps = [
+        "fbsource//third-party/benchmark:benchmark",
+        "//watchman:string",
+    ],
+)

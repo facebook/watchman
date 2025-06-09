@@ -1,0 +1,43 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
+load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "bserimpl",
+    srcs = ["bser.c"],
+    headers = ["bser.h"],
+    compiler_flags = [
+        "-Wno-missing-field-initializers",
+    ],
+    exported_deps = [
+        "fbsource//third-party/python:python",
+    ],
+)
+
+cpp_python_extension(
+    name = "bser",
+    srcs = ["bsermodule.c"],
+    base_module = "pywatchman",
+    # https://osdir.com/ml/python.cython.devel/2008-04/msg00080.html
+    # This triggers for us calling Py_INCREF(Py_True)
+    compiler_flags = [
+        "-Wno-missing-field-initializers",
+    ],
+    deps = [
+        ":bserimpl",
+    ],
+)
+
+python_library(
+    name = "pywatchman",
+    srcs = glob(
+        ["*.py"],
+        exclude = ["aioclient.py"],
+    ),
+    base_module = "pywatchman",
+    deps = [
+        ":bser",  # @manual
+    ],
+)

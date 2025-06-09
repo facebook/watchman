@@ -1,0 +1,68 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_binary(
+    name = "cli",
+    srcs = ["CLI.cpp"],
+    deps = [
+        ":cppclient",
+        "//folly/init:init",
+        "//folly/io/async:scoped_event_base_thread",
+        "//folly/json:dynamic",
+    ],
+)
+
+cpp_library(
+    name = "cppclient",
+    srcs = [
+        "WatchmanClient.cpp",
+        "WatchmanConnection.cpp",
+        "WatchmanResponseError.cpp",
+    ],
+    headers = [
+        "WatchmanClient.h",
+        "WatchmanConnection.h",
+    ],
+    os_deps = [
+        (
+            "windows",
+            [
+                "//eden/common/utils:process",
+            ],
+        ),
+        (
+            "linux",
+            [
+                "//folly:subprocess",
+            ],
+        ),
+        (
+            "macos",
+            [
+                "//folly:subprocess",
+            ],
+        ),
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:network_address",
+        "//folly/executors:inline_executor",
+        "//folly/json/bser:bser",
+    ],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly:executor",
+        "//folly:optional",
+        "//folly:try",
+        "//folly/futures:core",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_socket",
+        "//folly/json:dynamic",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)
