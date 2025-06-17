@@ -1,0 +1,31 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fbcode_buck2_contbuilds")
+
+cpp_library(
+    name = "telemetry",
+    srcs = [
+        "LogEvent.cpp",
+        "WatchmanStats.cpp",
+        "WatchmanStructuredLogger.cpp",
+    ],
+    headers = [
+        "LogEvent.h",
+        "WatchmanStats.h",
+        "WatchmanStructuredLogger.h",
+    ],
+    deps = [
+        "//watchman:config",
+    ],
+    exported_deps = [
+        "//eden/common/telemetry:log_info",
+        "//eden/common/telemetry:scribe_logger",
+        "//eden/common/telemetry:structured_logger",
+        "//eden/common/telemetry:structured_logger_factory",
+        "//eden/common/telemetry:telemetry",
+        "//eden/common/utils:ref_ptr",
+        "//folly:stop_watch",
+        "//folly:thread_local",
+        "//folly/portability:sys_types",
+    ],
+)

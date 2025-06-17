@@ -1,0 +1,16 @@
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+
+oncall("scm_client_infra")
+
+python_unittest(
+    name = "tests",
+    srcs = glob(["*.py"]),
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)

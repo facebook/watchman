@@ -1,0 +1,48 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "factory",
+    srcs = ["SavedStateFactory.cpp"],
+    headers = ["SavedStateFactory.h"],
+    os_deps = [
+        (
+            "linux",
+            ["//watchman/facebook/saved_state:manifold_saved_state"],
+        ),
+    ],
+    deps = [
+        "fbcode//watchman:client_context",
+        "fbcode//watchman:errors",
+        "fbcode//watchman:root",
+        "fbcode//watchman/saved_state:saved_state",
+    ],
+    exported_deps = [
+        "//watchman:config",
+        "//watchman:string",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "saved_state",
+    srcs = [
+        "LocalSavedStateInterface.cpp",
+        "SavedStateInterface.cpp",
+    ],
+    headers = [
+        "LocalSavedStateInterface.h",
+        "SavedStateInterface.h",
+    ],
+    deps = [
+        "//watchman:command_registry",
+        "//watchman:errors",
+        "//watchman:logging",
+        "//watchman:scm",
+        "//watchman/fs:fd",
+    ],
+    exported_deps = [
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)

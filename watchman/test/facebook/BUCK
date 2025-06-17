@@ -1,0 +1,40 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("scm_client_infra")
+
+cpp_unittest(
+    name = "devInfraSavedStateXDBClientTest",
+    srcs = [
+        "DevInfraSavedStateXDBClientTest.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman/facebook/saved_state:manifold_saved_state",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "devInfraSavedStateManifoldClientTest",
+    srcs = [
+        "DevInfraSavedStateManifoldClientTest.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    deps = [
+        "//eden/common/utils:process_info_cache",
+        "//folly/logging:logging",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:client_context",
+        "//watchman:config",
+        "//watchman:prelude",
+        "//watchman/facebook/saved_state:manifold_saved_state",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)

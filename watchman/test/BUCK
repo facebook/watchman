@@ -1,0 +1,330 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("scm_client_infra")
+
+cpp_unittest(
+    name = "art",
+    srcs = [
+        "ArtTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/logging:logging",
+        "//folly/portability:gtest",
+        "//watchman:prelude",
+        "//watchman/thirdparty/libart/src:art",
+    ],
+)
+
+cpp_unittest(
+    name = "ignore",
+    srcs = [
+        "IgnoreTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/logging:logging",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_time",
+        "//watchman:ignore",
+        "//watchman:prelude",
+    ],
+)
+
+cpp_unittest(
+    name = "inmemoryview",
+    srcs = ["InMemoryViewTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+        "//watchman:inmemoryview",
+        "//watchman:query",
+        "//watchman:root",
+        "//watchman:view",
+        "//watchman:watcher",
+        "//watchman/fs:fd",
+        "//watchman/test/lib:lib",
+    ],
+)
+
+cpp_unittest(
+    name = "failstostart",
+    srcs = ["FailsToStartViewTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+        "//watchman:inmemoryview",
+        "//watchman:query",
+        "//watchman:root",
+        "//watchman:view",
+        "//watchman:watcher",
+        "//watchman/fs:fd",
+        "//watchman/test/lib:lib",
+    ],
+)
+
+cpp_unittest(
+    name = "json",
+    srcs = ["JsonTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "serde",
+    srcs = ["SerdeTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:serde",
+    ],
+)
+
+cpp_binary(
+    name = "json-bench",
+    srcs = ["JsonBenchmark.cpp"],
+    deps = [
+        "fbsource//third-party/benchmark:benchmark",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "pendingcollection",
+    srcs = [
+        "PendingCollectionTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/logging:logging",
+        "//folly/portability:gtest",
+        "//watchman:logging",
+        "//watchman:pending",
+    ],
+)
+
+cpp_unittest(
+    name = "perfsample",
+    srcs = [
+        "PerfSampleTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly:scope_guard",
+        "//folly/portability:gtest",
+        "//watchman:perf_sample",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "fsdetect",
+    srcs = [
+        "FSDetectTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman/fs:fd",
+    ],
+)
+
+cpp_unittest(
+    name = "string",
+    srcs = [
+        "StringTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:string",
+    ],
+)
+
+cpp_unittest(
+    name = "log",
+    srcs = ["LogTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:logging",
+    ],
+)
+
+cpp_unittest(
+    name = "bser",
+    srcs = [
+        "BserTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly:scope_guard",
+        "//folly/logging:logging",
+        "//folly/portability:gtest",
+        "//folly/portability:sys_mman",
+        "//watchman:bser",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "wildmatch",
+    srcs = [
+        "WildmatchTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly:string",
+        "//folly/portability:gtest",
+        "//watchman:prelude",
+        "//watchman/thirdparty/jansson:jansson",
+        "//watchman/thirdparty/wildmatch:wildmatch",
+    ],
+)
+
+cpp_unittest(
+    name = "childproc",
+    srcs = [
+        "ChildProcTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:child_process",
+        "//watchman:prelude",
+    ],
+)
+
+cpp_unittest(
+    name = "result",
+    srcs = [
+        "ResultTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:result",
+    ],
+)
+
+cpp_unittest(
+    name = "ringbuffer",
+    srcs = ["RingBufferTest.cpp"],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:util",
+    ],
+)
+
+cpp_unittest(
+    name = "cache",
+    srcs = [
+        "CacheTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/executors:manual_executor",
+        "//folly/init:init",
+        "//folly/portability:gtest",
+        "//watchman:util",
+    ],
+)
+
+cpp_unittest(
+    name = "maputil",
+    srcs = [
+        "MapUtilTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:string",
+        "//watchman:util",
+    ],
+)
+
+cpp_unittest(
+    name = "mercurial",
+    srcs = [
+        "MercurialTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:scm",
+    ],
+)
+
+cpp_unittest(
+    name = "localsavedstateinterface",
+    srcs = [
+        "LocalSavedStateInterfaceTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:errors",
+        "//watchman/saved_state:saved_state",
+        "//watchman/test/lib:lib",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "globupperbound",
+    srcs = [
+        "GlobUpperBoundTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:parse",
+        "//watchman:query",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "returnonlyfiles",
+    srcs = [
+        "ReturnOnlyFilesTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:parse",
+        "//watchman:query",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_unittest(
+    name = "suffixquery",
+    srcs = [
+        "SuffixQueryTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+        "//folly/test:test_utils",
+        "//watchman:parse",
+        "//watchman:query",
+        "//watchman/thirdparty/jansson:jansson",
+    ],
+)

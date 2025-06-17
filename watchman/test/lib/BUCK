@@ -1,0 +1,40 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "lib",
+    srcs = [
+        "FakeFileSystem.cpp",
+        "FakeWatcher.cpp",
+    ],
+    headers = [
+        "FakeFileSystem.h",
+        "FakeWatcher.h",
+    ],
+    deps = [
+        "//folly:map_util",
+    ],
+    exported_deps = [
+        "//folly:synchronized",
+        "//watchman:watcher",
+        "//watchman/fs:fs",
+    ],
+)
+
+cpp_unittest(
+    name = "test",
+    srcs = [
+        "FakeFileSystemTest.cpp",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+        "ovr_config//os:macos",
+    ],
+    deps = [
+        ":lib",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
