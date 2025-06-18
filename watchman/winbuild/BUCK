@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+oncall("scm_client_infra")
+
+cpp_binary(
+    name = "susres",
+    srcs = ["susres.cpp"],
+    compatible_with = [
+        "ovr_config//os:windows",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+    ],
+)
