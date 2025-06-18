@@ -13,7 +13,6 @@ cpp_unittest(
         "fbsource//third-party/fmt:fmt",
         "//folly/logging:logging",
         "//folly/portability:gtest",
-        "//watchman:prelude",
         "//watchman/thirdparty/libart/src:art",
     ],
 )
@@ -199,7 +198,6 @@ cpp_unittest(
         "//folly/portability:gtest",
         "//folly/test:test_utils",
         "//watchman:child_process",
-        "//watchman:prelude",
     ],
 )
 
