@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "junit-download",
     out = "junit-4.12.jar",

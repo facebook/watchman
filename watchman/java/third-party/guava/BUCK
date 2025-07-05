@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "guava-jar",
     out = "guava-19.0.jar",

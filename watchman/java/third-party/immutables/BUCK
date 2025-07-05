@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "value-jar",
     out = "value-2.1.5.jar",

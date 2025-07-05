@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "java-hamcrest-2-jar",
     out = "java-hamcrest-2.0.0.0.jar",

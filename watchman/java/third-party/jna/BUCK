@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "jna-jar",
     out = "jna-4.2.0.jar",

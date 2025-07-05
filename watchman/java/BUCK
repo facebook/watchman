@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 java_binary(
     name = "watchman",
     deps = [

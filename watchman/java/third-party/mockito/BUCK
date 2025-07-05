@@ -1,3 +1,5 @@
+oncall("scm_client_infra")
+
 remote_file(
     name = "mockito-jar",
     out = "mockito-core-1.9.5.jar",
