@@ -471,7 +471,7 @@ impl WatchmanRage {
         } else {
             writeln!(
                 self.stream,
-                "Failed to retireve configuration from Watchman. Not checking if configuration matches on-disk setting"
+                "Failed to retrieve configuration from Watchman. Not checking if configuration matches on-disk setting"
             )?;
         }
 
