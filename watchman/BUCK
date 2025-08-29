@@ -448,7 +448,7 @@ cpp_library(
         (
             "windows",
             [
-                "//eden/common/utils:win_util",
+                "//eden/common/utils/windows:win_util",
             ],
         ),
     ],
