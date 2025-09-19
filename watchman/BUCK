@@ -644,6 +644,7 @@ cpp_library(
         ":options",
         "//eden/common/utils:stringconv",
         "//folly:string",
+        "//folly/portability:unistd",
         "//watchman/fs:fs",
         "//watchman/portability:winerror",
     ],
