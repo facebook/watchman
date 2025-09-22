@@ -14,10 +14,12 @@
 #include <folly/init/Init.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Filesystem.h>
 #include <folly/system/Shell.h>
 
 #include <stdio.h>
 #include <optional>
+#include <system_error>
 
 #include "watchman/ChildProcess.h"
 #include "watchman/Client.h"
@@ -770,18 +772,31 @@ static void compute_file_name(
      * within the state dir location */
     auto state_dir = computeWatchmanStateDirectory(user);
 
-    if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
-      verify_dir_ownership(state_dir.c_str());
-    } else {
+    auto create_dir = [&]() -> std::optional<std::error_code> {
+      std::error_code ec;
+      // Don't care if it was created or not provided it did so successfully.
+      folly::fs::create_directories(state_dir, ec);
+      if (ec) {
+        return ec;
+      }
+      // Ignore the result here as it doesn't matter, we will check the actual
+      // permissions later.
+      chmod(state_dir.c_str(), 0700);
+      return std::nullopt;
+    };
+
+    if (auto ec = create_dir()) {
       log(ERR,
           "while computing ",
           what,
           ": failed to create ",
           state_dir,
           ": ",
-          folly::errnoStr(errno),
+          ec->message(),
           "\n");
       exit(1);
+    } else {
+      verify_dir_ownership(state_dir.c_str());
     }
 
     str = fmt::format("{}/{}", state_dir, suffix);
@@ -1040,9 +1055,8 @@ static int inner_main(int argc, char** argv) {
   // TODO: We used to avoid folly::init so it didn't interfere with our own
   // signal handling. We want to swap to folly signal handling, so we'll do a
   // full init on Linux to test it. We should remove this if in the future.
-  std::optional<folly::Init> folly_init;
   if (kUseFollySignalHandler) {
-    folly_init.emplace(&argc, &argv, folly::InitOptions().useGFlags(false));
+    folly::init(&argc, &argv, folly::InitOptions().useGFlags(false));
   } else {
     folly::SingletonVault::singleton()->registrationComplete();
   }
