@@ -278,6 +278,7 @@ cpp_library(
         "//folly:exception",
         "//folly:string",
         "//folly/portability:fcntl",
+        "//folly/portability:filesystem",
         "//folly/portability:sys_stat",
         "//folly/portability:unistd",
         "//watchman/fs:fs",
