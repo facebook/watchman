@@ -261,6 +261,30 @@ cpp_library(
 )
 
 cpp_library(
+    name = "pathutils",
+    srcs = [
+        "PathUtils.cpp",
+    ],
+    headers = [
+        "PathUtils.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        ":config",
+        ":logging",
+        ":string",
+        ":userdir",
+        ":watchmanlib",
+        "//folly:exception",
+        "//folly:string",
+        "//folly/portability:fcntl",
+        "//folly/portability:sys_stat",
+        "//folly/portability:unistd",
+        "//watchman/fs:fs",
+    ],
+)
+
+cpp_library(
     name = "pending",
     srcs = [
         "PendingCollection.cpp",
@@ -928,6 +952,7 @@ cpp_binary(
         ":connect",
         ":logging",
         ":options",
+        ":pathutils",
         ":pdu",
         ":perf_sample",
         ":root",

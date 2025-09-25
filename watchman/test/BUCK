@@ -326,3 +326,23 @@ cpp_unittest(
         "//watchman/thirdparty/jansson:jansson",
     ],
 )
+
+cpp_unittest(
+    name = "pathutils",
+    srcs = [
+        "PathUtilsTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly:exception",
+        "//folly:file_util",
+        "//folly:random",
+        "//folly/portability:gtest",
+        "//folly/portability:stdlib",
+        "//folly/portability:sys_types",
+        "//folly/portability:unistd",
+        "//folly/test:test_utils",
+        "//folly/testing:test_util",
+        "//watchman:pathutils",
+    ],
+)
