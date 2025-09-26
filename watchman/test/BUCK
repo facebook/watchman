@@ -346,3 +346,20 @@ cpp_unittest(
         "//watchman:pathutils",
     ],
 )
+
+cpp_unittest(
+    name = "watcherselectiondarwin",
+    srcs = [
+        "WatcherSelectionDarwinTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:command_registry",
+        "//watchman:config",
+        "//watchman:config_h",
+        "//watchman:root",
+        "//watchman:watchmanlib",
+        "//watchman/test/lib:lib",
+    ],
+)
