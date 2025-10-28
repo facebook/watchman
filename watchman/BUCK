@@ -459,6 +459,7 @@ cpp_library(
 )
 
 cpp_library(
+    # @autodeps-skip
     name = "stream",
     srcs = [
         "stream.cpp",
