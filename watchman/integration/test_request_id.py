@@ -47,10 +47,13 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("query", root, params)
         pat = re.compile(".* \\[client=.*\\] request_id = %s" % request_id)
 
+        print("ntspring waiting 10s for log")
         self.assertWaitFor(
             lambda: any(pat.match(l) for l in self.getServerLogContents()),
             message="request_id logged",
+            timeout=10,
         )
+        print("ntspring waited for log")
 
     def skipIfNoHgRequestIdSupport(self) -> None:
         root = self.mkdtemp()
@@ -131,4 +134,5 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: request_id in try_read_blackbox(),
             message="request_id passed to and logged by hg",
+            timeout=10,
         )
