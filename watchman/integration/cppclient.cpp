@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
        eb,
        [&](folly::Try<dynamic>&& data) {
          if (data.hasException()) {
-           LOG(INFO) << "Expected subcription error caught";
+           LOG(INFO) << "Expected subscription error caught";
            subErrorCallbackTrigger.setValue();
          }
        },
