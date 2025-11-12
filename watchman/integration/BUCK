@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+load("@fbcode_macros//build_defs:python_integration_test.bzl", "python_integration_test")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load(":defs.bzl", "integration_env")
 
@@ -52,7 +53,7 @@ python_unittest(
     ],
 )
 
-python_unittest(
+python_integration_test(
     name = "integration",
     srcs = glob(
         ["test_*.py"],
