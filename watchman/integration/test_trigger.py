@@ -57,6 +57,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: os.path.exists(first_log) and os.path.exists(second_log),
             message="both triggers fire at start",
+            timeout=10,
         )
 
         # touch the file, should run both triggers
@@ -66,6 +67,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             lambda: self.hasTriggerInLogs(root, "first")
             and self.hasTriggerInLogs(root, "second"),
             message="both triggers fired on update",
+            timeout=10,
         )
 
     def validate_trigger_output(self, root, files, context) -> None:
@@ -86,6 +88,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: files_are_listed(),
             message="%s should contain %s" % (trigger_log, json.dumps(files)),
+            timeout=10,
         )
 
         def files_are_listed_json():
@@ -106,6 +109,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: files_are_listed_json(),
             message="%s should contain %s" % (trigger_json, json.dumps(files)),
+            timeout=10,
         )
 
     def test_legacyTrigger(self) -> None:
@@ -184,6 +188,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             lambda: self.hasTriggerInLogs(root, "test")
             and self.hasTriggerInLogs(root, "other"),
             message="both triggers fired on update",
+            timeout=10,
         )
 
         self.validate_trigger_output(root, ["foo.c", "b ar.c"], "initial")
