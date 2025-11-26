@@ -21,6 +21,9 @@ pcre2
 googletest
 python-setuptools-69
 
+[dependencies.os=linux]
+bz2
+
 [dependencies.fbsource=on]
 rust
 
