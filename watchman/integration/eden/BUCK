@@ -15,7 +15,7 @@ python_unittest(
     env = eden_integration_env(artifacts["env"]),
     typing = True,
     deps = [
-        "//eden/fs/service:thrift-py-deprecated",
+        "//eden/fs/service:thrift-python-types",
         "//eden/integration/lib:lib",
         "//watchman/integration/lib:lib",
         "//watchman/python/pywatchman:pywatchman",
