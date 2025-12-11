@@ -1005,19 +1005,19 @@ nupkg.builder(
     ],
     chocolatey_install_script = "facebook/windows/chocolateyinstall.ps1",
     chocolatey_uninstall_script = "facebook/windows/chocolateyuninstall.ps1",
-    compatible_with = [
-        "ovr_config//os:windows",
-    ],
     oncall = "scm_client_infra",
     version = dot_version,
-    deps = [
-        "fbcode//watchman:watchman",
-        "fbcode//watchman:watchman[pdb]",
-        "fbcode//watchman/cli:cli",
-        "fbcode//watchman/python/bin:watchman-diag",
-        "fbcode//watchman/python/bin:watchman-make",
-        "fbcode//watchman/python/bin:watchman-replicate-subscription",
-        "fbcode//watchman/python/bin:watchman-wait",
-        "fbsource//third-party/rust:deelevate-eledo-pty-bridge",
-    ],
+    deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "fbcode//watchman:watchman",
+            "fbcode//watchman:watchman[pdb]",
+            "fbcode//watchman/cli:cli",
+            "fbcode//watchman/python/bin:watchman-diag",
+            "fbcode//watchman/python/bin:watchman-make",
+            "fbcode//watchman/python/bin:watchman-replicate-subscription",
+            "fbcode//watchman/python/bin:watchman-wait",
+            "fbsource//third-party/rust:deelevate-eledo-pty-bridge",
+        ],
+    }),
 )
