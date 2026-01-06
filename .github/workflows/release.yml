@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -144,7 +144,7 @@ jobs:
       - name: Fix HOME
         run: echo HOME=/root >> $GITHUB_ENV
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install system dependencies
         run: "./install-system-packages.sh"
       - name: Fix dubious ownership
@@ -175,7 +175,7 @@ jobs:
       - name: Fix HOME
         run: echo HOME=/root >> $GITHUB_ENV
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install system dependencies
         run: "./install-system-packages.sh"
       - name: Fix dubious ownership
@@ -206,7 +206,7 @@ jobs:
       - name: Fix HOME
         run: echo HOME=/root >> $GITHUB_ENV
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install system dependencies
         run: "./install-system-packages.sh"
       - name: Fix dubious ownership
@@ -238,7 +238,7 @@ jobs:
       - name: Fix HOME
         run: echo HOME=/root >> $GITHUB_ENV
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install system dependencies
         run: "./install-system-packages.sh"
       - name: Fix dubious ownership
@@ -270,7 +270,7 @@ jobs:
       - name: Fix HOME
         run: echo HOME=/root >> $GITHUB_ENV
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install system dependencies
         run: "./install-system-packages.sh"
       - name: Fix dubious ownership
@@ -296,7 +296,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build watchman
         run: "python3 build/fbcode_builder/getdeps.py build --src-dir=. watchman  --project-install-prefix watchman:/usr/local"
       - name: Copy artifacts
@@ -319,7 +319,7 @@ jobs:
     needs: prepare
     runs-on: macOS-10.15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build watchman
         run: "SDKROOT=$(xcrun --show-sdk-path --sdk macosx11.1) python3 build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. watchman  --project-install-prefix watchman:/usr/local"
       - name: Copy artifacts
@@ -342,7 +342,7 @@ jobs:
     needs: prepare
     runs-on: windows-2019
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Export boost environment
         run: echo BOOST_ROOT=%BOOST_ROOT_1_69_0% >> %GITHUB_ENV%
         shell: cmd
