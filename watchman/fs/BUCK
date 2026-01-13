@@ -25,7 +25,6 @@ cpp_library(
         "//folly:file_util",
         "//folly:string",
         "//folly/portability:event",
-        "//folly/system:pid",
         "//watchman/portability:winerror",
     ],
     exported_deps = [
