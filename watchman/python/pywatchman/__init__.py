@@ -407,7 +407,7 @@ def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
             # Event is signaled, overlapped IO operation result should be available.
             pass
         elif waitReturnCode == WAIT_IO_COMPLETION:
-            # WaitForSingleObjectEx returnes because the system added an I/O completion
+            # WaitForSingleObjectEx returns because the system added an I/O completion
             # routine or an asynchronous procedure call (APC) to the thread queue.
             SetLastError(WAIT_IO_COMPLETION)
             pass

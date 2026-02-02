@@ -258,7 +258,7 @@ BunserBuf.prototype.processLater = function() {
 // Do something with the buffer to advance our state.
 // If we're running synchronously we'll return either
 // the value we've decoded or undefined if we don't
-// yet have enought data.
+// yet have enough data.
 // If we're running asynchronously, we'll emit the value
 // when it becomes ready and schedule another invocation
 // of process on the next tick if we still have data we
