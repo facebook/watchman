@@ -6,23 +6,23 @@ cpp_library(
     name = "backtrace",
     srcs = ["Backtrace.cpp"],
     headers = ["Backtrace.h"],
-    os_deps = [
-        (
-            "windows",
-            ["fbsource//third-party/toolchains/win:dbghelp.lib"],
-        ),
-    ],
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "fbsource//third-party/toolchains/win:dbghelp.lib",
+        ],
+    }),
 )
 
 cpp_library(
     name = "getopt",
     headers = ["GetOpt.h"],
-    os_deps = [
-        (
-            "windows",
-            ["//watchman/thirdparty/getopt:getopt"],
-        ),
-    ],
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "//watchman/thirdparty/getopt:getopt",
+        ],
+    }),
 )
 
 cpp_library(

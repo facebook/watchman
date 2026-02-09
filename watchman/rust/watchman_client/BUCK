@@ -6,12 +6,6 @@ oncall("scm_client_infra")
 rust_library(
     name = "watchman_client",
     srcs = glob(["src/**/*.rs"]),
-    os_deps = [
-        (
-            "windows",
-            ["fbsource//third-party/rust:winapi"],
-        ),
-    ],
     preferred_linkage = "static",
     deps = [
         "fbsource//third-party/rust:anyhow",
@@ -23,7 +17,12 @@ rust_library(
         "fbsource//third-party/rust:tokio",
         "fbsource//third-party/rust:tokio-util",
         "//watchman/rust/serde_bser:serde_bser",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "fbsource//third-party/rust:winapi",
+        ],
+    }),
 )
 
 rust_binary(

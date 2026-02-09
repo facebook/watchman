@@ -25,26 +25,6 @@ cpp_library(
         "WatchmanClient.h",
         "WatchmanConnection.h",
     ],
-    os_deps = [
-        (
-            "windows",
-            [
-                "//eden/common/utils:process",
-            ],
-        ),
-        (
-            "linux",
-            [
-                "//folly:subprocess",
-            ],
-        ),
-        (
-            "macos",
-            [
-                "//folly:subprocess",
-            ],
-        ),
-    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         "//folly:network_address",
@@ -61,7 +41,18 @@ cpp_library(
         "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
         "//folly/json:dynamic",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "//folly:subprocess",
+        ],
+        "ovr_config//os:macos": [
+            "//folly:subprocess",
+        ],
+        "ovr_config//os:windows": [
+            "//eden/common/utils:process",
+        ],
+    }),
     external_deps = [
         "glog",
     ],

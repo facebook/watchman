@@ -471,14 +471,6 @@ cpp_library(
     headers = [
         "watchman_stream.h",
     ],
-    os_deps = [
-        (
-            "windows",
-            [
-                "//eden/common/utils/windows:win_util",
-            ],
-        ),
-    ],
     deps = [
         ":config",
         ":logging",
@@ -489,7 +481,12 @@ cpp_library(
     ],
     exported_deps = [
         "//watchman/fs:fd",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "//eden/common/utils/windows:win_util",
+        ],
+    }),
 )
 
 cpp_library(
@@ -656,15 +653,6 @@ cpp_library(
     name = "userdir",
     srcs = ["UserDir.cpp"],
     headers = ["UserDir.h"],
-    os_deps = [
-        (
-            "windows",
-            [
-                "fbsource//third-party/toolchains/win:shell32.lib",
-                "fbsource//third-party/toolchains/win:ole32.lib",
-            ],
-        ),
-    ],
     deps = [
         "fbsource//third-party/fmt:fmt",
         ":logging",
@@ -675,6 +663,13 @@ cpp_library(
         "//watchman/fs:fs",
         "//watchman/portability:winerror",
     ],
+    exported_deps = select({
+        "DEFAULT": [],
+        "ovr_config//os:windows": [
+            "fbsource//third-party/toolchains/win:ole32.lib",
+            "fbsource//third-party/toolchains/win:shell32.lib",
+        ],
+    }),
 )
 
 cpp_library(
@@ -843,15 +838,6 @@ cpp_library(
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
     link_whole = True,
-    os_deps = [
-        (
-            "macos",
-            [
-                "fbsource//third-party/toolchains/macos:CoreFoundation",
-                "fbsource//third-party/toolchains/macos:CoreServices",
-            ],
-        ),
-    ],
     deps = [
         "fbsource//third-party/cpptoml:cpptoml",
         ":child_process",
@@ -916,7 +902,13 @@ cpp_library(
         "//watchman/fs:fs",
         "//watchman/telemetry:telemetry",
         "//watchman/thirdparty/jansson:jansson",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:macos": [
+            "fbsource//third-party/toolchains/macos:CoreFoundation",
+            "fbsource//third-party/toolchains/macos:CoreServices",
+        ],
+    }),
 )
 
 cpp_library(
@@ -935,16 +927,6 @@ cpp_binary(
     srcs = [
         "ProcessLock.cpp",
         "main.cpp",
-    ],
-    os_deps = [
-        (
-            "linux",
-            ["//watchman/facebook/saved_state:manifold_saved_state"],
-        ),
-        (
-            "windows",
-            ["//watchman/thirdparty/deelevate_binding:deelevate_binding"],
-        ),
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -976,7 +958,15 @@ cpp_binary(
         "//folly/system:shell",
         "//watchman/fs:fd",
         "//watchman/fs:fs",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "//watchman/facebook/saved_state:manifold_saved_state",
+        ],
+        "ovr_config//os:windows": [
+            "//watchman/thirdparty/deelevate_binding:deelevate_binding",
+        ],
+    }),
 )
 
 python_unittest(

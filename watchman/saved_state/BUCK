@@ -6,12 +6,6 @@ cpp_library(
     name = "factory",
     srcs = ["SavedStateFactory.cpp"],
     headers = ["SavedStateFactory.h"],
-    os_deps = [
-        (
-            "linux",
-            ["//watchman/facebook/saved_state:manifold_saved_state"],
-        ),
-    ],
     deps = [
         "fbcode//watchman:client_context",
         "fbcode//watchman:errors",
@@ -22,7 +16,12 @@ cpp_library(
         "//watchman:config",
         "//watchman:string",
         "//watchman/thirdparty/jansson:jansson",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "//watchman/facebook/saved_state:manifold_saved_state",
+        ],
+    }),
 )
 
 cpp_library(

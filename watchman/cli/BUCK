@@ -10,7 +10,104 @@ rust_binary(
             "name": "watchmanctl",
         },
         "cargo_toml_config": {
+            "dependencies_override": {
+                "dependencies": {
+                    "ahash": {
+                        "features": ["runtime-rng"],
+                        "version": "0.8.11",
+                    },
+                    "anyhow": {"version": "1.0.98"},
+                    "duct": {"version": "0.13.6"},
+                    "jwalk": {"version": "0.8.1"},
+                    "serde": {
+                        "features": [
+                            "derive",
+                            "rc",
+                        ],
+                        "version": "1.0.219",
+                    },
+                    "serde_json": {
+                        "features": [
+                            "alloc",
+                            "float_roundtrip",
+                            "raw_value",
+                            "unbounded_depth",
+                        ],
+                        "version": "1.0.140",
+                    },
+                    "structopt": {"version": "0.3.26"},
+                    "sysinfo": {"version": "0.35.1"},
+                    "tabular": {"version": "0.2.0"},
+                    "tokio": {
+                        "features": [
+                            "full",
+                            "test-util",
+                            "tracing",
+                        ],
+                        "version": "1.47.1",
+                    },
+                },
+                "target": {
+                    "'cfg(target_os = \"linux\")'": {
+                        "dependencies": {
+                            "nix": {
+                                "features": [
+                                    "dir",
+                                    "event",
+                                    "hostname",
+                                    "inotify",
+                                    "ioctl",
+                                    "mman",
+                                    "mount",
+                                    "net",
+                                    "poll",
+                                    "ptrace",
+                                    "reboot",
+                                    "resource",
+                                    "sched",
+                                    "signal",
+                                    "term",
+                                    "time",
+                                    "user",
+                                    "zerocopy",
+                                ],
+                                "version": "0.30.1",
+                            },
+                        },
+                    },
+                    "'cfg(target_os = \"macos\")'": {
+                        "dependencies": {
+                            "nix": {
+                                "features": [
+                                    "dir",
+                                    "event",
+                                    "hostname",
+                                    "inotify",
+                                    "ioctl",
+                                    "mman",
+                                    "mount",
+                                    "net",
+                                    "poll",
+                                    "ptrace",
+                                    "reboot",
+                                    "resource",
+                                    "sched",
+                                    "signal",
+                                    "term",
+                                    "time",
+                                    "user",
+                                    "zerocopy",
+                                ],
+                                "version": "0.30.1",
+                            },
+                        },
+                    },
+                },
+            },
             "extra_buck_dependencies": {
+                "dependencies": [
+                    "//watchman/rust/watchman_client:watchman_client",
+                ],
                 "target": {
                     "'cfg(unix)'": {
                         "dependencies": [
@@ -28,20 +125,6 @@ rust_binary(
     features = [
         "fb",
     ],
-    os_deps = [
-        (
-            "linux",
-            [
-                "fbsource//third-party/rust:nix",
-            ],
-        ),
-        (
-            "macos",
-            [
-                "fbsource//third-party/rust:nix",
-            ],
-        ),
-    ],
     deps = [
         "fbsource//third-party/rust:ahash",
         "fbsource//third-party/rust:anyhow",
@@ -54,5 +137,13 @@ rust_binary(
         "fbsource//third-party/rust:tabular",
         "fbsource//third-party/rust:tokio",
         "//watchman/rust/watchman_client:watchman_client",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//os:linux": [
+            "fbsource//third-party/rust:nix",
+        ],
+        "ovr_config//os:macos": [
+            "fbsource//third-party/rust:nix",
+        ],
+    }),
 )
