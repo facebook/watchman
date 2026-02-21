@@ -10,8 +10,8 @@ cpp_binary(
     name = "cppclient",
     srcs = ["cppclient.cpp"],
     deps = [
-        "//folly/experimental/io:fs_util",
         "//folly/init:init",
+        "//folly/io:fs_util",
         "//folly/io/async:event_base_thread",
         "//folly/json:dynamic",
         "//folly/testing:test_util",
