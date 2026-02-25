@@ -67,12 +67,14 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: self.fileContains(
                 os.path.join(root, "trig.log"), "PWD=" + os.path.join(root, "sub")
-            )
+            ),
+            timeout=10,
         )
         self.assertWaitFor(
             lambda: self.fileContains(
                 os.path.join(root, "trig.log"), "WATCHMAN_EMPTY_ENV_VAR="
-            )
+            ),
+            timeout=10,
         )
 
     def test_triggerChdirRelativeRoot(self) -> None:
@@ -100,19 +102,22 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             lambda: self.fileContains(
                 os.path.join(root, "trig.log"),
                 "PWD=" + os.path.join(root, "sub1", "sub2"),
-            )
+            ),
+            timeout=10,
         )
 
         self.assertWaitFor(
             lambda: self.fileContains(
                 os.path.join(root, "trig.log"), "WATCHMAN_ROOT=" + root
-            )
+            ),
+            timeout=10,
         )
         self.assertWaitFor(
             lambda: self.fileContains(
                 os.path.join(root, "trig.log"),
                 "WATCHMAN_RELATIVE_ROOT=" + os.path.join(root, "sub1"),
-            )
+            ),
+            timeout=10,
         )
 
     def test_triggerMaxFiles(self) -> None:
@@ -138,7 +143,8 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         self.touchRelative(root, "A.txt")
         self.assertWaitFor(
-            lambda: self.fileContains(os.path.join(root, "trig.log"), "PWD=" + root)
+            lambda: self.fileContains(os.path.join(root, "trig.log"), "PWD=" + root),
+            timeout=10,
         )
 
         self.assertTrue(
@@ -159,7 +165,10 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             self.touchRelative(root, "D.txt")
 
             self.assertWaitFor(
-                lambda: self.fileContains(os.path.join(root, "trig.log"), "PWD=" + root)
+                lambda: self.fileContains(
+                    os.path.join(root, "trig.log"), "PWD=" + root
+                ),
+                timeout=10,
             )
 
             if self.fileContains(
@@ -188,13 +197,14 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.touchRelative(root, "A.txt")
-        self.assertWaitFor(lambda: self.fileContains(log_file, "A.txt"))
+        self.assertWaitFor(lambda: self.fileContains(log_file, "A.txt"), timeout=10)
 
         self.touchRelative(root, "B.txt")
         self.touchRelative(root, "A.txt")
         self.assertWaitFor(
             lambda: self.fileContains(log_file, "A.txt")
-            and self.fileContains(log_file, "B.txt")
+            and self.fileContains(log_file, "B.txt"),
+            timeout=10,
         )
         with open(log_file, "r") as f:
             self.assertEqual(["A.txt\n", "B.txt\n"], sorted(f.readlines()))
@@ -220,7 +230,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         self.touchRelative(root, "A.txt")
         self.touchRelative(root, "subdir", "B.txt")
-        self.assertWaitFor(lambda: self.fileContains(log_file, "B.txt"))
+        self.assertWaitFor(lambda: self.fileContains(log_file, "B.txt"), timeout=10)
 
     def test_triggerNamePerLineAppend(self) -> None:
         root = self.mkdtemp()
@@ -240,12 +250,13 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.touchRelative(root, "A.txt")
-        self.assertWaitFor(lambda: self.fileContains(log_file, "A.txt"))
+        self.assertWaitFor(lambda: self.fileContains(log_file, "A.txt"), timeout=10)
 
         self.touchRelative(root, "B.txt")
         self.assertWaitFor(
             lambda: self.fileContains(log_file, "A.txt")
-            and self.fileContains(log_file, "B.txt")
+            and self.fileContains(log_file, "B.txt"),
+            timeout=10,
         )
         with open(log_file, "r") as f:
             self.assertEqual(["A.txt\n", "B.txt\n"], sorted(f.readlines()))
@@ -268,7 +279,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.touchRelative(root, "A.txt")
-        self.assertWaitFor(lambda: self.fileHasValidJson(log_file))
+        self.assertWaitFor(lambda: self.fileHasValidJson(log_file), timeout=10)
 
         with open(log_file, "r") as f:
             data = json.load(f)
@@ -292,7 +303,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         )
 
         self.touchRelative(root, "A.txt")
-        self.assertWaitFor(lambda: self.fileHasValidJson(log_file))
+        self.assertWaitFor(lambda: self.fileHasValidJson(log_file), timeout=10)
 
         with open(log_file, "r") as f:
             data = json.load(f)

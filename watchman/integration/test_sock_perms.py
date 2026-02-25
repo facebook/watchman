@@ -95,6 +95,7 @@ class TestSockPerms(unittest.TestCase):
         )
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
+            timeout=10,
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
@@ -123,6 +124,7 @@ class TestSockPerms(unittest.TestCase):
         self.assertWaitFor(
             lambda: (wanted in instance.getCLILogContents())
             or (we_love_ldap in instance.getCLILogContents()),
+            timeout=10,
             get_debug_output=lambda: str(ctx.exception)
             + "\n"
             + instance.getCLILogContents(),
@@ -137,6 +139,7 @@ class TestSockPerms(unittest.TestCase):
         wanted = "setting up group '%s' failed" % group.gr_name
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
+            timeout=10,
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
@@ -188,7 +191,9 @@ class TestSockPerms(unittest.TestCase):
                 non_member_group.gr_name,
             )
         )
-        self.assertWaitFor(lambda: wanted in instance.getServerLogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getServerLogContents(), timeout=10
+        )
 
     def test_invalid_sock_access(self) -> None:
         instance = self._new_instance({"sock_access": "bogus"})
@@ -198,6 +203,7 @@ class TestSockPerms(unittest.TestCase):
         wanted = "Expected config value sock_access to be an object"
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
+            timeout=10,
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 
@@ -208,6 +214,7 @@ class TestSockPerms(unittest.TestCase):
         wanted = "Expected config value sock_access.group to be a boolean"
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
+            timeout=10,
             get_debug_output=lambda: instance.getCLILogContents(),
         )
 

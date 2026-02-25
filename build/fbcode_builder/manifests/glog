@@ -29,8 +29,7 @@ HAVE_TR1_UNORDERED_SET=OFF
 [homebrew]
 glog
 
-# on ubuntu glog brings in liblzma-dev, which in turn breaks watchman tests
-[debs.not(distro=ubuntu)]
+[debs]
 libgoogle-glog-dev
 
 [rpms.distro=fedora]

@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v6
     - name: Show disk space at start
@@ -36,6 +36,9 @@ jobs:
     - name: Fetch boost
       if: ${{ steps.paths.outputs.boost_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests boost
+    - name: Fetch bz2
+      if: ${{ steps.paths.outputs.bz2_SOURCE }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests bz2
     - name: Fetch ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests ninja
@@ -157,6 +160,22 @@ jobs:
       with:
        path: ${{ steps.paths.outputs.boost_INSTALL }}
        key: ${{ steps.paths.outputs.boost_CACHE_KEY }}-install
+    - name: Restore bz2 from cache
+      id: restore_bz2
+      if: ${{ steps.paths.outputs.bz2_SOURCE }}
+      uses: actions/cache/restore@v4
+      with:
+       path: ${{ steps.paths.outputs.bz2_INSTALL }}
+       key: ${{ steps.paths.outputs.bz2_CACHE_KEY }}-install
+    - name: Build bz2
+      if: ${{ steps.paths.outputs.bz2_SOURCE && ! steps.restore_bz2.outputs.cache-hit }}
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --free-up-disk --no-tests bz2
+    - name: Save bz2 to cache
+      uses: actions/cache/save@v4
+      if: ${{ steps.paths.outputs.bz2_SOURCE && ! steps.restore_bz2.outputs.cache-hit }}
+      with:
+       path: ${{ steps.paths.outputs.bz2_INSTALL }}
+       key: ${{ steps.paths.outputs.bz2_CACHE_KEY }}-install
     - name: Restore ninja from cache
       id: restore_ninja
       if: ${{ steps.paths.outputs.ninja_SOURCE }}
