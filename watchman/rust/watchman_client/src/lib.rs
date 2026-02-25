@@ -372,7 +372,7 @@ pub struct ResolvedRoot {
 impl ResolvedRoot {
     /// Returns the name of the watcher that the server is using to
     /// monitor the path.  The watcher is generally system dependent,
-    /// but some systems offer multipler watchers.
+    /// but some systems offer multiplier watchers.
     /// You generally don't care too much about the watcher that is
     /// in use, but if the watcher is a virtualized filesystem such as
     /// `eden` then you may wish to use to alternative queries to get the
@@ -430,7 +430,7 @@ enum TaskItem {
     RegisterSubscription(String, UnboundedSender<SubscriptionNotification>),
 }
 
-/// Splits BSER mesages out of a stream. Does not attempt to actually decode them.
+/// Splits BSER messages out of a stream. Does not attempt to actually decode them.
 struct BserSplitter;
 
 impl Decoder for BserSplitter {
@@ -454,7 +454,7 @@ impl Decoder for BserSplitter {
                     return Ok(None);
                 }
 
-                // We should have succeded in reading some data here, but we didn't. Return an
+                // We should have succeeded in reading some data here, but we didn't. Return an
                 // error.
                 return Err(TaskError::Deserialize {
                     source: source.into(),

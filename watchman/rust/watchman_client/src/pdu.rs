@@ -837,7 +837,7 @@ pub struct SavedStateClockData {
 pub enum ContentSha1Hex {
     /// The 40-hex-digit SHA1 content hash of the file contents
     Hash(String),
-    /// The error that occured while trying to determine the hash
+    /// The error that occurred while trying to determine the hash
     Error { error: String },
     /// Value if the file was deleted.
     /// Note that this is distinct from the case where watchman believes

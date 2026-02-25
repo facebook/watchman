@@ -333,13 +333,13 @@ QueryResult w_query_execute(
     }
 
     // Populate transition counter at start of query. This allows us to
-    // determine if SCM operations ocurred concurrent with query execution.
+    // determine if SCM operations occurred concurrent with query execution.
     res.stateTransCountAtStartOfQuery = root->stateTransCount.load();
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
     resultClock.scmMergeBase =
         scm->mergeBaseWith(resultClock.scmMergeBaseWith, requestId);
     // Always update the saved state storage type and key, but conditionally
-    // update the saved state commit id below based on wether the mergebase has
+    // update the saved state commit id below based on whether the mergebase has
     // changed.
     if (query->since_spec->hasSavedStateParams()) {
       resultClock.savedStateStorageType =

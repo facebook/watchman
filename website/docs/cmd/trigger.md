@@ -28,7 +28,7 @@ generated watchman will spawn a new child with the files that changed in the
 meantime.
 
 Unless `no-save-state` is in use, triggers are saved and re-established across a
-Watchman process restart. If you had triggeres saved prior to upgrading to
+Watchman process restart. If you had triggers saved prior to upgrading to
 Watchman 2.9.7, those triggers will be forgotten as you upgrade past version
 2.9.7; you will need to re-register them.
 

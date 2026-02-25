@@ -215,7 +215,7 @@ static UntypedResponse cmd_state_leave(
         try {
           result.throwUnlessValue();
         } catch (const std::exception& exc) {
-          // The sync failed for whatever reason; log it and take no futher
+          // The sync failed for whatever reason; log it and take no further
           // action
           log(ERR, "state-leave sync failed: ", exc.what(), "\n");
           return;
