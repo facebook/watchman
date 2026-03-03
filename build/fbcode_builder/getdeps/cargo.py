@@ -342,7 +342,7 @@ path = "{null_file}"
     def _resolve_dep_to_git(self):
         """
         For each direct dependency of the currently build manifest check if it
-        is also cargo-builded and if yes then extract it's git configs and
+        is also cargo-built and if yes then extract it's git configs and
         install dir
         """
         dependencies = self.manifest.get_dependencies(self.ctx)

@@ -362,7 +362,7 @@ class EdenFileResult : public FileResult {
         return result;
       }
 
-      // Thrift error occured
+      // Thrift error occurred
       case SHA1Result::Type::error: {
         auto& err = sha1_->get_error();
         XCHECK(err.errorCode());
@@ -1063,10 +1063,10 @@ class EdenView final : public QueryableView {
 
   void clearWatcherDebugInfo() override {}
 
-  using EdenFSSubcription =
+  using EdenFSSubscription =
       apache::thrift::ClientBufferedStream<JournalPosition>::Subscription;
 
-  EdenFSSubcription rocketSubscribe(
+  EdenFSSubscription rocketSubscribe(
       std::shared_ptr<Root> root,
       SettleCallback& settleCallback,
       GetJournalPositionCallback& getJournalPositionCallback,
@@ -1144,7 +1144,7 @@ class EdenView final : public QueryableView {
     w_set_thread_name("edensub ", root->root_path.view());
     log(DBG, "Started subscription thread\n");
 
-    std::optional<EdenFSSubcription> subscription;
+    std::optional<EdenFSSubscription> subscription;
     SCOPE_EXIT {
       if (subscription.has_value()) {
         subscription->cancel();
@@ -1413,7 +1413,7 @@ class EdenView final : public QueryableView {
   }
 
   /**
-   * Compute and return all the changes that occured since the last call.
+   * Compute and return all the changes that occurred since the last call.
    *
    * On error, or when thresholdForFreshInstance_ is exceeded, the clock will
    * be modified to indicate a fresh instance and an empty set of files will be
