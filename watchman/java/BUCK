@@ -54,6 +54,7 @@ java_test(
     srcs = glob(["test/**/*.java"]),
     source = "7",
     target = "7",
+    test_type = "junit",
     deps = [
         ":watchman-lib",
         "//third-party/guava:guava",
