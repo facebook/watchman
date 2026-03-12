@@ -18,9 +18,12 @@ builder = cmake
 gflags
 
 [cmake.defines]
-BUILD_SHARED_LIBS=ON
 BUILD_TESTING=NO
 WITH_PKGCONFIG=ON
+BUILD_SHARED_LIBS=OFF
+
+[cmake.defines.os=windows]
+BUILD_SHARED_LIBS=ON
 
 [cmake.defines.os=freebsd]
 HAVE_TR1_UNORDERED_MAP=OFF
