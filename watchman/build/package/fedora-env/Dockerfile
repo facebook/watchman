@@ -1,7 +1,7 @@
 ARG FEDORA_VERSION
 FROM fedora:$FEDORA_VERSION
 
-RUN dnf install -y gcc g++ git openssl-devel rpmdevtools
+RUN dnf install -y python3 g++ git openssl-devel rpmdevtools
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
