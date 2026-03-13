@@ -27,6 +27,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//third-party/glog:glog",
         "//folly:network_address",
         "//folly/executors:inline_executor",
         "//folly/json/bser:bser",
@@ -53,7 +54,4 @@ cpp_library(
             "//eden/common/utils:process",
         ],
     }),
-    external_deps = [
-        "glog",
-    ],
 )

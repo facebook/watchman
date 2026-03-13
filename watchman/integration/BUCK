@@ -10,6 +10,7 @@ cpp_binary(
     name = "cppclient",
     srcs = ["cppclient.cpp"],
     deps = [
+        "fbsource//third-party/glog:glog",
         "//folly/init:init",
         "//folly/io:fs_util",
         "//folly/io/async:event_base_thread",
@@ -17,7 +18,6 @@ cpp_binary(
         "//folly/testing:test_util",
         "//watchman/cppclient:cppclient",
     ],
-    external_deps = ["glog"],
 )
 
 buck_filegroup(
