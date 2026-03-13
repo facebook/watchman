@@ -57,6 +57,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: self.rootIsWatched(root),
             message="%s was not watched by watchman-wait" % root,
+            timeout=10,
         )
 
         # now wait for it to be ready to query.  The easiest way
