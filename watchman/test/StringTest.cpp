@@ -84,7 +84,7 @@ TEST(String, strings) {
     EXPECT_TRUE(movedFrom.empty()) << "moved-from string should be empty";
 
     EXPECT_TRUE(w_string_piece().empty())
-        << "default constructed string piece shouldbe empty";
+        << "default constructed string piece should be empty";
 
     EXPECT_TRUE(w_string::build("").empty()) << "empty string is empty";
   }
