@@ -80,7 +80,7 @@ class ParallelWalker final {
   std::optional<ReadDirResult> nextResult();
 
   /**
-   * Obtain an occured error. Might block.
+   * Obtain an occurred error. Might block.
    *
    * After completion, always return nullopt without blocking.
    */
