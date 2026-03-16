@@ -1413,7 +1413,7 @@ class EdenView final : public QueryableView {
   }
 
   /**
-   * Compute and return all the changes that occured since the last call.
+   * Compute and return all the changes that occurred since the last call.
    *
    * On error, or when thresholdForFreshInstance_ is exceeded, the clock will
    * be modified to indicate a fresh instance and an empty set of files will be

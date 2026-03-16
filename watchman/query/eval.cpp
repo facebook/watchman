@@ -339,7 +339,7 @@ QueryResult w_query_execute(
     resultClock.scmMergeBase =
         scm->mergeBaseWith(resultClock.scmMergeBaseWith, requestId);
     // Always update the saved state storage type and key, but conditionally
-    // update the saved state commit id below based on wether the mergebase has
+    // update the saved state commit id below based on whether the mergebase has
     // changed.
     if (query->since_spec->hasSavedStateParams()) {
       resultClock.savedStateStorageType =
