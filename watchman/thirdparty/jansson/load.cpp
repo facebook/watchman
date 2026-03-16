@@ -51,7 +51,7 @@
 typedef int (*get_func)(void* data);
 
 /* When an get_func returns EOF, it can be end of file or an error. This
-   returns non-zero (1) when an error occured. This corresponds to the
+   returns non-zero (1) when an error occurred. This corresponds to the
    behaviour of ferror(). */
 typedef int (*error_func)(void* data);
 
