@@ -824,19 +824,20 @@ enum CheckoutMode {
 
 enum ConflictType {
   /**
-   * We failed to update this particular path due to an error
+   * We failed to update this particular path due to an error.
    */
   ERROR = 0,
   /**
-   * A locally modified file was deleted in the new Tree
+   * A locally modified file was deleted in the new Tree.
    */
   MODIFIED_REMOVED = 1,
   /**
-   * An untracked local file exists in the new Tree
+   * An untracked local file exists in the new Tree.
+   * The new entry may be a file or directory.
    */
   UNTRACKED_ADDED = 2,
   /**
-   * The file was removed locally, but modified in the new Tree
+   * The file was removed locally, but modified in the new Tree.
    */
   REMOVED_MODIFIED = 3,
   /**
@@ -844,7 +845,7 @@ enum ConflictType {
    */
   MISSING_REMOVED = 4,
   /**
-   * A locally modified file was modified in the new Tree
+   * A locally modified file was modified in the new Tree.
    * This may be contents modifications, or a file type change (directory to
    * file or vice-versa), or permissions changes.
    */
