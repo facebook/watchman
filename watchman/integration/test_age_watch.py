@@ -34,6 +34,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: self.rootIsWatched(root),
             message="%s was not watched by watchman-wait" % root,
+            timeout=10,
         )
 
         self.watchmanCommand("trigger-del", root, "t")
@@ -43,7 +44,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
 
         # subscription won't stick in cli mode
         if self.transport != "cli":
-            self.assertWaitFor(lambda: self.rootIsWatched(root))
+            self.assertWaitFor(lambda: self.rootIsWatched(root), timeout=10)
 
             # let's verify that we can safely reap two roots at once without
             # causing a deadlock
@@ -56,5 +57,6 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
             self.assertTrue(unsub["deleted"], "deleted subscription %s" % unsub)
             # and now we should be ready to reap
             self.assertWaitFor(
-                lambda: not self.rootIsWatched(root) and not self.rootIsWatched(second)
+                lambda: not self.rootIsWatched(root) and not self.rootIsWatched(second),
+                timeout=10,
             )
