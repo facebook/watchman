@@ -141,7 +141,7 @@ _Since 4.6._
 _Since 4.9._
 
 - `content.sha1hex` - string: the SHA-1 digest of the file's byte content,
-  encoded as 40 hexidecimal digits (e.g.
+  encoded as 40 hexadecimal digits (e.g.
   `"da39a3ee5e6b4b0d3255bfef95601890afd80709"` for an empty file)
 
 ### Synchronization timeout (since 2.1)
