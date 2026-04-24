@@ -196,7 +196,7 @@ cpp_library(
     deps = [
         "//folly:scope_guard",
         "//folly:thread_local",
-        "//folly/debugging/symbolizer:symbolizer",
+        "//folly/experimental/symbolizer:symbolizer",
         "//folly/portability:sys_time",
         "//folly/system:thread_name",
         "//watchman/portability:backtrace",
