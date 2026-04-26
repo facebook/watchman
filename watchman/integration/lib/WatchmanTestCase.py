@@ -395,7 +395,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         # pyre-fixme[16]: `WatchmanTestCase` has no attribute `last_file_list`.
         self.assertFileListsEqual(self.last_file_list, expected_files, message)
 
-    def assertQueryRepsonseEqual(self, expected_resp, actual_resp) -> None:
+    def assertQueryResponseEqual(self, expected_resp, actual_resp) -> None:
         # converting the dict to a string version of the json is not
         # exactly the fastest function to use to sort, but it is unambiguous.
         sorted_expected = sorted(
