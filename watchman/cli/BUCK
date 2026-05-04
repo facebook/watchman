@@ -17,6 +17,7 @@ rust_binary(
                         "version": "0.8.11",
                     },
                     "anyhow": {"version": "1.0.98"},
+                    "clap": {"version": "4.6.0"},
                     "duct": {"version": "0.13.6"},
                     "jwalk": {"version": "0.8.1"},
                     "serde": {
@@ -35,7 +36,6 @@ rust_binary(
                         ],
                         "version": "1.0.140",
                     },
-                    "structopt": {"version": "0.3.26"},
                     "sysinfo": {"version": "0.35.1"},
                     "tabular": {"version": "0.2.0"},
                     "tokio": {
@@ -128,11 +128,11 @@ rust_binary(
     deps = [
         "fbsource//third-party/rust:ahash",
         "fbsource//third-party/rust:anyhow",
+        "fbsource//third-party/rust:clap",
         "fbsource//third-party/rust:duct",
         "fbsource//third-party/rust:jwalk",
         "fbsource//third-party/rust:serde",
         "fbsource//third-party/rust:serde_json",
-        "fbsource//third-party/rust:structopt",
         "fbsource//third-party/rust:sysinfo",
         "fbsource//third-party/rust:tabular",
         "fbsource//third-party/rust:tokio",
