@@ -1,3 +1,4 @@
+load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
@@ -54,4 +55,67 @@ python_unittest(
     deps = [
         ":watchman-perf-library",
     ],
+)
+
+export_file(
+    name = "watchman.json.default",
+)
+
+export_file(
+    name = "watchman-perf.py",
+)
+
+rpm.builder(
+    name = "fb-watchman",
+    autoclean_keep_versions = 200,
+    configurations = [
+        rpm.configuration(
+            arch = "x86_64",
+        ),
+        rpm.configuration(
+            arch = "aarch64",
+        ),
+    ],
+    features = [
+        rpm.install(
+            src = "fbcode//watchman:watchman",
+            dst = "/usr/local/bin/watchman",
+        ),
+        rpm.install(
+            src = "fbcode//watchman/cli:cli",
+            dst = "/usr/local/bin/watchmanctl",
+        ),
+        rpm.install(
+            src = "fbcode//watchman/python/bin:watchman-diag",
+            dst = "/usr/local/bin/watchman-diag",
+        ),
+        rpm.install(
+            src = "fbcode//watchman/python/bin:watchman-wait",
+            dst = "/usr/local/bin/watchman-wait",
+        ),
+        rpm.install(
+            src = "fbcode//watchman/python/bin:watchman-make",
+            dst = "/usr/local/bin/watchman-make",
+        ),
+        rpm.install(
+            src = "fbcode//watchman/python/bin:watchman-replicate-subscription",
+            dst = "/usr/local/bin/watchman-replicate-subscription",
+        ),
+        rpm.install(
+            src = ":watchman.json.default",
+            dst = "/etc/watchman.json.default",
+            mode = 0o0644,
+        ),
+        rpm.install(
+            src = ":watchman-perf.py",
+            dst = "/usr/local/sbin/watchman-perf.py",
+            mode = 0o0755,
+        ),
+        rpm.ensure_dirs_exist(
+            dirs = "/var/facebook/watchman",
+            mode = 0o02777,
+        ),
+    ],
+    override_log_paths = ["watchman"],
+    summary = "Watch files, trigger stuff",
 )
