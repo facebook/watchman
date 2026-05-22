@@ -18,7 +18,7 @@ cpp_lionhead_harness(
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    context_task = "T131981406",  # TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
     metadata = watchman_metadata,
     deps = [
         "//watchman:bser",
@@ -33,7 +33,7 @@ cpp_lionhead_harness(
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    context_task = "T131981406",  # TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
     metadata = watchman_metadata,
     deps = [
         "//watchman/thirdparty/jansson:jansson",
@@ -48,7 +48,7 @@ cpp_lionhead_harness(
     compatible_with = [
         "ovr_config//os:linux",
     ],
-    context_task = "T131981406",  #TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
+    context_task = "T131981406",  # TODO: This is a template task. Please create your own copy and insert meaningful context for this fuzzer. Otherwise, security engineers will not know how to handle security issues found by this harness.
     metadata = watchman_metadata,
     deps = [
         "//watchman/python/pywatchman:bserimpl",
