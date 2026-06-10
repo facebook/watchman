@@ -36,4 +36,4 @@ If you wanted to match only files that were in a grand-child or deeper:
       ["dirname", "foo/bar", ["depth", "ge", 2]]
 
 `idirname` is the case insensitive version of `dirname`. If the watched root is
-detected as a case insensitive fileystem, `dirname` is equivalent to `idirname`.
+detected as a case insensitive filesystem, `dirname` is equivalent to `idirname`.

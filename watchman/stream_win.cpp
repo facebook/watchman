@@ -161,7 +161,7 @@ static BOOL WINAPI get_overlapped_result_ex_impl(
         // available.
         break;
       case WAIT_IO_COMPLETION:
-        // WaitForSingleObjectEx returnes because the system added an I/O
+        // WaitForSingleObjectEx returns because the system added an I/O
         // completion routine or an asynchronous procedure call (APC) to the
         // thread queue.
         SetLastError(WAIT_IO_COMPLETION);

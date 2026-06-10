@@ -66,7 +66,7 @@ class ChildProcess {
 #ifdef POSIX_SPAWN_SETSIGMASK
     void setSigMask(const sigset_t& mask);
 #endif
-    // Adds flags to the set of flags maintainted in the spawn attributes.
+    // Adds flags to the set of flags maintained in the spawn attributes.
     // This is logically equivalent to calling setflags(getflags()|flags)
     void setFlags(short flags);
 

@@ -333,7 +333,7 @@ QueryResult w_query_execute(
     }
 
     // Populate transition counter at start of query. This allows us to
-    // determine if SCM operations ocurred concurrent with query execution.
+    // determine if SCM operations occurred concurrent with query execution.
     res.stateTransCountAtStartOfQuery = root->stateTransCount.load();
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
     resultClock.scmMergeBase =

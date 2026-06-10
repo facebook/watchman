@@ -248,7 +248,7 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # file/directory is removed, and thus this is reported to Watchman as
         # an UNKNOWN file, which for removed files/directory will be reported
         # as a removed file.
-        self.assertQueryRepsonseEqual(
+        self.assertQueryResponseEqual(
             [{"name": "adir", "type": "f"}, {"name": "adir/file", "type": "f"}],
             first_res["files"],
         )
@@ -275,7 +275,7 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         first_res = self.query_adir_change_since(root, first_clock)
 
-        self.assertQueryRepsonseEqual(
+        self.assertQueryResponseEqual(
             [{"name": "adir", "type": "d"}, {"name": "adir/file", "type": "f"}],
             first_res["files"],
         )
@@ -289,7 +289,7 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         second_res = self.query_adir_change_since(root, second_clock)
 
-        self.assertQueryRepsonseEqual(
+        self.assertQueryResponseEqual(
             [{"name": "adir", "type": "d"}, {"name": "adir/file", "type": "f"}],
             second_res["files"],
         )
@@ -352,7 +352,7 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         res = do_query(clock)
         self.assertFalse(res["is_fresh_instance"])
-        self.assertQueryRepsonseEqual(["hello"], res["files"])
+        self.assertQueryResponseEqual(["hello"], res["files"])
 
     def test_eden_since_dotfiles_change(self) -> None:
         root = self.makeEdenMount(
