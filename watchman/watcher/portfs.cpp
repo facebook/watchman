@@ -294,7 +294,7 @@ Watcher::WaitNotifyResult PortFSWatcher::waitNotify(int timeoutms) {
       return WaitNotifyResult::Terminate;
     }
     if (pfd[1].revents) {
-      // An exceptional event (delete) occured on the root so delete it
+      // An exceptional event (delete) occurred on the root so delete it
       root_deleted = true;
       return WaitNotifyResult::Ready;
     }

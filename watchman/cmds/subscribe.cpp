@@ -254,7 +254,7 @@ std::optional<UntypedResponse> ClientSubscription::buildSubscriptionResults(
     position = res.clockAtStartOfQuery;
 
     // An SCM operation was interleaved with the query execution. This could
-    // result in over-reporing query results. Discard our results but, do not
+    // result in over-reporting query results. Discard our results but, do not
     // update the clock in order to allow changes to be reported the next time
     // the query is run.
     bool scmAwareQuery = since_spec && since_spec->hasScmParams();

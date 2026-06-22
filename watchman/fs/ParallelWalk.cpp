@@ -198,7 +198,7 @@ void readDirTask(
         IoErrorWithPath error{
             std::move(fileFullPath), err, "getFileInformation"};
         context->errorQueue.enqueue(error);
-        // Contine checking other entries.
+        // Continue checking other entries.
         continue;
       }
     }
