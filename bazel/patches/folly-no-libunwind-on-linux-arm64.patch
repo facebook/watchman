@@ -1,0 +1,64 @@
+diff --git a/folly/BUILD.bazel b/folly/BUILD.bazel
+index 0000000..0000000 100644
+--- a/folly/BUILD.bazel
++++ b/folly/BUILD.bazel
+@@ -17,6 +17,14 @@ config_setting(
+     flag_values = {":with_int128": "True"},
+ )
+ 
++config_setting(
++    name = "linux_aarch64",
++    constraint_values = [
++        "@platforms//os:linux",
++        "@platforms//cpu:aarch64",
++    ],
++)
++
+ cpp_library(
+     name = "concurrent_bit_set",
+     hdrs = [
+@@ -302,6 +310,17 @@ cmake_configure_file(
+             # TODO(kgk): What defines should be set here?
+         ],
+         "@platforms//os:macos": [],
++        ":linux_aarch64": [
++            "FOLLY_HAVE_ACCEPT4",
++            "FOLLY_HAVE_GETRANDOM",
++            "FOLLY_HAVE_PIPE2",
++            "FOLLY_HAVE_IFUNC",
++            "FOLLY_HAVE_WEAK_SYMBOLS",
++            "FOLLY_HAVE_LINUX_VDSO",
++            "FOLLY_HAVE_MALLOC_USABLE_SIZE",
++            "FOLLY_HAVE_ELF",
++            "FOLLY_USE_SYMBOLIZER",
++        ],
+         "@platforms//os:linux": [
+             "FOLLY_HAVE_ACCEPT4",
+             "FOLLY_HAVE_GETRANDOM",
+diff --git a/folly/portability/BUILD.bazel b/folly/portability/BUILD.bazel
+index 0000000..0000000 100644
+--- a/folly/portability/BUILD.bazel
++++ b/folly/portability/BUILD.bazel
+@@ -2,6 +2,14 @@ load("//bzl:cpp_library.bzl", "cpp_library")
+ 
+ package(default_visibility = ["//visibility:public"])
+ 
++config_setting(
++    name = "linux_aarch64",
++    constraint_values = [
++        "@platforms//os:linux",
++        "@platforms//cpu:aarch64",
++    ],
++)
++
+ cpp_library(
+     name = "asm",
+     hdrs = ["Asm.h"],
+@@ -142,6 +150,7 @@ cpp_library(
+     name = "libunwind",
+     hdrs = ["Libunwind.h"],
+     deps = select({
++        ":linux_aarch64": [],
+         "@platforms//os:linux": ["@libunwind"],
+         "//conditions:default": [],
+     }),

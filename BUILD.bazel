@@ -1,0 +1,18 @@
+load("//bazel:dist.bzl", "opt_filegroup")
+
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "watchman",
+    actual = "//watchman:watchman",
+)
+
+opt_filegroup(
+    name = "watchman_dist",
+    srcs = [":watchman"],
+)
+
+alias(
+    name = "dist",
+    actual = ":watchman_dist",
+)

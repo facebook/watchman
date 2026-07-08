@@ -1,0 +1,31 @@
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "linux",
+    constraint_values = ["@platforms//os:linux"],
+)
+
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+platform(
+    name = "linux_x64_libstdcxx",
+    constraint_values = [
+        "@llvm//constraints/cxxstdlib:libstdcxx.17.0.0",
+        "@llvm//constraints/libc:gnu.2.28",
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform(
+    name = "linux_arm64_libstdcxx",
+    constraint_values = [
+        "@llvm//constraints/cxxstdlib:libstdcxx.17.0.0",
+        "@llvm//constraints/libc:gnu.2.28",
+        "@platforms//cpu:aarch64",
+        "@platforms//os:linux",
+    ],
+)

@@ -1,0 +1,731 @@
+{
+  "lockFileVersion": 24,
+  "registryFileHashes": {
+    "https://bcr.bazel.build/bazel_registry.json": "8a28e4aff06ee60aed2a8c281907fb8bcbf3b753c91fb5a5c57da3215d5b3497",
+    "https://bcr.bazel.build/modules/abseil-cpp/20210324.2/MODULE.bazel": "7cd0312e064fde87c8d1cd79ba06c876bd23630c83466e9500321be55c96ace2",
+    "https://bcr.bazel.build/modules/abseil-cpp/20211102.0/MODULE.bazel": "70390338f7a5106231d20620712f7cccb659cd0e9d073d1991c038eb9fc57589",
+    "https://bcr.bazel.build/modules/abseil-cpp/20230125.1/MODULE.bazel": "89047429cb0207707b2dface14ba7f8df85273d484c2572755be4bab7ce9c3a0",
+    "https://bcr.bazel.build/modules/abseil-cpp/20230802.0.bcr.1/MODULE.bazel": "1c8cec495288dccd14fdae6e3f95f772c1c91857047a098fad772034264cc8cb",
+    "https://bcr.bazel.build/modules/abseil-cpp/20230802.0/MODULE.bazel": "d253ae36a8bd9ee3c5955384096ccb6baf16a1b1e93e858370da0a3b94f77c16",
+    "https://bcr.bazel.build/modules/abseil-cpp/20230802.1/MODULE.bazel": "fa92e2eb41a04df73cdabeec37107316f7e5272650f81d6cc096418fe647b915",
+    "https://bcr.bazel.build/modules/abseil-cpp/20240116.1/MODULE.bazel": "37bcdb4440fbb61df6a1c296ae01b327f19e9bb521f9b8e26ec854b6f97309ed",
+    "https://bcr.bazel.build/modules/abseil-cpp/20240116.2/MODULE.bazel": "73939767a4686cd9a520d16af5ab440071ed75cec1a876bf2fcfaf1f71987a16",
+    "https://bcr.bazel.build/modules/abseil-cpp/20250127.1/MODULE.bazel": "c4a89e7ceb9bf1e25cf84a9f830ff6b817b72874088bf5141b314726e46a57c1",
+    "https://bcr.bazel.build/modules/abseil-cpp/20250512.1/MODULE.bazel": "d209fdb6f36ffaf61c509fcc81b19e81b411a999a934a032e10cd009a0226215",
+    "https://bcr.bazel.build/modules/abseil-cpp/20250512.1/source.json": "d725d73707d01bb46ab3ca59ba408b8e9bd336642ca77a2269d4bfb8bbfd413d",
+    "https://bcr.bazel.build/modules/apple_support/1.15.1/MODULE.bazel": "a0556fefca0b1bb2de8567b8827518f94db6a6e7e7d632b4c48dc5f865bc7c85",
+    "https://bcr.bazel.build/modules/apple_support/1.22.1/MODULE.bazel": "90bd1a660590f3ceffbdf524e37483094b29352d85317060b2327fff8f3f4458",
+    "https://bcr.bazel.build/modules/apple_support/1.23.1/MODULE.bazel": "53763fed456a968cf919b3240427cf3a9d5481ec5466abc9d5dc51bc70087442",
+    "https://bcr.bazel.build/modules/apple_support/1.23.1/source.json": "d888b44312eb0ad2c21a91d026753f330caa48a25c9b2102fae75eb2b0dcfdd2",
+    "https://bcr.bazel.build/modules/bazel_features/1.1.1/MODULE.bazel": "27b8c79ef57efe08efccbd9dd6ef70d61b4798320b8d3c134fd571f78963dbcd",
+    "https://bcr.bazel.build/modules/bazel_features/1.11.0/MODULE.bazel": "f9382337dd5a474c3b7d334c2f83e50b6eaedc284253334cf823044a26de03e8",
+    "https://bcr.bazel.build/modules/bazel_features/1.15.0/MODULE.bazel": "d38ff6e517149dc509406aca0db3ad1efdd890a85e049585b7234d04238e2a4d",
+    "https://bcr.bazel.build/modules/bazel_features/1.17.0/MODULE.bazel": "039de32d21b816b47bd42c778e0454217e9c9caac4a3cf8e15c7231ee3ddee4d",
+    "https://bcr.bazel.build/modules/bazel_features/1.18.0/MODULE.bazel": "1be0ae2557ab3a72a57aeb31b29be347bcdc5d2b1eb1e70f39e3851a7e97041a",
+    "https://bcr.bazel.build/modules/bazel_features/1.19.0/MODULE.bazel": "59adcdf28230d220f0067b1f435b8537dd033bfff8db21335ef9217919c7fb58",
+    "https://bcr.bazel.build/modules/bazel_features/1.21.0/MODULE.bazel": "675642261665d8eea09989aa3b8afb5c37627f1be178382c320d1b46afba5e3b",
+    "https://bcr.bazel.build/modules/bazel_features/1.24.0/MODULE.bazel": "4796b4c25b47053e9bbffa792b3792d07e228ff66cd0405faef56a978708acd4",
+    "https://bcr.bazel.build/modules/bazel_features/1.27.0/MODULE.bazel": "621eeee06c4458a9121d1f104efb80f39d34deff4984e778359c60eaf1a8cb65",
+    "https://bcr.bazel.build/modules/bazel_features/1.28.0/MODULE.bazel": "4b4200e6cbf8fa335b2c3f43e1d6ef3e240319c33d43d60cc0fbd4b87ece299d",
+    "https://bcr.bazel.build/modules/bazel_features/1.30.0/MODULE.bazel": "a14b62d05969a293b80257e72e597c2da7f717e1e69fa8b339703ed6731bec87",
+    "https://bcr.bazel.build/modules/bazel_features/1.34.0/MODULE.bazel": "e8475ad7c8965542e0c7aac8af68eb48c4af904be3d614b6aa6274c092c2ea1e",
+    "https://bcr.bazel.build/modules/bazel_features/1.4.1/MODULE.bazel": "e45b6bb2350aff3e442ae1111c555e27eac1d915e77775f6fdc4b351b758b5d7",
+    "https://bcr.bazel.build/modules/bazel_features/1.42.0/MODULE.bazel": "e8ca15cb2639c5f12183db6dcb678735555d0cdd739b32a0418b6532b5e565f8",
+    "https://bcr.bazel.build/modules/bazel_features/1.43.0/MODULE.bazel": "defa2226f06ba20550d6548c3a2ea2a7929634437a52973869c20c225450eb91",
+    "https://bcr.bazel.build/modules/bazel_features/1.50.0/MODULE.bazel": "2083ef9c7a469f520890483ccf8e0189d6e71e2117e7752e15e6554433d5ae3e",
+    "https://bcr.bazel.build/modules/bazel_features/1.50.0/source.json": "e0ee3debde2789ff56e4452e612d126925ba9ab64d4bde79c67f099d2902df9b",
+    "https://bcr.bazel.build/modules/bazel_features/1.9.0/MODULE.bazel": "885151d58d90d8d9c811eb75e3288c11f850e1d6b481a8c9f766adee4712358b",
+    "https://bcr.bazel.build/modules/bazel_features/1.9.1/MODULE.bazel": "8f679097876a9b609ad1f60249c49d68bfab783dd9be012faf9d82547b14815a",
+    "https://bcr.bazel.build/modules/bazel_lib/3.0.0/MODULE.bazel": "22b70b80ac89ad3f3772526cd9feee2fa412c2b01933fea7ed13238a448d370d",
+    "https://bcr.bazel.build/modules/bazel_lib/3.2.2/MODULE.bazel": "e2c890c8a515d6bca9c66d47718aa9e44b458fde64ec7204b8030bf2d349058c",
+    "https://bcr.bazel.build/modules/bazel_lib/3.2.2/source.json": "9e84e115c20e14652c5c21401ae85ff4daa8702e265b5c0b3bf89353f17aa212",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.0.3/MODULE.bazel": "bcb0fd896384802d1ad283b4e4eb4d718eebd8cb820b0a2c3a347fb971afd9d8",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.1.1/MODULE.bazel": "1add3e7d93ff2e6998f9e118022c84d163917d912f5afafb3058e3d2f1545b5e",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.2.0/MODULE.bazel": "44fe84260e454ed94ad326352a698422dbe372b21a1ac9f3eab76eb531223686",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.2.1/MODULE.bazel": "f35baf9da0efe45fa3da1696ae906eea3d615ad41e2e3def4aeb4e8bc0ef9a7a",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.3.0/MODULE.bazel": "20228b92868bf5cfc41bda7afc8a8ba2a543201851de39d990ec957b513579c5",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.4.1/MODULE.bazel": "a0dcb779424be33100dcae821e9e27e4f2901d9dfd5333efe5ac6a8d7ab75e1d",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.4.2/MODULE.bazel": "3bd40978e7a1fac911d5989e6b09d8f64921865a45822d8b09e815eaa726a651",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.5.0/MODULE.bazel": "32880f5e2945ce6a03d1fbd588e9198c0a959bb42297b2cfaf1685b7bc32e138",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.6.1/MODULE.bazel": "8fdee2dbaace6c252131c00e1de4b165dc65af02ea278476187765e1a617b917",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.7.0/MODULE.bazel": "0db596f4563de7938de764cc8deeabec291f55e8ec15299718b93c4423e9796d",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.7.1/MODULE.bazel": "3120d80c5861aa616222ec015332e5f8d3171e062e3e804a2a0253e1be26e59b",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.8.0/MODULE.bazel": "2fb3fb53675f6adfc1ca5bfbd5cfb655ae350fba4706d924a8ec7e3ba945671c",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.8.1/MODULE.bazel": "88ade7293becda963e0e3ea33e7d54d3425127e0a326e0d17da085a5f1f03ff6",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.8.2/MODULE.bazel": "69ad6927098316848b34a9142bcc975e018ba27f08c4ff403f50c1b6e646ca67",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.9.0/MODULE.bazel": "72997b29dfd95c3fa0d0c48322d05590418edef451f8db8db5509c57875fb4b7",
+    "https://bcr.bazel.build/modules/bazel_skylib/1.9.0/source.json": "7ad77c1e8c1b84222d9b3f3cae016a76639435744c19330b0b37c0a3c9da7dc0",
+    "https://bcr.bazel.build/modules/boost.algorithm/1.89.0.bcr.1/MODULE.bazel": "ce5fb0e6c929c5ff8bf83fdc14b2da8be226b96a4f9818689ebb6758695fbde8",
+    "https://bcr.bazel.build/modules/boost.algorithm/1.89.0.bcr.1/source.json": "e1f06e1b58265a9141374ce67d6cfebf635a5769387576840caa1abb8d2c02e9",
+    "https://bcr.bazel.build/modules/boost.align/1.89.0.bcr.1/MODULE.bazel": "898888c7b29dfec8b7056d5fd67dcd0b0e54c6efbb85a130a15a4e50a02b1d61",
+    "https://bcr.bazel.build/modules/boost.align/1.89.0.bcr.1/source.json": "819cad234df56c2cfd35ccb15308e7bf0bb4f643b7cfecd819bf6c3b96ec737a",
+    "https://bcr.bazel.build/modules/boost.any/1.89.0.bcr.1/MODULE.bazel": "80a2a575b583817cbec45d51da178d942f3ce0e15a311fecc60c328e903be7ec",
+    "https://bcr.bazel.build/modules/boost.any/1.89.0.bcr.1/source.json": "7e3cdf582f97c10f35d150dd3d1bdd6d9dbd77db89d62925a6dcf324bd921c2b",
+    "https://bcr.bazel.build/modules/boost.array/1.89.0.bcr.1/MODULE.bazel": "3f77fe06169bce7328676abe603cc7522c0b1c57c81e5466e3f2e233fc1ce6b4",
+    "https://bcr.bazel.build/modules/boost.array/1.89.0.bcr.1/source.json": "a2584a3493ed785140e12414fa962bb016fa6824f29de3a2631377e6f909b932",
+    "https://bcr.bazel.build/modules/boost.assert/1.89.0.bcr.1/MODULE.bazel": "73ed737bd591d0afcca39f8c4562f7e77540f2f7f502330d7ca6486bcb8ae8f5",
+    "https://bcr.bazel.build/modules/boost.assert/1.89.0.bcr.1/source.json": "110e488f36b79dcd2e863765fd67007000be91bab0f0d6bd06ed487a167ba0c3",
+    "https://bcr.bazel.build/modules/boost.atomic/1.89.0.bcr.1/MODULE.bazel": "876e5ad297ad6a6b6dc0f25afc4e5721a38eb4b6f923bdf24a8c014ca27bf352",
+    "https://bcr.bazel.build/modules/boost.atomic/1.89.0.bcr.1/source.json": "01ae7c38cb1d0fd1a260ecdd63524896519570ca52abd90c036d05ab58f6afd2",
+    "https://bcr.bazel.build/modules/boost.bind/1.89.0.bcr.1/MODULE.bazel": "6ab02965ed57fbd025f99aaf3579d19759d7cff94ddfa8ff71fab40adb1b5d28",
+    "https://bcr.bazel.build/modules/boost.bind/1.89.0.bcr.1/source.json": "d27307bd93b975321e2a6b0de89da4d36dc33e831df7d213a9ddc1d4148721a4",
+    "https://bcr.bazel.build/modules/boost.chrono/1.89.0.bcr.1/MODULE.bazel": "1a5aeca3dc78dec35af2c52a0975580f9af75f7b8798d1f3cbeb4757e61ac374",
+    "https://bcr.bazel.build/modules/boost.chrono/1.89.0.bcr.1/source.json": "648c338970200f1386b4a52f7ede66e462a9b00aff7a8368cad89c5bfd155a03",
+    "https://bcr.bazel.build/modules/boost.concept_check/1.89.0.bcr.1/MODULE.bazel": "9d593a15b02884888ce84552062070f843e5643e5550497fb35a5b9ecd95440b",
+    "https://bcr.bazel.build/modules/boost.concept_check/1.89.0.bcr.1/source.json": "1feadcac1db9451cfdc14f3ebc4cc1b822eda48ae6ee3aafa5277137e1c22e57",
+    "https://bcr.bazel.build/modules/boost.config/1.89.0.bcr.1/MODULE.bazel": "c809917a1fd1c0e7460c27f120ada020acf164bb4c5b0f8ee3881c028ec25820",
+    "https://bcr.bazel.build/modules/boost.config/1.89.0.bcr.1/source.json": "81e5f8560315a626c1ad2aee1492cdba444dd0a09806618a8e38b08e8d851f3e",
+    "https://bcr.bazel.build/modules/boost.container/1.89.0.bcr.1/MODULE.bazel": "830c3c208ed4d27b83eeb5e5534ceabe4b95932b34180d7004ca93c5e0b56861",
+    "https://bcr.bazel.build/modules/boost.container/1.89.0.bcr.1/source.json": "9af4c964c4c06cf24848ec4083cbb370b9211c98728ae8ea6b3bd15f20670177",
+    "https://bcr.bazel.build/modules/boost.container_hash/1.89.0.bcr.1/MODULE.bazel": "172f9006565e64df83ccc94cfc8e642baa33494d42da968cc7da2cdcc0290edc",
+    "https://bcr.bazel.build/modules/boost.container_hash/1.89.0.bcr.1/source.json": "fa9fcd641c555ffba5b8feb63f23575eb1d31ab47873c4b95722108dd3e48706",
+    "https://bcr.bazel.build/modules/boost.context/1.89.0.bcr.1/MODULE.bazel": "8c9a78f1fefdc9251556ecb5f582dfffb2eadbd8051f76ade02500969ac1c374",
+    "https://bcr.bazel.build/modules/boost.context/1.89.0.bcr.1/source.json": "e3ab8517352a54d77e0089043a815ec96d3f6f24e7d7d179eefc906a779bea67",
+    "https://bcr.bazel.build/modules/boost.conversion/1.89.0.bcr.1/MODULE.bazel": "8ad2ed9724a58e719e25d690126b139c8e4622924972f73bb93b9fa2976afd5e",
+    "https://bcr.bazel.build/modules/boost.conversion/1.89.0.bcr.1/source.json": "8a7c1cf32b7fa40a7cb8a9efa3fc6c6afc809a488834649277f56d013c40ebc1",
+    "https://bcr.bazel.build/modules/boost.core/1.89.0.bcr.1/MODULE.bazel": "6bf0029b0c971437726a6eade32e9f1d511ffbce07e4d87cac2424f0d53f49d2",
+    "https://bcr.bazel.build/modules/boost.core/1.89.0.bcr.1/source.json": "5f8ab0f467a284d977f8a7fcb88f3246664ef2983235d0c41b163327865756ce",
+    "https://bcr.bazel.build/modules/boost.crc/1.89.0.bcr.1/MODULE.bazel": "5d8552dad1c911e55ec78f55fde734cb1c24656ea5533c495cd588fb02658a52",
+    "https://bcr.bazel.build/modules/boost.crc/1.89.0.bcr.1/source.json": "84c0507a5eb4680b39b7e940f998ef0ef78943f4a6b38b06112cbe27da1ce040",
+    "https://bcr.bazel.build/modules/boost.date_time/1.89.0.bcr.1/MODULE.bazel": "89e158ebdbaa25d2a20d6121e2e6b9d69f16dfd835198217f2d2bad1f7e7a36b",
+    "https://bcr.bazel.build/modules/boost.date_time/1.89.0.bcr.1/source.json": "590454dd304388156f4005ce05c3909fd43430fce6fd2717a9e3ed6ebb69f1d5",
+    "https://bcr.bazel.build/modules/boost.describe/1.89.0.bcr.1/MODULE.bazel": "213e4920393aabaabdb1b3bc2c6e00b65c496eba827fd85207cd6ae7c44e5539",
+    "https://bcr.bazel.build/modules/boost.describe/1.89.0.bcr.1/source.json": "c39770539335729bbfad613776700a4331100d1fa88e71652989c8e2da912fb0",
+    "https://bcr.bazel.build/modules/boost.detail/1.89.0.bcr.1/MODULE.bazel": "5400dc3a41580494d92ed6308e42e92ccae41c86bc9c982caf577024ef7ae55c",
+    "https://bcr.bazel.build/modules/boost.detail/1.89.0.bcr.1/source.json": "34f785d2bf133fe4c4d1f9e8f1fd74ccd345b23657d5b4b5f2111c54f3034334",
+    "https://bcr.bazel.build/modules/boost.dynamic_bitset/1.89.0.bcr.1/MODULE.bazel": "16b10b6d787756763416248b36df14121ebb0b289baf99a2c0609ac49bfcf840",
+    "https://bcr.bazel.build/modules/boost.dynamic_bitset/1.89.0.bcr.1/source.json": "6e87f163efc21f1faa480f20594cbed9bf1a6308820233aa44953e7cd21714a1",
+    "https://bcr.bazel.build/modules/boost.exception/1.89.0.bcr.1/MODULE.bazel": "5ec009f6975423f197e05eea14e944e45439fb2da55a52bbace8aeb27510f73e",
+    "https://bcr.bazel.build/modules/boost.exception/1.89.0.bcr.1/source.json": "58e0803d96b7b374e3619334489d6b2e8a8efa0a72667e19359c7728f3fe41b4",
+    "https://bcr.bazel.build/modules/boost.filesystem/1.89.0.bcr.1/MODULE.bazel": "7e536317652622a3e3b0c6e84bc19cb20972cd747e2d3c3db4517fe758f06ffb",
+    "https://bcr.bazel.build/modules/boost.filesystem/1.89.0.bcr.1/source.json": "71c5aefd3147e5c0ea255c1ac61d4f64797f0096a75569e86a8f5a0f7cc9db1c",
+    "https://bcr.bazel.build/modules/boost.function/1.89.0.bcr.1/MODULE.bazel": "df5dd5b9f06ecc93617704a326736993672774967fdcf0eaf2f49319adced302",
+    "https://bcr.bazel.build/modules/boost.function/1.89.0.bcr.1/source.json": "603f9d93c76886007ef96f69ddfca834cbf3d5456f0fde61ca26bda3350d017f",
+    "https://bcr.bazel.build/modules/boost.function_types/1.89.0.bcr.1/MODULE.bazel": "2e699840821e9c677ebb7823b8ea7106a8e8f30201a54e98f8b5e35e8a4669ec",
+    "https://bcr.bazel.build/modules/boost.function_types/1.89.0.bcr.1/source.json": "5113f53ed9d44aad3027d1aacbd2462c8b802f9c2526adce942548f13569e33e",
+    "https://bcr.bazel.build/modules/boost.functional/1.89.0.bcr.1/MODULE.bazel": "517e4cc342579530eb39b60d4142bd9bf405584acec981022fdaa195a6a9d423",
+    "https://bcr.bazel.build/modules/boost.functional/1.89.0.bcr.1/source.json": "85ff2b5eb0c8b7ac9b410d259ad4609667e26132fc0eedb46b0d851b3d915489",
+    "https://bcr.bazel.build/modules/boost.fusion/1.89.0.bcr.1/MODULE.bazel": "b3dec3e3d84d0d13309d48c79ccc663fbeba4179ea95c27aa00d00eda01fe6b1",
+    "https://bcr.bazel.build/modules/boost.fusion/1.89.0.bcr.1/source.json": "1ac619801a32c500a04633669e1ebdfd1ef17c1f519b745ace301959398df28a",
+    "https://bcr.bazel.build/modules/boost.integer/1.89.0.bcr.1/MODULE.bazel": "86213b9d5c23ef4908fcfe6434d58aaa89f9f1765e13d0375237d32620480a76",
+    "https://bcr.bazel.build/modules/boost.integer/1.89.0.bcr.1/source.json": "e913f074003e218500cdb1218b63c538a20832dc39903465f548ff73f2bc03a3",
+    "https://bcr.bazel.build/modules/boost.interprocess/1.89.0.bcr.1/MODULE.bazel": "eb30517dd48a506a50078f413e8594d35ca2b1b2e50224df07c32c295edb3673",
+    "https://bcr.bazel.build/modules/boost.interprocess/1.89.0.bcr.1/source.json": "94be2b65e0e7ff5b2e396fcde0625a491a27c3ed1d4c4a0d5ff6f9e8040240e5",
+    "https://bcr.bazel.build/modules/boost.intrusive/1.89.0.bcr.1/MODULE.bazel": "121ee8ba9764b09ced7bc10ae5bc7b85630a1098c4d42ebe14944757b5d2c26e",
+    "https://bcr.bazel.build/modules/boost.intrusive/1.89.0.bcr.1/source.json": "3502c69a700693cef6616fee2cd25af27422f2424f55502deb7c52136c9f0a58",
+    "https://bcr.bazel.build/modules/boost.io/1.89.0.bcr.1/MODULE.bazel": "d06d5f9ce0c91c221427e9b766fd4c4751a9a93e2d161fae2396d1034ac77627",
+    "https://bcr.bazel.build/modules/boost.io/1.89.0.bcr.1/source.json": "3e31f0174c73fdd9be5686e38ae2365a419bd97f180c872b28426d8a82254c1f",
+    "https://bcr.bazel.build/modules/boost.iterator/1.89.0.bcr.1/MODULE.bazel": "a375f875972c94a24f700f267586272716ee6c315d30f6dc0fc0cf133459ec05",
+    "https://bcr.bazel.build/modules/boost.iterator/1.89.0.bcr.1/source.json": "5c2ba5eb429bee00e32a14e751edf72b7c6529d9eef4cd6ce00cfe34d953d2b7",
+    "https://bcr.bazel.build/modules/boost.lexical_cast/1.89.0.bcr.1/MODULE.bazel": "e7d049fbdc5cdd1db036db80332f853eebc2ed99e0f668e40960e2a4d4aeac06",
+    "https://bcr.bazel.build/modules/boost.lexical_cast/1.89.0.bcr.1/source.json": "2cd1967fe28d64acd4935d3cbeea7f4ed214113fce3fd8072916cda8f5404be5",
+    "https://bcr.bazel.build/modules/boost.move/1.89.0.bcr.1/MODULE.bazel": "a9b1098d9cd23d71ea3073e170737584b3eb983183c15983c34bc157b93b454e",
+    "https://bcr.bazel.build/modules/boost.move/1.89.0.bcr.1/source.json": "9e653bfaa9c6cf37c30766b153c0970545a23ca016b64fbcb51bb0d953cf5ab6",
+    "https://bcr.bazel.build/modules/boost.mp11/1.89.0.bcr.1/MODULE.bazel": "8eda2b811fdb74ff62e4162bf42aa8a8ab209b4335150c98300c64a188c2260c",
+    "https://bcr.bazel.build/modules/boost.mp11/1.89.0.bcr.1/source.json": "17073c533cb7d5ac2fc02459dbb11f4fb28e1854ac543ba74464e66641b0688f",
+    "https://bcr.bazel.build/modules/boost.mpl/1.89.0.bcr.1/MODULE.bazel": "038688cc85a9430e2bad9c68a9561f2ca11ac52b6d7ac5fc6d2c7d3c8a980fdf",
+    "https://bcr.bazel.build/modules/boost.mpl/1.89.0.bcr.1/source.json": "5a2b34a08f1a8d483bd909d15f82297e0339c82b8d774f0e0333a6eb27340b96",
+    "https://bcr.bazel.build/modules/boost.multi_index/1.89.0.bcr.1/MODULE.bazel": "cc68cb79c64bd5fc9f85fc89885197f703f1a973b3a209dbb2dacafb3eec6738",
+    "https://bcr.bazel.build/modules/boost.multi_index/1.89.0.bcr.1/source.json": "6e4abdbaeea946c9ac3df9b7f3d64cb5db5d7d6908404ad089f22fa74fa4895f",
+    "https://bcr.bazel.build/modules/boost.numeric_conversion/1.89.0.bcr.1/MODULE.bazel": "8839361463d3d57daaf7294980e76bdaa3e7ad768cbe33bbab922c2dbb32fdb1",
+    "https://bcr.bazel.build/modules/boost.numeric_conversion/1.89.0.bcr.1/source.json": "185a71d6beb8fdef75b7651a2ca69ac57ae46fdd0f6ac7c9fe6eb2421f4c8634",
+    "https://bcr.bazel.build/modules/boost.optional/1.89.0.bcr.1/MODULE.bazel": "689217c140666fb3915a2f125a8ae697bfb1562ef4c2c759c47822233b44f364",
+    "https://bcr.bazel.build/modules/boost.optional/1.89.0.bcr.1/source.json": "54e35a5621f2dfec0e009c6e583e406cb94df48fb91dddc607da93504937d0fc",
+    "https://bcr.bazel.build/modules/boost.pool/1.89.0.bcr.1/MODULE.bazel": "5a83249c1832602ee7ccd0e6036d45fae2e70cdfd8ec1a80f21fa1fdbda37da0",
+    "https://bcr.bazel.build/modules/boost.pool/1.89.0.bcr.1/source.json": "912fea6244000ec712cd33d82c4ecda69051732a7dbe582f7deb6954261f016d",
+    "https://bcr.bazel.build/modules/boost.predef/1.89.0.bcr.1/MODULE.bazel": "2eedc8aa73d5e8de7544ac8192234b6a9eb2803b6c1fd0d23bb81fd56b293a82",
+    "https://bcr.bazel.build/modules/boost.predef/1.89.0.bcr.1/source.json": "ebb4625fd59cae522b197e7ce76003997f6d90bb9d146c44b5afb5c9ac3a5ebd",
+    "https://bcr.bazel.build/modules/boost.preprocessor/1.89.0.bcr.1/MODULE.bazel": "2b3812a62fa4a95ee3e8cdf9e7f1ce269d56ef700df4dd8c28b708c64eb972b9",
+    "https://bcr.bazel.build/modules/boost.preprocessor/1.89.0.bcr.1/source.json": "28cc361c6d88b018b7cac68f3198eadb9bb88614a0daeb0dab81f9d995a2715e",
+    "https://bcr.bazel.build/modules/boost.program_options/1.89.0.bcr.1/MODULE.bazel": "17aa019d33e5f3c624a014d22079c53913aa7c0310c56d7970e57616687faea7",
+    "https://bcr.bazel.build/modules/boost.program_options/1.89.0.bcr.1/source.json": "1b53346a2e8b1466aefdd08594fa8b3ea4b7422fface290f474217be109a0e63",
+    "https://bcr.bazel.build/modules/boost.random/1.89.0.bcr.1/MODULE.bazel": "447a298cff8e56949b432bc6a08b43f2263ba2f2200dc5c3e51c9513e1b787b5",
+    "https://bcr.bazel.build/modules/boost.random/1.89.0.bcr.1/source.json": "e30a3eac01eab0c0e8566810d89c6bd101011baa6bfd14ccf0402d7b64c5a81a",
+    "https://bcr.bazel.build/modules/boost.range/1.89.0.bcr.1/MODULE.bazel": "c87ee62b63756b5cd78d28d7481eb306e5ac95be032d104066dd69e34e6912bd",
+    "https://bcr.bazel.build/modules/boost.range/1.89.0.bcr.1/source.json": "1f143a4f9dfb87760f401bee45b84827cbbd1422b64a57c2bdb95e73216c03d7",
+    "https://bcr.bazel.build/modules/boost.ratio/1.89.0.bcr.1/MODULE.bazel": "6f9c7a61c5970edfd808ab48f6d5072927ba5247819fe627e6b6a7c8d7eeb486",
+    "https://bcr.bazel.build/modules/boost.ratio/1.89.0.bcr.1/source.json": "1795d2179ff097ad300acc65e685f50690bbaff4c3445d8c5c1c6b89b37a9534",
+    "https://bcr.bazel.build/modules/boost.regex/1.89.0.bcr.1/MODULE.bazel": "e5c195886a5daed02e993acb8aabda951a30572d5058f470369b2c0cbb447cdd",
+    "https://bcr.bazel.build/modules/boost.regex/1.89.0.bcr.1/source.json": "0b09d96fee2455322ea08c95ce9871d645613111652ed860ccadaf1fb8e45b91",
+    "https://bcr.bazel.build/modules/boost.scope/1.89.0.bcr.1/MODULE.bazel": "aea0fe195cdb94fd5b8a2a037d70542bd54b654b0917cba430da189c3ab99edd",
+    "https://bcr.bazel.build/modules/boost.scope/1.89.0.bcr.1/source.json": "c50a5fbda5d7300a20524eb87bcefb9800bab09cd5133629de18bd34f3f2bb05",
+    "https://bcr.bazel.build/modules/boost.smart_ptr/1.89.0.bcr.1/MODULE.bazel": "c7199adf01dfee5c2947ff7fa949a109b04f3bef452fb4488dd552109cf3a87e",
+    "https://bcr.bazel.build/modules/boost.smart_ptr/1.89.0.bcr.1/source.json": "65a1da0f5ea037b8591b14e58bc35c77af58bd3a24186470034e359aea0b3a8a",
+    "https://bcr.bazel.build/modules/boost.sort/1.89.0.bcr.1/MODULE.bazel": "bf3af1430c4c1d6f287d7ceea63c43f2ba291ffc8973175762b49929ae352272",
+    "https://bcr.bazel.build/modules/boost.sort/1.89.0.bcr.1/source.json": "941c664463dcfdcac8fdc4b3424ff15eebcf9fe1bf958dd306011d673750c935",
+    "https://bcr.bazel.build/modules/boost.static_assert/1.89.0.bcr.1/MODULE.bazel": "3a7fc6f1553375fe67a9fd88fc434f29b0c3f0805d8180e5a41f911ad09e0629",
+    "https://bcr.bazel.build/modules/boost.static_assert/1.89.0.bcr.1/source.json": "bcbb4ea9b4fd1ce588d5be6b73c7dbf4486be40ee6b6aa41fe6bfa86ddabb5a5",
+    "https://bcr.bazel.build/modules/boost.system/1.89.0.bcr.1/MODULE.bazel": "6d55b9987e247632f23d12d7aafee9ec520e87b6e738df90f19dd23c04c84ef1",
+    "https://bcr.bazel.build/modules/boost.system/1.89.0.bcr.1/source.json": "2768a3e885b80c6686a968802cb25034f41e64f96be00a48f100282bc9a49737",
+    "https://bcr.bazel.build/modules/boost.test/1.89.0.bcr.1/MODULE.bazel": "62cc6416592f80db90170dd0857ea77aa14b75af43333894c95e8acb8b413a2c",
+    "https://bcr.bazel.build/modules/boost.test/1.89.0.bcr.1/source.json": "e071d9eca175437952eecb0e020cf1bd93d5000c4b1daaef8dbf8889464bb6c7",
+    "https://bcr.bazel.build/modules/boost.thread/1.89.0.bcr.1/MODULE.bazel": "8c6ae3659652154dfa9d5cd6b436b6bcca484e43a11405944b13200e0756ecab",
+    "https://bcr.bazel.build/modules/boost.thread/1.89.0.bcr.1/source.json": "4fd62fcd14babb1d2de4333121b6fe87feaed05a9acd4ceabb98a4c6172a50e4",
+    "https://bcr.bazel.build/modules/boost.throw_exception/1.89.0.bcr.1/MODULE.bazel": "047987fdfb50df9a7de5d68a91afe86eebd602e56116e1cd69adb8b37e1ea7e8",
+    "https://bcr.bazel.build/modules/boost.throw_exception/1.89.0.bcr.1/source.json": "6a98cf273baf6187fa342a6a774fa011b6d562f85cc2d9eac219001fd2ac69d2",
+    "https://bcr.bazel.build/modules/boost.tokenizer/1.89.0.bcr.1/MODULE.bazel": "c4c855e50bd35b75c1a568d2886c8b0748d1e0bf343625407641e87ed5e0bbc5",
+    "https://bcr.bazel.build/modules/boost.tokenizer/1.89.0.bcr.1/source.json": "e7db01f32bf9d0830d672828030d94af0a6146c1a4fd616afe09f912c610d5cf",
+    "https://bcr.bazel.build/modules/boost.tuple/1.89.0.bcr.1/MODULE.bazel": "19303c0178ef2cf84c475e8968275a5604cb5e0651517402383bbe79c6ab909b",
+    "https://bcr.bazel.build/modules/boost.tuple/1.89.0.bcr.1/source.json": "c2f46d2d566d4a2b709828cfb02004f4e8a9c4967788c3078231969412012543",
+    "https://bcr.bazel.build/modules/boost.type_index/1.89.0.bcr.1/MODULE.bazel": "e671c2d427f24b2cbce88f820bc683e375a236adbc5e39096bf3d80f171bc7a4",
+    "https://bcr.bazel.build/modules/boost.type_index/1.89.0.bcr.1/source.json": "741fe96dda28bf8305ec2bd73b4b253506fa0b1545dbcc313b547b92b47438ed",
+    "https://bcr.bazel.build/modules/boost.type_traits/1.89.0.bcr.1/MODULE.bazel": "f87e092b84f2dc6478cca0fe04ea1f0cbbdd6d6fdeec2914ce1351bb25627116",
+    "https://bcr.bazel.build/modules/boost.type_traits/1.89.0.bcr.1/source.json": "9baf0052804f2bb3132bab5af7f31638a6e3ab83cc8fc52b5293bc87f0ac4044",
+    "https://bcr.bazel.build/modules/boost.typeof/1.89.0.bcr.1/MODULE.bazel": "0e4e5a64d0b8c4a9ea97ae8f8501df59f5b9639e1db371560dbf81dbb2700258",
+    "https://bcr.bazel.build/modules/boost.typeof/1.89.0.bcr.1/source.json": "995b94f3958d5761b2f7437e993b11d8703bfca82cf1335f4619eaec448e8b97",
+    "https://bcr.bazel.build/modules/boost.unordered/1.89.0.bcr.1/MODULE.bazel": "f3499ad5d6a825cb77d0e53624f197e9b245c9f8e765d0aadc56877a1a632517",
+    "https://bcr.bazel.build/modules/boost.unordered/1.89.0.bcr.1/source.json": "5f940018cde5d6c95f7f3d8a308325a80dd2c551b7aae296f09ccb8ae7e57c22",
+    "https://bcr.bazel.build/modules/boost.utility/1.89.0.bcr.1/MODULE.bazel": "b6795340c3dc66c552bcb4c1c977da213787213eb48bf15c26f6af1ffa67fb66",
+    "https://bcr.bazel.build/modules/boost.utility/1.89.0.bcr.1/source.json": "edb88016126a87f4ab25e3c813179263301a4e80d9f405409681cf0ad3797cec",
+    "https://bcr.bazel.build/modules/boost.variant/1.89.0.bcr.1/MODULE.bazel": "afb7a11de74f00460a594214503e34a3c254735d92f3e29049bb536ee938733e",
+    "https://bcr.bazel.build/modules/boost.variant/1.89.0.bcr.1/source.json": "237352237a8ea4970eb9d6ec1e1da22a64a73522cc7d71b20946a4cf68e80543",
+    "https://bcr.bazel.build/modules/boost.variant2/1.89.0.bcr.1/MODULE.bazel": "513de5d088dda2048e0a209f128e23da8d51229a5d799f97a5ab21ab3a5c1df8",
+    "https://bcr.bazel.build/modules/boost.variant2/1.89.0.bcr.1/source.json": "82417f4e1d9d2e124ea868cbb4fe5eefcb890e3ea766269a2ffe8b2d7c3ecaca",
+    "https://bcr.bazel.build/modules/boost.winapi/1.89.0.bcr.1/MODULE.bazel": "1a5b568abc673ad681db820141cc1edf56130ee2abd86534a678284749fd5d39",
+    "https://bcr.bazel.build/modules/boost.winapi/1.89.0.bcr.1/source.json": "90aca3c41a819a09d4c98418bc06e80ce0d45d5dbb48d0f3e8b9f9e97652037b",
+    "https://bcr.bazel.build/modules/buildozer/7.1.2/MODULE.bazel": "2e8dd40ede9c454042645fd8d8d0cd1527966aa5c919de86661e62953cd73d84",
+    "https://bcr.bazel.build/modules/buildozer/7.1.2/source.json": "c9028a501d2db85793a6996205c8de120944f50a0d570438fcae0457a5f9d1f8",
+    "https://bcr.bazel.build/modules/bzip2/1.0.8.bcr.3/MODULE.bazel": "29ecf4babfd3c762be00d7573c288c083672ab60e79c833ff7f49ee662e54471",
+    "https://bcr.bazel.build/modules/bzip2/1.0.8.bcr.3/source.json": "8be4a3ef2599693f759e5c0990a4cc5a246ac08db4c900a38f852ba25b5c39be",
+    "https://bcr.bazel.build/modules/cmake_configure_file/0.1.4/MODULE.bazel": "07acee851bb68a1a1dc5d09e7a454a5166fa86341738df49752843b65fb0d275",
+    "https://bcr.bazel.build/modules/cmake_configure_file/0.1.4/source.json": "78b94a44bdca0c7f7c8a4d446122671e5cadaa74ac4db2bfcc195089bdd751a1",
+    "https://bcr.bazel.build/modules/double-conversion/3.3.1/MODULE.bazel": "c41ccc16caa6eb656d20d665967fbb98289e13c557e376b4e8125af65d3ac408",
+    "https://bcr.bazel.build/modules/double-conversion/3.3.1/source.json": "e496fce1e5a8272dca5c2f30cf252f681a7bd4aa82ce2b6a45cf6abdc8f82c12",
+    "https://bcr.bazel.build/modules/fast_float/8.2.4/MODULE.bazel": "38f33a09e0c1f4d91aa68f2434e13d1d1b3e4a1522078204a389bb264c781a73",
+    "https://bcr.bazel.build/modules/fast_float/8.2.4/source.json": "ce06290cf97317011fe09366b7cfef8d9de3413cdf8f343d95a493865f62e6ec",
+    "https://bcr.bazel.build/modules/fmt/12.1.0/MODULE.bazel": "c6b460c936f408b371bf12ccee5ecbd5aed8f6abfb6e8b63fad0c622715fd458",
+    "https://bcr.bazel.build/modules/fmt/12.1.0/source.json": "d7b35221043d8d7c69e2a64d6a0783c97aa49c5ce198ee0a5ccd18c99f070b1a",
+    "https://bcr.bazel.build/modules/folly/2026.05.18.00/MODULE.bazel": "49f665c5e6df8c844a8633080577a8cf37674345705ddfc4e77cf8b94bd811ae",
+    "https://bcr.bazel.build/modules/folly/2026.05.18.00/source.json": "ce3e70ccfb5226ba6d6f12080856c1081030ae89970a8e8e9dc7d4c98f4f9994",
+    "https://bcr.bazel.build/modules/gawk/5.3.2.bcr.3/MODULE.bazel": "f1b7bb2dd53e8f2ef984b39485ec8a44e9076dda5c4b8efd2fb4c6a6e856a31d",
+    "https://bcr.bazel.build/modules/gawk/5.3.2.bcr.3/source.json": "ebe931bfe362e4b41e59ee00a528db6074157ff2ced92eb9e970acab2e1089c9",
+    "https://bcr.bazel.build/modules/gflags/2.2.2.bcr.1/MODULE.bazel": "67bdfd9b6b54c57a5162171739b2e90f5fd056447f642562eff91448f9d37cfb",
+    "https://bcr.bazel.build/modules/gflags/2.2.2.bcr.1/source.json": "04ac4a32d9cb6fcf02dbd63cee53d5c349e55cb219d7f608f39855ea86619188",
+    "https://bcr.bazel.build/modules/gflags/2.2.2/MODULE.bazel": "ba6502c3fee189734f359454db8a49b7c08afd7271b32e7c6fc38c2d2e1edbeb",
+    "https://bcr.bazel.build/modules/glog/0.7.1.bcr.1/MODULE.bazel": "04b9cfb4142f482ecd925a8bfae0a5cb9e5aed36c9d44362cf6b7589b109f009",
+    "https://bcr.bazel.build/modules/glog/0.7.1.bcr.1/source.json": "7dc7bacf29816c20cab391fbdffdc320e63237d53044a738a1e3501ad537913b",
+    "https://bcr.bazel.build/modules/glog/0.7.1/MODULE.bazel": "56479ec15bd11a411f46ee4a381c305b8d0763462713027d5421efe68de0e468",
+    "https://bcr.bazel.build/modules/google_benchmark/1.8.2/MODULE.bazel": "a70cf1bba851000ba93b58ae2f6d76490a9feb74192e57ab8e8ff13c34ec50cb",
+    "https://bcr.bazel.build/modules/googletest/1.11.0/MODULE.bazel": "3a83f095183f66345ca86aa13c58b59f9f94a2f81999c093d4eeaa2d262d12f4",
+    "https://bcr.bazel.build/modules/googletest/1.14.0.bcr.1/MODULE.bazel": "22c31a561553727960057361aa33bf20fb2e98584bc4fec007906e27053f80c6",
+    "https://bcr.bazel.build/modules/googletest/1.14.0/MODULE.bazel": "cfbcbf3e6eac06ef9d85900f64424708cc08687d1b527f0ef65aa7517af8118f",
+    "https://bcr.bazel.build/modules/googletest/1.15.2/MODULE.bazel": "6de1edc1d26cafb0ea1a6ab3f4d4192d91a312fd2d360b63adaa213cd00b2108",
+    "https://bcr.bazel.build/modules/googletest/1.17.0.bcr.2/MODULE.bazel": "827f54f492a3ce549c940106d73de332c2b30cebd0c20c0bc5d786aba7f116cb",
+    "https://bcr.bazel.build/modules/googletest/1.17.0.bcr.2/source.json": "3664514073a819992320ffbce5825e4238459df344d8b01748af2208f8d2e1eb",
+    "https://bcr.bazel.build/modules/googletest/1.17.0/MODULE.bazel": "dbec758171594a705933a29fcf69293d2468c49ec1f2ebca65c36f504d72df46",
+    "https://bcr.bazel.build/modules/jsoncpp/1.9.5/MODULE.bazel": "31271aedc59e815656f5736f282bb7509a97c7ecb43e927ac1a37966e0578075",
+    "https://bcr.bazel.build/modules/jsoncpp/1.9.5/source.json": "4108ee5085dd2885a341c7fab149429db457b3169b86eb081fa245eadf69169d",
+    "https://bcr.bazel.build/modules/libaio/0.3.113.bcr.0/MODULE.bazel": "c8f163d6959acebcf6eabf1ae6fbe7a183ab38b4c0dc6e9bf33555e5dbb34e82",
+    "https://bcr.bazel.build/modules/libaio/0.3.113.bcr.0/source.json": "18e3045b59cfa178de73d7e1e1859c8a1c57be0e02c37dd7b5278fcb7ad6ee34",
+    "https://bcr.bazel.build/modules/libdwarf/0.12.0.bcr.1/MODULE.bazel": "ff19fe85e173e7525f5eed00069a4acbed9f1db13acff4a6e22a748f989dc739",
+    "https://bcr.bazel.build/modules/libdwarf/0.12.0.bcr.1/source.json": "858581b5bf8eb99b573a756fa446aaa4125dd5fa81f4aacaeb67fbdba67b1cae",
+    "https://bcr.bazel.build/modules/libevent/2.1.12-stable.bcr.0/MODULE.bazel": "c49e5bcb520c9b07bcc17309fc867ad1d04f8fce7830a2f7cb9742516453aa62",
+    "https://bcr.bazel.build/modules/libevent/2.1.12-stable.bcr.0/source.json": "4bc7f5c204797a040002309c1bd2facb264486102854499e52a0d53ef5d01283",
+    "https://bcr.bazel.build/modules/libpfm/4.11.0/MODULE.bazel": "45061ff025b301940f1e30d2c16bea596c25b176c8b6b3087e92615adbd52902",
+    "https://bcr.bazel.build/modules/libsodium/1.0.19/MODULE.bazel": "b1ed029b3bd83aabe9cb1d5f4c19b1380ca673ff1b5344dac7705fdde20d2f84",
+    "https://bcr.bazel.build/modules/libsodium/1.0.19/source.json": "2bdfb4f85a2fce136efe686f9dec4ba0dd2d2a2353603cea0beed2ca06f77967",
+    "https://bcr.bazel.build/modules/libunwind/1.8.1/MODULE.bazel": "d9b947b15135786aed51671c22872a93e2637c74caa20e94f2061fd3b1efd6c3",
+    "https://bcr.bazel.build/modules/libunwind/1.8.1/source.json": "2b4e58e2fa6ed7204862ab1a4e5978e4107340884c3217596ff7910b8dfae919",
+    "https://bcr.bazel.build/modules/liburing/2.15/MODULE.bazel": "371eee95376f829ea36aef8b95ea9b8efbb6ed4e6e5608b693dfdb9a267b809d",
+    "https://bcr.bazel.build/modules/liburing/2.15/source.json": "4195c51fd89431bef2700523bad4c2120b5d14252e5b404bad4f792825c523bc",
+    "https://bcr.bazel.build/modules/llvm/0.8.11/MODULE.bazel": "0f8c30b74be64f0e91764e925d0f562c70e8d85b6cea912f724d6b3753d6a33f",
+    "https://bcr.bazel.build/modules/llvm/0.8.11/source.json": "b40edb2bb2ed271bf613b396d245cb473c42fb057a2b26a3bc7d7e8bfcf6aa71",
+    "https://bcr.bazel.build/modules/lz4/1.9.4.bcr.2/MODULE.bazel": "b666a726d8f7cb663f72ddf92593cee78f3e355da1a2b3e2ccca9a7194db9dc0",
+    "https://bcr.bazel.build/modules/lz4/1.9.4.bcr.2/source.json": "d6aec8da36194dc12c58065d44a21d927b7ba2efc5c11d9f753b8b86f5d0eb51",
+    "https://bcr.bazel.build/modules/openssl/3.3.1.bcr.1/MODULE.bazel": "49c0c07e8fb87b480bccb842cfee1b32617f11dac590f732573c69058699a3d1",
+    "https://bcr.bazel.build/modules/openssl/3.5.5.bcr.0/MODULE.bazel": "04f3518a662b53d92c96cdd0b59b57073ade232da2b4cc86d4874b0912b9abb1",
+    "https://bcr.bazel.build/modules/openssl/3.5.5.bcr.4/MODULE.bazel": "b3f35b53c6c73bd3a7c8efbf9b7e79e92566d189e64d313aede69f608ac6dd77",
+    "https://bcr.bazel.build/modules/openssl/3.5.5.bcr.4/source.json": "662d68be9227e60ef65fed83c6820564bda4af0efe6a40dc62dd9aee288fe9cf",
+    "https://bcr.bazel.build/modules/package_metadata/0.0.3/MODULE.bazel": "77890552ecea9e284b5424c9de827a58099348763a4359e975c359a83d4faa83",
+    "https://bcr.bazel.build/modules/package_metadata/0.0.3/source.json": "742075a428ad12a3fa18a69014c2f57f01af910c6d9d18646c990200853e641a",
+    "https://bcr.bazel.build/modules/platforms/0.0.10/MODULE.bazel": "8cb8efaf200bdeb2150d93e162c40f388529a25852b332cec879373771e48ed5",
+    "https://bcr.bazel.build/modules/platforms/0.0.11/MODULE.bazel": "0daefc49732e227caa8bfa834d65dc52e8cc18a2faf80df25e8caea151a9413f",
+    "https://bcr.bazel.build/modules/platforms/0.0.4/MODULE.bazel": "9b328e31ee156f53f3c416a64f8491f7eb731742655a47c9eec4703a71644aee",
+    "https://bcr.bazel.build/modules/platforms/0.0.5/MODULE.bazel": "5733b54ea419d5eaf7997054bb55f6a1d0b5ff8aedf0176fef9eea44f3acda37",
+    "https://bcr.bazel.build/modules/platforms/0.0.6/MODULE.bazel": "ad6eeef431dc52aefd2d77ed20a4b353f8ebf0f4ecdd26a807d2da5aa8cd0615",
+    "https://bcr.bazel.build/modules/platforms/0.0.7/MODULE.bazel": "72fd4a0ede9ee5c021f6a8dd92b503e089f46c227ba2813ff183b71616034814",
+    "https://bcr.bazel.build/modules/platforms/0.0.8/MODULE.bazel": "9f142c03e348f6d263719f5074b21ef3adf0b139ee4c5133e2aa35664da9eb2d",
+    "https://bcr.bazel.build/modules/platforms/0.0.9/MODULE.bazel": "4a87a60c927b56ddd67db50c89acaa62f4ce2a1d2149ccb63ffd871d5ce29ebc",
+    "https://bcr.bazel.build/modules/platforms/1.0.0/MODULE.bazel": "f05feb42b48f1b3c225e4ccf351f367be0371411a803198ec34a389fb22aa580",
+    "https://bcr.bazel.build/modules/platforms/1.1.0/MODULE.bazel": "1c0c09f5bdcf4b3f924720d2478a3711cb39f4977019ca5988685e5b7e18b3d2",
+    "https://bcr.bazel.build/modules/platforms/1.1.0/source.json": "fcf351c47596c939140ab0d333dfdd08ed1ea6ce33c2fe70c12493a301cf1344",
+    "https://bcr.bazel.build/modules/protobuf/21.7/MODULE.bazel": "a5a29bb89544f9b97edce05642fac225a808b5b7be74038ea3640fae2f8e66a7",
+    "https://bcr.bazel.build/modules/protobuf/23.1/MODULE.bazel": "88b393b3eb4101d18129e5db51847cd40a5517a53e81216144a8c32dfeeca52a",
+    "https://bcr.bazel.build/modules/protobuf/24.4/MODULE.bazel": "7bc7ce5f2abf36b3b7b7c8218d3acdebb9426aeb35c2257c96445756f970eb12",
+    "https://bcr.bazel.build/modules/protobuf/27.0/MODULE.bazel": "7873b60be88844a0a1d8f80b9d5d20cfbd8495a689b8763e76c6372998d3f64c",
+    "https://bcr.bazel.build/modules/protobuf/27.1/MODULE.bazel": "703a7b614728bb06647f965264967a8ef1c39e09e8f167b3ca0bb1fd80449c0d",
+    "https://bcr.bazel.build/modules/protobuf/29.0-rc2/MODULE.bazel": "6241d35983510143049943fc0d57937937122baf1b287862f9dc8590fc4c37df",
+    "https://bcr.bazel.build/modules/protobuf/29.0-rc3/MODULE.bazel": "33c2dfa286578573afc55a7acaea3cada4122b9631007c594bf0729f41c8de92",
+    "https://bcr.bazel.build/modules/protobuf/29.0/MODULE.bazel": "319dc8bf4c679ff87e71b1ccfb5a6e90a6dbc4693501d471f48662ac46d04e4e",
+    "https://bcr.bazel.build/modules/protobuf/29.0/source.json": "b857f93c796750eef95f0d61ee378f3420d00ee1dd38627b27193aa482f4f981",
+    "https://bcr.bazel.build/modules/protobuf/3.19.0/MODULE.bazel": "6b5fbb433f760a99a22b18b6850ed5784ef0e9928a72668b66e4d7ccd47db9b0",
+    "https://bcr.bazel.build/modules/pybind11_bazel/2.11.1/MODULE.bazel": "88af1c246226d87e65be78ed49ecd1e6f5e98648558c14ce99176da041dc378e",
+    "https://bcr.bazel.build/modules/pybind11_bazel/2.12.0/MODULE.bazel": "e6f4c20442eaa7c90d7190d8dc539d0ab422f95c65a57cc59562170c58ae3d34",
+    "https://bcr.bazel.build/modules/pybind11_bazel/2.13.6/MODULE.bazel": "2d746fda559464b253b2b2e6073cb51643a2ac79009ca02100ebbc44b4548656",
+    "https://bcr.bazel.build/modules/pybind11_bazel/2.13.6/source.json": "6aa0703de8efb20cc897bbdbeb928582ee7beaf278bcd001ac253e1605bddfae",
+    "https://bcr.bazel.build/modules/range-v3/0.12.0/MODULE.bazel": "46ee6c1fcb121df6e6345b3898313fef3a173d74c87db2e6196276200daadcba",
+    "https://bcr.bazel.build/modules/range-v3/0.12.0/source.json": "09f0087034f1b93202d9d43b8b772a709329e45eab9c2ba92ec60525b19c28d2",
+    "https://bcr.bazel.build/modules/re2/2023-09-01/MODULE.bazel": "cb3d511531b16cfc78a225a9e2136007a48cf8a677e4264baeab57fe78a80206",
+    "https://bcr.bazel.build/modules/re2/2024-07-02.bcr.1/MODULE.bazel": "b4963dda9b31080be1905ef085ecd7dd6cd47c05c79b9cdf83ade83ab2ab271a",
+    "https://bcr.bazel.build/modules/re2/2024-07-02/MODULE.bazel": "0eadc4395959969297cbcf31a249ff457f2f1d456228c67719480205aa306daa",
+    "https://bcr.bazel.build/modules/re2/2025-08-12.bcr.1/MODULE.bazel": "e09b434b122bfb786a69179f9b325e35cb1856c3f56a7a81dd61609260ed46e1",
+    "https://bcr.bazel.build/modules/re2/2025-08-12.bcr.1/source.json": "a8ae7c09533bf67f9f6e5122d884d5741600b09d78dca6fc0f2f8d2ee0c2d957",
+    "https://bcr.bazel.build/modules/rules_android/0.1.1/MODULE.bazel": "48809ab0091b07ad0182defb787c4c5328bd3a278938415c00a7b69b50c4d3a8",
+    "https://bcr.bazel.build/modules/rules_android/0.1.1/source.json": "e6986b41626ee10bdc864937ffb6d6bf275bb5b9c65120e6137d56e6331f089e",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.1/MODULE.bazel": "cb2aa0747f84c6c3a78dad4e2049c154f08ab9d166b1273835a8174940365647",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.10/MODULE.bazel": "ec1705118f7eaedd6e118508d3d26deba2a4e76476ada7e0e3965211be012002",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.12/MODULE.bazel": "28259f5cb8dd72d7503eb4fd1f9c89ab13759a438b1b78cb9655568d8566d7f9",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.13/MODULE.bazel": "0e8529ed7b323dad0775ff924d2ae5af7640b23553dfcd4d34344c7e7a867191",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.14/MODULE.bazel": "5e343a3aac88b8d7af3b1b6d2093b55c347b8eefc2e7d1442f7a02dc8fea48ac",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.15/MODULE.bazel": "6704c35f7b4a72502ee81f61bf88706b54f06b3cbe5558ac17e2e14666cd5dcc",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.16/MODULE.bazel": "7661303b8fc1b4d7f532e54e9d6565771fea666fbdf839e0a86affcd02defe87",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.17/MODULE.bazel": "2ae1d8f4238ec67d7185d8861cb0a2cdf4bc608697c331b95bf990e69b62e64a",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.2/MODULE.bazel": "6915987c90970493ab97393024c156ea8fb9f3bea953b2f3ec05c34f19b5695c",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.6/MODULE.bazel": "abf360251023dfe3efcef65ab9d56beefa8394d4176dd29529750e1c57eaa33f",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.8/MODULE.bazel": "964c85c82cfeb6f3855e6a07054fdb159aced38e99a5eecf7bce9d53990afa3e",
+    "https://bcr.bazel.build/modules/rules_cc/0.0.9/MODULE.bazel": "836e76439f354b89afe6a911a7adf59a6b2518fafb174483ad78a2a2fde7b1c5",
+    "https://bcr.bazel.build/modules/rules_cc/0.1.1/MODULE.bazel": "2f0222a6f229f0bf44cd711dc13c858dad98c62d52bd51d8fc3a764a83125513",
+    "https://bcr.bazel.build/modules/rules_cc/0.1.4/MODULE.bazel": "bb03a452a7527ac25a7518fb86a946ef63df860b9657d8323a0c50f8504fb0b9",
+    "https://bcr.bazel.build/modules/rules_cc/0.1.5/MODULE.bazel": "88dfc9361e8b5ae1008ac38f7cdfd45ad738e4fa676a3ad67d19204f045a1fd8",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.13/MODULE.bazel": "eecdd666eda6be16a8d9dc15e44b5c75133405e820f620a234acc4b1fdc5aa37",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.17/MODULE.bazel": "1849602c86cb60da8613d2de887f9566a6d354a6df6d7009f9d04a14402f9a84",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.18/MODULE.bazel": "4460ec36adc8f722a6a2a4ac9374cb91f2acebadaa93fc37966129afb3dece87",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.20/MODULE.bazel": "f5c07bce5ddcb99be21a0812ff5aadb439e688b7449c6542152363b2fd859c1a",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.20/source.json": "1155433dc6b8161bc339ce94095b337ed95feb1f048b014e10b62339d4b4239c",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.4/MODULE.bazel": "1ff1223dfd24f3ecf8f028446d4a27608aa43c3f41e346d22838a4223980b8cc",
+    "https://bcr.bazel.build/modules/rules_cc/0.2.8/MODULE.bazel": "f1df20f0bf22c28192a794f29b501ee2018fa37a3862a1a2132ae2940a23a642",
+    "https://bcr.bazel.build/modules/rules_foreign_cc/0.9.0/MODULE.bazel": "c9e8c682bf75b0e7c704166d79b599f93b72cfca5ad7477df596947891feeef6",
+    "https://bcr.bazel.build/modules/rules_fuzzing/0.5.2/MODULE.bazel": "40c97d1144356f52905566c55811f13b299453a14ac7769dfba2ac38192337a8",
+    "https://bcr.bazel.build/modules/rules_fuzzing/0.5.2/source.json": "c8b1e2c717646f1702290959a3302a178fb639d987ab61d548105019f11e527e",
+    "https://bcr.bazel.build/modules/rules_java/4.0.0/MODULE.bazel": "5a78a7ae82cd1a33cef56dc578c7d2a46ed0dca12643ee45edbb8417899e6f74",
+    "https://bcr.bazel.build/modules/rules_java/5.3.5/MODULE.bazel": "a4ec4f2db570171e3e5eb753276ee4b389bae16b96207e9d3230895c99644b86",
+    "https://bcr.bazel.build/modules/rules_java/6.0.0/MODULE.bazel": "8a43b7df601a7ec1af61d79345c17b31ea1fedc6711fd4abfd013ea612978e39",
+    "https://bcr.bazel.build/modules/rules_java/6.4.0/MODULE.bazel": "e986a9fe25aeaa84ac17ca093ef13a4637f6107375f64667a15999f77db6c8f6",
+    "https://bcr.bazel.build/modules/rules_java/6.5.2/MODULE.bazel": "1d440d262d0e08453fa0c4d8f699ba81609ed0e9a9a0f02cd10b3e7942e61e31",
+    "https://bcr.bazel.build/modules/rules_java/7.1.0/MODULE.bazel": "30d9135a2b6561c761bd67bd4990da591e6bdc128790ce3e7afd6a3558b2fb64",
+    "https://bcr.bazel.build/modules/rules_java/7.10.0/MODULE.bazel": "530c3beb3067e870561739f1144329a21c851ff771cd752a49e06e3dc9c2e71a",
+    "https://bcr.bazel.build/modules/rules_java/7.12.2/MODULE.bazel": "579c505165ee757a4280ef83cda0150eea193eed3bef50b1004ba88b99da6de6",
+    "https://bcr.bazel.build/modules/rules_java/7.2.0/MODULE.bazel": "06c0334c9be61e6cef2c8c84a7800cef502063269a5af25ceb100b192453d4ab",
+    "https://bcr.bazel.build/modules/rules_java/7.3.2/MODULE.bazel": "50dece891cfdf1741ea230d001aa9c14398062f2b7c066470accace78e412bc2",
+    "https://bcr.bazel.build/modules/rules_java/7.6.1/MODULE.bazel": "2f14b7e8a1aa2f67ae92bc69d1ec0fa8d9f827c4e17ff5e5f02e91caa3b2d0fe",
+    "https://bcr.bazel.build/modules/rules_java/8.14.0/MODULE.bazel": "717717ed40cc69994596a45aec6ea78135ea434b8402fb91b009b9151dd65615",
+    "https://bcr.bazel.build/modules/rules_java/8.14.0/source.json": "8a88c4ca9e8759da53cddc88123880565c520503321e2566b4e33d0287a3d4bc",
+    "https://bcr.bazel.build/modules/rules_java/8.3.2/MODULE.bazel": "7336d5511ad5af0b8615fdc7477535a2e4e723a357b6713af439fe8cf0195017",
+    "https://bcr.bazel.build/modules/rules_java/8.5.1/MODULE.bazel": "d8a9e38cc5228881f7055a6079f6f7821a073df3744d441978e7a43e20226939",
+    "https://bcr.bazel.build/modules/rules_java/8.6.0/MODULE.bazel": "9c064c434606d75a086f15ade5edb514308cccd1544c2b2a89bbac4310e41c71",
+    "https://bcr.bazel.build/modules/rules_jvm_external/4.4.2/MODULE.bazel": "a56b85e418c83eb1839819f0b515c431010160383306d13ec21959ac412d2fe7",
+    "https://bcr.bazel.build/modules/rules_jvm_external/5.1/MODULE.bazel": "33f6f999e03183f7d088c9be518a63467dfd0be94a11d0055fe2d210f89aa909",
+    "https://bcr.bazel.build/modules/rules_jvm_external/5.2/MODULE.bazel": "d9351ba35217ad0de03816ef3ed63f89d411349353077348a45348b096615036",
+    "https://bcr.bazel.build/modules/rules_jvm_external/5.3/MODULE.bazel": "bf93870767689637164657731849fb887ad086739bd5d360d90007a581d5527d",
+    "https://bcr.bazel.build/modules/rules_jvm_external/6.1/MODULE.bazel": "75b5fec090dbd46cf9b7d8ea08cf84a0472d92ba3585b476f44c326eda8059c4",
+    "https://bcr.bazel.build/modules/rules_jvm_external/6.3/MODULE.bazel": "c998e060b85f71e00de5ec552019347c8bca255062c990ac02d051bb80a38df0",
+    "https://bcr.bazel.build/modules/rules_jvm_external/6.3/source.json": "6f5f5a5a4419ae4e37c35a5bb0a6ae657ed40b7abc5a5189111b47fcebe43197",
+    "https://bcr.bazel.build/modules/rules_kotlin/1.9.0/MODULE.bazel": "ef85697305025e5a61f395d4eaede272a5393cee479ace6686dba707de804d59",
+    "https://bcr.bazel.build/modules/rules_kotlin/1.9.6/MODULE.bazel": "d269a01a18ee74d0335450b10f62c9ed81f2321d7958a2934e44272fe82dcef3",
+    "https://bcr.bazel.build/modules/rules_kotlin/1.9.6/source.json": "2faa4794364282db7c06600b7e5e34867a564ae91bda7cae7c29c64e9466b7d5",
+    "https://bcr.bazel.build/modules/rules_license/0.0.3/MODULE.bazel": "627e9ab0247f7d1e05736b59dbb1b6871373de5ad31c3011880b4133cafd4bd0",
+    "https://bcr.bazel.build/modules/rules_license/0.0.7/MODULE.bazel": "088fbeb0b6a419005b89cf93fe62d9517c0a2b8bb56af3244af65ecfe37e7d5d",
+    "https://bcr.bazel.build/modules/rules_license/1.0.0/MODULE.bazel": "a7fda60eefdf3d8c827262ba499957e4df06f659330bbe6cdbdb975b768bb65c",
+    "https://bcr.bazel.build/modules/rules_license/1.0.0/source.json": "a52c89e54cc311196e478f8382df91c15f7a2bfdf4c6cd0e2675cc2ff0b56efb",
+    "https://bcr.bazel.build/modules/rules_perl/0.2.4/MODULE.bazel": "5f5af7be4bf5fb88d91af7469518f0fd2161718aefc606188f7cd51f436ca938",
+    "https://bcr.bazel.build/modules/rules_perl/0.5.0/MODULE.bazel": "1bff473031644dfb23bd57abe3befe9780f003f0d2156b082527a5c477008792",
+    "https://bcr.bazel.build/modules/rules_perl/1.1.0/MODULE.bazel": "22138e75bb8f1ee6c21f609b90d2c24b0c9b796ccf55cc04c1c9190b699f7e9d",
+    "https://bcr.bazel.build/modules/rules_perl/1.1.0/source.json": "896fe7707a38c5b229c6f5fa77134209874c4d57fecda5f756c1f23e4d25aae2",
+    "https://bcr.bazel.build/modules/rules_pkg/0.7.0/MODULE.bazel": "df99f03fc7934a4737122518bb87e667e62d780b610910f0447665a7e2be62dc",
+    "https://bcr.bazel.build/modules/rules_pkg/1.0.1/MODULE.bazel": "5b1df97dbc29623bccdf2b0dcd0f5cb08e2f2c9050aab1092fd39a41e82686ff",
+    "https://bcr.bazel.build/modules/rules_pkg/1.0.1/source.json": "bd82e5d7b9ce2d31e380dd9f50c111d678c3bdaca190cb76b0e1c71b05e1ba8a",
+    "https://bcr.bazel.build/modules/rules_proto/4.0.0/MODULE.bazel": "a7a7b6ce9bee418c1a760b3d84f83a299ad6952f9903c67f19e4edd964894e06",
+    "https://bcr.bazel.build/modules/rules_proto/5.3.0-21.7/MODULE.bazel": "e8dff86b0971688790ae75528fe1813f71809b5afd57facb44dad9e8eca631b7",
+    "https://bcr.bazel.build/modules/rules_proto/6.0.0-rc1/MODULE.bazel": "1e5b502e2e1a9e825eef74476a5a1ee524a92297085015a052510b09a1a09483",
+    "https://bcr.bazel.build/modules/rules_proto/6.0.2/MODULE.bazel": "ce916b775a62b90b61888052a416ccdda405212b6aaeb39522f7dc53431a5e73",
+    "https://bcr.bazel.build/modules/rules_proto/7.0.2/MODULE.bazel": "bf81793bd6d2ad89a37a40693e56c61b0ee30f7a7fdbaf3eabbf5f39de47dea2",
+    "https://bcr.bazel.build/modules/rules_proto/7.0.2/source.json": "1e5e7260ae32ef4f2b52fd1d0de8d03b606a44c91b694d2f1afb1d3b28a48ce1",
+    "https://bcr.bazel.build/modules/rules_python/0.10.2/MODULE.bazel": "cc82bc96f2997baa545ab3ce73f196d040ffb8756fd2d66125a530031cd90e5f",
+    "https://bcr.bazel.build/modules/rules_python/0.23.1/MODULE.bazel": "49ffccf0511cb8414de28321f5fcf2a31312b47c40cc21577144b7447f2bf300",
+    "https://bcr.bazel.build/modules/rules_python/0.25.0/MODULE.bazel": "72f1506841c920a1afec76975b35312410eea3aa7b63267436bfb1dd91d2d382",
+    "https://bcr.bazel.build/modules/rules_python/0.28.0/MODULE.bazel": "cba2573d870babc976664a912539b320cbaa7114cd3e8f053c720171cde331ed",
+    "https://bcr.bazel.build/modules/rules_python/0.31.0/MODULE.bazel": "93a43dc47ee570e6ec9f5779b2e64c1476a6ce921c48cc9a1678a91dd5f8fd58",
+    "https://bcr.bazel.build/modules/rules_python/0.33.2/MODULE.bazel": "3e036c4ad8d804a4dad897d333d8dce200d943df4827cb849840055be8d2e937",
+    "https://bcr.bazel.build/modules/rules_python/0.34.0/MODULE.bazel": "1d623d026e075b78c9fde483a889cda7996f5da4f36dffb24c246ab30f06513a",
+    "https://bcr.bazel.build/modules/rules_python/0.4.0/MODULE.bazel": "9208ee05fd48bf09ac60ed269791cf17fb343db56c8226a720fbb1cdf467166c",
+    "https://bcr.bazel.build/modules/rules_python/0.40.0/MODULE.bazel": "9d1a3cd88ed7d8e39583d9ffe56ae8a244f67783ae89b60caafc9f5cf318ada7",
+    "https://bcr.bazel.build/modules/rules_python/1.0.0/MODULE.bazel": "898a3d999c22caa585eb062b600f88654bf92efb204fa346fb55f6f8edffca43",
+    "https://bcr.bazel.build/modules/rules_python/1.5.1/MODULE.bazel": "acfe65880942d44a69129d4c5c3122d57baaf3edf58ae5a6bd4edea114906bf5",
+    "https://bcr.bazel.build/modules/rules_python/1.7.0/MODULE.bazel": "d01f995ecd137abf30238ad9ce97f8fc3ac57289c8b24bd0bf53324d937a14f8",
+    "https://bcr.bazel.build/modules/rules_python/1.7.0/source.json": "028a084b65dcf8f4dc4f82f8778dbe65df133f234b316828a82e060d81bdce32",
+    "https://bcr.bazel.build/modules/rules_shell/0.2.0/MODULE.bazel": "fda8a652ab3c7d8fee214de05e7a9916d8b28082234e8d2c0094505c5268ed3c",
+    "https://bcr.bazel.build/modules/rules_shell/0.4.1/MODULE.bazel": "00e501db01bbf4e3e1dd1595959092c2fadf2087b2852d3f553b5370f5633592",
+    "https://bcr.bazel.build/modules/rules_shell/0.6.1/MODULE.bazel": "72e76b0eea4e81611ef5452aa82b3da34caca0c8b7b5c0c9584338aa93bae26b",
+    "https://bcr.bazel.build/modules/rules_shell/0.6.1/source.json": "20ec05cd5e592055e214b2da8ccb283c7f2a421ea0dc2acbf1aa792e11c03d0c",
+    "https://bcr.bazel.build/modules/snappy/1.2.2/MODULE.bazel": "f8d3ddaad8d45d504dd537b2a3205ebcb1c4f3ae88d81b225681e4b88faead7c",
+    "https://bcr.bazel.build/modules/snappy/1.2.2/source.json": "790f71ab14c7cb97f39a9678e5bbbc5164822ea0115bbfa606d80b884b0da38c",
+    "https://bcr.bazel.build/modules/stardoc/0.5.1/MODULE.bazel": "1a05d92974d0c122f5ccf09291442580317cdd859f07a8655f1db9a60374f9f8",
+    "https://bcr.bazel.build/modules/stardoc/0.5.3/MODULE.bazel": "c7f6948dae6999bf0db32c1858ae345f112cacf98f174c7a8bb707e41b974f1c",
+    "https://bcr.bazel.build/modules/stardoc/0.5.6/MODULE.bazel": "c43dabc564990eeab55e25ed61c07a1aadafe9ece96a4efabb3f8bf9063b71ef",
+    "https://bcr.bazel.build/modules/stardoc/0.7.0/MODULE.bazel": "05e3d6d30c099b6770e97da986c53bd31844d7f13d41412480ea265ac9e8079c",
+    "https://bcr.bazel.build/modules/stardoc/0.7.1/MODULE.bazel": "3548faea4ee5dda5580f9af150e79d0f6aea934fc60c1cc50f4efdd9420759e7",
+    "https://bcr.bazel.build/modules/stardoc/0.7.2/MODULE.bazel": "fc152419aa2ea0f51c29583fab1e8c99ddefd5b3778421845606ee628629e0e5",
+    "https://bcr.bazel.build/modules/stardoc/0.7.2/source.json": "58b029e5e901d6802967754adf0a9056747e8176f017cfe3607c0851f4d42216",
+    "https://bcr.bazel.build/modules/tar.bzl/0.10.4/MODULE.bazel": "e8f9ff79199e8d9eaad7f1b0a77ad74b30bb82d794b87d8ca942bead5de83ae9",
+    "https://bcr.bazel.build/modules/tar.bzl/0.10.4/source.json": "20143442376c03426f6135292ba02d825cb75308aa47e6bf42dd4cc5a435c2ff",
+    "https://bcr.bazel.build/modules/upb/0.0.0-20220923-a547704/MODULE.bazel": "7298990c00040a0e2f121f6c32544bab27d4452f80d9ce51349b1a28f3005c43",
+    "https://bcr.bazel.build/modules/upb/0.0.0-20230516-61a97ef/MODULE.bazel": "c0df5e35ad55e264160417fd0875932ee3c9dda63d9fccace35ac62f45e1b6f9",
+    "https://bcr.bazel.build/modules/with_cfg.bzl/0.12.0/MODULE.bazel": "b573395fe63aef4299ba095173e2f62ccfee5ad9bbf7acaa95dba73af9fc2b38",
+    "https://bcr.bazel.build/modules/with_cfg.bzl/0.12.0/source.json": "3f3fbaeafecaf629877ad152a2c9def21f8d330d91aa94c5dc75bbb98c10b8b8",
+    "https://bcr.bazel.build/modules/xz/5.4.5.bcr.5/MODULE.bazel": "b93d7035ac14c900dfdf7624e42cfcbfc34415aa8d3c83a6f225867c48d28dad",
+    "https://bcr.bazel.build/modules/xz/5.4.5.bcr.7/MODULE.bazel": "6ad4a612745322cb1b64b971f9de54d1e604810043da14ca5578f963075b5dac",
+    "https://bcr.bazel.build/modules/xz/5.4.5.bcr.7/source.json": "8f42ea24ea4bf0d34e9fca53ee39de4fd4aeb93459a777600975ba18857fd2a9",
+    "https://bcr.bazel.build/modules/zlib/1.2.11/MODULE.bazel": "07b389abc85fdbca459b69e2ec656ae5622873af3f845e1c9d80fe179f3effa0",
+    "https://bcr.bazel.build/modules/zlib/1.3.1.bcr.4/MODULE.bazel": "fc880fa3bd9c5299be64b712fbc60a1978ea9ce0a9f74f6bbd0b61c12db1aee6",
+    "https://bcr.bazel.build/modules/zlib/1.3.1.bcr.5/MODULE.bazel": "eec517b5bbe5492629466e11dae908d043364302283de25581e3eb944326c4ca",
+    "https://bcr.bazel.build/modules/zlib/1.3.1.bcr.8/MODULE.bazel": "772c674bb78a0342b8caf32ab5c25085c493ca4ff08398208dcbe4375fe9f776",
+    "https://bcr.bazel.build/modules/zlib/1.3.1.bcr.8/source.json": "cf377d76800dfc3d3b71e9dd4a8c53a62837cbce37cc4f25e6207b15fc1e8f2b",
+    "https://bcr.bazel.build/modules/zlib/1.3.1/MODULE.bazel": "751c9940dcfe869f5f7274e1295422a34623555916eb98c174c1e945594bf198",
+    "https://bcr.bazel.build/modules/zstd/1.5.7/MODULE.bazel": "f5780cdbd6f4c5bb985a20f839844316fe48fb5e463056f372dbc37cfabdf450",
+    "https://bcr.bazel.build/modules/zstd/1.5.7/source.json": "f72c48184b6528ffc908a5a2bcbf3070c6684f3db03da2182c8ca999ae5f5cfd"
+  },
+  "selectedYankedVersions": {},
+  "moduleExtensions": {
+    "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
+      "general": {
+        "bzlTransitiveDigest": "rL/34P1aFDq2GqVC2zCFgQ8nTuOC6ziogocpvG50Qz8=",
+        "usagesDigest": "QI2z8ZUR+mqtbwsf2fLqYdJAkPOHdOV+tF2yVAUgRzw=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "com_github_jetbrains_kotlin_git": {
+            "repoRuleId": "@@rules_kotlin+//src/main/starlark/core/repositories:compiler.bzl%kotlin_compiler_git_repository",
+            "attributes": {
+              "urls": [
+                "https://github.com/JetBrains/kotlin/releases/download/v1.9.23/kotlin-compiler-1.9.23.zip"
+              ],
+              "sha256": "93137d3aab9afa9b27cb06a824c2324195c6b6f6179d8a8653f440f5bd58be88"
+            }
+          },
+          "com_github_jetbrains_kotlin": {
+            "repoRuleId": "@@rules_kotlin+//src/main/starlark/core/repositories:compiler.bzl%kotlin_capabilities_repository",
+            "attributes": {
+              "git_repository_name": "com_github_jetbrains_kotlin_git",
+              "compiler_version": "1.9.23"
+            }
+          },
+          "com_github_google_ksp": {
+            "repoRuleId": "@@rules_kotlin+//src/main/starlark/core/repositories:ksp.bzl%ksp_compiler_plugin_repository",
+            "attributes": {
+              "urls": [
+                "https://github.com/google/ksp/releases/download/1.9.23-1.0.20/artifacts.zip"
+              ],
+              "sha256": "ee0618755913ef7fd6511288a232e8fad24838b9af6ea73972a76e81053c8c2d",
+              "strip_version": "1.9.23-1.0.20"
+            }
+          },
+          "com_github_pinterest_ktlint": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_file",
+            "attributes": {
+              "sha256": "01b2e0ef893383a50dbeb13970fe7fa3be36ca3e83259e01649945b09d736985",
+              "urls": [
+                "https://github.com/pinterest/ktlint/releases/download/1.3.0/ktlint"
+              ],
+              "executable": true
+            }
+          },
+          "rules_android": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "sha256": "cd06d15dd8bb59926e4d65f9003bfc20f9da4b2519985c27e190cddc8b7a7806",
+              "strip_prefix": "rules_android-0.1.1",
+              "urls": [
+                "https://github.com/bazelbuild/rules_android/archive/v0.1.1.zip"
+              ]
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_kotlin+",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@rules_python+//python/extensions:config.bzl%config": {
+      "general": {
+        "bzlTransitiveDigest": "W97kKxM+lW7l/kO0rQa7Jm31CA1j+W1bNHGKjwX5xMg=",
+        "usagesDigest": "ZVSXMAGpD+xzVNPuvF1IoLBkty7TROO0+akMapt1pAg=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "rules_python_internal": {
+            "repoRuleId": "@@rules_python+//python/private:internal_config_repo.bzl%internal_config_repo",
+            "attributes": {
+              "transition_setting_generators": {},
+              "transition_settings": []
+            }
+          },
+          "pypi__build": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/e2/03/f3c8ba0a6b6e30d7d18c40faab90807c9bb5e9a1e3b2fe2008af624a9c97/build-1.2.1-py3-none-any.whl",
+              "sha256": "75e10f767a433d9a86e50d83f418e83efc18ede923ee5ff7df93b6cb0306c5d4",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__click": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl",
+              "sha256": "ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__colorama": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl",
+              "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__importlib_metadata": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/2d/0a/679461c511447ffaf176567d5c496d1de27cbe34a87df6677d7171b2fbd4/importlib_metadata-7.1.0-py3-none-any.whl",
+              "sha256": "30962b96c0c223483ed6cc7280e7f0199feb01a0e40cfae4d4450fc6fab1f570",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__installer": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/e5/ca/1172b6638d52f2d6caa2dd262ec4c811ba59eee96d54a7701930726bce18/installer-0.7.0-py3-none-any.whl",
+              "sha256": "05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__more_itertools": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/50/e2/8e10e465ee3987bb7c9ab69efb91d867d93959095f4807db102d07995d94/more_itertools-10.2.0-py3-none-any.whl",
+              "sha256": "686b06abe565edfab151cb8fd385a05651e1fdf8f0a14191e4439283421f8684",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__packaging": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/49/df/1fceb2f8900f8639e278b056416d49134fb8d84c5942ffaa01ad34782422/packaging-24.0-py3-none-any.whl",
+              "sha256": "2ddfb553fdf02fb784c234c7ba6ccc288296ceabec964ad2eae3777778130bc5",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__pep517": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/25/6e/ca4a5434eb0e502210f591b97537d322546e4833dcb4d470a48c375c5540/pep517-0.13.1-py3-none-any.whl",
+              "sha256": "31b206f67165b3536dd577c5c3f1518e8fbaf38cbc57efff8369a392feff1721",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__pip": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/8a/6a/19e9fe04fca059ccf770861c7d5721ab4c2aebc539889e97c7977528a53b/pip-24.0-py3-none-any.whl",
+              "sha256": "ba0d021a166865d2265246961bec0152ff124de910c5cc39f1156ce3fa7c69dc",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__pip_tools": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/0d/dc/38f4ce065e92c66f058ea7a368a9c5de4e702272b479c0992059f7693941/pip_tools-7.4.1-py3-none-any.whl",
+              "sha256": "4c690e5fbae2f21e87843e89c26191f0d9454f362d8acdbd695716493ec8b3a9",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__pyproject_hooks": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/ae/f3/431b9d5fe7d14af7a32340792ef43b8a714e7726f1d7b69cc4e8e7a3f1d7/pyproject_hooks-1.1.0-py3-none-any.whl",
+              "sha256": "7ceeefe9aec63a1064c18d939bdc3adf2d8aa1988a510afec15151578b232aa2",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__setuptools": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/90/99/158ad0609729111163fc1f674a5a42f2605371a4cf036d0441070e2f7455/setuptools-78.1.1-py3-none-any.whl",
+              "sha256": "c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__tomli": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl",
+              "sha256": "939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__wheel": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/7d/cd/d7460c9a869b16c3dd4e1e403cce337df165368c71d6af229a74699622ce/wheel-0.43.0-py3-none-any.whl",
+              "sha256": "55c570405f142630c6b9f72fe09d9b67cf1477fcf543ae5b8dcb1f5b7377da81",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          },
+          "pypi__zipp": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://files.pythonhosted.org/packages/da/55/a03fd7240714916507e1fcf7ae355bd9d9ed2e6db492595f1a67f61681be/zipp-3.18.2-py3-none-any.whl",
+              "sha256": "dce197b859eb796242b0622af1b8beb0a722d52aa2f57133ead08edd5bf5374e",
+              "type": "zip",
+              "build_file_content": "package(default_visibility = [\"//visibility:public\"])\n\nload(\"@rules_python//python:py_library.bzl\", \"py_library\")\n\npy_library(\n    name = \"lib\",\n    srcs = glob([\"**/*.py\"]),\n    data = glob([\"**/*\"], exclude=[\n        # These entries include those put into user-installed dependencies by\n        # data_exclude to avoid non-determinism.\n        \"**/*.py\",\n        \"**/*.pyc\",\n        \"**/*.pyc.*\",  # During pyc creation, temp files named *.pyc.NNN are created\n        \"**/*.dist-info/RECORD\",\n        \"BUILD\",\n        \"WORKSPACE\",\n    ]),\n    # This makes this directory a top-level in the python import\n    # search path for anything that depends on this.\n    imports = [\".\"],\n)\n"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_python+",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_python+",
+            "pypi__build",
+            "rules_python++config+pypi__build"
+          ],
+          [
+            "rules_python+",
+            "pypi__click",
+            "rules_python++config+pypi__click"
+          ],
+          [
+            "rules_python+",
+            "pypi__colorama",
+            "rules_python++config+pypi__colorama"
+          ],
+          [
+            "rules_python+",
+            "pypi__importlib_metadata",
+            "rules_python++config+pypi__importlib_metadata"
+          ],
+          [
+            "rules_python+",
+            "pypi__installer",
+            "rules_python++config+pypi__installer"
+          ],
+          [
+            "rules_python+",
+            "pypi__more_itertools",
+            "rules_python++config+pypi__more_itertools"
+          ],
+          [
+            "rules_python+",
+            "pypi__packaging",
+            "rules_python++config+pypi__packaging"
+          ],
+          [
+            "rules_python+",
+            "pypi__pep517",
+            "rules_python++config+pypi__pep517"
+          ],
+          [
+            "rules_python+",
+            "pypi__pip",
+            "rules_python++config+pypi__pip"
+          ],
+          [
+            "rules_python+",
+            "pypi__pip_tools",
+            "rules_python++config+pypi__pip_tools"
+          ],
+          [
+            "rules_python+",
+            "pypi__pyproject_hooks",
+            "rules_python++config+pypi__pyproject_hooks"
+          ],
+          [
+            "rules_python+",
+            "pypi__setuptools",
+            "rules_python++config+pypi__setuptools"
+          ],
+          [
+            "rules_python+",
+            "pypi__tomli",
+            "rules_python++config+pypi__tomli"
+          ],
+          [
+            "rules_python+",
+            "pypi__wheel",
+            "rules_python++config+pypi__wheel"
+          ],
+          [
+            "rules_python+",
+            "pypi__zipp",
+            "rules_python++config+pypi__zipp"
+          ]
+        ]
+      }
+    },
+    "@@rules_python+//python/uv:uv.bzl%uv": {
+      "general": {
+        "bzlTransitiveDigest": "zyNsrbgVKwpA0B3zI84imAfuC424VSzYNPgjr/HJy5M=",
+        "usagesDigest": "H8dQoNZcoqP+Mu0tHZTi4KHATzvNkM5ePuEqoQdklIU=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "uv": {
+            "repoRuleId": "@@rules_python+//python/uv/private:uv_toolchains_repo.bzl%uv_toolchains_repo",
+            "attributes": {
+              "toolchain_type": "'@@rules_python+//python/uv:uv_toolchain_type'",
+              "toolchain_names": [
+                "none"
+              ],
+              "toolchain_implementations": {
+                "none": "'@@rules_python+//python:none'"
+              },
+              "toolchain_compatible_with": {
+                "none": [
+                  "@platforms//:incompatible"
+                ]
+              },
+              "toolchain_target_settings": {}
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_python+",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_python+",
+            "platforms",
+            "platforms"
+          ]
+        ]
+      }
+    }
+  },
+  "facts": {}
+}

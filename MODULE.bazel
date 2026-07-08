@@ -1,0 +1,56 @@
+module(name = "watchman")
+
+bazel_dep(name = "llvm", version = "0.8.11")
+bazel_dep(name = "folly", version = "2026.05.18.00")
+bazel_dep(name = "fmt", version = "12.1.0")
+bazel_dep(name = "glog", version = "0.7.1.bcr.1")
+bazel_dep(name = "openssl", version = "3.5.5.bcr.4")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "with_cfg.bzl", version = "0.12.0")
+
+osx = use_extension("@llvm//extensions:osx.bzl", "osx")
+osx.frameworks(
+    names = [
+        "CFNetwork",
+        "CoreFoundation",
+        "CoreServices",
+        "DiskArbitration",
+        "Foundation",
+        "IOKit",
+        "Kernel",
+        "OSLog",
+        "Security",
+        "SystemConfiguration",
+    ],
+)
+
+single_version_override(
+    module_name = "folly",
+    patch_strip = 1,
+    patches = ["//bazel/patches:folly-no-libunwind-on-linux-arm64.patch"],
+)
+
+toolchain = use_extension("@llvm//extensions:toolchain.bzl", "toolchain")
+toolchain.exec(
+    arch = "aarch64",
+    os = "macos",
+)
+toolchain.exec(
+    arch = "x86_64",
+    os = "linux",
+)
+toolchain.exec(
+    arch = "aarch64",
+    os = "linux",
+)
+toolchain.target(
+    arch = "x86_64",
+    os = "linux",
+)
+toolchain.target(
+    arch = "aarch64",
+    os = "linux",
+)
+use_repo(toolchain, "llvm_toolchains")
+
+register_toolchains("@llvm_toolchains//:all")

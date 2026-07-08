@@ -1,0 +1,34 @@
+#pragma once
+
+#define WATCHMAN_CONFIG_FILE "/etc/watchman.json"
+#define WATCHMAN_STATE_DIR "/var/run/watchman"
+#define PACKAGE_VERSION "0.0.0"
+
+#define HAVE_ACCEPT4 1
+#define HAVE_BACKTRACE 1
+#define HAVE_BACKTRACE_SYMBOLS 1
+#define HAVE_BACKTRACE_SYMBOLS_FD 1
+#define HAVE_FDOPENDIR 1
+#define HAVE_INOTIFY_INIT 1
+#define HAVE_INOTIFY_INIT1 1
+#define HAVE_LOCALECONV 1
+#define HAVE_MEMMEM 1
+#define HAVE_MKOSTEMP 1
+#define HAVE_OPENAT 1
+#define HAVE_PIPE2 1
+#define HAVE_STATFS 1
+#define HAVE_STRTOLL 1
+
+#define HAVE_EXECINFO_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_INTTYPES_H 1
+#define HAVE_LOCALE_H 1
+#define HAVE_SYS_INOTIFY_H 1
+#define HAVE_SYS_MOUNT_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_SYS_RESOURCE_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_STATFS_H 1
+#define HAVE_SYS_STATVFS_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_VFS_H 1

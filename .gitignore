@@ -96,3 +96,5 @@ cppclient/watchmanclient.pc
 /external
 /common
 /eden
+/bazel-*
+/dist/

@@ -1,0 +1,16 @@
+common --enable_bzlmod
+
+build --incompatible_enable_cc_toolchain_resolution
+build --cxxopt=-std=gnu++20
+build --host_cxxopt=-std=gnu++20
+
+build:dist --compilation_mode=opt
+build:dist --strip=always
+build:dist --symlink_prefix=dist/
+
+build:linux-x64 --platforms=//bazel/platforms:linux_x64_libstdcxx
+build:linux-arm64 --platforms=//bazel/platforms:linux_arm64_libstdcxx
+build:darwin-arm64 --platforms=@llvm//platforms:macos_arm64
+build:darwin-arm64 --extra_toolchains=@llvm//toolchain:macos_aarch64_to_macos_aarch64
+build:darwin-arm64 --extra_toolchains=@llvm//toolchain:linux_x86_64_to_macos_aarch64
+build:darwin-arm64 --extra_toolchains=@llvm//toolchain:linux_aarch64_to_macos_aarch64

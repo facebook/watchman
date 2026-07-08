@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "eden/common/utils/ProcessInfoCache.h"
 
 namespace watchman {
