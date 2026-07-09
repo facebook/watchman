@@ -53,6 +53,26 @@ python_unittest(
     ],
 )
 
+# test_sock_perms exercises POSIX-only APIs (pwd/grp, uid/gid, chown) and its
+# whole test class is skipped on Windows/macOS at runtime. Keep it in a
+# linux-only target so it is not type-checked against the Windows typeshed.
+python_integration_test(
+    name = "sock_perms",
+    srcs = [
+        "test_sock_perms.py",
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    env = integration_env({"WATCHMAN_TEST_CONFIG": '{"parallel_crawl_thread_count":4}'}),
+    supports_static_listing = False,
+    typing = True,
+    deps = [
+        "//watchman/integration/lib:lib",
+        "//watchman/python/pywatchman:pywatchman",
+    ],
+)
+
 python_integration_test(
     name = "integration",
     srcs = glob(
@@ -60,6 +80,7 @@ python_integration_test(
         exclude = [
             "test_capabilities.py",
             "test_pcre.py",
+            "test_sock_perms.py",
         ],
     ),
     env = integration_env({"WATCHMAN_TEST_CONFIG": '{"parallel_crawl_thread_count":4}'}),
