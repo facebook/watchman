@@ -1,8 +1,17 @@
+load("@fbcode//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_python_extension.bzl", "cpp_python_extension")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
+load("@fbsource//xplat/security/lionhead:defs.bzl", "Metadata", "SUBSET_OF_EMPLOYEES", "Severity", "lh")
 
 oncall("scm_client_infra")
+
+watchman_metadata = Metadata(
+    exposure = SUBSET_OF_EMPLOYEES,
+    project = "watchman",
+    severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+    severity_service_takeover = Severity.FILE_SECURITY_TASK,
+)
 
 cpp_library(
     name = "bserimpl",
@@ -25,6 +34,40 @@ cpp_python_extension(
     compiler_flags = [
         "-Wno-missing-field-initializers",
     ],
+    deps = [
+        ":bserimpl",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "bser_module_decode",
+    srcs = [
+        "BserModuleDecode.cpp",
+        "bsermodule.c",
+    ],
+    annotations = [
+        lh.PathAnnotation(
+            alert = True,
+            include_path_globs = [
+                "fbcode/watchman/python/pywatchman/bsermodule.c",
+            ],
+            target_symbols = [
+                "_pdu_info_helper",
+                "pdu_info_helper",
+                "bser_pdu_info",
+                "bser_pdu_len",
+                "bser_loads",
+            ],
+        ),
+    ],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    compiler_flags = [
+        "-Wno-missing-field-initializers",
+    ],
+    context_task = "T274493215",
+    metadata = watchman_metadata,
     deps = [
         ":bserimpl",
     ],
