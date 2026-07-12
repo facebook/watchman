@@ -60,7 +60,7 @@ std::optional<w_string> find_fstype_in_linux_proc_mounts(
     if (folly::split(
             ' ', line, device, mountPoint, vfstype, opts, freq, passno)) {
       // Look for the mountPoint that matches the longest prefix of path
-      // we intentially bias towards the last matching path
+      // we intentionally bias towards the last matching path
       if (mountPoint.size() >= bestMountPoint.size() &&
           folly::StringPiece{path}.startsWith(mountPoint)) {
         if (

@@ -328,7 +328,7 @@ w_string realPath(const char* path) {
   // On Windows, "" is used to refer to the CWD.
   // We also allow using "." for parity with unix, even though that
   // doesn't generally work for that purpose on windows.
-  // This allows `watchman watch-project .` to succeeed on windows.
+  // This allows `watchman watch-project .` to succeed on windows.
   if (path[0] == 0 || (path[0] == '.' && path[1] == 0)) {
     return getCurrentDirectory();
   }
