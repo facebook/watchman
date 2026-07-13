@@ -1,4 +1,5 @@
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("scm_client_infra")
 
@@ -9,6 +10,7 @@ python_unittest(
         "ovr_config//os:linux",
         "ovr_config//os:macos",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//watchman/python/pywatchman:pywatchman",

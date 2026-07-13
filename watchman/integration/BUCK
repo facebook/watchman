@@ -2,6 +2,7 @@ load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("@fbcode_macros//build_defs:python_integration_test.bzl", "python_integration_test")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load(":defs.bzl", "integration_env")
 
 oncall("scm_client_infra")
@@ -45,6 +46,7 @@ python_unittest(
         "ovr_config//os:linux",
     ],
     env = integration_env(),
+    network_access = network_access_utils.all(),
     supports_static_listing = False,
     typing = True,
     deps = [

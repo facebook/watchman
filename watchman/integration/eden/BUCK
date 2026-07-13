@@ -1,6 +1,7 @@
 load("@fbcode//eden:defs.bzl", "get_test_env_and_deps")
 load("@fbcode//watchman/integration:defs.bzl", "eden_integration_env")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("scm_client_infra")
 
@@ -13,6 +14,7 @@ python_unittest(
         "ovr_config//os:linux",
     ],
     env = eden_integration_env(artifacts["env"]),
+    network_access = network_access_utils.all(),
     typing = True,
     deps = [
         "//eden/fs/service:thrift-python-types",

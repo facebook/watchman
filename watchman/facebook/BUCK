@@ -3,6 +3,7 @@ load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("scm_client_infra")
 
@@ -25,6 +26,7 @@ python_library(
 python_unittest(
     name = "test_watchman_version",
     srcs = ["test/test_watchman_version.py"],
+    network_access = network_access_utils.none(),
     typing = True,
     deps = [
         ":watchman_version",
@@ -51,6 +53,7 @@ python_unittest(
         "ovr_config//os:macos",
     ],
     labels = ["noautodeps"],
+    network_access = network_access_utils.none(),
     typing = True,
     deps = [
         ":watchman-perf-library",
