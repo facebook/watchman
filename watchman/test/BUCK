@@ -1,5 +1,6 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
 oncall("scm_client_infra")
 
@@ -22,6 +23,7 @@ cpp_unittest(
     srcs = [
         "IgnoreTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/logging:logging",
@@ -35,6 +37,7 @@ cpp_unittest(
 cpp_unittest(
     name = "inmemoryview",
     srcs = ["InMemoryViewTest.cpp"],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/executors:manual_executor",
@@ -69,6 +72,7 @@ cpp_unittest(
 cpp_unittest(
     name = "json",
     srcs = ["JsonTest.cpp"],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//watchman/thirdparty/jansson:jansson",
@@ -78,6 +82,7 @@ cpp_unittest(
 cpp_unittest(
     name = "serde",
     srcs = ["SerdeTest.cpp"],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -99,6 +104,7 @@ cpp_unittest(
     srcs = [
         "PendingCollectionTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/logging:logging",
@@ -113,6 +119,7 @@ cpp_unittest(
     srcs = [
         "PerfSampleTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly:scope_guard",
@@ -139,6 +146,7 @@ cpp_unittest(
     srcs = [
         "StringTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -149,6 +157,7 @@ cpp_unittest(
 cpp_unittest(
     name = "log",
     srcs = ["LogTest.cpp"],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -178,6 +187,7 @@ cpp_unittest(
     srcs = [
         "WildmatchTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly:string",
@@ -206,6 +216,7 @@ cpp_unittest(
     srcs = [
         "ResultTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -217,6 +228,7 @@ cpp_unittest(
 cpp_unittest(
     name = "ringbuffer",
     srcs = ["RingBufferTest.cpp"],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -243,6 +255,7 @@ cpp_unittest(
     srcs = [
         "MapUtilTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -256,6 +269,7 @@ cpp_unittest(
     srcs = [
         "MercurialTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -268,6 +282,7 @@ cpp_unittest(
     srcs = [
         "LocalSavedStateInterfaceTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
@@ -300,6 +315,7 @@ cpp_unittest(
     srcs = [
         "ReturnOnlyFilesTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gmock",
@@ -316,6 +332,7 @@ cpp_unittest(
     srcs = [
         "SuffixQueryTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gmock",
@@ -332,6 +349,7 @@ cpp_unittest(
     srcs = [
         "PathUtilsTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly:exception",
@@ -352,6 +370,7 @@ cpp_unittest(
     srcs = [
         "WatcherSelectionDarwinTest.cpp",
     ],
+    network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
