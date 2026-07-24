@@ -43,6 +43,21 @@ cpp_library(
 )
 
 cpp_library(
+    name = "close_random_fds",
+    srcs = ["CloseRandomFds.cpp"],
+    headers = ["CloseRandomFds.h"],
+    deps = [
+        # Configuration is consulted by the non-/proc fallback scan.
+        ":config",
+        ":prelude",
+        "//folly/portability:dirent",
+        "//folly/portability:fcntl",
+        "//folly/portability:sys_resource",
+        "//folly/portability:unistd",
+    ],
+)
+
+cpp_library(
     name = "child_process",
     srcs = ["ChildProcess.cpp"],
     headers = ["ChildProcess.h"],
@@ -932,6 +947,7 @@ cpp_binary(
         "fbsource//third-party/fmt:fmt",
         ":child_process",
         ":clock",
+        ":close_random_fds",
         ":command_registry",
         ":config",
         ":connect",

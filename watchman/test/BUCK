@@ -352,6 +352,21 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "close_random_fds",
+    srcs = [
+        "CloseRandomFdsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:fcntl",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//watchman:close_random_fds",
+    ],
+)
+
+cpp_unittest(
     name = "pathutils",
     srcs = [
         "PathUtilsTest.cpp",
