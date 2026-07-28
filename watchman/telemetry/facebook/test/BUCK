@@ -1,0 +1,22 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fbcode_buck2_contbuilds")
+
+cpp_unittest(
+    name = "watchman_events_entry_drift_test",
+    srcs = [
+        "WatchmanEventsEntryDriftTest.cpp",
+    ],
+    env = {
+        "TULIPV2_CONFIG_DIR": "$(location //dsi/logger/configs/GeneratedWatchmanEventsLoggerConfig:materialized_json)",
+    },
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "//folly/json:dynamic",
+        "//folly/portability:gtest",
+        "//thrift/lib/cpp2/op:get",
+        "//watchman/telemetry/facebook/if:watchman_events_entry-cpp2-types",
+    ],
+)

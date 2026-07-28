@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
+
+oncall("fbcode_buck2_contbuilds")
+
+thrift_library(
+    name = "watchman_events_entry",
+    languages = [
+        "cpp2",
+    ],
+    thrift_cpp2_options = "json",
+    thrift_srcs = {
+        "watchman_events_entry.thrift": [],
+    },
+)
