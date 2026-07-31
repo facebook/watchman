@@ -876,6 +876,7 @@ cpp_library(
         "//eden/common/utils:fsdetect",
         "//eden/fs/service:thrift-streaming-cpp2-services",
         "//folly:exception",
+        "//folly:fbstring",
         "//folly:map_util",
         "//folly:network_address",
         "//folly:scope_guard",
