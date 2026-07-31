@@ -1,0 +1,19 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fbcode_buck2_contbuilds")
+
+cpp_unittest(
+    name = "watchman_xplat_structured_logger_test",
+    srcs = [
+        "WatchmanXplatStructuredLoggerTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//eden/common/telemetry:log_info",
+        "//eden/fs/telemetry:xplat_logger",
+        "//folly/portability:gtest",
+        "//watchman/telemetry:telemetry",
+        "//watchman/telemetry:xplat_keys",
+    ],
+)

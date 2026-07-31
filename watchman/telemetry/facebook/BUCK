@@ -18,3 +18,16 @@ cpp_library(
         "//scribe/api/producer/thrift/experimental:structured_producer-cpp2-clients",
     ],
 )
+
+cpp_library(
+    name = "xplat_logger",
+    srcs = ["WatchmanXplatLogger.cpp"],
+    headers = ["WatchmanXplatLogger.h"],
+    deps = [
+        "//eden/common/telemetry/facebook:xplat_logger_core",
+        "//eden/fs/telemetry:xplat_logger",
+        "//watchman/telemetry:xplat_keys",
+        "//watchman/telemetry/facebook:xplat_transforms",
+    ],
+    exported_deps = [],
+)

@@ -22,7 +22,11 @@ cpp_library(
         "WatchmanStructuredLogger.h",
     ],
     deps = [
+        "//eden/common/telemetry/facebook:xplat_logger_core",
+        "//eden/fs/telemetry:xplat_logger",
         "//watchman:config",
+        "//watchman/telemetry:xplat_keys",
+        "//watchman/telemetry/facebook:xplat_logger",  # @manual
     ],
     exported_deps = [
         "//eden/common/telemetry:log_info",
