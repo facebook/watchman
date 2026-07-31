@@ -3,6 +3,13 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("fbcode_buck2_contbuilds")
 
 cpp_library(
+    name = "xplat_keys",
+    headers = [
+        "XplatKeys.h",
+    ],
+)
+
+cpp_library(
     name = "telemetry",
     srcs = [
         "LogEvent.cpp",

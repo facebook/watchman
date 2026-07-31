@@ -4,6 +4,22 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fbcode_buck2_contbuilds")
 
 cpp_unittest(
+    name = "watchman_xplat_transforms_test",
+    srcs = [
+        "WatchmanXplatTransformsTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//eden/common/telemetry:log_info",
+        "//folly/portability:gtest",
+        "//thrift/lib/cpp2/protocol:protocol",
+        "//watchman/telemetry:xplat_keys",
+        "//watchman/telemetry/facebook:xplat_transforms",
+        "//watchman/telemetry/facebook/if:watchman_events_entry-cpp2-types",
+    ],
+)
+
+cpp_unittest(
     name = "watchman_events_entry_drift_test",
     srcs = [
         "WatchmanEventsEntryDriftTest.cpp",

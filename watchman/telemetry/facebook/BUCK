@@ -1,0 +1,20 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("scm_client_infra")
+
+cpp_library(
+    name = "xplat_transforms",
+    srcs = ["WatchmanXplatTransforms.cpp"],
+    headers = ["WatchmanXplatTransforms.h"],
+    deps = [
+        "//eden/common/telemetry:log_info",
+        "//scribe/api/producer/structured:compact_message",
+        "//watchman/telemetry:xplat_keys",
+        "//watchman/telemetry/facebook/if:watchman_events_entry-cpp2-types",
+    ],
+    exported_deps = [
+        "//eden/common/telemetry/facebook:xplat_logger_core",
+        "//eden/fs/telemetry/facebook:xplat_logger",
+        "//scribe/api/producer/thrift/experimental:structured_producer-cpp2-clients",
+    ],
+)
