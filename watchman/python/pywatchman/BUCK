@@ -69,6 +69,7 @@ cpp_lionhead_harness(
     context_task = "T274493215",
     metadata = watchman_metadata,
     deps = [
+        "fbsource//third-party/python:python-for-embedding",
         ":bserimpl",
     ],
 )
