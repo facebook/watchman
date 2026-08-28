@@ -388,6 +388,23 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "sanity_check",
+    srcs = ["SanityCheckTest.cpp"],
+    compatible_with = [
+        "ovr_config//os:linux",
+    ],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "//folly/io:fs_util",
+        "//folly/portability:gtest",
+        "//folly/portability:unistd",
+        "//folly/testing:test_util",
+        "//watchman:watchmanlib",
+    ],
+)
+
+cpp_unittest(
     name = "watcherselectiondarwin",
     srcs = [
         "WatcherSelectionDarwinTest.cpp",

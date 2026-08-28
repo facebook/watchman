@@ -844,6 +844,7 @@ cpp_library(
     headers = [
         "Client.h",
         "GroupLookup.h",
+        "SanityCheck.h",
         "XattrUtils.h",
         "listener.h",
         "state.h",
