@@ -107,6 +107,9 @@ typedef binary BinaryHash
  */
 typedef binary PathString
 
+@cpp.Type{name = "::facebook::eden::GlobPath"}
+typedef PathString GlobPathValue
+
 /**
  * Bit set indicating where data should be fetched from in our debugging
  * commands.
@@ -1820,8 +1823,7 @@ struct Glob {
    * sorted. However, no duplicates may have the same originCommits (note this
    * is not true should the input GlobParams contain duplicate revisions) .
    */
-  @cpp.Type{name = "::facebook::eden::GlobPathList"}
-  1: list<PathString> matchingFiles;
+  1: list<GlobPathValue> matchingFiles;
   2: list<OsDtype> dtypes;
   /**
    * Currently these are the commit hash for the commit to which this file
