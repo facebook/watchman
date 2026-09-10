@@ -4,6 +4,18 @@ load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_
 oncall("fbcode_buck2_contbuilds")
 
 cpp_unittest(
+    name = "log_event_test",
+    srcs = [
+        "LogEventTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman/telemetry:telemetry",
+    ],
+)
+
+cpp_unittest(
     name = "watchman_xplat_structured_logger_test",
     srcs = [
         "WatchmanXplatStructuredLoggerTest.cpp",

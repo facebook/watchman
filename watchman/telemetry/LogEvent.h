@@ -89,7 +89,9 @@ enum LogEventType : uint8_t {
   SavedStateType,
   QueryExecuteType,
   FullCrawlType,
-  DroppedType
+  DroppedType,
+  // Sentinel used to size counter storage; this is not an event type.
+  LogEventTypeCount,
 };
 
 // Returns samplingRate and eventCount
