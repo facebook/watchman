@@ -121,4 +121,5 @@ rpm.builder(
     ],
     override_log_paths = ["watchman"],
     summary = "Watch files, trigger stuff",
+    use_commit_timestamp_for_version_release = True,
 )
