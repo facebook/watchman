@@ -119,7 +119,7 @@ missing security, bug, and performance fixes.
 1. From the
    [latest release](https://github.com/facebook/watchman/releases/latest),
    download the .rpm corresponding to your Fedora version
-2. `sudo dnf localinstall watchman-$VERSION.fc$FEDORA_VERSION.x86_64.rpm`
+2. `sudo dnf install watchman-$VERSION.fc$FEDORA_VERSION.x86_64.rpm`
 3. Confirm successful installation by running `watchman version`
 
 ### Ubuntu (Prebuilt Debs)
