@@ -6,7 +6,9 @@
  */
 
 #include <fmt/chrono.h>
+#include <algorithm>
 #include <chrono>
+#include <thread>
 
 #include "watchman/Errors.h"
 #include "watchman/InMemoryView.h"
@@ -172,6 +174,9 @@ std::chrono::milliseconds getBiggestTimeout(const Root& root) {
 void InMemoryView::ioThread(const std::shared_ptr<Root>& root) {
   IoThreadState state{getBiggestTimeout(*root)};
   state.currentTimeout = root->trigger_settle;
+
+  state.recrawlBackoff = RecrawlBackoff{recrawlBackoffOptions_};
+
   // Injects a temporary blocks, only in test code. This is to
   // force the iothread to loose a race with the notify thread.
   // TODO: Support something like EdenFS FaultInjector so that we can do
@@ -227,9 +232,51 @@ InMemoryView::Continue InMemoryView::stepIoThread(
   // TODO: scheduleRecrawl should be replaced with a regular event published in
   // the PendingCollection.
   if (root->recrawlInfo.rlock()->shouldRecrawl) {
-    auto info = root->recrawlInfo.wlock();
-    info->recrawlCount++;
+    std::chrono::steady_clock::time_point lastFinish;
+    w_string reason;
+    {
+      auto info = root->recrawlInfo.wlock();
+      info->recrawlCount++;
+      lastFinish = info->crawlFinish;
+      reason = info->reason;
+    }
+
     root->inner.done_initial.store(false, std::memory_order_release);
+
+    auto delay = state.recrawlBackoff.onRecrawl(
+        std::chrono::steady_clock::now(), lastFinish);
+
+    if (delay > std::chrono::milliseconds::zero()) {
+      logf(
+          ERR,
+          "{}: recrawl backoff: consecutive rapid recrawls={}, last reason: "
+          "{}, delaying next crawl by {}ms\n",
+          root->root_path,
+          state.recrawlBackoff.consecutiveRapidCount(),
+          reason,
+          delay.count());
+
+      auto deadline = std::chrono::steady_clock::now() + delay;
+      while (true) {
+        if (stopThreads_.load(std::memory_order_acquire)) {
+          return Continue::Stop;
+        }
+        auto now = std::chrono::steady_clock::now();
+        auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                deadline - now);
+        if (remaining <= std::chrono::milliseconds::zero()) {
+          break;
+        }
+        // lockAndWait is not used here because it returns immediately while
+        // events are pending in the collection, which would spin-wait at 100%
+        // CPU during event floods. Pending items are intentionally left for
+        // the crawl.
+        std::this_thread::sleep_for(
+            std::min(remaining, std::chrono::milliseconds(50)));
+      }
+    }
+
     // Now that done_initial is false, the next pass will recrawl.
     return Continue::Continue;
   }

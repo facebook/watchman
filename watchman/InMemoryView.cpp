@@ -50,6 +50,19 @@ inline std::string make_path_name(
   result.append(name, nlen);
   return result;
 }
+
+RecrawlBackoff::Options getRecrawlBackoffOptions(
+    const Configuration& config) {
+  auto recrawlBackoffMaxMs =
+      config.getInt("recrawl_backoff_max_ms", 10000);
+  RecrawlBackoff::Options backoffOptions;
+  if (recrawlBackoffMaxMs <= 0) {
+    backoffOptions.maxDelay = std::chrono::milliseconds::zero();
+  } else {
+    backoffOptions.maxDelay = std::chrono::milliseconds(recrawlBackoffMaxMs);
+  }
+  return backoffOptions;
+}
 } // namespace
 
 InMemoryViewCaches::InMemoryViewCaches(
@@ -461,6 +474,7 @@ InMemoryView::InMemoryView(
     : QueryableView{root_path, /*requiresCrawl=*/true},
       fileSystem_{fileSystem},
       config_(std::move(config)),
+      recrawlBackoffOptions_{getRecrawlBackoffOptions(config_)},
       view_(std::in_place, root_path),
       rootNumber_(next_root_number++),
       rootPath_(root_path),

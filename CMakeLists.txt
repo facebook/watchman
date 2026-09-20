@@ -815,6 +815,7 @@ t_test(maputil watchman/test/MapUtilTest.cpp)
 t_test(pendingcollection watchman/test/PendingCollectionTest.cpp)
 # Linking this test needs the targets graph to be cleaned up.
 #t_test(perfsample watchman/test/PerfSampleTest.cpp)
+t_test(recrawlbackoff watchman/test/RecrawlBackoffTest.cpp)
 t_test(result watchman/test/ResultTest.cpp)
 t_test(ringbuffer watchman/test/RingBufferTest.cpp)
 t_test(string watchman/test/StringTest.cpp)
