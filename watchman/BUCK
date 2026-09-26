@@ -776,6 +776,7 @@ cpp_library(
     ],
     headers = [
         "InMemoryView.h",
+        "root/RecrawlBackoff.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",

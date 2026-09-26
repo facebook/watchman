@@ -23,6 +23,7 @@
 #include "watchman/WatchmanConfig.h"
 #include "watchman/fs/DirHandle.h"
 #include "watchman/query/FileResult.h"
+#include "watchman/root/RecrawlBackoff.h"
 #include "watchman/watchman_string.h"
 #include "watchman/watchman_system.h"
 
@@ -344,6 +345,10 @@ class InMemoryView final : public QueryableView {
 
     // When the iothread last processed a pending event from the Watcher.
     std::optional<std::chrono::steady_clock::time_point> lastUnsettle;
+
+    // Throttles the recrawl loop when recrawls keep being requested right
+    // after a crawl finishes. Only touched by the iothread.
+    RecrawlBackoff recrawlBackoff;
   };
 
   // Returns a reference to the ViewDatabase without synchronizing on the mutex.
@@ -375,6 +380,9 @@ class InMemoryView final : public QueryableView {
 
   FileSystem& fileSystem_;
   const Configuration config_;
+  // Recrawl backoff settings (recrawl_backoff_max_ms), read once at
+  // construction so invalid values fail the watch command up front.
+  const RecrawlBackoff::Options recrawlBackoffOptions_;
 
   folly::Synchronized<ViewDatabase> view_;
   // The most recently observed tick value of an item in the view
