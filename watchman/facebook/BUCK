@@ -1,6 +1,5 @@
 load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
-load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
@@ -34,38 +33,8 @@ python_unittest(
     ],
 )
 
-python_binary(
-    name = "watchman-perf",
-    srcs = {"watchman-perf.py": "watchman_perf.py"},
-    base_module = "",
-    labels = ["noautodeps"],
-    main_function = "watchman_perf.main",
-    typing = True,
-)
-
-python_unittest(
-    name = "test_watchman_perf",
-    srcs = [
-        "test/test_watchman_perf.py",
-    ],
-    compatible_with = [
-        "ovr_config//os:linux",
-        "ovr_config//os:macos",
-    ],
-    labels = ["noautodeps"],
-    network_access = network_access_utils.none(),
-    typing = True,
-    deps = [
-        ":watchman-perf-library",
-    ],
-)
-
 export_file(
     name = "watchman.json.default",
-)
-
-export_file(
-    name = "watchman-perf.py",
 )
 
 rpm.builder(
@@ -108,11 +77,6 @@ rpm.builder(
             src = ":watchman.json.default",
             dst = "/etc/watchman.json.default",
             mode = 0o0644,
-        ),
-        rpm.install(
-            src = ":watchman-perf.py",
-            dst = "/usr/local/sbin/watchman-perf.py",
-            mode = 0o0755,
         ),
         rpm.ensure_dirs_exist(
             dirs = "/var/facebook/watchman",

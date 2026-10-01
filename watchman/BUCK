@@ -1009,9 +1009,6 @@ dot_version = read_config("watchman_build_info", "dot_combined", "00000000.00000
 
 nupkg.builder(
     name = "fb-watchman-windows",
-    additional_scripts = [
-        "facebook/watchman-perf.py",
-    ],
     chocolatey_install_script = "facebook/windows/chocolateyinstall.ps1",
     chocolatey_uninstall_script = "facebook/windows/chocolateyuninstall.ps1",
     # The default version does not pass nuspec semver validation.
