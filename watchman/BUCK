@@ -2,6 +2,7 @@ load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/target_determinator/macros:ci.bzl", "ci")
 load("//cpe/nupkg_builder:nupkg.bzl", "nupkg")
 
 oncall("fbcode_buck2_contbuilds")
@@ -1013,6 +1014,9 @@ nupkg.builder(
     ],
     chocolatey_install_script = "facebook/windows/chocolateyinstall.ps1",
     chocolatey_uninstall_script = "facebook/windows/chocolateyuninstall.ps1",
+    # The default version does not pass nuspec semver validation.
+    # Only release builds set the real version.
+    labels = ci.labels(ci.remove(ci.windows(), ci.mac(), "ci:diff", "ci:land", "ci:continuous")),
     oncall = "scm_client_infra",
     version = dot_version,
     deps = select({
