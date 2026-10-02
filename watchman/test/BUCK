@@ -132,6 +132,19 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "recrawlbackoff",
+    srcs = [
+        "RecrawlBackoffTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    supports_static_listing = False,
+    deps = [
+        "//folly/portability:gtest",
+        "//watchman:inmemoryview",
+    ],
+)
+
+cpp_unittest(
     name = "fsdetect",
     srcs = [
         "FSDetectTest.cpp",

@@ -59,6 +59,7 @@ This table shows the scoping and availability of the various options:
 | `hint_num_files_per_dir`    | fallback | 3.9               |
 | `hint_num_dirs`             | fallback | 4.6               |
 | `suppress_recrawl_warnings` | fallback | 4.7               |
+| `recrawl_backoff_max_ms`   | fallback | September 2026    |
 
 ### Configuration Options
 
@@ -355,3 +356,16 @@ of metadata to answer these queries.
 This behavior is only enabled if the query specifies the
 `empty_on_fresh_instance` option or when this config is set to `0`. Default to
 `10000`.
+
+### recrawl_backoff_max_ms
+
+_Since September 2026_
+
+Specifies the maximum backoff duration in _milliseconds_ when repeated recrawls
+occur in rapid succession (within 10 seconds of the previous crawl finishing).
+After 3 free rapid recrawl attempts, subsequent rapid recrawls back off
+exponentially (100ms, 200ms, 400ms, ...) up to this maximum delay before
+starting the crawl.
+
+The default value is 10000 (10 seconds). Setting this to 0 or a negative value
+disables recrawl backoff entirely.
