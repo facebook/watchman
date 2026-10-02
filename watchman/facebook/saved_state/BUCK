@@ -9,6 +9,11 @@ cpp_library(
         "DevInfraSavedStateXDBClient.cpp",
         "ManifoldSavedStateInterface.cpp",
     ],
+    headers = [
+        "DevInfraSavedStateManifoldClient.h",
+        "DevInfraSavedStateXDBClient.h",
+        "ManifoldSavedStateInterface.h",
+    ],
     compatible_with = [
         "ovr_config//os:linux",
     ],

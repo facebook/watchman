@@ -209,6 +209,11 @@ cpp_library(
         "Logging.cpp",
         "PubSub.cpp",
     ],
+    headers = [
+        "LogConfig.h",
+        "Logging.h",
+        "PubSub.h",
+    ],
     deps = [
         "//folly:scope_guard",
         "//folly:thread_local",
@@ -241,6 +246,9 @@ cpp_library(
 cpp_library(
     name = "shutdown",
     srcs = ["Shutdown.cpp"],
+    headers = [
+        "Shutdown.h",
+    ],
     deps = [
         ":stream",
     ],
@@ -648,6 +656,7 @@ cpp_library(
     ],
     headers = [
         "query/TermRegistry.h",
+        "query/intcompare.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -711,6 +720,7 @@ cpp_library(
         "query/eval.h",
         "query/parse.h",
         "root/Root.h",
+        "root/watchlist.h",
     ],
     deps = [
         "fbcode//eden/common/utils:process_info_cache",
@@ -777,6 +787,7 @@ cpp_library(
     ],
     headers = [
         "InMemoryView.h",
+        "root/warnerr.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
@@ -848,7 +859,12 @@ cpp_library(
         "SanityCheck.h",
         "XattrUtils.h",
         "listener.h",
+        "root/resolve.h",
+        "root/warnerr.h",
         "state.h",
+        "watcher/WatcherRegistry.h",
+        "watcher/fsevents.h",
+        "watcher/kqueue.h",
         "watchman_cmd.h",
     ],
     # We use constructors to declare commands rather than maintaining
@@ -945,6 +961,9 @@ cpp_binary(
     srcs = [
         "ProcessLock.cpp",
         "main.cpp",
+    ],
+    headers = [
+        "ProcessLock.h",
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
