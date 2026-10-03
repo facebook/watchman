@@ -24,6 +24,8 @@ cpp_library(
     deps = [
         "//eden/common/telemetry/facebook:xplat_logger_core",
         "//eden/fs/telemetry:xplat_logger",
+        "//fb303:service_data",
+        "//fb303:thread_cached_service_data",
         "//watchman:config",
         "//watchman/telemetry:xplat_keys",
         "//watchman/telemetry/facebook:xplat_logger",  # @manual
