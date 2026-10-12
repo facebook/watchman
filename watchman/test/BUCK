@@ -180,7 +180,7 @@ cpp_unittest(
         "//folly:scope_guard",
         "//folly/logging:logging",
         "//folly/portability:gtest",
-        "//folly/portability:sys_mman",
+        "//folly/portability:sys_mman",  # @manual
         "//watchman:bser",
         "//watchman/thirdparty/jansson:jansson",
     ],
@@ -211,6 +211,7 @@ cpp_unittest(
     supports_static_listing = False,
     deps = [
         "//folly/portability:gtest",
+        "//folly/portability:windows",  # @manual
         "//folly/test:test_utils",
         "//watchman:child_process",
     ],
