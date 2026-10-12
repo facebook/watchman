@@ -27,6 +27,13 @@ DEPENDENCIES_BY_UBUNTU = {
         "libevent-2.1-7",
         "libsnappy1v5",
     ],
+    "24.04": [
+        "libgoogle-glog0v6t64",
+        "libboost-context1.83.0",
+        "libdouble-conversion3",
+        "libevent-2.1-7t64",
+        "libsnappy1v5",
+    ],
 }
 
 

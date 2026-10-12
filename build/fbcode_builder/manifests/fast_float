@@ -16,5 +16,5 @@ FASTFLOAT_SANITIZE = OFF
 [debs.not(all(distro=ubuntu,any(distro_vers="18.04",distro_vers="20.04",distro_vers="22.04",distro_vers="24.04")))]
 libfast-float-dev
 
-[rpms.distro=fedora]
+[rpms.all(distro=fedora,not(any(distro_vers="40",distro_vers="41")))]
 fast_float-devel
