@@ -23,7 +23,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:string",
+        "fbsource//xplat/folly:string",
     ],
     exported_deps = [
         ":utf",

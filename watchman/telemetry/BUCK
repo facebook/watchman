@@ -31,14 +31,14 @@ cpp_library(
         "//watchman/telemetry/facebook:xplat_logger",  # @manual
     ],
     exported_deps = [
+        "fbsource//xplat/folly:stop_watch",
+        "fbsource//xplat/folly:thread_local",
+        "fbsource//xplat/folly/portability:sys_types",
         "//eden/common/telemetry:log_info",
         "//eden/common/telemetry:scribe_logger",
         "//eden/common/telemetry:structured_logger",
         "//eden/common/telemetry:structured_logger_factory",
         "//eden/common/telemetry:telemetry",
         "//eden/common/utils:ref_ptr",
-        "//folly:stop_watch",
-        "//folly:thread_local",
-        "//folly/portability:sys_types",
     ],
 )

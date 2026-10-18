@@ -15,10 +15,10 @@ cpp_library(
         "FakeWatcher.h",
     ],
     deps = [
-        "//folly:map_util",
+        "fbsource//xplat/folly:map_util",
     ],
     exported_deps = [
-        "//folly:synchronized",
+        "fbsource//xplat/folly:synchronized",
         "//watchman:watcher",
         "//watchman/fs:fs",
     ],
@@ -35,8 +35,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":lib",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )

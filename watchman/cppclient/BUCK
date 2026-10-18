@@ -7,10 +7,10 @@ cpp_binary(
     name = "cli",
     srcs = ["CLI.cpp"],
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/json:dynamic",
         ":cppclient",
-        "//folly/init:init",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/json:dynamic",
     ],
 )
 
@@ -28,27 +28,27 @@ cpp_library(
     deps = [
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
-        "//folly:network_address",
-        "//folly/executors:inline_executor",
-        "//folly/json/bser:bser",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/executors:inline_executor",
+        "fbsource//xplat/folly/json/bser:bser",
     ],
     exported_deps = [
-        "//folly:exception_wrapper",
-        "//folly:executor",
-        "//folly:optional",
-        "//folly:try",
-        "//folly/futures:core",
-        "//folly/io:iobuf",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_socket",
-        "//folly/json:dynamic",
+        "fbsource//xplat/folly:exception_wrapper",
+        "fbsource//xplat/folly:executor",
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly:try",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/json:dynamic",
     ] + select({
         "DEFAULT": [],
         "ovr_config//os:linux": [
-            "//folly:subprocess",
+            "fbsource//xplat/folly:subprocess",
         ],
         "ovr_config//os:macos": [
-            "//folly:subprocess",
+            "fbsource//xplat/folly:subprocess",
         ],
         "ovr_config//os:windows": [
             "//eden/common/utils:process",

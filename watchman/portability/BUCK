@@ -30,14 +30,14 @@ cpp_library(
     srcs = ["PosixSpawn.cpp"],
     headers = ["PosixSpawn.h"],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:synchronized",
         ":winerror",
-        "//folly:string",
-        "//folly:synchronized",
         "//watchman:logging",
         "//watchman:stream",
     ],
     exported_deps = [
-        "//folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:sys_types",
     ],
 )
 

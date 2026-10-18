@@ -12,11 +12,11 @@ cpp_binary(
     srcs = ["cppclient.cpp"],
     deps = [
         "fbsource//third-party/glog:glog",
-        "//folly/init:init",
-        "//folly/io:fs_util",
-        "//folly/io/async:event_base_thread",
-        "//folly/json:dynamic",
-        "//folly/testing:test_util",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io:fs_util",
+        "fbsource//xplat/folly/io/async:event_base_thread",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/testing:test_util",
         "//watchman/cppclient:cppclient",
     ],
 )

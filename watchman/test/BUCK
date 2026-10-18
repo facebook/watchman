@@ -13,8 +13,8 @@ cpp_unittest(
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/logging:logging",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman/thirdparty/libart/src:art",
     ],
 )
@@ -27,9 +27,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/logging:logging",
-        "//folly/portability:gtest",
-        "//folly/portability:sys_time",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sys_time",
         "//watchman:ignore",
         "//watchman:prelude",
     ],
@@ -41,8 +41,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/executors:manual_executor",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/executors:manual_executor",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:inmemoryview",
         "//watchman:query",
         "//watchman:root",
@@ -59,8 +59,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/executors:manual_executor",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/executors:manual_executor",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:inmemoryview",
         "//watchman:query",
         "//watchman:root",
@@ -87,7 +87,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:serde",
     ],
 )
@@ -109,8 +109,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/logging:logging",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:logging",
         "//watchman:pending",
     ],
@@ -124,8 +124,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly:scope_guard",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:perf_sample",
         "//watchman/thirdparty/jansson:jansson",
     ],
@@ -139,7 +139,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman/fs:fd",
     ],
 )
@@ -152,7 +152,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:string",
     ],
 )
@@ -163,7 +163,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:logging",
     ],
 )
@@ -177,10 +177,10 @@ cpp_unittest(
     supports_static_listing = False,
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:scope_guard",
-        "//folly/logging:logging",
-        "//folly/portability:gtest",
-        "//folly/portability:sys_mman",  # @manual
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:sys_mman",  # @manual
         "//watchman:bser",
         "//watchman/thirdparty/jansson:jansson",
     ],
@@ -194,8 +194,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly:string",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:prelude",
         "//watchman/thirdparty/jansson:jansson",
         "//watchman/thirdparty/wildmatch:wildmatch",
@@ -210,9 +210,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
-        "//folly/portability:windows",  # @manual
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:windows",  # @manual
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:child_process",
     ],
 )
@@ -225,8 +225,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:result",
     ],
 )
@@ -237,7 +237,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:util",
     ],
 )
@@ -250,9 +250,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/executors:manual_executor",
-        "//folly/init:init",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/executors:manual_executor",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:util",
     ],
 )
@@ -265,7 +265,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:string",
         "//watchman:util",
     ],
@@ -279,7 +279,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:scm",
     ],
 )
@@ -292,8 +292,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:errors",
         "//watchman/saved_state:saved_state",
         "//watchman/test/lib:lib",
@@ -309,9 +309,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:parse",
         "//watchman:query",
         "//watchman/thirdparty/jansson:jansson",
@@ -326,9 +326,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:parse",
         "//watchman:query",
         "//watchman/thirdparty/jansson:jansson",
@@ -343,9 +343,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/test:test_utils",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/test:test_utils",
         "//watchman:parse",
         "//watchman:query",
         "//watchman/thirdparty/jansson:jansson",
@@ -360,9 +360,9 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:fcntl",
-        "//folly/portability:gtest",
-        "//folly/portability:unistd",
+        "fbsource//xplat/folly/portability:fcntl",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:unistd",
         "//watchman:close_random_fds",
     ],
 )
@@ -375,15 +375,15 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly:exception",
-        "//folly:file_util",
-        "//folly:random",
-        "//folly/portability:gtest",
-        "//folly/portability:stdlib",
-        "//folly/portability:sys_types",
-        "//folly/portability:unistd",
-        "//folly/test:test_utils",
-        "//folly/testing:test_util",
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:stdlib",
+        "fbsource//xplat/folly/portability:sys_types",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/test:test_utils",
+        "fbsource//xplat/folly/testing:test_util",
         "//watchman:pathutils",
     ],
 )
@@ -397,10 +397,10 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/io:fs_util",
-        "//folly/portability:gtest",
-        "//folly/portability:unistd",
-        "//folly/testing:test_util",
+        "fbsource//xplat/folly/io:fs_util",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/portability:unistd",
+        "fbsource//xplat/folly/testing:test_util",
         "//watchman:watchmanlib",
     ],
 )
@@ -413,7 +413,7 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:command_registry",
         "//watchman:config",
         "//watchman:config_h",

@@ -10,8 +10,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//eden/common/telemetry:log_info",
-        "//folly/portability:gtest",
         "//thrift/lib/cpp2/protocol:protocol",
         "//watchman/telemetry:xplat_keys",
         "//watchman/telemetry/facebook:xplat_transforms",
@@ -30,8 +30,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     supports_static_listing = False,
     deps = [
-        "//folly/json:dynamic",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/portability:gtest",
         "//thrift/lib/cpp2/op:get",
         "//watchman/telemetry/facebook/if:watchman_events_entry-cpp2-types",
     ],

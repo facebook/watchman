@@ -20,20 +20,20 @@ cpp_library(
         "WindowsTime.h",
     ],
     deps = [
+        "fbsource//xplat/folly:exception",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:event",
         "//eden/common/utils:fsdetect",
-        "//folly:exception",
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/portability:event",
         "//watchman/portability:winerror",
     ],
     exported_deps = [
         "fbcode//eden/common/utils:file_utils",
-        "fbcode//folly:range",
-        "fbcode//folly/portability:sys_time",
         "fbcode//watchman:prelude",
         "fbcode//watchman:result",
         "fbcode//watchman:string",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/portability:sys_time",
     ],
     exported_external_deps = [
         ("glibc", None, "rt"),
@@ -53,8 +53,8 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:scope_guard",
-        "//folly:string",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
         "//watchman:config",
         "//watchman:logging",
         "//watchman:prelude",
@@ -78,15 +78,15 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly/concurrency:unbounded_queue",
-        "//folly/executors:cpu_thread_pool_executor",
-        "//folly/system:hardware_concurrency",
+        "fbsource//xplat/folly/concurrency:unbounded_queue",
+        "fbsource//xplat/folly/executors:cpu_thread_pool_executor",
+        "fbsource//xplat/folly/system:hardware_concurrency",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:exception_wrapper",
+        "fbsource//xplat/folly:fbstring",
         ":fd",
         ":fs",
-        "//folly:exception_wrapper",
-        "//folly:fbstring",
     ],
 )
 
@@ -96,8 +96,8 @@ cpp_binary(
         "ParallelWalkMain.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
         ":fs",
         ":parallel_walk",
-        "//folly/init:init",
     ],
 )

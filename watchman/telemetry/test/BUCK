@@ -10,7 +10,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman/telemetry:telemetry",
     ],
 )
@@ -22,9 +22,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//eden/common/telemetry:log_info",
         "//eden/fs/telemetry:xplat_logger",
-        "//folly/portability:gtest",
         "//watchman/telemetry:telemetry",
         "//watchman/telemetry:xplat_keys",
     ],

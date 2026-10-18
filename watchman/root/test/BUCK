@@ -12,8 +12,8 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//watchman:root",
     ],
 )
