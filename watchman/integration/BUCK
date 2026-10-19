@@ -1,6 +1,5 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
-load("@fbcode_macros//build_defs:python_integration_test.bzl", "python_integration_test")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 load(":defs.bzl", "integration_env")
@@ -58,7 +57,7 @@ python_unittest(
 # test_sock_perms exercises POSIX-only APIs (pwd/grp, uid/gid, chown) and its
 # whole test class is skipped on Windows/macOS at runtime. Keep it in a
 # linux-only target so it is not type-checked against the Windows typeshed.
-python_integration_test(
+python_unittest(
     name = "sock_perms",
     srcs = [
         "test_sock_perms.py",
@@ -67,6 +66,7 @@ python_integration_test(
         "ovr_config//os:linux",
     ],
     env = integration_env({"WATCHMAN_TEST_CONFIG": '{"parallel_crawl_thread_count":4}'}),
+    network_access = network_access_utils.all(),
     supports_static_listing = False,
     typing = True,
     deps = [
@@ -75,7 +75,7 @@ python_integration_test(
     ],
 )
 
-python_integration_test(
+python_unittest(
     name = "integration",
     srcs = glob(
         ["test_*.py"],
@@ -86,6 +86,7 @@ python_integration_test(
         ],
     ),
     env = integration_env({"WATCHMAN_TEST_CONFIG": '{"parallel_crawl_thread_count":4}'}),
+    network_access = network_access_utils.all(),
     supports_static_listing = False,
     typing = True,
     deps = [
