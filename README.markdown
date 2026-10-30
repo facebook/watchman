@@ -34,7 +34,7 @@ Support for additional operating systems, release packaging, and language bindin
 * FreeBSD
 * Solaris
 
-Please submit a [GitHub issue](https://github.com/facebook/watchman/issues/) to report any troubles.
+Please submit a [GitHub issue](https://github.com/meta/watchman/issues/) to report any troubles.
 
 ## Contributing
 
