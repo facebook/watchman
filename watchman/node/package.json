@@ -25,7 +25,7 @@
   "bugs": {
     "url": "https://github.com/facebook/watchman/issues"
   },
-  "homepage": "https://facebook.github.io/watchman/",
+  "homepage": "https://meta.github.io/watchman/",
   "files": [
     "index.js"
   ],
